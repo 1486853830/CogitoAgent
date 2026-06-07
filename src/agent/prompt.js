@@ -4,7 +4,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
-import { getBasePath } from './tools.js';
+import { getBasePath } from './tools/index.js';
 
 const HISTORY_FILE = path.resolve(process.cwd(), 'data', 'conversation.json');
 
