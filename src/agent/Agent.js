@@ -3,7 +3,7 @@
  */
 
 import { streamChat } from '../api/client.js';
-import { ls, read, copy, mkdir, create, search, browse, getBasePath } from './tools.js';
+import { ls, read, copy, mkdir, create, search, browse, fetchPage, getBasePath } from './tools.js';
 import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory } from './prompt.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
 
@@ -141,6 +141,9 @@ async function executeTool(tool, args) {
     case 'browse':
       // 在浏览器中打开 URL
       return await browse(args[0]);
+    case 'fetchPage':
+      // 抓取网页内容
+      return await fetchPage(args[0]);
     default:
       return { success: false, error: `未知工具: ${tool}` };
   }

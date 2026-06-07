@@ -38,6 +38,7 @@ function buildSystemPrompt() {
 - create(path, content) - 创建文件
 - search(query) - 联网搜索，根据关键词获取最新信息；返回搜索结果的摘要和参考链接
 - browse(url) - 在默认浏览器中打开指定网址
+- fetchPage(url) - 抓取网页正文内容，提取标题、段落和链接（仅限静态页面）
 
 ## 行为规则
 1. 可以直接执行 copy 或 create 操作，不需要等待确认
