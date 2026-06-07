@@ -25,8 +25,8 @@ function question(rl, text) {
  * 返回配置对象
  */
 async function runSetup() {
-  console.log('\n========== OpenRobot 首次设置 ==========\n');
-  console.log('欢迎使用 OpenRobot！让我来帮你完成初始配置。\n');
+  console.log('\n========== CogitoAgent 首次设置 ==========\n');
+  console.log('欢迎使用 CogitoAgent！让我来帮你完成初始配置。\n');
 
   const rl = createInterface();
 

@@ -1,5 +1,5 @@
 /**
- * OpenRobot - 入口文件
+ * CogitoAgent - 入口文件
  */
 
 import { isConfigured } from './config.js';
@@ -7,7 +7,7 @@ import { runSetup } from './setup.js';
 import { start } from './agent/Agent.js';
 
 async function main() {
-  console.log('OpenRobot 项目初始化...\n');
+  console.log('CogitoAgent 项目初始化...\n');
 
   // 检查是否已配置
   if (!isConfigured()) {
@@ -18,7 +18,7 @@ async function main() {
       process.exit(1);
     }
     // 配置完成后直接退出，让用户重新运行
-    console.log('请重新运行程序以启动 OpenRobot。');
+    console.log('请重新运行程序以启动 CogitoAgent。');
     process.exit(0);
   }
 
