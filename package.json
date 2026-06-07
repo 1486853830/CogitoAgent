@@ -1,0 +1,13 @@
+{
+  "name": "cogitoagent",
+  "version": "1.0.0",
+  "description": "CogitoAgent - 持续思考的智能体",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "openai": "^4.0.0"
+  }
+}
