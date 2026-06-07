@@ -39,6 +39,9 @@ function buildSystemPrompt() {
 - search(query) - 联网搜索，根据关键词获取最新信息；返回搜索结果的摘要和参考链接
 - browse(url) - 在默认浏览器中打开指定网址
 - fetchPage(url) - 抓取网页正文内容，提取标题、段落和链接（仅限静态页面）
+- listApps() - 列出电脑已安装的所有软件
+- openApp(name) - 通过名称打开指定软件（如 openApp("notepad") 打开记事本）
+- closeApp(name) - 关闭正在运行的指定软件（如 closeApp("notepad") 关闭记事本）
 
 ## 行为规则
 1. 可以直接执行 copy 或 create 操作，不需要等待确认
