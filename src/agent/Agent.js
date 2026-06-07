@@ -3,7 +3,20 @@
  */
 
 import { streamChat } from '../api/client.js';
-import { ls, read, copy, mkdir, create, search, browse, fetchPage, listApps, openApp, closeApp, getBasePath } from './tools.js';
+import {
+  ls,
+  read,
+  copy,
+  mkdir,
+  create,
+  search,
+  browse,
+  fetchPage,
+  listApps,
+  openApp,
+  closeApp,
+  getBasePath
+} from './tools/index.js';
 import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory } from './prompt.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
 
