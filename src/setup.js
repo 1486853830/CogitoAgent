@@ -3,7 +3,13 @@
  */
 
 import readline from 'readline';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { saveConfig, DEFAULT_CONFIG } from './config.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function createInterface() {
   return readline.createInterface({
@@ -18,6 +24,82 @@ function question(rl, text) {
       resolve(answer);
     });
   });
+}
+
+/**
+ * 获取可用的人设列表
+ */
+function getAvailablePersonas() {
+  const personasDir = path.join(__dirname, '..', 'personas');
+  const personas = [];
+  
+  try {
+    const files = fs.readdirSync(personasDir);
+    for (const file of files) {
+      if (file.endsWith('.md') && file !== 'persona.md') {
+        const name = file.replace('.md', '');
+        // 读取文件第一行作为中文名
+        const content = fs.readFileSync(path.join(personasDir, file), 'utf-8');
+        const firstLine = content.split('\n')[0].replace(/^#\s*/, '').trim();
+        personas.push({ name, firstLine, filename: file });
+      }
+    }
+  } catch (e) {
+    // 目录不存在，使用默认
+  }
+  
+  return personas;
+}
+
+/**
+ * 选择人设
+ */
+async function selectPersona(rl, personas) {
+  console.log('\n【第5步】请选择人设:\n');
+  console.log('  0 - 不使用人设（使用默认行为）\n');
+  
+  personas.forEach((p, i) => {
+    console.log(`  ${i + 1} - ${p.firstLine} (${p.name})`);
+  });
+  console.log('');
+  
+  const answer = await question(rl, '请输入编号或名称: ');
+  const trimmed = answer.trim();
+  
+  if (trimmed === '0' || trimmed === '') {
+    return null;
+  }
+  
+  // 按编号选择
+  const num = parseInt(trimmed);
+  if (!isNaN(num) && num >= 1 && num <= personas.length) {
+    return personas[num - 1];
+  }
+  
+  // 按名称选择
+  const found = personas.find(p => 
+    p.name.toLowerCase() === trimmed.toLowerCase() ||
+    p.firstLine.toLowerCase().includes(trimmed.toLowerCase())
+  );
+  
+  return found || null;
+}
+
+/**
+ * 应用选择的人设
+ */
+function applyPersona(persona) {
+  if (!persona) return false;
+  
+  const srcPath = path.join(__dirname, '..', 'personas', persona.filename);
+  const destPath = path.join(__dirname, '..', 'persona.md');
+  
+  try {
+    fs.copyFileSync(srcPath, destPath);
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
@@ -66,6 +148,10 @@ async function runSetup() {
     : workspacePath + '\\';
   console.log(`  工作区: ${normalizedWorkspace}\n`);
 
+  // 5. 人设选择
+  const personas = getAvailablePersonas();
+  const selectedPersona = await selectPersona(rl, personas);
+
   rl.close();
 
   // 构建配置
@@ -90,6 +176,18 @@ async function runSetup() {
   const saved = saveConfig(config);
   if (saved) {
     console.log('✅ 配置已保存到 config.json');
+    
+    // 应用人设
+    if (selectedPersona) {
+      if (applyPersona(selectedPersona)) {
+        console.log(`✅ 已应用人设: ${selectedPersona.firstLine}`);
+      } else {
+        console.log('⚠️ 人设应用失败，将使用默认行为');
+      }
+    } else {
+      console.log('ℹ️ 未选择人设，使用默认行为');
+    }
+    
     console.log('\n设置完成！重新运行程序即可开始使用。\n');
   } else {
     console.log('❌ 配置保存失败，请检查目录权限。\n');
