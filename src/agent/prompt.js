@@ -37,6 +37,7 @@ function buildSystemPrompt() {
 - mkdir(path) - 创建文件夹
 - create(path, content) - 创建文件
 - search(query) - 联网搜索，根据关键词获取最新信息；返回搜索结果的摘要和参考链接
+- browse(url) - 在默认浏览器中打开指定网址
 
 ## 行为规则
 1. 可以直接执行 copy 或 create 操作，不需要等待确认

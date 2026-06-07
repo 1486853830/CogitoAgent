@@ -3,7 +3,7 @@
  */
 
 import { streamChat } from '../api/client.js';
-import { ls, read, copy, mkdir, create, search, getBasePath } from './tools.js';
+import { ls, read, copy, mkdir, create, search, browse, getBasePath } from './tools.js';
 import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory } from './prompt.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
 
@@ -138,6 +138,9 @@ async function executeTool(tool, args) {
       // 参数可能是用逗号分隔的字符串；搜索词本身可能含逗号，因此取整个原始字符串
       const searchQuery = args.join(',').trim();
       return await search(searchQuery);
+    case 'browse':
+      // 在浏览器中打开 URL
+      return await browse(args[0]);
     default:
       return { success: false, error: `未知工具: ${tool}` };
   }
