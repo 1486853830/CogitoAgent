@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { BASE_PATH } from './agent/tools.js';
 
-const CONFIG_DIR = path.resolve(BASE_PATH, 'OpenRobot');
+const CONFIG_DIR = process.cwd();
 const CONFIG_FILE = path.resolve(CONFIG_DIR, 'config.json');
 
 // 默认配置
@@ -64,13 +64,9 @@ function loadConfig() {
  */
 function saveConfig(newConfig) {
   try {
-    // 确保目录存在
-    if (!existsSync(CONFIG_DIR)) {
-      mkdirSync(CONFIG_DIR, { recursive: true });
-    }
     writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2), 'utf-8');
     config = newConfig;
-    console.error('[配置] 配置已保存');
+    console.error('[配置] 配置已保存到 config.json');
     return true;
   } catch (e) {
     console.error(`[配置] 保存失败: ${e.message}`);

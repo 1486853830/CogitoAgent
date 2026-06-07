@@ -79,7 +79,7 @@ async function runSetup() {
   // 保存
   const saved = saveConfig(config);
   if (saved) {
-    console.log('✅ 配置已保存到 D:\\OpenRobot\\config.json');
+    console.log('✅ 配置已保存到 config.json');
     console.log('\n设置完成！重新运行程序即可开始使用。\n');
   } else {
     console.log('❌ 配置保存失败，请检查目录权限。\n');
