@@ -4,7 +4,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
-import { BASE_PATH } from './tools.js';
+import { getBasePath } from './tools.js';
 
 const HISTORY_FILE = path.resolve(process.cwd(), 'data', 'conversation.json');
 
@@ -19,10 +19,15 @@ const SYSTEM_PROMPT_HEADER = personaContent
   ? `${personaContent}\n\n---\n\n`
   : '';
 
-const SYSTEM_PROMPT = `${SYSTEM_PROMPT_HEADER}你是 CogitoAgent，一个持续思考的智能体。
+/**
+ * 构建系统提示词（每次调用时动态获取工作区路径）
+ */
+function buildSystemPrompt() {
+  const workspace = getBasePath();
+  return `${SYSTEM_PROMPT_HEADER}你是 CogitoAgent，一个持续思考的智能体。
 
 ## 活动范围
-你在 D:\\ 盘活动，可以自由探索。
+你在 ${workspace} 目录下活动，可以自由探索。
 
 ## 可用工具
 你可以调用以下工具来操作文件：
@@ -60,7 +65,7 @@ const SYSTEM_PROMPT = `${SYSTEM_PROMPT_HEADER}你是 CogitoAgent，一个持续�
 ## 示例
 探索时（不等待）：
 刚才看了 README.md，现在看看 src 目录里有什么。
-[TOOL] ls("D:\\project\\src") [/TOOL]
+[TOOL] ls("${workspace}src") [/TOOL]
 
 想互动时（等待）：
 我觉得这个文件夹很有意思，你想让我继续探索这里吗？[WAIT]
@@ -70,9 +75,10 @@ const SYSTEM_PROMPT = `${SYSTEM_PROMPT_HEADER}你是 CogitoAgent，一个持续�
 [TOOL] search("2025年最新科技动态") [/TOOL]
 
 开始你的探索吧！`;
+}
 
 let conversationHistory = [
-  { role: 'system', content: SYSTEM_PROMPT }
+  { role: 'system', content: buildSystemPrompt() }
 ];
 let turnCount = 0;
 const COMPRESS_TURNS = 150;
@@ -86,7 +92,7 @@ function loadHistory() {
       if (Array.isArray(loaded) && loaded.length > 0) {
         // 重建：保留系统提示，接上历史消息
         conversationHistory = [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: buildSystemPrompt() },
           ...loaded
         ];
         turnCount = loaded.filter(m => m.role !== 'system').length;
@@ -147,7 +153,7 @@ function compressHistory() {
 ${conversationHistory.map(m => `${m.role}: ${m.content}`).join('\n')}`;
 
   conversationHistory = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: buildSystemPrompt() },
     { role: 'user', content: summaryPrompt }
   ];
   turnCount = 1;

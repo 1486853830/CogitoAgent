@@ -4,7 +4,6 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
-import { BASE_PATH } from './agent/tools.js';
 
 const CONFIG_DIR = process.cwd();
 const CONFIG_FILE = path.resolve(CONFIG_DIR, 'config.json');
@@ -29,7 +28,8 @@ const DEFAULT_CONFIG = {
     baseURL: '',          // 搜索 API URL（空则用 baseURL + /web-search-v2）
     recencyFilter: '',
     siteFilter: ''
-  }
+  },
+  workspace: 'D:\\'       // 工作区根路径
 };
 
 let config = null;

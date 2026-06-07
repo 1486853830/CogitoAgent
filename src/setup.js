@@ -57,6 +57,15 @@ async function runSetup() {
   }
   console.log('');
 
+  // 4. 工作区路径
+  const workspace = await question(rl, '【第4步】请输入工作区路径 (如 D:\\ 或 D:\\my-project\\): ');
+  const workspacePath = workspace.trim() || 'D:\\';
+  // 确保路径以 \\ 结尾
+  const normalizedWorkspace = workspacePath.endsWith('\\') || workspacePath.endsWith('/')
+    ? workspacePath
+    : workspacePath + '\\';
+  console.log(`  工作区: ${normalizedWorkspace}\n`);
+
   rl.close();
 
   // 构建配置
@@ -73,7 +82,8 @@ async function runSetup() {
       baseURL: '',
       recencyFilter: '',
       siteFilter: ''
-    }
+    },
+    workspace: normalizedWorkspace
   };
 
   // 保存

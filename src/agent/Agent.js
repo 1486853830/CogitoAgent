@@ -3,9 +3,9 @@
  */
 
 import { streamChat } from '../api/client.js';
-import { ls, read, copy, mkdir, create, search } from './tools.js';
+import { ls, read, copy, mkdir, create, search, getBasePath } from './tools.js';
 import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory } from './prompt.js';
-import { init, print, println, printBlank, printBanner, printDivider, printTag, exit } from '../io/terminal.js';
+import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
 
 const THOUGHT_INTERVAL = 3000;
 
@@ -77,6 +77,50 @@ function formatToolResult(tool, data) {
   return String(data);
 }
 
+/**
+ * 解析并打印完整响应，分离正文和工具块
+ */
+function parseAndPrintResponse(text) {
+  // 正则匹配 [TOOL] ... [/TOOL] 块
+  const regex = /\[TOOL\]([\s\S]*?)\[\/TOOL\]/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    // 打印 [TOOL] 前面的普通文本
+    const before = text.slice(lastIndex, match.index);
+    if (before.trim()) {
+      // 跳过 [工具结果] 和 [工具错误] 的内容
+      const cleaned = before.split('\n').filter(line => 
+        !line.trim().startsWith('[工具结果]:') && 
+        !line.trim().startsWith('[工具错误]:')
+      ).join('\n');
+      if (cleaned.trim()) {
+        printContent(cleaned);
+      }
+    }
+
+    // 打印工具块（不显眼）
+    const toolContent = match[1].trim();
+    printToolBlock(`[TOOL] ${toolContent} [/TOOL]`);
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // 打印最后剩余的普通文本
+  const remaining = text.slice(lastIndex);
+  if (remaining.trim()) {
+    // 跳过 [工具结果] 和 [工具错误] 的内容
+    const cleaned = remaining.split('\n').filter(line => 
+      !line.trim().startsWith('[工具结果]:') && 
+      !line.trim().startsWith('[工具错误]:')
+    ).join('\n');
+    if (cleaned.trim()) {
+      printContent(cleaned);
+    }
+  }
+}
+
 async function executeTool(tool, args) {
   switch (tool) {
     case 'ls':
@@ -136,6 +180,10 @@ async function thinkCycle() {
     let fullResponse = '';
     let wantsToWait = false;
 
+    // 重置标签状态
+    resetReasoningTag();
+    resetContentTag();
+
     for await (const chunk of streamChat(messages)) {
       if (shouldStop) {
         shouldStop = false;
@@ -143,19 +191,25 @@ async function thinkCycle() {
         return;
       }
       if (chunk.reasoning) {
-        print(chunk.reasoning, 'gray');
+        printReasoning(chunk.reasoning);
       }
       if (chunk.content) {
         fullResponse += chunk.content;
-        print(chunk.content);
       }
     }
+
+    // 收尾：关闭思考区标签
+    closeReasoning();
+    resetContentTag();
 
     if (shouldStop) {
       shouldStop = false;
       printBlank();
       return;
     }
+
+    // 解析并打印完整响应（分离正文和工具块）
+    parseAndPrintResponse(fullResponse);
 
     printBlank();
 
@@ -169,10 +223,11 @@ async function thinkCycle() {
 
     if (toolCalls.length > 0) {
       for (const toolCall of toolCalls) {
-        println(`[执行] ${toolCall.tool}("${toolCall.args.join('", "')}")`, 'green');
         const result = await executeTool(toolCall.tool, toolCall.args);
         if (result.success) {
-          println(`[结果]\n${formatToolResult(toolCall.tool, result.data)}`, 'green');
+          // 把工具结果也显示成灰色小框
+          const resultText = formatToolResult(toolCall.tool, result.data);
+          printToolBlock(resultText, '工具结果');
           addAssistantMessage(fullResponse + `\n\n[工具结果]: ${JSON.stringify(result.data)}`);
         } else {
           println(`[失败] ${result.error}`, 'red');
@@ -215,7 +270,7 @@ function scheduleNextCycle() {
 async function start() {
   printBanner();
   printDivider('─', 'cyan');
-  println('  活动范围: ' + printTag('D:\\', 'bgBlue') + '  思考间隔: ' + printTag(`${THOUGHT_INTERVAL / 1000}秒`, 'bgCyan'));
+  println('  活动范围: ' + printTag(getBasePath(), 'bgBlue') + '  思考间隔: ' + printTag(`${THOUGHT_INTERVAL / 1000}秒`, 'bgCyan'));
   printDivider('─', 'cyan');
   println('  按 ' + printTag('Enter', 'bgBlue') + ' 打断思考，输入 ' + printTag('exit', 'bgBlue') + ' 退出\n', 'gray');
 

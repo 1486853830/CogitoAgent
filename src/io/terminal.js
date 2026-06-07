@@ -15,6 +15,7 @@ const COLORS = {
   gray: '\x1b[90m',
   red: '\x1b[91m',
   green: '\x1b[92m',
+  darkGreen: '\x1b[32m',
   yellow: '\x1b[93m',
   blue: '\x1b[94m',
   magenta: '\x1b[95m',
@@ -126,6 +127,67 @@ function printBlank() {
 }
 
 /**
+ * 打印思考内容（带标签，灰色，仅首行加标签）
+ */
+let reasoningTagPrinted = false;
+function printReasoning(text) {
+  if (!reasoningTagPrinted) {
+    print('\n');
+    println('┌─ 思考过程 ─────────────────────────────', 'darkGreen');
+    reasoningTagPrinted = true;
+  }
+  print(text, 'darkGreen');
+}
+function resetReasoningTag() {
+  reasoningTagPrinted = false;
+}
+function closeReasoning() {
+  if (reasoningTagPrinted) {
+    print('\n');
+    println('└──────────────────────────────────────────', 'darkGreen');
+    reasoningTagPrinted = false;
+  }
+}
+
+/**
+ * 打印正文内容（带标签，正常颜色，仅首行加标签）
+ */
+let contentTagPrinted = false;
+function printContent(text) {
+  if (!contentTagPrinted) {
+    // 如果之前有思考内容，先收尾
+    if (reasoningTagPrinted) {
+      print('\n');
+      println('└──────────────────────────────────────────', 'dim');
+      resetReasoningTag();
+    }
+    print('\n');
+    println('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'cyan');
+    println('           ▼ 回复内容 ▼', 'bold');
+    println('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'cyan');
+    contentTagPrinted = true;
+  }
+  print(text);
+}
+function resetContentTag() {
+  contentTagPrinted = false;
+}
+
+/**
+ * 打印工具调用块（不显眼，灰色小框）
+ */
+function printToolBlock(content, title = '工具调用') {
+  print('\n');
+  println(`  ┌─── ${title} ────────────────────────`, 'dim');
+  // 给内容每一行加缩进
+  const lines = content.split('\n');
+  for (const line of lines) {
+    println(`  │ ${line}`, 'dim');
+  }
+  println('  └────────────────────────────────────────', 'dim');
+}
+
+/**
  * 等待用户确认
  */
 function waitForConfirm(question) {
@@ -153,15 +215,15 @@ function printBanner() {
   const banner = `
 ${COLORS.cyan}${COLORS.bold}
 ██████╗  ██████╗  ██████╗ ██╗████████╗ ██████╗      █████╗  ██████╗ ███████╗███╗   ██╗████████╗
-██╔════╝ ██╔═══██╗██╔════╝ ██║╚══██╔══╝██╔═══██╗    ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
+██╔═══╝  ██╔═══██╗██╔═══╝  ██║╚══██╔═╝ ██╔═══██╗    ██╔══██╗██╔═══╝  ██╔═══╝ ████╗  ██║╚══██╔═╝
 ██║      ██║   ██║██║  ███╗██║   ██║   ██║   ██║    ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
 ██║      ██║   ██║██║   ██║██║   ██║   ██║   ██║    ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   
 ╚██████╗ ╚██████╔╝╚██████╔╝██║   ██║   ╚██████╔╝    ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   
  ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝   ╚═╝    ╚═════╝     ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   
 ${COLORS.reset}
 ${COLORS.cyan}${COLORS.bold}            CogitoAgent${COLORS.reset}
-${COLORS.gray}╔══════════════════════════════════════════════════════════════╗
-║  持续思考的智能体 - 探索文件 · 联网搜索 · 自主学习            ║
+${COLORS.bold}╔══════════════════════════════════════════════════════════════╗
+║  持续思考的智能体 - 探索文件 · 联网搜索 · 自主学习           ║
 ╚══════════════════════════════════════════════════════════════╝${COLORS.reset}
 `;
   console.log(banner);
@@ -176,6 +238,12 @@ export {
   printTitle,
   printTag,
   printBanner,
+  printReasoning,
+  resetReasoningTag,
+  closeReasoning,
+  printContent,
+  resetContentTag,
+  printToolBlock,
   rainbow,
   waitForConfirm,
   exit,

@@ -5,8 +5,15 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { search as webSearch } from '../api/webSearch.js';
+import { loadConfig } from '../config.js';
 
-const BASE_PATH = 'D:\\';
+/**
+ * 获取工作区根路径
+ */
+function getBasePath() {
+  const cfg = loadConfig();
+  return cfg.workspace || 'D:\\';
+}
 
 // 二进制文件扩展名
 const BINARY_EXTENSIONS = new Set([
@@ -33,7 +40,8 @@ function isBinaryFile(ext, buffer) {
  * 列出目录内容
  */
 async function ls(targetPath) {
-  const fullPath = path.isAbsolute(targetPath) ? targetPath : path.join(BASE_PATH, targetPath);
+  const basePath = getBasePath();
+  const fullPath = path.isAbsolute(targetPath) ? targetPath : path.join(basePath, targetPath);
   try {
     const entries = await fs.readdir(fullPath, { withFileTypes: true });
     const result = entries.map(entry => ({
@@ -51,7 +59,8 @@ async function ls(targetPath) {
  * 读取文件内容
  */
 async function read(targetPath) {
-  const fullPath = path.isAbsolute(targetPath) ? targetPath : path.join(BASE_PATH, targetPath);
+  const basePath = getBasePath();
+  const fullPath = path.isAbsolute(targetPath) ? targetPath : path.join(basePath, targetPath);
   try {
     const ext = path.extname(fullPath);
     const buffer = await fs.readFile(fullPath);
@@ -78,8 +87,9 @@ async function read(targetPath) {
  * 复制文件
  */
 async function copy(src, dest) {
-  const fullSrc = path.isAbsolute(src) ? src : path.join(BASE_PATH, src);
-  const fullDest = path.isAbsolute(dest) ? dest : path.join(BASE_PATH, dest);
+  const basePath = getBasePath();
+  const fullSrc = path.isAbsolute(src) ? src : path.join(basePath, src);
+  const fullDest = path.isAbsolute(dest) ? dest : path.join(basePath, dest);
   try {
     await fs.copyFile(fullSrc, fullDest);
     return { success: true, data: `已复制到: ${fullDest}` };
@@ -92,7 +102,8 @@ async function copy(src, dest) {
  * 创建文件夹
  */
 async function mkdir(targetPath) {
-  const fullPath = path.isAbsolute(targetPath) ? targetPath : path.join(BASE_PATH, targetPath);
+  const basePath = getBasePath();
+  const fullPath = path.isAbsolute(targetPath) ? targetPath : path.join(basePath, targetPath);
   try {
     await fs.mkdir(fullPath, { recursive: true });
     return { success: true, data: `已创建目录: ${fullPath}` };
@@ -105,11 +116,12 @@ async function mkdir(targetPath) {
  * 创建文件
  */
 async function create(targetPath, content) {
-  const fullPath = path.isAbsolute(targetPath) ? targetPath : path.join(BASE_PATH, targetPath);
+  const basePath = getBasePath();
+  const fullPath = path.isAbsolute(targetPath) ? targetPath : path.join(basePath, targetPath);
   try {
     const dir = path.dirname(fullPath);
     // 只有当目录不是根路径时才创建目录
-    if (dir.length > 3) { // D:\ 的长度是3
+    if (dir.length > basePath.length) {
       await fs.mkdir(dir, { recursive: true });
     }
     await fs.writeFile(fullPath, content, 'utf-8');
@@ -163,4 +175,4 @@ async function search(query) {
   return { success: true, data: summary };
 }
 
-export { ls, read, copy, mkdir, create, search, BASE_PATH };
+export { ls, read, copy, mkdir, create, search, getBasePath };
