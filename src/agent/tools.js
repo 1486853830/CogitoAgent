@@ -4,6 +4,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { exec } from 'child_process';
 import { search as webSearch } from '../api/webSearch.js';
 import { loadConfig } from '../config.js';
 
@@ -175,4 +176,20 @@ async function search(query) {
   return { success: true, data: summary };
 }
 
-export { ls, read, copy, mkdir, create, search, getBasePath };
+/**
+ * 在浏览器中打开 URL
+ */
+async function browse(url) {
+  return new Promise((resolve) => {
+    // Windows 下使用 start 命令打开默认浏览器
+    exec(`start "" "${url}"`, (error) => {
+      if (error) {
+        resolve({ success: false, error: `打开链接失败: ${error.message}` });
+      } else {
+        resolve({ success: true, data: `已在浏览器中打开: ${url}` });
+      }
+    });
+  });
+}
+
+export { ls, read, copy, mkdir, create, search, browse, getBasePath };
