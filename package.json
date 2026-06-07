@@ -8,6 +8,7 @@
     "start": "node src/index.js"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
     "openai": "^4.0.0"
   }
 }
