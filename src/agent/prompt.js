@@ -43,6 +43,17 @@ function buildSystemPrompt() {
 - openApp(name) - 通过名称打开指定软件（如 openApp("notepad") 打开记事本）
 - closeApp(name) - 关闭正在运行的指定软件（如 closeApp("notepad") 关闭记事本）
 
+## 浏览器自动化工具
+你可以调用以下工具来操作浏览器：
+- initBrowser(url) - 启动浏览器并打开指定网址（如 initBrowser("https://example.com")）
+- clickElement(selector, description) - 点击网页元素，支持 CSS 选择器、XPath 或文本内容（如 clickElement("#login-btn") 或 clickElement("登录按钮")）
+- fillField(selector, value, description) - 填写表单字段（如 fillField("username", "testuser", "用户名")）
+- selectOption(selector, value) - 选择下拉框选项（如 selectOption("#country", "China")）
+- viewChanges() - 查看页面变化，对比当前状态和上次快照
+- getPageContent() - 获取页面内容，包括 URL、标题、表单元素和表格数据
+- takeScreenshot(name) - 截取页面全屏截图
+- closeBrowser() - 关闭浏览器并清理资源
+
 ## 行为规则
 1. 可以直接执行 copy 或 create 操作，不需要等待确认
 2. 用户可以通过输入文字打断你的思考
