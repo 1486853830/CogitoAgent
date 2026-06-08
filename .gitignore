@@ -1,18 +1,18 @@
-# 依赖
+# Dependencies
 node_modules/
 
-# 日志
+# Logs
 *.log
 npm-debug.log*
 
-# 本地配置（包含密钥，不要提交）
+# Config(contains API keys, do not commit!!!!!!!!)
 config.json
 
-# 聊天记录
+# Data
 data/
 conversation.json
 
-# 操作系统
+# OS files
 .DS_Store
 Thumbs.db
 
@@ -22,6 +22,6 @@ Thumbs.db
 *.swp
 *.swo
 
-# 临时文件
+# Temporary files
 *.tmp
 *.temp
