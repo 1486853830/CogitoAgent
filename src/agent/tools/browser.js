@@ -423,6 +423,536 @@ async function closeBrowser() {
 }
 
 /**
+ * 在页面内搜索文本内容
+ * @param {string} text - 要搜索的文本
+ * @param {string} description - 搜索描述（可选）
+ */
+async function searchOnPage(text, description = '') {
+  if (!page) {
+    return { success: false, error: '请先使用 initBrowser 打开网页' };
+  }
+  
+  try {
+    const results = await page.evaluate((searchText) => {
+      // 内部 XPath 生成函数
+      function getXPathInternal(element) {
+        if (!element) return null;
+        if (element.id !== '') return `id("${element.id}")`;
+        if (element === document.body) return '/html/body';
+        
+        let ix = 0;
+        const siblings = element.parentNode ? element.parentNode.childNodes : [];
+        for (let i = 0; i < siblings.length; i++) {
+          const sibling = siblings[i];
+          if (sibling === element) {
+            const parentPath = getXPathInternal(element.parentNode);
+            const tagName = element.tagName.toLowerCase();
+            return parentPath ? `${parentPath}/${tagName}[${ix + 1}]` : `/${tagName}[${ix + 1}]`;
+          }
+          if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
+            ix++;
+          }
+        }
+        return null;
+      }
+      
+      const matches = [];
+      
+      // 搜索文本节点
+      const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+      );
+      
+      let node;
+      while ((node = walker.nextNode())) {
+        const textContent = node.textContent;
+        if (textContent && textContent.toLowerCase().includes(searchText.toLowerCase())) {
+          const parent = node.parentElement;
+          matches.push({
+            type: 'text',
+            text: textContent.trim().slice(0, 200),
+            parentTag: parent?.tagName?.toLowerCase() || null,
+            parentClass: parent?.className || null,
+            parentXPath: getXPathInternal(parent)
+          });
+        }
+      }
+      
+      // 搜索 input 的 value 和 placeholder
+      document.querySelectorAll('input, textarea').forEach((el) => {
+        const value = el.value || '';
+        const placeholder = el.placeholder || '';
+        if (value.toLowerCase().includes(searchText.toLowerCase()) ||
+            placeholder.toLowerCase().includes(searchText.toLowerCase())) {
+          matches.push({
+            type: 'input',
+            tag: el.tagName.toLowerCase(),
+            id: el.id || null,
+            name: el.name || null,
+            value: value,
+            placeholder: placeholder,
+            xpath: getXPathInternal(el)
+          });
+        }
+      });
+      
+      // 搜索按钮和链接文本
+      document.querySelectorAll('button, a').forEach((el) => {
+        const text = el.innerText || el.textContent || '';
+        if (text.toLowerCase().includes(searchText.toLowerCase())) {
+          matches.push({
+            type: 'interactive',
+            tag: el.tagName.toLowerCase(),
+            text: text.trim(),
+            href: el.href || null,
+            id: el.id || null,
+            xpath: getXPathInternal(el)
+          });
+        }
+      });
+      
+      return matches.slice(0, 20); // 限制结果数量
+    }, text);
+    
+    if (results.length === 0) {
+      return { 
+        success: true, 
+        data: `未在页面中找到 "${text}"` 
+      };
+    }
+    
+    let output = `在页面中找到 ${results.length} 处匹配 "${text}"：\n\n`;
+    results.forEach((result, idx) => {
+      output += `[${idx + 1}] ${result.type.toUpperCase()}\n`;
+      if (result.text) output += `   内容：${result.text}\n`;
+      if (result.value) output += `   值：${result.value}\n`;
+      if (result.placeholder) output += `   占位符：${result.placeholder}\n`;
+      if (result.href) output += `   链接：${result.href}\n`;
+      if (result.parentTag) output += `   位置：${result.parentTag}${result.parentClass ? `(${result.parentClass})` : ''}\n`;
+      if (result.xpath) output += `   XPath: ${result.xpath}\n`;
+      output += '\n';
+    });
+    
+    return { success: true, data: output };
+  } catch (error) {
+    return { success: false, error: `搜索失败：${error.message}` };
+  }
+}
+
+/**
+ * 查找页面元素并返回详细信息
+ * @param {string} selector - CSS 选择器或文本
+ * @param {string} description - 描述（可选）
+ */
+async function findElements(selector, description = '') {
+  if (!page) {
+    return { success: false, error: '请先使用 initBrowser 打开网页' };
+  }
+  
+  try {
+    const elements = await page.evaluate((searchSelector) => {
+      // 内部 XPath 生成函数
+      function getXPathInternal(element) {
+        if (!element) return null;
+        if (element.id !== '') return `id("${element.id}")`;
+        if (element === document.body) return '/html/body';
+        
+        let ix = 0;
+        const siblings = element.parentNode ? element.parentNode.childNodes : [];
+        for (let i = 0; i < siblings.length; i++) {
+          const sibling = siblings[i];
+          if (sibling === element) {
+            const parentPath = getXPathInternal(element.parentNode);
+            const tagName = element.tagName.toLowerCase();
+            return parentPath ? `${parentPath}/${tagName}[${ix + 1}]` : `/${tagName}[${ix + 1}]`;
+          }
+          if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
+            ix++;
+          }
+        }
+        return null;
+      }
+      
+      const results = [];
+      
+      // 尝试 CSS 选择器
+      let found = document.querySelectorAll(searchSelector);
+      
+      // 如果没找到，尝试通过文本查找
+      if (found.length === 0) {
+        document.querySelectorAll('*').forEach((el) => {
+          const text = el.innerText || el.textContent || '';
+          if (text.includes(searchSelector)) {
+            results.push({
+              tag: el.tagName.toLowerCase(),
+              id: el.id || null,
+              class: el.className || null,
+              text: text.trim().slice(0, 100),
+              xpath: getXPathInternal(el)
+            });
+          }
+        });
+      } else {
+        found.forEach((el) => {
+          results.push({
+            tag: el.tagName.toLowerCase(),
+            id: el.id || null,
+            class: el.className || null,
+            text: (el.innerText || el.textContent || '').trim().slice(0, 100),
+            xpath: getXPathInternal(el)
+          });
+        });
+      }
+      
+      return results.slice(0, 15);
+    }, selector);
+    
+    if (elements.length === 0) {
+      return { 
+        success: true, 
+        data: `未找到匹配 "${selector}" 的元素${description ? ` (${description})` : ''}` 
+      };
+    }
+    
+    let output = `找到 ${elements.length} 个匹配元素：\n\n`;
+    elements.forEach((el, idx) => {
+      output += `[${idx + 1}] <${el.tag}>`;
+      if (el.id) output += `#${el.id}`;
+      if (el.class) output += `.${el.class.split(' ')[0]}`;
+      output += `\n`;
+      if (el.text) output += `   文本：${el.text}\n`;
+      if (el.xpath) output += `   XPath: ${el.xpath}\n`;
+      output += '\n';
+    });
+    
+    return { success: true, data: output };
+  } catch (error) {
+    return { success: false, error: `查找元素失败：${error.message}` };
+  }
+}
+
+/**
+ * 在搜索引擎中搜索（自动打开搜索引擎并执行搜索）
+ * @param {string} query - 搜索关键词
+ * @param {string} engine - 搜索引擎名称或 URL（可选，默认使用 Bing）
+ */
+async function searchOnEngine(query, engine = 'bing') {
+  try {
+    // 确定搜索引擎 URL
+    let searchUrl;
+    if (engine.startsWith('http')) {
+      searchUrl = engine;
+    } else {
+      const engines = {
+        'baidu': 'https://www.baidu.com',
+        'google': 'https://www.google.com',
+        'bing': 'https://www.bing.com',
+        'sogou': 'https://www.sogou.com',
+        '360': 'https://www.so.com'
+      };
+      searchUrl = engines[engine.toLowerCase()] || engines['baidu'];
+    }
+    
+    // 初始化浏览器并打开搜索引擎
+    const initResult = await initBrowser(searchUrl);
+    if (!initResult.success) {
+      return initResult;
+    }
+    
+    // 等待页面加载
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(1000); // 额外等待确保页面完全渲染
+    
+    // 查找搜索框并输入关键词 - 增强版选择器列表
+    const searchInputSelectors = [
+      // 百度特定
+      'input[name="wd"]',
+      '#kw',
+      'input#kw',
+      // Google
+      'input[name="q"]',
+      'textarea[name="q"]',
+      // Bing
+      'input[name="q"]',
+      '#sb_form_q',
+      // 360
+      'input[name="keyword"]',
+      '#keyword',
+      // 搜狗
+      'input[name="query"]',
+      '#query',
+      // 通用选择器
+      'input[type="search"]',
+      'input[type="text"]',
+      'input[role="combobox"]',
+      'input[aria-label*="搜索"]',
+      'input[aria-label*="search" i]',
+      'input[placeholder*="搜索"]',
+      'input[placeholder*="search" i]',
+      'input[placeholder*="百度"]',
+      '.search-input',
+      '.search-box input',
+      'form input[type="text"]',
+      'form input[type="search"]'
+    ];
+    
+    let searchInput = null;
+    let usedSelector = '';
+    
+    for (const selector of searchInputSelectors) {
+      try {
+        searchInput = await page.$(selector);
+        if (searchInput && await searchInput.isVisible()) {
+          usedSelector = selector;
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    // 如果还是没找到，尝试通过表单和位置查找
+    if (!searchInput) {
+      try {
+        // 获取页面上所有可见的输入框
+        const inputs = await page.$$('input, textarea');
+        for (const input of inputs) {
+          const isVisible = await input.isVisible().catch(() => false);
+          if (isVisible) {
+            const type = await input.getAttribute('type');
+            const id = await input.getAttribute('id');
+            const className = await input.getAttribute('class');
+            const placeholder = await input.getAttribute('placeholder');
+            
+            // 检查是否是搜索相关的输入框
+            const isSearchInput = 
+              (type === 'text' || type === 'search' || type === null) &&
+              (id?.includes('kw') || id?.includes('search') || id?.includes('q') ||
+               className?.includes('search') || className?.includes('input') ||
+               placeholder?.includes('搜索') || placeholder?.includes('search') ||
+               placeholder?.includes('百度'));
+            
+            if (isSearchInput) {
+              searchInput = input;
+              usedSelector = `自动检测 (id=${id}, class=${className})`;
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        // 忽略错误
+      }
+    }
+    
+    if (!searchInput) {
+      // 最后尝试：获取页面第一个可见的文本输入框
+      try {
+        const inputs = await page.$$('input[type="text"], input:not([type])');
+        for (const input of inputs) {
+          if (await input.isVisible().catch(() => false)) {
+            const boundingBox = await input.boundingBox();
+            if (boundingBox && boundingBox.width > 100 && boundingBox.height > 30) {
+              searchInput = input;
+              usedSelector = '第一个可见文本框';
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        // 忽略错误
+      }
+    }
+    
+    if (!searchInput) {
+      // 获取页面信息帮助调试
+      const pageInfo = await page.evaluate(() => {
+        const inputs = Array.from(document.querySelectorAll('input, textarea'));
+        return {
+          url: window.location.href,
+          title: document.title,
+          inputCount: inputs.length,
+          visibleInputs: inputs.filter(i => i.offsetParent !== null).map(i => ({
+            tag: i.tagName,
+            id: i.id,
+            name: i.name,
+            type: i.type,
+            class: i.className,
+            placeholder: i.placeholder
+          })).slice(0, 10)
+        };
+      });
+      
+      return { 
+        success: false, 
+        error: `未找到搜索框。页面信息：${pageInfo.title} (${pageInfo.url}), 输入框数量：${pageInfo.inputCount}, 可见输入框：${JSON.stringify(pageInfo.visibleInputs)}` 
+      };
+    }
+    
+    // 填写搜索关键词 - 使用 JavaScript 直接设置值，避免可见性检查问题
+    try {
+      await page.evaluate((selector, value) => {
+        let element = null;
+        
+        // CSS 选择器
+        try {
+          element = document.querySelector(selector);
+        } catch (e) {}
+        
+        // XPath
+        if (!element && (selector.startsWith('//') || selector.startsWith('id('))) {
+          const result = document.evaluate(selector, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+          element = result.singleNodeValue;
+        }
+        
+        // ID 选择器（没有特殊前缀）
+        if (!element && !selector.includes(' ') && !selector.startsWith('.') && !selector.startsWith('[')) {
+          element = document.getElementById(selector);
+        }
+        
+        if (element) {
+          // 直接设置值
+          element.value = value;
+          
+          // 触发事件（让页面认为用户输入了内容）
+          element.dispatchEvent(new Event('input', { bubbles: true }));
+          element.dispatchEvent(new Event('change', { bubbles: true }));
+          element.dispatchEvent(new Event('focus', { bubbles: true }));
+          
+          // 对于某些搜索引擎，还需要触发 keydown/keyup 事件
+          element.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+          element.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true }));
+        } else {
+          throw new Error(`找不到元素：${selector}`);
+        }
+      }, usedSelector, query);
+    } catch (fillError) {
+      // 如果通过选择器失败，尝试直接使用 searchInput 元素
+      try {
+        await searchInput.evaluate((el, value) => {
+          el.value = value;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }, query);
+      } catch (e) {
+        return { 
+          success: false, 
+          error: `填写搜索框失败：${fillError.message}` 
+        };
+      }
+    }
+    
+    // 查找并提交搜索按钮
+    const submitSelectors = [
+      // 百度
+      'input[type="submit"]',
+      '#su',
+      'button[type="submit"]',
+      '.btn',
+      // Google
+      'input[value="Google 搜索"]',
+      'input[value*="Search"]',
+      // Bing
+      'input[type="submit"]',
+      // 通用
+      'button[aria-label*="搜索"]',
+      'button[aria-label*="search" i]',
+      'input[value*="搜索"]',
+      'input[value*="Search"]',
+      '.search-btn',
+      '#search-btn',
+      'button.search-button'
+    ];
+    
+    let submitButton = null;
+    for (const selector of submitSelectors) {
+      try {
+        submitButton = await page.$(selector);
+        if (submitButton && await submitButton.isVisible()) {
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    if (submitButton) {
+      await submitButton.click();
+    } else {
+      // 如果没找到按钮，直接按回车
+      await searchInput.press('Enter');
+    }
+    
+    // 等待搜索结果加载
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(2000); // 额外等待，确保动态内容加载
+    
+    // 获取搜索结果
+    const searchResults = await page.evaluate(() => {
+      const results = [];
+      
+      // 尝试获取常见搜索结果容器
+      const resultContainers = document.querySelectorAll('#content_left, #search, .results, .search-results, [role="main"], #main');
+      const container = resultContainers[0] || document.body;
+      
+      // 提取搜索结果链接
+      container.querySelectorAll('a[href]').forEach((link) => {
+        const href = link.href;
+        const text = (link.innerText || link.textContent || '').trim();
+        
+        // 过滤掉无关链接
+        if (href && text && text.length > 5 && text.length < 200 &&
+            !href.includes('javascript:') &&
+            !text.includes('登录') && 
+            !text.includes('注册') &&
+            !text.includes('广告')) {
+          results.push({
+            title: text,
+            url: href
+          });
+        }
+      });
+      
+      // 去重并限制数量
+      const unique = [];
+      const seen = new Set();
+      for (const item of results) {
+        if (!seen.has(item.url) && unique.length < 15) {
+          unique.push(item);
+          seen.add(item.url);
+        }
+      }
+      
+      return unique;
+    });
+    
+    // 格式化结果
+    let output = `已在 ${engine} 搜索 "${query}"\n\n`;
+    output += `当前页面：${page.url()}\n`;
+    output += `使用搜索框选择器：${usedSelector}\n\n`;
+    
+    if (searchResults.length > 0) {
+      output += `找到 ${searchResults.length} 个搜索结果：\n\n`;
+      searchResults.forEach((result, idx) => {
+        output += `[${idx + 1}] ${result.title}\n`;
+        output += `    ${result.url}\n\n`;
+      });
+    } else {
+      output += `未提取到搜索结果，可能需要手动查看页面。\n`;
+    }
+    
+    // 更新页面快照
+    pageStateSnapshot = await capturePageState();
+    
+    return { success: true, data: output };
+  } catch (error) {
+    return { success: false, error: `搜索引擎搜索失败：${error.message}` };
+  }
+}
+
+/**
  * 比较页面状态变化
  */
 function comparePageState(oldState, newState) {
@@ -470,5 +1000,8 @@ export {
   viewChanges,
   getPageContent,
   takeScreenshot,
-  closeBrowser
+  closeBrowser,
+  searchOnPage,
+  findElements,
+  searchOnEngine
 };

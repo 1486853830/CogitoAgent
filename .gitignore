@@ -25,3 +25,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# personas
+personas/dbgwafi.md
+persona.md
