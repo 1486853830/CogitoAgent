@@ -23,7 +23,10 @@ import {
   viewChanges,
   getPageContent,
   takeScreenshot,
-  closeBrowser
+  closeBrowser,
+  searchOnPage,
+  findElements,
+  searchOnEngine
 } from './tools/index.js';
 import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory } from './prompt.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
@@ -198,6 +201,15 @@ async function executeTool(tool, args) {
     case 'closeBrowser':
       // 关闭浏览器
       return await closeBrowser();
+    case 'searchOnPage':
+      // 在页面内搜索文本内容
+      return await searchOnPage(args[0], args[1]);
+    case 'findElements':
+      // 查找页面元素
+      return await findElements(args[0], args[1]);
+    case 'searchOnEngine':
+      // 在搜索引擎中搜索
+      return await searchOnEngine(args[0], args[1]);
     default:
       return { success: false, error: `未知工具：${tool}` };
   }
