@@ -1,146 +1,25 @@
 # CogitoAgent
 
-  <em>一个真正活在你电脑里的智能助手</em>
+一个真正活在你电脑里的智能助手
 
+## 需要这些依赖
 
----
-
-## 产品概述
-
-CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作与联网能力。它直接在用户配置的工作目录下运行，无需上传任何文件至第三方服务器，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
-
-不同于传统的聊天机器人，CogitoAgent 具备持续思考、自主探索、工具执行的能力，能够在后台主动发现和整理用户的本地文件资产，并可通过扩展工具集获得更多能力。
-
-![](show/main.png)
-
----
-
-## 核心优势
-
-### 🔒 绝对隐私的本地架构
-- **数据本地化**: 所有文件操作均在本机完成，数据全程不离开用户设备
-- **历史本地存储**: 对话历史以 JSON 格式存储于本地 `data/` 目录，不经过云端
-- **工作区隔离**: 支持自定义工作区路径，精确控制 AI 的活动范围，避免越权访问
-
-### 🧠 持续思考与自主探索
-- **循环思考机制**: 启动后持续运转，每 3 秒自动触发一次思考循环
-- **主动文件发现**: 自主探索文件系统结构，发现并记录有价值的内容
-- **智能记忆压缩**: 支持 150 轮对话后自动总结压缩历史，保持推理连贯性同时避免 token 爆炸
-- **状态机控制**: 采用 THINKING / AWAITING_INPUT 双状态机，确保人机交互流畅无竞态
-
-### 💬 实时打断与精准响应
-- **随时中断**: 按 ENTER 键即可中断当前思考，立即响应用户指令
-- **主动等待**: 支持 `[WAIT]` 标签，AI 可主动暂停等待用户回复
-- **流式输出**: 采用 OpenAI 兼容 API 流式调用，实时展示 LLM 的思考与回复
-
-### 🎭 丰富的人设选择
-- **预设人设包**: 内置 13 种不同风格的人设（探索者、学者、侠客、文臣、武将等）
-- **自定义人设**: 用户可通过 `persona.md` 完全自定义 AI 的性格与语言风格
-- **首次配置引导**: 首次运行时提供交互式配置流程，引导完成 API 密钥、模型、工作区和人设选择
-
----
-
-## 能力矩阵
-
-### 文件管理
-| 工具 | 功能描述 |
-|------|----------|
-| `ls(path)` | 列出目录内容（只显示一级） |
-| `read(path)` | 读取文件内容（自动检测二进制文件并跳过） |
-| `copy(src, dest)` | 复制文件 |
-| `mkdir(path)` | 创建文件夹（支持递归创建） |
-| `create(path, content)` | 创建新文件 |
-  
-
-![](show/file.png)
-
-
-
-### 联网能力
-| 工具 | 功能描述 |
-|------|----------|
-| `search(query)` | 联网搜索，获取最新信息摘要与参考链接 |
-| `browse(url)` | 在默认浏览器中打开指定网址 |
-| `fetchPage(url)` | 抓取静态网页正文，提取标题、段落和链接 |
-
-![](show/web.png)
-
-
-### 系统操作
-| 工具 | 功能描述 |
-|------|----------|
-| `listApps()` | 列出当前电脑已安装的所有软件 |
-| `openApp(name)` | 通过名称打开指定软件（如 `openApp("notepad")`） |
-| `closeApp(name)` | 关闭正在运行的指定软件（如 `closeApp("notepad")`） |
-
-![](show/system.png)
-
----
-
-## 应用场景
-
-- **文件检索与管理**: 用自然语言描述需求，AI 在工作区中定位、复制、整理文件
-- **知识挖掘**: 自动发现被遗忘的文件，将分散的文档变成可检索的知识库
-- **项目理解**: 基于探索历史回答"这个目录/文件是做什么的"，帮助快速了解陌生项目
-- **内容摘要**: 读取文件内容并提炼关键信息，节省阅读时间
-- **联网助手**: 结合本地文件与实时网络信息进行综合回答
-- **系统控制**: 列出、打开或关闭软件，作为简易的系统控制助手
-- **数字伙伴**: 自定义人设，拥有持续记忆的个人 AI 伙伴
-
----
-
-## 技术架构
+Node.js 18+ 是推荐版本。其他版本可能需要不同的安装命令。
 
 ```
-用户输入 → 状态机调度 → LLM API 流式调用 → 工具执行 → 循环继续
-```
-
-**核心模块:**
-- `Agent.js` — 状态机与思考循环核心，处理用户中断与工具调用
-- `tools/` — 模块化工具集（文件/网页/系统工具分离）
-- `prompt.js` — 对话历史管理与上下文压缩
-- `api/client.js` — OpenAI 兼容 API 客户端，支持流式响应
-- `io/terminal.js` — 终端彩色 UI 与分块展示
-- `config.js` — 配置管理
-- `setup.js` — 首次运行引导流程
-
----
-
-## 快速开始
-
-### 环境要求
-- Node.js 18+
-- 可访问的 OpenAI 兼容 API（支持自定义 base URL）
-
-### 安装与运行
-
-```bash
-# 安装依赖
 npm install
-
-# 首次运行（自动引导配置）
-npm start
-
-# 日常启动
-npm start
 ```
 
-### 首次配置流程
-首次运行会自动引导完成以下配置：
-1. API Base URL（支持 OpenAI 兼容的第三方 API）
-2. API Key
-3. 模型名称
-4. 工作区路径
-5. 人设选择
+非必需依赖，仅用于特定功能。
 
-### 交互方式
-- **ENTER** — 打断当前思考，输入指令
-- **指令 + ENTER** — 发送消息给 AI
-- **exit** — 退出程序
+```
+# 如果需要开发调试
+npm install --save-dev nodemon
+```
 
----
+## 文件信息
 
-## 项目结构
+以下列出所有相关代码及其他相关文档的存储位置。
 
 ```
 CogitoAgent/
@@ -183,7 +62,133 @@ CogitoAgent/
 └── package.json
 ```
 
----
+## 可爱的架构图
+
+CogitoAgent 智能体项目通用架构图。
+
+```mermaid
+graph TD
+    classDef core fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+    classDef tools fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#e65100
+    classDef io fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c
+    classDef api fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray: 5 5,color:#1b5e20
+
+    subgraph Core ["Agent Core"]
+        StateMachine["State Machine<br/>THINKING / AWAITING_INPUT"]:::core
+        ThinkLoop["Think Loop<br/>每3秒触发"]:::core
+        PromptMgr["Prompt Manager<br/>历史压缩管理"]:::core
+    end
+
+    subgraph Tools ["Tools"]
+        FileTools["File Tools<br/>ls/read/copy/mkdir"]:::tools
+        WebTools["Web Tools<br/>search/browse/fetch"]:::tools
+        SystemTools["System Tools<br/>listApps/openApp/closeApp"]:::tools
+    end
+
+    subgraph IO ["I/O"]
+        Terminal["Terminal UI<br/>彩色输出"]:::io
+        UserInput["User Input<br/>ENTER打断"]:::io
+    end
+
+    subgraph API ["API Layer"]
+        Client["OpenAI Client<br/>流式响应"]:::api
+        WebSearch["Web Search<br/>联网搜索"]:::api
+    end
+
+    UserInput --> StateMachine
+    StateMachine --> ThinkLoop
+    ThinkLoop --> PromptMgr
+    PromptMgr --> Client
+    Client --> FileTools
+    Client --> WebTools
+    Client --> SystemTools
+    FileTools --> Terminal
+    WebTools --> Terminal
+    SystemTools --> Terminal
+    WebSearch --> Client
+```
+
+## 核心功能
+
+### 核心功能的参数
+
+| 功能 | 说明 |
+|------|------|
+| `思考间隔` | 3秒 |
+| `历史压缩阈值` | 150轮对话后自动总结 |
+| `状态机` | THINKING / AWAITING_INPUT 双状态 |
+| `流式输出` | OpenAI 兼容 API 实时响应 |
+
+### 特别的工具们
+
+| 工具 | 功能描述 |
+|------|----------|
+| `ls(path)` | 列出目录内容（只显示一级） |
+| `read(path)` | 读取文件内容（自动检测二进制文件并跳过） |
+| `copy(src, dest)` | 复制文件 |
+| `mkdir(path)` | 创建文件夹（支持递归创建） |
+| `create(path, content)` | 创建新文件 |
+| `search(query)` | 联网搜索，获取最新信息摘要与参考链接 |
+| `browse(url)` | 在默认浏览器中打开指定网址 |
+| `fetchPage(url)` | 抓取静态网页正文，提取标题、段落和链接 |
+| `listApps()` | 列出当前电脑已安装的所有软件 |
+| `openApp(name)` | 通过名称打开指定软件 |
+| `closeApp(name)` | 关闭正在运行的指定软件 |
+
+(其实还有13种预设人设...)
+
+## 配置要求
+
+请确保你的计算机满足以下系统要求。
+
+| 配置 | 权限 | 系统版本 | 处理器 | 内存 | 存储 |
+|------|------|----------|--------|------|------|
+| 最低 | 普通用户 | >= Windows 10 / Linux / macOS | 2 GHz | 4GB | 1GB |
+| 推荐 | 普通用户 | >= Windows 10 / Linux / macOS | 4 GHz | 8GB | 5GB |
+
+## 使用指南
+
+### 首次运行
+
+1. 安装依赖：
+
+```bash
+npm install
+```
+
+2. 启动程序：
+
+```bash
+npm start
+```
+
+首次运行会自动引导完成以下配置：
+1. API Base URL（支持 OpenAI 兼容的第三方 API）
+2. API Key
+3. 模型名称
+4. 工作区路径
+5. 人设选择
+
+### 日常交互
+
+```bash
+npm start
+```
+
+启动后：
+- **ENTER** — 打断当前思考，输入指令
+- **指令 + ENTER** — 发送消息给 AI
+- **exit** — 退出程序
+
+### 应用场景
+
+- **文件检索与管理**: 用自然语言描述需求，AI 在工作区中定位、复制、整理文件
+- **知识挖掘**: 自动发现被遗忘的文件，将分散的文档变成可检索的知识库
+- **项目理解**: 基于探索历史回答"这个目录/文件是做什么的"，帮助快速了解陌生项目
+- **内容摘要**: 读取文件内容并提炼关键信息，节省阅读时间
+- **联网助手**: 结合本地文件与实时网络信息进行综合回答
+- **系统控制**: 列出、打开或关闭软件，作为简易的系统控制助手
+- **数字伙伴**: 自定义人设，拥有持续记忆的个人 AI 伙伴
 
 ## 与同类产品对比
 
@@ -198,34 +203,10 @@ CogitoAgent/
 | 灵活定制人格 | ✅ | ❌ | ✅ |
 | 系统软件控制 | ❌ | ❌ | ✅ |
 
----
+## 项目许可证
 
-## 适用人群
+本项目采用 Apache 许可证开源。
 
-- 有大量本地文件需要管理的个人用户
-- 注重数据隐私，不希望文件上传云端的用户
-- 希望拥有持续运转的本地 AI 助手的开发者
-- 需要快速了解陌生项目/文件夹结构的团队成员
-- 设计师、研究员、学生等需要管理大量素材/笔记的用户
-- 希望拥有自定义人格的数字伙伴的用户
+如有任何问题、需求或 Bug 反馈，请通过以下方式联系我们。
 
----
-
-## 扩展开发
-
-CogitoAgent 采用模块化架构，可轻松扩展新的工具和功能。详细的开发指南请参考：
-[`src/agent/tools/TOOL_DEVELOPMENT.md`](src/agent/tools/TOOL_DEVELOPMENT.md)
-
----
-
-## 产品愿景
-
-本地磁盘中堆积的论文、笔记、项目代码、设计素材——这些数据资产长期处于沉睡状态。
-
-CogitoAgent 致力于将它们激活：通过持续探索与智能记忆，让每一个文件都能被精准定位、理解和复用，并通过可扩展的工具集，成为一个真正活在用户电脑里的通用 AI 智能体。
-
----
-
-<p align="center">
-  <em>让智能体自主运转，让能力无限扩展</em>
-</p>
+Source Issues : https://github.com/Miwafi/CogitoAgent/issues
