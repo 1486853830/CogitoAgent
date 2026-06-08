@@ -56,6 +56,7 @@ function buildSystemPrompt() {
 - searchOnPage(text, description) - 在页面内搜索指定文本，返回所有匹配位置和内容（如 searchOnPage("登录", "搜索登录相关文字")）
 - findElements(selector, description) - 查找页面元素并返回详细信息，支持 CSS 选择器或文本匹配（如 findElements("button") 或 findElements("提交")）
 - searchOnEngine(query, engine) - 在搜索引擎中自动搜索，支持百度、Google、Bing 等（如 searchOnEngine("React 教程", "baidu") 或 searchOnEngine("AI news", "google")）
+- downloadFile(urlOrSelector, description, options) - 自动查找并下载文件，支持 exe、zip、msi 等格式。options 可包含：savePath（保存目录，默认 ./downloads）、fullPath（直接指定完整保存路径，包括文件名）、timeout（超时时间）。例如：downloadFile("https://example.com/download") 或 downloadFile("#download-btn", "下载按钮") 或 downloadFile("https://example.com/download", "", {"fullPath": "C:/Downloads/file.exe"})
 
 ## 行为规则
 1. 可以直接执行 copy 或 create 操作，不需要等待确认

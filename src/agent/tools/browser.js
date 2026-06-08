@@ -29,7 +29,9 @@ async function initBrowser(url) {
     });
     
     const context = await browser.newContext({
-      viewport: { width: 1920, height: 1080 }
+      viewport: { width: 1920, height: 1080 },
+      acceptDownloads: true,  // 接受下载
+      downloadsPath: './downloads'  // 设置默认下载目录
     });
     page = await context.newPage();
     
@@ -419,6 +421,194 @@ async function closeBrowser() {
     page = null;
     pageStateSnapshot = null;
     return { success: true, data: '浏览器状态已清理' };
+  }
+}
+
+/**
+ * 下载文件（自动查找并点击下载链接/按钮）
+ * @param {string} urlOrSelector - 下载页面 URL 或当前页面上的下载链接选择器
+ * @param {string} description - 下载描述（可选）
+ * @param {object} options - 下载选项（可选）
+ */
+async function downloadFile(urlOrSelector, description = '', options = {}) {
+  try {
+    const {
+      savePath = './downloads',  // 保存目录
+      fullPath,                  // 直接指定完整保存路径（包括文件名），如果提供则覆盖 savePath
+      timeout = 60000,           // 下载超时时间（毫秒）
+      acceptDownloads = true     // 接受下载
+    } = options;
+    
+    // 确保下载目录存在
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    const downloadDir = fullPath ? path.dirname(fullPath) : savePath;
+    if (!fs.existsSync(downloadDir)) {
+      fs.mkdirSync(downloadDir, { recursive: true });
+    }
+    
+    // 如果没有打开的浏览器，初始化一个新的
+    let needInit = !page;
+    
+    if (needInit) {
+      // 检查是否是 URL
+      if (urlOrSelector.startsWith('http')) {
+        const initResult = await initBrowser(urlOrSelector);
+        if (!initResult.success) {
+          return initResult;
+        }
+      } else {
+        return { 
+          success: false, 
+          error: '请先使用 initBrowser 打开网页，或提供完整的下载页面 URL' 
+        };
+      }
+    } else {
+      // 如果提供了 URL，导航到该 URL
+      if (urlOrSelector.startsWith('http')) {
+        await page.goto(urlOrSelector, { waitUntil: 'networkidle', timeout: 30000 });
+      }
+    }
+    
+    // 等待页面加载
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    
+    // 查找下载链接或按钮
+    let downloadElement = null;
+    let usedSelector = '';
+    
+    // 如果提供了选择器，尝试直接查找
+    if (!urlOrSelector.startsWith('http')) {
+      try {
+        downloadElement = await page.$(urlOrSelector);
+        usedSelector = urlOrSelector;
+      } catch (e) {
+        // 不是有效的选择器
+      }
+    }
+    
+    // 如果没找到，尝试自动查找下载链接
+    if (!downloadElement) {
+      const downloadSelectors = [
+        // 常见下载按钮选择器
+        'a[download]',
+        'a[href*=".exe"]',
+        'a[href*=".zip"]',
+        'a[href*=".msi"]',
+        'a[href*=".dmg"]',
+        'a[href*=".pkg"]',
+        'a[href*=".deb"]',
+        'a[href*=".rpm"]',
+        'a[href*=".tar"]',
+        'a[href*=".gz"]',
+        'button:has-text("下载")',
+        'button:has-text("Download")',
+        'a:has-text("下载")',
+        'a:has-text("Download")',
+        'a:has-text("安装")',
+        'a:has-text("Installer")',
+        '.download-btn',
+        '.download-button',
+        '#download-btn',
+        '#download-button',
+        '[class*="download"]',
+        '[id*="download"]'
+      ];
+      
+      for (const selector of downloadSelectors) {
+        try {
+          downloadElement = await page.$(selector);
+          if (downloadElement && await downloadElement.isVisible()) {
+            usedSelector = selector;
+            break;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+    }
+    
+    // 如果还是没找到，尝试通过文本内容查找
+    if (!downloadElement && description) {
+      try {
+        downloadElement = await page.locator(`text=${description}`).first();
+        if (await downloadElement.count()) {
+          usedSelector = `text=${description}`;
+        } else {
+          downloadElement = null;
+        }
+      } catch (e) {
+        // 忽略错误
+      }
+    }
+    
+    if (!downloadElement) {
+      // 获取页面信息帮助调试
+      const pageInfo = await page.evaluate(() => {
+        const links = Array.from(document.querySelectorAll('a[href]'));
+        const buttons = Array.from(document.querySelectorAll('button'));
+        
+        const downloadLinks = links.filter(a => {
+          const href = a.href || '';
+          const text = (a.innerText || a.textContent || '').toLowerCase();
+          return href.match(/\.(exe|zip|msi|dmg|pkg|deb|rpm|tar|gz|7z|rar)$/i) ||
+                 text.includes('下载') || 
+                 text.includes('download') ||
+                 text.includes('安装') ||
+                 text.includes('installer');
+        }).map(a => ({
+          href: a.href,
+          text: (a.innerText || a.textContent || '').trim(),
+          id: a.id,
+          class: a.className
+        }));
+        
+        return {
+          url: window.location.href,
+          title: document.title,
+          downloadLinks: downloadLinks.slice(0, 10)
+        };
+      });
+      
+      return { 
+        success: false, 
+        error: `未找到下载链接。页面信息：${pageInfo.title} (${pageInfo.url}), 可能的下载链接：${JSON.stringify(pageInfo.downloadLinks)}` 
+      };
+    }
+    
+    // 获取下载链接
+    const href = await downloadElement.getAttribute('href');
+    const text = await downloadElement.innerText();
+    
+    // 确保下载事件已经触发
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout }),
+      downloadElement.click()
+    ]);
+    
+    // 获取建议的文件名
+    const suggestedFilename = download.suggestedFilename();
+    
+    // 确定保存路径：如果提供了 fullPath 则使用，否则使用 savePath + 文件名
+    const finalPath = fullPath ? fullPath : path.join(savePath, suggestedFilename);
+    
+    // 保存文件
+    await download.saveAs(finalPath);
+    
+    // 等待下载完成
+    await download.finished();
+    
+    return { 
+      success: true, 
+      data: `文件下载成功！\n文件名：${suggestedFilename}\n保存路径：${finalPath}\n来源：${text || href}\n使用选择器：${usedSelector || '自动检测'}` 
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: `下载失败：${error.message}` 
+    };
   }
 }
 
@@ -1003,5 +1193,6 @@ export {
   closeBrowser,
   searchOnPage,
   findElements,
-  searchOnEngine
+  searchOnEngine,
+  downloadFile
 };
