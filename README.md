@@ -66,7 +66,7 @@ CogitoAgent/
 └── package.json
 ```
 
-## 界面预览
+## 自动操作
 
 ### 本地自动操作
 
@@ -229,4 +229,4 @@ npm start
 
 如有任何问题、需求或 Bug 反馈，请通过以下方式联系我们。
 
-Source Issues : <https://github.com/Miwafi/CogitoAgent/issues>
+Source Issues : <https://gitee.com/cnt-code/cogito-agent/issues>
