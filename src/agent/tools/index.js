@@ -13,7 +13,8 @@ import {
   closeBrowser,
   searchOnPage,
   findElements,
-  searchOnEngine
+  searchOnEngine,
+  downloadFile
 } from './browser.js';
 
 export {
@@ -39,5 +40,6 @@ export {
   closeBrowser,
   searchOnPage,
   findElements,
-  searchOnEngine
+  searchOnEngine,
+  downloadFile
 };

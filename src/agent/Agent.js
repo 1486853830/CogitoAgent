@@ -26,7 +26,8 @@ import {
   closeBrowser,
   searchOnPage,
   findElements,
-  searchOnEngine
+  searchOnEngine,
+  downloadFile
 } from './tools/index.js';
 import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory } from './prompt.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
@@ -210,6 +211,9 @@ async function executeTool(tool, args) {
     case 'searchOnEngine':
       // 在搜索引擎中搜索
       return await searchOnEngine(args[0], args[1]);
+    case 'downloadFile':
+      // 下载文件
+      return await downloadFile(args[0], args[1], args[2]);
     default:
       return { success: false, error: `未知工具：${tool}` };
   }
