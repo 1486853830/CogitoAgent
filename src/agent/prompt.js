@@ -53,6 +53,9 @@ function buildSystemPrompt() {
 - getPageContent() - 获取页面内容，包括 URL、标题、表单元素和表格数据
 - takeScreenshot(name) - 截取页面全屏截图
 - closeBrowser() - 关闭浏览器并清理资源
+- searchOnPage(text, description) - 在页面内搜索指定文本，返回所有匹配位置和内容（如 searchOnPage("登录", "搜索登录相关文字")）
+- findElements(selector, description) - 查找页面元素并返回详细信息，支持 CSS 选择器或文本匹配（如 findElements("button") 或 findElements("提交")）
+- searchOnEngine(query, engine) - 在搜索引擎中自动搜索，支持百度、Google、Bing 等（如 searchOnEngine("React 教程", "baidu") 或 searchOnEngine("AI news", "google")）
 
 ## 行为规则
 1. 可以直接执行 copy 或 create 操作，不需要等待确认
