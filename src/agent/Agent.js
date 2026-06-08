@@ -15,7 +15,15 @@ import {
   listApps,
   openApp,
   closeApp,
-  getBasePath
+  getBasePath,
+  initBrowser,
+  clickElement,
+  fillField,
+  selectOption,
+  viewChanges,
+  getPageContent,
+  takeScreenshot,
+  closeBrowser
 } from './tools/index.js';
 import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory } from './prompt.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
@@ -166,8 +174,32 @@ async function executeTool(tool, args) {
     case 'closeApp':
       // 关闭指定软件
       return await closeApp(args[0]);
+    case 'initBrowser':
+      // 初始化浏览器并打开网页
+      return await initBrowser(args[0]);
+    case 'clickElement':
+      // 点击网页元素
+      return await clickElement(args[0], args[1]);
+    case 'fillField':
+      // 填写表格字段
+      return await fillField(args[0], args[1], args[2]);
+    case 'selectOption':
+      // 选择下拉框选项
+      return await selectOption(args[0], args[1]);
+    case 'viewChanges':
+      // 查看页面变化
+      return await viewChanges();
+    case 'getPageContent':
+      // 获取页面内容
+      return await getPageContent();
+    case 'takeScreenshot':
+      // 截图页面
+      return await takeScreenshot(args[0]);
+    case 'closeBrowser':
+      // 关闭浏览器
+      return await closeBrowser();
     default:
-      return { success: false, error: `未知工具: ${tool}` };
+      return { success: false, error: `未知工具：${tool}` };
   }
 }
 
