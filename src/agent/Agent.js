@@ -15,12 +15,11 @@ import { init, println, printBlank, printBanner, printDivider, printTag, printRe
 import { loadConfig } from '../config.js';
 
 // 导入拆分出去的模块
-import { STATE, getState, setState, isThinking, isAwaitingInput, isAwaitingConfirmation, getPendingConfirmation, setPendingConfirmation, requestConfirmation, resolveConfirmation } from './state.js';
+import { STATE, getState, setState, isThinking, isAwaitingInput, isAwaitingConfirmation, getPendingConfirmation, setPendingConfirmation, requestConfirmation, resolveConfirmation, state } from './state.js';
 import { TOOL_REGISTRY, DANGEROUS_OPERATIONS, getToolNames, getToolRegistry, hasTool, isDangerousOperation, isConfirmEnabled, getToolsByCategory } from './registry.js';
 import { handleCommand, printHelp, printStatus, printClearConfirm, switchPersona, listPersonas, listTools, printConfig, toggleDebug } from './commands.js';
 
-// 状态管理（保留但使用 state 模块）
-let state = STATE.THINKING;
+// 状态管理委托给 state.js 模块
 let thinkingTimer = null;
 let shouldStop = false;
 let thoughtInterval = 3000;
@@ -229,7 +228,7 @@ async function executeTool(toolName, args) {
       };
     }
     // 恢复思考状态
-    state = STATE.THINKING;
+    state.current = STATE.THINKING;
   }
 
   const { fn, customArgs, parseJson, jsonParams } = registry;
@@ -462,7 +461,7 @@ function handleUserInput(input) {
   }
 
   // 处理危险操作确认（事件驱动）
-  if (state === STATE.AWAITING_CONFIRMATION) {
+  if (state.current === STATE.AWAITING_CONFIRMATION) {
     const response = input.toLowerCase().trim();
     
     // 处理清空历史确认
@@ -471,11 +470,11 @@ function handleUserInput(input) {
         // TODO: 实现清空历史逻辑
         println('[成功] 对话历史已清空', 'green');
         pendingConfirmation = null;
-        state = STATE.THINKING;
+        state.current = STATE.THINKING;
       } else if (response === 'n' || response === 'no' || response === '拒绝') {
         println('[取消] 操作已取消', 'gray');
         pendingConfirmation = null;
-        state = STATE.THINKING;
+        state.current = STATE.THINKING;
       } else {
         println(`[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 取消`, 'yellow');
       }
@@ -495,23 +494,23 @@ function handleUserInput(input) {
     return;
   }
 
-  if (state === STATE.THINKING) {
+  if (state.current === STATE.THINKING) {
     shouldStop = true;
     clearTimeout(thinkingTimer);
     println('\n[中断] 思考已停止，请输入消息...', 'yellow');
-    state = STATE.AWAITING_INPUT;
+    state.current = STATE.AWAITING_INPUT;
     return;
   }
 
-  if (state === STATE.AWAITING_INPUT) {
+  if (state.current === STATE.AWAITING_INPUT) {
     if (input) {
       println(`[消息] ${input}`, 'yellow');
       addUserMessage(input);
-      state = STATE.THINKING;
+      state.current = STATE.THINKING;
       scheduleNextCycle();
     } else {
       println('[取消] 没有消息，继续思考', 'gray');
-      state = STATE.THINKING;
+      state.current = STATE.THINKING;
       scheduleNextCycle();
     }
     return;
@@ -525,7 +524,7 @@ async function thinkCycle() {
   }
   
   // 状态检查
-  if (state !== STATE.THINKING) return;
+  if (state.current !== STATE.THINKING) return;
 
   // 设置处理标志
   isProcessing = true;
@@ -599,8 +598,8 @@ async function thinkCycle() {
       println('[系统] 压缩完成', 'gray');
     }
 
-    if (wantsToWait || (toolCalls.length === 0 && state === STATE.THINKING)) {
-      state = STATE.AWAITING_INPUT;
+    if (wantsToWait || (toolCalls.length === 0 && state.current === STATE.THINKING)) {
+      state.current = STATE.AWAITING_INPUT;
     }
 
   } catch (error) {
@@ -618,7 +617,7 @@ async function thinkCycle() {
 function scheduleNextCycle() {
   clearTimeout(thinkingTimer);
   thinkingTimer = setTimeout(async () => {
-    if (state === STATE.THINKING) {
+    if (state.current === STATE.THINKING) {
       await thinkCycle();
       scheduleNextCycle();
     }

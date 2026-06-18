@@ -11,7 +11,7 @@ const LOG_LEVELS = {
   ERROR: 3
 };
 
-const currentLevel = process.env.DEBUG === 'true' 
+let currentLevel = process.env.DEBUG === 'true' 
   ? LOG_LEVELS.DEBUG 
   : process.env.LOG_LEVEL 
     ? LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] || LOG_LEVELS.INFO
