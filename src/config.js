@@ -1,5 +1,6 @@
 /**
  * 配置管理模块
+ * 支持环境变量覆盖配置，敏感信息建议使用环境变量
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
@@ -21,7 +22,8 @@ const DEFAULT_CONFIG = {
     temperature: 0.7,
     topP: 0.7,
     topK: 50,
-    frequencyPenalty: 1
+    frequencyPenalty: 1,
+    thinkingInterval: 3000  // 思考间隔（毫秒），可配置
   },
   search: {
     enabled: true,
@@ -70,6 +72,62 @@ const DEFAULT_CONFIG = {
 let config = null;
 
 /**
+ * 从环境变量加载敏感配置
+ * 环境变量优先级高于配置文件
+ */
+function loadEnvConfig() {
+  const envConfig = {};
+
+  // API 配置
+  if (process.env.COGITO_API_KEY) {
+    envConfig.api = { apiKey: process.env.COGITO_API_KEY };
+  }
+  if (process.env.COGITO_API_BASE_URL) {
+    envConfig.api = { ...envConfig.api, baseURL: process.env.COGITO_API_BASE_URL };
+  }
+  if (process.env.COGITO_API_PROVIDER) {
+    envConfig.api = { ...envConfig.api, provider: process.env.COGITO_API_PROVIDER };
+  }
+  if (process.env.COGITO_MODEL) {
+    envConfig.api = { ...envConfig.api, model: process.env.COGITO_MODEL };
+  }
+
+  // 思考间隔配置
+  if (process.env.COGITO_THINKING_INTERVAL) {
+    const interval = parseInt(process.env.COGITO_THINKING_INTERVAL, 10);
+    if (!isNaN(interval) && interval >= 1000) {
+      envConfig.chat = { ...envConfig.chat, thinkingInterval: interval };
+    }
+  }
+
+  // 邮箱密码
+  if (process.env.COGITO_EMAIL_PASSWORD) {
+    envConfig.email = { password: process.env.COGITO_EMAIL_PASSWORD };
+  }
+
+  // 工作区
+  if (process.env.COGITO_WORKSPACE) {
+    envConfig.workspace = process.env.COGITO_WORKSPACE;
+  }
+
+  // 模型 API Keys
+  if (process.env.OPENAI_API_KEY) {
+    envConfig.models = { ...envConfig.models, openai: { apiKey: process.env.OPENAI_API_KEY } };
+  }
+  if (process.env.MOARK_API_KEY) {
+    envConfig.models = { ...envConfig.models, moark: { apiKey: process.env.MOARK_API_KEY } };
+  }
+  if (process.env.ANTHROPIC_API_KEY) {
+    envConfig.models = { ...envConfig.models, anthropic: { apiKey: process.env.ANTHROPIC_API_KEY } };
+  }
+  if (process.env.GOOGLE_API_KEY) {
+    envConfig.models = { ...envConfig.models, google: { apiKey: process.env.GOOGLE_API_KEY } };
+  }
+
+  return envConfig;
+}
+
+/**
  * 加载配置
  */
 function loadConfig() {
@@ -81,10 +139,16 @@ function loadConfig() {
       const loaded = JSON.parse(data);
       // 合并默认配置，防止新增字段缺失
       config = deepMerge(DEFAULT_CONFIG, loaded);
+      // 环境变量覆盖配置文件
+      const envConfig = loadEnvConfig();
+      config = deepMerge(config, envConfig);
       console.error('[配置] 已加载配置文件');
     } else {
       config = { ...DEFAULT_CONFIG };
-      console.error('[配置] 未找到配置文件');
+      // 即使没有配置文件，也加载环境变量
+      const envConfig = loadEnvConfig();
+      config = deepMerge(config, envConfig);
+      console.error('[配置] 未找到配置文件，使用环境变量');
     }
   } catch (e) {
     console.error(`[配置] 加载失败: ${e.message}`);
@@ -136,6 +200,7 @@ export {
   loadConfig,
   saveConfig,
   isConfigured,
+  deepMerge,
   CONFIG_FILE,
   DEFAULT_CONFIG
 };

@@ -1,51 +1,89 @@
 import { execFile } from 'child_process';
 
 /**
+ * Git 命令白名单 - 仅允许安全的 Git 子命令和选项
+ */
+const ALLOWED_GIT_SUBCOMMANDS = new Set([
+  'init', 'clone', 'add', 'commit', 'push', 'pull', 'status', 'log',
+  'branch', 'checkout', 'merge', 'diff', 'remote', 'stash', 'reset', 'config', 'fetch', 'rebase'
+]);
+
+const ALLOWED_GIT_OPTIONS = new Set([
+  '-m', '-a', '-am', '-v', '-d', '-D', '-f', '-force', '--force',
+  '--soft', '--hard', '--mixed', '--no-pager',
+  '--global', '--local', '--system',
+  '-b', '-B', '-t', '-u', '--set-upstream',
+  '--no-verify', '--only', '--onto',
+  '-r', '-a', '-v', '--verbose', '--stat', '--short', '--name-only',
+  '--oneline', '--graph', '--decorate', '--all', '-n', '--limit',
+  '--since', '--until', '--author', '--grep', '--pickaxe',
+  '-S', '-G', '-L', '-p', '-w', '--ignore-space-change',
+  '--no-commit', '-n', '-e', '--edit', '-F', '--file',
+  '--stash', '--no-stash', '--keep', '--drop',
+  '-q', '--quiet', '--porcelain', '-z', '--null',
+  'user.name', 'user.email', 'user.signingkey'
+]);
+
+/**
  * 验证 Git 参数是否安全
- * 防止命令注入攻击
+ * 使用白名单方式验证，防止命令注入攻击
  */
 function validateGitArgs(args) {
   if (!Array.isArray(args) || args.length === 0) {
     return false;
   }
-  
-  const dangerousPatterns = [
-    /[;&|`$<>]/,
-    /\(\)/,
-    /\{|\}/,
-    /\/\*/,
-    /\.\./
-  ];
-  
-  for (const arg of args) {
+
+  // 第一个参数必须是允许的子命令
+  const subcommand = args[0];
+  if (!ALLOWED_GIT_SUBCOMMANDS.has(subcommand)) {
+    return false;
+  }
+
+  for (let i = 1; i < args.length; i++) {
+    const arg = args[i];
     if (typeof arg !== 'string') {
       return false;
     }
-    
-    for (const pattern of dangerousPatterns) {
-      if (pattern.test(arg)) {
+
+    // 允许的选项（以 - 开头的）
+    if (arg.startsWith('-')) {
+      // 允许 --no-pager 总是可用
+      if (arg === '--no-pager') continue;
+      // 检查是否是允许的选项
+      if (!ALLOWED_GIT_OPTIONS.has(arg) && !arg.startsWith('--')) {
         return false;
       }
+      continue;
+    }
+
+    // 非选项参数应该是普通字符串（路径、消息等）
+    // 禁止常见的注入字符
+    if (/[;&|`$<>!(){}[\]\\*?\n\r]/.test(arg)) {
+      return false;
     }
   }
-  
+
   return true;
 }
 
 /**
  * 执行 Git 命令
+ * 使用 --no-pager 防止命令注入
  */
 function gitCommand(args, cwd = process.cwd()) {
   return new Promise((resolve) => {
     if (!validateGitArgs(args)) {
       resolve({
         success: false,
-        error: 'Git 命令参数包含危险字符，操作已拒绝'
+        error: 'Git 命令参数包含危险字符或不允许的操作，操作已拒绝'
       });
       return;
     }
-    
-    execFile('git', args, {
+
+    // 使用 --no-pager 防止通过 git 命令注入
+    const safeArgs = ['--no-pager', ...args];
+
+    execFile('git', safeArgs, {
       cwd: cwd,
       timeout: 30000,
       encoding: 'utf8'

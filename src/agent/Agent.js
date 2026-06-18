@@ -3,119 +3,232 @@
  */
 
 import { streamChat } from '../api/client.js';
-import {
-  ls,
-  read,
-  copy,
-  mkdir,
-  create,
-  search,
-  browse,
-  fetchPage,
-  listApps,
-  openApp,
-  closeApp,
-  getBasePath,
-  initBrowser,
-  clickElement,
-  fillField,
-  selectOption,
-  viewChanges,
-  getPageContent,
-  takeScreenshot,
-  closeBrowser,
-  searchOnPage,
-  findElements,
-  searchOnEngine,
-  downloadFile,
-  executeCode,
-  executeFile,
-  runJavaScript,
-  runPython,
-  gitInit,
-  gitClone,
-  gitAdd,
-  gitCommit,
-  gitPush,
-  gitPull,
-  gitStatus,
-  gitLog,
-  gitBranchCreate,
-  gitBranchDelete,
-  gitBranchList,
-  gitCheckout,
-  gitCheckoutNew,
-  gitMerge,
-  gitDiff,
-  gitStash,
-  gitStashPop,
-  createTask,
-  getTasks,
-  getTask,
-  updateTask,
-  deleteTask,
-  completeTask,
-  splitTask,
-  getTaskStats,
-  addMemory,
-  searchMemory,
-  getAllMemories,
-  getMemory,
-  updateMemory,
-  deleteMemory,
-  getMemoryStats,
-  readCSV,
-  writeCSV,
-  readJSON,
-  writeJSON,
-  csvToJSON,
-  jsonToCSV,
-  queryData,
-  analyzeData,
-  sortData,
-  executeSQL,
-  query,
-  insert,
-  update,
-  deleteData,
-  createTable,
-  dropTable,
-  getTables,
-  getTableSchema,
-  sendEmail,
-  sendTextEmail,
-  sendHtmlEmail,
-  sendTemplateEmail,
-  checkEmailConfig,
-  getCPUInfo,
-  getMemoryInfo,
-  getDiskInfo,
-  getNetworkInfo,
-  getProcesses,
-  getSystemInfo,
-  getSystemLoad,
-  monitorSystem,
-  addScheduleTask,
-  getScheduleTasks,
-  updateScheduleTask,
-  toggleScheduleTask,
-  removeScheduleTask,
-  startScheduler,
-  stopScheduler
-} from './tools/index.js';
+import * as tools from './tools/index.js';
 import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory } from './prompt.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
+import { loadConfig } from '../config.js';
 
-const THOUGHT_INTERVAL = 3000;
+// 工具注册表 - 将工具名称映射到工具函数和参数处理
+// 格式: { toolName: { fn: asyncFunction, argCount: number, parseJson: boolean } }
+const TOOL_REGISTRY = {
+  // 文件操作
+  ls: { fn: tools.ls, argCount: 1 },
+  read: { fn: tools.read, argCount: 1 },
+  copy: { fn: tools.copy, argCount: 2 },
+  mkdir: { fn: tools.mkdir, argCount: 1 },
+  create: { fn: tools.create, argCount: 2, customArgs: true },
+
+  // 网络
+  search: { fn: tools.search, argCount: 1, customArgs: true },
+  browse: { fn: tools.browse, argCount: 1 },
+  fetchPage: { fn: tools.fetchPage, argCount: 1 },
+
+  // 系统
+  listApps: { fn: tools.listApps, argCount: 0 },
+  openApp: { fn: tools.openApp, argCount: 1 },
+  closeApp: { fn: tools.closeApp, argCount: 1 },
+
+  // 浏览器自动化
+  initBrowser: { fn: tools.initBrowser, argCount: 1 },
+  clickElement: { fn: tools.clickElement, argCount: 2 },
+  fillField: { fn: tools.fillField, argCount: 3 },
+  selectOption: { fn: tools.selectOption, argCount: 2 },
+  viewChanges: { fn: tools.viewChanges, argCount: 0 },
+  getPageContent: { fn: tools.getPageContent, argCount: 0 },
+  takeScreenshot: { fn: tools.takeScreenshot, argCount: 1 },
+  closeBrowser: { fn: tools.closeBrowser, argCount: 0 },
+  searchOnPage: { fn: tools.searchOnPage, argCount: 2 },
+  findElements: { fn: tools.findElements, argCount: 2 },
+  searchOnEngine: { fn: tools.searchOnEngine, argCount: 2 },
+  downloadFile: { fn: tools.downloadFile, argCount: 3 },
+
+  // 代码执行
+  executeCode: { fn: tools.executeCode, argCount: 2 },
+  executeFile: { fn: tools.executeFile, argCount: 2 },
+  runJavaScript: { fn: tools.runJavaScript, argCount: 1 },
+  runPython: { fn: tools.runPython, argCount: 1 },
+  formatCode: { fn: tools.formatCode, argCount: 2 },
+
+  // Git
+  gitInit: { fn: tools.gitInit, argCount: 1 },
+  gitClone: { fn: tools.gitClone, argCount: 3 },
+  gitAdd: { fn: tools.gitAdd, argCount: 2 },
+  gitCommit: { fn: tools.gitCommit, argCount: 2 },
+  gitPush: { fn: tools.gitPush, argCount: 3 },
+  gitPull: { fn: tools.gitPull, argCount: 3 },
+  gitStatus: { fn: tools.gitStatus, argCount: 1 },
+  gitLog: { fn: tools.gitLog, argCount: 2 },
+  gitBranchCreate: { fn: tools.gitBranchCreate, argCount: 2 },
+  gitBranchDelete: { fn: tools.gitBranchDelete, argCount: 2 },
+  gitBranchList: { fn: tools.gitBranchList, argCount: 1 },
+  gitCheckout: { fn: tools.gitCheckout, argCount: 2 },
+  gitCheckoutNew: { fn: tools.gitCheckoutNew, argCount: 2 },
+  gitMerge: { fn: tools.gitMerge, argCount: 2 },
+  gitDiff: { fn: tools.gitDiff, argCount: 2 },
+  gitRemoteAdd: { fn: tools.gitRemoteAdd, argCount: 3 },
+  gitRemoteList: { fn: tools.gitRemoteList, argCount: 1 },
+  gitConfigUser: { fn: tools.gitConfigUser, argCount: 3 },
+  gitReset: { fn: tools.gitReset, argCount: 2 },
+  gitStash: { fn: tools.gitStash, argCount: 1 },
+  gitStashPop: { fn: tools.gitStashPop, argCount: 1 },
+
+  // 任务管理
+  createTask: { fn: tools.createTask, argCount: 4 },
+  getTasks: { fn: tools.getTasks, argCount: 1 },
+  getTask: { fn: tools.getTask, argCount: 1 },
+  updateTask: { fn: tools.updateTask, argCount: 2 },
+  deleteTask: { fn: tools.deleteTask, argCount: 1 },
+  completeTask: { fn: tools.completeTask, argCount: 1 },
+  splitTask: { fn: tools.splitTask, argCount: 2, parseJson: [false, true] },
+  getTaskStats: { fn: tools.getTaskStats, argCount: 0 },
+  clearTasks: { fn: tools.clearTasks, argCount: 0 },
+
+  // 记忆系统
+  addMemory: { fn: tools.addMemory, argCount: 3, parseJson: [false, true, false] },
+  searchMemory: { fn: tools.searchMemory, argCount: 2 },
+  getAllMemories: { fn: tools.getAllMemories, argCount: 1 },
+  getMemory: { fn: tools.getMemory, argCount: 1 },
+  updateMemory: { fn: tools.updateMemory, argCount: 2 },
+  deleteMemory: { fn: tools.deleteMemory, argCount: 1 },
+  getMemoryStats: { fn: tools.getMemoryStats, argCount: 0 },
+  getRelatedMemories: { fn: tools.getRelatedMemories, argCount: 2 },
+  clearMemory: { fn: tools.clearMemory, argCount: 0 },
+
+  // 数据处理
+  readCSV: { fn: tools.readCSV, argCount: 1 },
+  writeCSV: { fn: tools.writeCSV, argCount: 3, parseJson: [false, true, true] },
+  readJSON: { fn: tools.readJSON, argCount: 1 },
+  writeJSON: { fn: tools.writeJSON, argCount: 2, parseJson: [false, true] },
+  csvToJSON: { fn: tools.csvToJSON, argCount: 2 },
+  jsonToCSV: { fn: tools.jsonToCSV, argCount: 2 },
+  queryData: { fn: tools.queryData, argCount: 2, parseJson: [false, true] },
+  analyzeData: { fn: tools.analyzeData, argCount: 1 },
+  sortData: { fn: tools.sortData, argCount: 3 },
+
+  // 数据库
+  executeSQL: { fn: tools.executeSQL, argCount: 2, parseJson: [false, true] },
+  query: { fn: tools.query, argCount: 3, parseJson: [false, true, true] },
+  insert: { fn: tools.insert, argCount: 2, parseJson: [false, true] },
+  update: { fn: tools.update, argCount: 3, parseJson: [false, true, true] },
+  deleteData: { fn: tools.deleteData, argCount: 2, parseJson: [false, true] },
+  createTable: { fn: tools.createTable, argCount: 2, parseJson: [false, true] },
+  dropTable: { fn: tools.dropTable, argCount: 1 },
+  getTables: { fn: tools.getTables, argCount: 0 },
+  getTableSchema: { fn: tools.getTableSchema, argCount: 1 },
+  executeTransaction: { fn: tools.executeTransaction, argCount: 1, parseJson: [true] },
+  closeDB: { fn: tools.closeDB, argCount: 0 },
+
+  // 邮件
+  sendEmail: { fn: tools.sendEmail, argCount: 4, parseJson: [false, false, false, true] },
+  sendTextEmail: { fn: tools.sendTextEmail, argCount: 3 },
+  sendHtmlEmail: { fn: tools.sendHtmlEmail, argCount: 3 },
+  sendTemplateEmail: { fn: tools.sendTemplateEmail, argCount: 4, parseJson: [false, false, false, true] },
+  sendEmailWithAttachments: { fn: tools.sendEmailWithAttachments, argCount: 4, parseJson: [false, false, false, true] },
+  checkEmailConfig: { fn: tools.checkEmailConfig, argCount: 0 },
+
+  // 系统监控
+  getCPUInfo: { fn: tools.getCPUInfo, argCount: 0 },
+  getMemoryInfo: { fn: tools.getMemoryInfo, argCount: 0 },
+  getDiskInfo: { fn: tools.getDiskInfo, argCount: 0 },
+  getNetworkInfo: { fn: tools.getNetworkInfo, argCount: 0 },
+  getProcesses: { fn: tools.getProcesses, argCount: 0 },
+  getSystemInfo: { fn: tools.getSystemInfo, argCount: 0 },
+  getCurrentProcess: { fn: tools.getCurrentProcess, argCount: 0 },
+  getSystemLoad: { fn: tools.getSystemLoad, argCount: 0 },
+  monitorSystem: { fn: tools.monitorSystem, argCount: 0 },
+
+  // 定时任务
+  addScheduleTask: { fn: tools.addScheduleTask, argCount: 4, parseJson: [false, false, false, true] },
+  getScheduleTasks: { fn: tools.getScheduleTasks, argCount: 0 },
+  getScheduleTask: { fn: tools.getScheduleTask, argCount: 1 },
+  updateScheduleTask: { fn: tools.updateScheduleTask, argCount: 2, parseJson: [false, true] },
+  toggleScheduleTask: { fn: tools.toggleScheduleTask, argCount: 1 },
+  removeScheduleTask: { fn: tools.removeScheduleTask, argCount: 1 },
+  startScheduler: { fn: tools.startScheduler, argCount: 0 },
+  stopScheduler: { fn: tools.stopScheduler, argCount: 0 },
+};
 
 const STATE = {
   THINKING: 'THINKING',
   AWAITING_INPUT: 'AWAITING_INPUT',
+  AWAITING_CONFIRMATION: 'AWAITING_CONFIRMATION',  // 新增：等待确认状态
 };
+
+// 危险操作列表 - 需要用户确认才能执行
+const DANGEROUS_OPERATIONS = new Set([
+  'gitPush',
+  'gitReset',
+  'gitBranchDelete',
+  'executeCode',
+  'executeFile',
+  'runJavaScript',
+  'runPython',
+  'deleteData',
+  'dropTable',
+  'clearTasks',
+  'clearMemory',
+  'removeScheduleTask'
+]);
 
 let state = STATE.THINKING;
 let thinkingTimer = null;
 let shouldStop = false;
+let thoughtInterval = 3000;
+let pendingConfirmation = null;  // 待确认的操作
+
+/**
+ * 检查是否需要危险操作确认
+ */
+function isConfirmEnabled() {
+  if (process.env.COGITO_CONFIRM_DANGEROUS === 'false') {
+    return false;
+  }
+  return true;  // 默认启用
+}
+
+/**
+ * 检查操作是否危险
+ */
+function isDangerousOperation(toolName) {
+  return DANGEROUS_OPERATIONS.has(toolName);
+}
+
+/**
+ * 请求用户确认危险操作
+ * @param {string} toolName 工具名称
+ * @param {array} args 工具参数
+ * @returns {Promise<boolean>} 用户是否确认
+ */
+async function requestConfirmation(toolName, args) {
+  println('');
+  printDivider('!', 'yellow');
+  println(`  ⚠️  危险操作请求: ${printTag(toolName, 'bgYellow')}`, 'yellow');
+  println(`  参数: ${args.join(', ')}`, 'yellow');
+  println(`  是否执行此操作? 输入 ${printTag('y', 'bgGreen')} 确认, ${printTag('n', 'bgRed')} 拒绝`, 'yellow');
+  printDivider('!', 'yellow');
+  println('');
+
+  // 设置等待确认状态
+  state = STATE.AWAITING_CONFIRMATION;
+  pendingConfirmation = { toolName, args };
+
+  // 等待用户输入
+  return new Promise((resolve) => {
+    const checkConfirm = () => {
+      if (pendingConfirmation === null) {
+        // 用户已响应
+        resolve(true);
+      } else if (pendingConfirmation === false) {
+        // 用户拒绝
+        resolve(false);
+      } else {
+        // 继续等待
+        setTimeout(checkConfirm, 100);
+      }
+    };
+    checkConfirm();
+  });
+}
 
 function parseToolCall(text) {
   const fullMatch = text.match(/\[TOOL\]\s*(\w+)\s*\(([^)]*)\)\s*\[\/TOOL\]/);
@@ -141,16 +254,41 @@ function parseAllToolCalls(text) {
   return results;
 }
 
+/**
+ * 解析工具参数
+ * 支持两种格式：
+ * 1. 逗号分隔的简单参数：arg1, arg2, arg3
+ * 2. JSON 格式参数：{"path": "file.txt", "content": "hello"}
+ */
 function parseArgs(argsStr) {
+  if (!argsStr || argsStr.trim() === '') {
+    return [];
+  }
+
+  const trimmed = argsStr.trim();
+
+  // 尝试解析 JSON 格式
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const jsonObj = JSON.parse(trimmed);
+      // 将 JSON 对象转换为参数数组（按工具定义的参数顺序）
+      // 这里返回对象，让 executeTool 处理
+      return { isJson: true, data: jsonObj };
+    } catch (e) {
+      // JSON 解析失败，继续用逗号分隔方式
+    }
+  }
+
+  // 逗号分隔方式（向后兼容）
   const result = [];
-  const parts = argsStr.split(',');
+  const parts = trimmed.split(',');
   for (const part of parts) {
-    const trimmed = part.trim();
-    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-        (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-      result.push(trimmed.slice(1, -1));
+    const p = part.trim();
+    if ((p.startsWith('"') && p.endsWith('"')) ||
+        (p.startsWith("'") && p.endsWith("'"))) {
+      result.push(p.slice(1, -1));
     } else {
-      result.push(trimmed);
+      result.push(p);
     }
   }
   return result;
@@ -220,295 +358,88 @@ function parseAndPrintResponse(text) {
   }
 }
 
-async function executeTool(tool, args) {
-  switch (tool) {
-    case 'ls':
-      return await ls(args[0]);
-    case 'read':
-      return await read(args[0]);
-    case 'copy':
-      return await copy(args[0], args[1]);
-    case 'mkdir':
-      return await mkdir(args[0]);
-    case 'create':
-      const createContent = args.slice(1).join(',');
-      return await create(args[0], createContent);
-    case 'search':
-      // 参数可能是用逗号分隔的字符串；搜索词本身可能含逗号，因此取整个原始字符串
-      const searchQuery = args.join(',').trim();
-      return await search(searchQuery);
-    case 'browse':
-      // 在浏览器中打开 URL
-      return await browse(args[0]);
-    case 'fetchPage':
-      // 抓取网页内容
-      return await fetchPage(args[0]);
-    case 'listApps':
-      // 列出已安装软件
-      return await listApps();
-    case 'openApp':
-      // 打开指定软件
-      return await openApp(args[0]);
-    case 'closeApp':
-      // 关闭指定软件
-      return await closeApp(args[0]);
-    case 'initBrowser':
-      // 初始化浏览器并打开网页
-      return await initBrowser(args[0]);
-    case 'clickElement':
-      // 点击网页元素
-      return await clickElement(args[0], args[1]);
-    case 'fillField':
-      // 填写表格字段
-      return await fillField(args[0], args[1], args[2]);
-    case 'selectOption':
-      // 选择下拉框选项
-      return await selectOption(args[0], args[1]);
-    case 'viewChanges':
-      // 查看页面变化
-      return await viewChanges();
-    case 'getPageContent':
-      // 获取页面内容
-      return await getPageContent();
-    case 'takeScreenshot':
-      // 截图页面
-      return await takeScreenshot(args[0]);
-    case 'closeBrowser':
-      // 关闭浏览器
-      return await closeBrowser();
-    case 'searchOnPage':
-      // 在页面内搜索文本内容
-      return await searchOnPage(args[0], args[1]);
-    case 'findElements':
-      // 查找页面元素
-      return await findElements(args[0], args[1]);
-    case 'searchOnEngine':
-      // 在搜索引擎中搜索
-      return await searchOnEngine(args[0], args[1]);
-    case 'downloadFile':
-      // 下载文件
-      return await downloadFile(args[0], args[1], args[2]);
-    case 'executeCode':
-      // 执行代码
-      return await executeCode(args[0], args[1]);
-    case 'executeFile':
-      // 执行代码文件
-      return await executeFile(args[0], args[1]);
-    case 'runJavaScript':
-      // 执行 JavaScript 代码
-      return await runJavaScript(args[0]);
-    case 'runPython':
-      // 执行 Python 代码
-      return await runPython(args[0]);
-    case 'gitInit':
-      // 初始化 Git 仓库
-      return await gitInit(args[0]);
-    case 'gitClone':
-      // 克隆仓库
-      return await gitClone(args[0], args[1], args[2]);
-    case 'gitAdd':
-      // 添加文件
-      return await gitAdd(args[0], args[1]);
-    case 'gitCommit':
-      // 提交变更
-      return await gitCommit(args[0], args[1]);
-    case 'gitPush':
-      // 推送变更
-      return await gitPush(args[0], args[1], args[2]);
-    case 'gitPull':
-      // 拉取变更
-      return await gitPull(args[0], args[1], args[2]);
-    case 'gitStatus':
-      // 查看状态
-      return await gitStatus(args[0]);
-    case 'gitLog':
-      // 查看日志
-      return await gitLog(args[0], args[1]);
-    case 'gitCheckout':
-      // 切换分支
-      return await gitCheckout(args[0], args[1]);
-    case 'gitBranchCreate':
-      // 创建分支
-      return await gitBranchCreate(args[0], args[1]);
-    case 'gitBranchDelete':
-      // 删除分支
-      return await gitBranchDelete(args[0], args[1]);
-    case 'gitBranchList':
-      // 列出分支
-      return await gitBranchList(args[0]);
-    case 'gitMerge':
-      // 合并分支
-      return await gitMerge(args[0], args[1]);
-    case 'gitDiff':
-      // 查看差异
-      return await gitDiff(args[0], args[1]);
-    case 'gitStash':
-      // 暂存文件
-      return await gitStash(args[0]);
-    case 'gitStashPop':
-      // 恢复暂存
-      return await gitStashPop(args[0]);
-    case 'createTask':
-      // 创建任务
-      return await createTask(args[0], args[1], args[2], args[3]);
-    case 'getTasks':
-      // 获取任务列表
-      return await getTasks();
-    case 'getTask':
-      // 获取单个任务
-      return await getTask(args[0]);
-    case 'updateTask':
-      // 更新任务
-      return await updateTask(args[0], args[1]);
-    case 'deleteTask':
-      // 删除任务
-      return await deleteTask(args[0]);
-    case 'completeTask':
-      // 标记任务完成
-      return await completeTask(args[0]);
-    case 'splitTask':
-      // 分解任务
-      return await splitTask(args[0], JSON.parse(args[1]));
-    case 'getTaskStats':
-      // 获取任务统计
-      return await getTaskStats();
-    case 'addMemory':
-      // 添加记忆
-      return await addMemory(args[0], args[1] ? JSON.parse(args[1]) : [], args[2]);
-    case 'searchMemory':
-      // 搜索记忆
-      return await searchMemory(args[0], args[1]);
-    case 'getAllMemories':
-      // 获取所有记忆
-      return await getAllMemories(args[0]);
-    case 'getMemory':
-      // 获取记忆详情
-      return await getMemory(args[0]);
-    case 'updateMemory':
-      // 更新记忆
-      return await updateMemory(args[0], args[1]);
-    case 'deleteMemory':
-      // 删除记忆
-      return await deleteMemory(args[0]);
-    case 'getMemoryStats':
-      // 获取记忆统计
-      return await getMemoryStats();
-    case 'readCSV':
-      // 读取 CSV
-      return await readCSV(args[0]);
-    case 'writeCSV':
-      // 写入 CSV
-      return await writeCSV(args[0], JSON.parse(args[1]), JSON.parse(args[2]));
-    case 'readJSON':
-      // 读取 JSON
-      return await readJSON(args[0]);
-    case 'writeJSON':
-      // 写入 JSON
-      return await writeJSON(args[0], JSON.parse(args[1]));
-    case 'csvToJSON':
-      // CSV 转 JSON
-      return await csvToJSON(args[0], args[1]);
-    case 'jsonToCSV':
-      // JSON 转 CSV
-      return await jsonToCSV(args[0], args[1]);
-    case 'queryData':
-      // 查询数据
-      return await queryData(args[0], JSON.parse(args[1]));
-    case 'analyzeData':
-      // 数据分析
-      return await analyzeData(args[0]);
-    case 'sortData':
-      // 数据排序
-      return await sortData(args[0], args[1], args[2]);
-    case 'executeSQL':
-      // 执行 SQL
-      return await executeSQL(args[0], args[1] ? JSON.parse(args[1]) : []);
-    case 'query':
-      // 查询数据
-      return await query(args[0], args[1] ? JSON.parse(args[1]) : {}, args[2] ? JSON.parse(args[2]) : {});
-    case 'insert':
-      // 插入数据
-      return await insert(args[0], JSON.parse(args[1]));
-    case 'update':
-      // 更新数据
-      return await update(args[0], JSON.parse(args[1]), JSON.parse(args[2]));
-    case 'deleteData':
-      // 删除数据
-      return await deleteData(args[0], JSON.parse(args[1]));
-    case 'createTable':
-      // 创建表
-      return await createTable(args[0], JSON.parse(args[1]));
-    case 'dropTable':
-      // 删除表
-      return await dropTable(args[0]);
-    case 'getTables':
-      // 获取表列表
-      return await getTables();
-    case 'getTableSchema':
-      // 获取表结构
-      return await getTableSchema(args[0]);
-    case 'sendEmail':
-      // 发送邮件
-      return await sendEmail(args[0], args[1], args[2], args[3] ? JSON.parse(args[3]) : {});
-    case 'sendTextEmail':
-      // 发送文本邮件
-      return await sendTextEmail(args[0], args[1], args[2]);
-    case 'sendHtmlEmail':
-      // 发送 HTML 邮件
-      return await sendHtmlEmail(args[0], args[1], args[2]);
-    case 'sendTemplateEmail':
-      // 发送模板邮件
-      return await sendTemplateEmail(args[0], args[1], args[2], JSON.parse(args[3]));
-    case 'checkEmailConfig':
-      // 检查邮件配置
-      return await checkEmailConfig();
-    case 'getCPUInfo':
-      // 获取 CPU 信息
-      return { success: true, data: getCPUInfo() };
-    case 'getMemoryInfo':
-      // 获取内存信息
-      return { success: true, data: getMemoryInfo() };
-    case 'getDiskInfo':
-      // 获取磁盘信息
-      return await getDiskInfo();
-    case 'getNetworkInfo':
-      // 获取网络信息
-      return { success: true, data: getNetworkInfo() };
-    case 'getProcesses':
-      // 获取进程列表
-      return await getProcesses();
-    case 'getSystemInfo':
-      // 获取系统信息
-      return { success: true, data: getSystemInfo() };
-    case 'getSystemLoad':
-      // 获取系统负载
-      return await getSystemLoad();
-    case 'monitorSystem':
-      // 监控系统资源
-      return await monitorSystem();
-    case 'addScheduleTask':
-      // 添加定时任务
-      return await addScheduleTask(args[0], args[1], args[2], args[3] ? JSON.parse(args[3]) : {});
-    case 'getScheduleTasks':
-      // 获取定时任务列表
-      return await getScheduleTasks();
-    case 'updateScheduleTask':
-      // 更新定时任务
-      return await updateScheduleTask(args[0], JSON.parse(args[1]));
-    case 'toggleScheduleTask':
-      // 启用/禁用定时任务
-      return await toggleScheduleTask(args[0]);
-    case 'removeScheduleTask':
-      // 删除定时任务
-      return await removeScheduleTask(args[0]);
-    default:
-      return { success: false, error: `未知工具：${tool}` };
+/**
+ * 执行工具 - 使用注册表动态调用
+ * 包含危险操作确认机制和 JSON 参数支持
+ */
+async function executeTool(toolName, args) {
+  const registry = TOOL_REGISTRY[toolName];
+  
+  if (!registry) {
+    return { success: false, error: `未知工具：${toolName}` };
+  }
+
+  // 危险操作确认
+  if (isConfirmEnabled() && isDangerousOperation(toolName)) {
+    const confirmed = await requestConfirmation(toolName, args);
+    if (!confirmed) {
+      return { success: false, error: '用户拒绝执行此危险操作' };
+    }
+    // 恢复思考状态
+    state = STATE.THINKING;
+  }
+
+  const { fn, customArgs, parseJson, jsonParams } = registry;
+  let processedArgs = args;
+
+  // 处理 JSON 格式参数
+  if (args && args.isJson === true) {
+    const jsonData = args.data;
+    if (jsonParams) {
+      // 按工具定义的参数顺序提取
+      processedArgs = jsonParams.map(paramName => jsonData[paramName]);
+    } else {
+      // 如果没有定义参数顺序，将整个对象作为第一个参数
+      processedArgs = [jsonData];
+    }
+  } else if (Array.isArray(args)) {
+    // 处理特殊参数的工具
+    if (toolName === 'create') {
+      processedArgs = [args[0], args.slice(1).join(',')];
+    } else if (toolName === 'search') {
+      processedArgs = [args.join(',').trim()];
+    } else if (parseJson) {
+      // 根据 parseJson 数组决定哪些参数需要 JSON 解析
+      processedArgs = args.map((arg, i) => {
+        if (parseJson[i] && typeof arg === 'string') {
+          try {
+            return JSON.parse(arg);
+          } catch {
+            return arg;
+          }
+        }
+        return arg;
+      });
+    }
+  }
+
+  try {
+    return await fn(...processedArgs);
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 }
 
 function handleUserInput(input) {
   if (input.toLowerCase() === 'exit') {
     exit();
+    return;
+  }
+
+  // 处理危险操作确认
+  if (state === STATE.AWAITING_CONFIRMATION) {
+    const response = input.toLowerCase().trim();
+    if (response === 'y' || response === 'yes' || response === '确认') {
+      println('[确认] 用户同意执行危险操作', 'green');
+      pendingConfirmation = null;  // 标记为已确认
+      state = STATE.THINKING;
+    } else if (response === 'n' || response === 'no' || response === '拒绝') {
+      println('[拒绝] 用户拒绝执行危险操作', 'red');
+      pendingConfirmation = false;  // 标记为拒绝
+      state = STATE.THINKING;
+    } else {
+      println(`[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 拒绝`, 'yellow');
+    }
     return;
   }
 
@@ -627,19 +558,23 @@ function scheduleNextCycle() {
       await thinkCycle();
       scheduleNextCycle();
     }
-  }, THOUGHT_INTERVAL);
+  }, thoughtInterval);
 }
 
 async function start() {
+  // 从配置加载思考间隔
+  const cfg = loadConfig();
+  thoughtInterval = cfg.chat?.thinkingInterval || 3000;
+
   printBanner();
   printDivider('─', 'cyan');
-  println('  活动范围: ' + printTag(getBasePath(), 'bgBlue') + '  思考间隔: ' + printTag(`${THOUGHT_INTERVAL / 1000}秒`, 'bgCyan'));
+  println('  活动范围: ' + printTag(tools.getBasePath(), 'bgBlue') + '  思考间隔: ' + printTag(`${thoughtInterval / 1000}秒`, 'bgCyan'));
   printDivider('─', 'cyan');
   println('  按 ' + printTag('Enter', 'bgBlue') + ' 打断思考，输入 ' + printTag('exit', 'bgBlue') + ' 退出\n', 'gray');
 
   init(handleUserInput);
 
-  await startScheduler();
+  await tools.startScheduler();
 
   addUserMessage('你好，我启动了');
   await thinkCycle();

@@ -2,6 +2,9 @@
  * CogitoAgent - 入口文件
  */
 
+// 加载环境变量（必须在其他模块之前）
+import 'dotenv/config';
+
 import { isConfigured } from './config.js';
 import { runSetup } from './setup.js';
 import { start } from './agent/Agent.js';
@@ -17,12 +20,11 @@ async function main() {
       console.log('配置未完成，程序退出。');
       process.exit(1);
     }
-    // 配置完成后直接退出，让用户重新运行
-    console.log('请重新运行程序以启动 CogitoAgent。');
-    process.exit(0);
+    // 配置完成后直接启动，不需要重新运行
+    console.log('配置完成，正在启动 CogitoAgent...\n');
   }
 
-  // 已配置，启动智能体
+  // 启动智能体
   start().catch(error => {
     console.error('启动失败:', error);
     process.exit(1);

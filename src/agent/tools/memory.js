@@ -40,11 +40,14 @@ async function saveMemory() {
 async function addMemory(content, tags = [], category = 'general') {
   await loadMemory();
   
+  // 参数验证和转换
+  const processedTags = Array.isArray(tags) ? tags : [];
+  
   const memory = {
     id: Date.now(),
     content,
-    tags: tags.map(t => t.toLowerCase()),
-    category: category.toLowerCase(),
+    tags: processedTags.map(t => String(t).toLowerCase()),
+    category: String(category).toLowerCase(),
     createdAt: new Date().toISOString(),
     accessedAt: new Date().toISOString(),
     accessCount: 0

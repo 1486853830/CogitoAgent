@@ -1,11 +1,50 @@
 import { execFile, exec } from 'child_process';
 import vm from 'vm';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
 
 const MAX_EXECUTION_TIME = 30000;
 const MAX_OUTPUT_SIZE = 100000;
+
+/**
+ * 生成安全的临时文件路径
+ * 使用随机 UUID 避免符号链接攻击
+ */
+function generateSecureTmpPath(ext) {
+  const tmpDir = os.tmpdir();
+  const randomName = `cogito_${crypto.randomUUID()}_${Date.now()}`;
+  return path.join(tmpDir, `${randomName}.${ext}`);
+}
+
+/**
+ * 安全写入临时文件
+ * 使用 writeFile 的 exclusive 选项防止覆盖和符号链接攻击
+ */
+async function writeSecureTmpFile(filePath, content) {
+  try {
+    // 确保目录存在
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    // 使用 open 系统调用 with flags 'wx' (exclusive create)
+    const fd = await fs.open(filePath, 'wx');
+    try {
+      await fd.writeFile(content, 'utf8');
+    } finally {
+      await fd.close();
+    }
+    return true;
+  } catch (error) {
+    // 如果文件已存在，尝试删除后重试（使用唯一名称）
+    if (error.code === 'EEXIST') {
+      const newPath = generateSecureTmpPath(path.extname(filePath).slice(1) || 'tmp');
+      await fs.writeFile(newPath, content, 'utf8');
+      return newPath;
+    }
+    throw error;
+  }
+}
 
 /**
  * 执行 JavaScript 代码
@@ -115,8 +154,9 @@ async function runPython(code) {
 
     let tmpPath = null;
     try {
-      tmpPath = path.join(os.tmpdir(), `temp_${Date.now()}.py`);
-      await fs.writeFile(tmpPath, code);
+      // 使用安全的临时文件路径
+      tmpPath = generateSecureTmpPath('py');
+      await writeSecureTmpFile(tmpPath, code);
 
       execFile('python', [tmpPath], {
         timeout: MAX_EXECUTION_TIME,
