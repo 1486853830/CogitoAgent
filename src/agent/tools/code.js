@@ -208,7 +208,7 @@ def _gui_timeout_exit(delay=10):
     """延迟后自动关闭 GUI"""
     import time
     time.sleep(delay)
-    print("\\n[提示] GUI 窂口将在 10 秒后自动关闭...")
+    print("\\n[提示] GUI 窗口将在 10 秒后自动关闭...")
     sys.exit(0)
 
 # 启动超时线程
