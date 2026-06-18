@@ -15,22 +15,29 @@ async function loadMemory() {
       memories = JSON.parse(data);
     }
   } catch (e) {
+    console.error(`[记忆] 加载失败: ${e.message}`);
     memories = [];
   }
 }
 
 /**
  * 保存记忆数据
+ * @returns {Promise<boolean>} 保存是否成功
+ * @throws 当保存失败时抛出错误
  */
 async function saveMemory() {
+  const dir = path.dirname(MEMORY_FILE);
   try {
-    const dir = path.dirname(MEMORY_FILE);
     if (!(await fs.access(dir).then(() => true).catch(() => false))) {
       await fs.mkdir(dir, { recursive: true });
     }
     await fs.writeFile(MEMORY_FILE, JSON.stringify(memories, null, 2), 'utf-8');
+    return true;
   } catch (e) {
-    console.error(`[记忆] 保存失败: ${e.message}`);
+    const error = new Error(`[记忆] 保存失败: ${e.message}`);
+    error.code = 'MEMORY_SAVE_FAILED';
+    console.error(error.message);
+    throw error;  // 重新抛出错误，让调用者知道保存失败
   }
 }
 

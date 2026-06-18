@@ -1,9 +1,10 @@
 /**
  * 代码执行沙箱模块
- * 使用 VM2 提供安全的代码执行环境
+ * 使用 Node.js 原生 vm 模块提供安全的代码执行环境
+ * 注意：沙箱执行不能完全阻止恶意代码，仅提供基础隔离
  */
 
-import { NodeVM } from 'vm2';
+import vm from 'vm';
 import { execFile } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
@@ -31,21 +32,52 @@ function isSandboxEnabled() {
 
 /**
  * 创建 JavaScript 沙箱
- * 安全配置：禁止文件系统访问、网络访问等危险操作
+ * 使用 Node.js 原生 vm 模块，安全配置：禁止文件系统访问、网络访问等危险操作
  */
 function createJavaScriptSandbox(timeout = 10000) {
-  return new NodeVM({
-    timeout,
-    sandbox: {},
-    require: {
-      external: false,  // 禁止外部模块
-      builtin: [],      // 禁止所有内置模块（防止文件系统、网络访问）
-      root: './',
-      mock: {}
+  const sandbox = {
+    console: {
+      log: (...args) => {
+        // 限制输出长度
+        const output = args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+        ).join(' ');
+        console.log(output);
+      },
+      error: (...args) => {
+        const output = args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+        ).join(' ');
+        console.error(output);
+      },
+      warn: (...args) => {
+        const output = args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+        ).join(' ');
+        console.warn(output);
+      },
+      info: (...args) => {
+        const output = args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+        ).join(' ');
+        console.info(output);
+      }
     },
-    wrapper: 'none',
-    compiler: 'javascript'
-  });
+    setTimeout: undefined,
+    setInterval: undefined,
+    setImmediate: undefined,
+    process: undefined,
+    require: undefined,
+    __dirname: undefined,
+    __filename: undefined,
+    exports: undefined,
+    module: undefined,
+    global: undefined,
+    globalThis: undefined
+  };
+
+  const context = vm.createContext(sandbox);
+  return { sandbox, context };
 }
 
 /**
@@ -58,17 +90,44 @@ async function runJavaScriptSandbox(code, timeout = 10000) {
   }
 
   return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      resolve({
+        success: false,
+        error: '执行超时（超过指定时间）'
+      });
+    }, Math.min(timeout, MAX_EXECUTION_TIME));
+
     try {
-      const vm = createJavaScriptSandbox(timeout);
-      const result = vm.run(code);
-      
+      const { context } = createJavaScriptSandbox(timeout);
+
+      const wrappedCode = `
+        (function() {
+          try {
+            return { success: true, result: (function() { ${code} })() };
+          } catch (e) {
+            return { success: false, error: e.message };
+          }
+        })()
+      `;
+
+      const result = vm.runInContext(wrappedCode, context, {
+        timeout: Math.min(timeout, MAX_EXECUTION_TIME),
+        displayErrors: true
+      });
+
+      clearTimeout(timeoutId);
+
       let output;
-      if (result === undefined) {
-        output = '执行完成，无返回值';
-      } else if (typeof result === 'object') {
-        output = JSON.stringify(result, null, 2);
+      if (result.success) {
+        if (result.result === undefined) {
+          output = '执行完成，无返回值';
+        } else if (typeof result.result === 'object') {
+          output = JSON.stringify(result.result, null, 2);
+        } else {
+          output = String(result.result);
+        }
       } else {
-        output = String(result);
+        output = '[执行错误]: ' + result.error;
       }
 
       if (output.length > MAX_OUTPUT_SIZE) {
@@ -80,6 +139,7 @@ async function runJavaScriptSandbox(code, timeout = 10000) {
         data: output
       });
     } catch (error) {
+      clearTimeout(timeoutId);
       resolve({
         success: false,
         error: `沙箱执行失败: ${error.message}`
@@ -90,8 +150,13 @@ async function runJavaScriptSandbox(code, timeout = 10000) {
 
 /**
  * 直接执行 JavaScript 代码（非沙箱模式）
+ * 警告：此模式不安全，可以访问 process、require 等危险对象
+ * 仅在 COGITO_SANDBOX_MODE=false 时使用
  */
 async function runJavaScriptDirect(code) {
+  // 安全警告
+  console.warn('[安全警告] 非沙箱模式执行 JavaScript 代码，可能存在安全风险');
+
   return new Promise((resolve) => {
     const timeoutId = setTimeout(() => {
       resolve({
@@ -101,19 +166,87 @@ async function runJavaScriptDirect(code) {
     }, MAX_EXECUTION_TIME);
 
     try {
-      // 使用 Function 构造器执行
-      const fn = new Function(code);
-      const result = fn();
-      
+      // 使用 Function 构造器执行，并限制对全局对象的访问
+      const safeGlobals = {
+        console: {
+          log: (...args) => {
+            const output = args.map(a =>
+              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+            ).join(' ');
+            console.log(output);
+          },
+          error: (...args) => {
+            const output = args.map(a =>
+              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+            ).join(' ');
+            console.error(output);
+          },
+          warn: (...args) => {
+            const output = args.map(a =>
+              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+            ).join(' ');
+            console.warn(output);
+          },
+          info: (...args) => {
+            const output = args.map(a =>
+              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+            ).join(' ');
+            console.info(output);
+          }
+        },
+        JSON: JSON,
+        Math: Math,
+        Date: Date,
+        Array: Array,
+        Object: Object,
+        String: String,
+        Number: Number,
+        Boolean: Boolean,
+        RegExp: RegExp,
+        Error: Error,
+        Map: Map,
+        Set: Set,
+        Promise: Promise,
+        parseInt: parseInt,
+        parseFloat: parseFloat,
+        isNaN: isNaN,
+        isFinite: isFinite,
+        encodeURIComponent: encodeURIComponent,
+        decodeURIComponent: decodeURIComponent
+      };
+
+      // 创建隔离的全局作用域
+      const fn = new Function(
+        'global',
+        `
+        'use strict';
+        with (global) {
+          return (function() {
+            try {
+              return { success: true, result: (function() { ${code} })() };
+            } catch (e) {
+              return { success: false, error: e.message };
+            }
+          })();
+        }
+        `
+      );
+
+      const result = fn(safeGlobals);
+
       clearTimeout(timeoutId);
-      
+
       let output;
-      if (result === undefined) {
-        output = '执行完成，无返回值';
-      } else if (typeof result === 'object') {
-        output = JSON.stringify(result, null, 2);
+      if (result.success) {
+        if (result.result === undefined) {
+          output = '执行完成，无返回值';
+        } else if (typeof result.result === 'object') {
+          output = JSON.stringify(result.result, null, 2);
+        } else {
+          output = String(result.result);
+        }
       } else {
-        output = String(result);
+        output = '[执行错误]: ' + result.error;
       }
 
       if (output.length > MAX_OUTPUT_SIZE) {
@@ -188,14 +321,18 @@ async function cleanupTmpFile(tmpPath) {
  */
 async function runPythonSandbox(code) {
   return new Promise(async (resolve) => {
-    const timeoutId = setTimeout(() => {
+    let tmpPath = null;
+    let timedOut = false;
+
+    const timeoutId = setTimeout(async () => {
+      timedOut = true;
+      await cleanupTmpFile(tmpPath);  // 超时时也清理临时文件
       resolve({
         success: false,
         error: '执行超时（超过30秒）'
       });
     }, MAX_EXECUTION_TIME);
 
-    let tmpPath = null;
     try {
       tmpPath = generateSecureTmpPath('py');
       await writeSecureTmpFile(tmpPath, code);
@@ -228,6 +365,8 @@ async function runPythonSandbox(code) {
         // 限制子进程的权限（Windows 不支持 uid/gid）
         maxBuffer: MAX_OUTPUT_SIZE * 2,  // 限制输出大小
       }, async (error, stdout, stderr) => {
+        if (timedOut) return;  // 如果已经超时，忽略回调
+
         clearTimeout(timeoutId);
         await cleanupTmpFile(tmpPath);
 

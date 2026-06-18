@@ -22,16 +22,22 @@ async function loadTasks() {
 
 /**
  * 保存定时任务
+ * @returns {Promise<boolean>} 保存是否成功
+ * @throws 当保存失败时抛出错误
  */
 async function saveTasks() {
+  const dir = path.dirname(TASKS_FILE);
   try {
-    const dir = path.dirname(TASKS_FILE);
     if (!(await fs.access(dir).then(() => true).catch(() => false))) {
       await fs.mkdir(dir, { recursive: true });
     }
     await fs.writeFile(TASKS_FILE, JSON.stringify(tasks, null, 2), 'utf-8');
+    return true;
   } catch (e) {
-    console.error(`[定时任务] 保存失败: ${e.message}`);
+    const error = new Error(`[定时任务] 保存失败: ${e.message}`);
+    error.code = 'SCHEDULER_SAVE_FAILED';
+    console.error(error.message);
+    throw error;
   }
 }
 

@@ -1,3 +1,4 @@
+import os from 'os';
 import { loadConfig } from '../../config.js';
 
 /**
@@ -5,7 +6,7 @@ import { loadConfig } from '../../config.js';
  */
 function getBasePath() {
   const cfg = loadConfig();
-  return cfg.workspace || 'D:\\';
+  return cfg.workspace || os.homedir();
 }
 
 export { getBasePath };

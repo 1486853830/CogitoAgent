@@ -5,6 +5,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
+import os from 'os';
 
 const CONFIG_DIR = process.cwd();
 const CONFIG_FILE = path.resolve(CONFIG_DIR, 'config.json');
@@ -31,7 +32,7 @@ const DEFAULT_CONFIG = {
     recencyFilter: '',
     siteFilter: ''
   },
-  workspace: 'D:\\',      // 工作区根路径
+  workspace: os.homedir(),      // 工作区根路径（跨平台）
   database: {
     path: './data/example.db'  // SQLite 数据库路径
   },
@@ -78,25 +79,29 @@ let config = null;
 function loadEnvConfig() {
   const envConfig = {};
 
-  // API 配置
+  // API 配置 - 统一在最后合并，避免覆盖
+  const apiConfig = {};
   if (process.env.COGITO_API_KEY) {
-    envConfig.api = { apiKey: process.env.COGITO_API_KEY };
+    apiConfig.apiKey = process.env.COGITO_API_KEY;
   }
   if (process.env.COGITO_API_BASE_URL) {
-    envConfig.api = { ...envConfig.api, baseURL: process.env.COGITO_API_BASE_URL };
+    apiConfig.baseURL = process.env.COGITO_API_BASE_URL;
   }
   if (process.env.COGITO_API_PROVIDER) {
-    envConfig.api = { ...envConfig.api, provider: process.env.COGITO_API_PROVIDER };
+    apiConfig.provider = process.env.COGITO_API_PROVIDER;
   }
   if (process.env.COGITO_MODEL) {
-    envConfig.api = { ...envConfig.api, model: process.env.COGITO_MODEL };
+    apiConfig.model = process.env.COGITO_MODEL;
+  }
+  if (Object.keys(apiConfig).length > 0) {
+    envConfig.api = apiConfig;
   }
 
   // 思考间隔配置
   if (process.env.COGITO_THINKING_INTERVAL) {
     const interval = parseInt(process.env.COGITO_THINKING_INTERVAL, 10);
     if (!isNaN(interval) && interval >= 1000) {
-      envConfig.chat = { ...envConfig.chat, thinkingInterval: interval };
+      envConfig.chat = { thinkingInterval: interval };
     }
   }
 
@@ -111,17 +116,21 @@ function loadEnvConfig() {
   }
 
   // 模型 API Keys
+  const modelsConfig = {};
   if (process.env.OPENAI_API_KEY) {
-    envConfig.models = { ...envConfig.models, openai: { apiKey: process.env.OPENAI_API_KEY } };
+    modelsConfig.openai = { apiKey: process.env.OPENAI_API_KEY };
   }
   if (process.env.MOARK_API_KEY) {
-    envConfig.models = { ...envConfig.models, moark: { apiKey: process.env.MOARK_API_KEY } };
+    modelsConfig.moark = { apiKey: process.env.MOARK_API_KEY };
   }
   if (process.env.ANTHROPIC_API_KEY) {
-    envConfig.models = { ...envConfig.models, anthropic: { apiKey: process.env.ANTHROPIC_API_KEY } };
+    modelsConfig.anthropic = { apiKey: process.env.ANTHROPIC_API_KEY };
   }
   if (process.env.GOOGLE_API_KEY) {
-    envConfig.models = { ...envConfig.models, google: { apiKey: process.env.GOOGLE_API_KEY } };
+    modelsConfig.google = { apiKey: process.env.GOOGLE_API_KEY };
+  }
+  if (Object.keys(modelsConfig).length > 0) {
+    envConfig.models = modelsConfig;
   }
 
   return envConfig;
