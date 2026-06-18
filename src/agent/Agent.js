@@ -27,7 +27,81 @@ import {
   searchOnPage,
   findElements,
   searchOnEngine,
-  downloadFile
+  downloadFile,
+  executeCode,
+  executeFile,
+  runJavaScript,
+  runPython,
+  gitInit,
+  gitClone,
+  gitAdd,
+  gitCommit,
+  gitPush,
+  gitPull,
+  gitStatus,
+  gitLog,
+  gitBranchCreate,
+  gitBranchDelete,
+  gitBranchList,
+  gitCheckout,
+  gitCheckoutNew,
+  gitMerge,
+  gitDiff,
+  gitStash,
+  gitStashPop,
+  createTask,
+  getTasks,
+  getTask,
+  updateTask,
+  deleteTask,
+  completeTask,
+  splitTask,
+  getTaskStats,
+  addMemory,
+  searchMemory,
+  getAllMemories,
+  getMemory,
+  updateMemory,
+  deleteMemory,
+  getMemoryStats,
+  readCSV,
+  writeCSV,
+  readJSON,
+  writeJSON,
+  csvToJSON,
+  jsonToCSV,
+  queryData,
+  analyzeData,
+  sortData,
+  executeSQL,
+  query,
+  insert,
+  update,
+  deleteData,
+  createTable,
+  dropTable,
+  getTables,
+  getTableSchema,
+  sendEmail,
+  sendTextEmail,
+  sendHtmlEmail,
+  sendTemplateEmail,
+  checkEmailConfig,
+  getCPUInfo,
+  getMemoryInfo,
+  getDiskInfo,
+  getNetworkInfo,
+  getProcesses,
+  getSystemInfo,
+  getSystemLoad,
+  monitorSystem,
+  addScheduleTask,
+  getScheduleTasks,
+  updateScheduleTask,
+  toggleScheduleTask,
+  removeScheduleTask,
+  startScheduler,
+  stopScheduler
 } from './tools/index.js';
 import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory } from './prompt.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
@@ -214,6 +288,219 @@ async function executeTool(tool, args) {
     case 'downloadFile':
       // 下载文件
       return await downloadFile(args[0], args[1], args[2]);
+    case 'executeCode':
+      // 执行代码
+      return await executeCode(args[0], args[1]);
+    case 'executeFile':
+      // 执行代码文件
+      return await executeFile(args[0], args[1]);
+    case 'runJavaScript':
+      // 执行 JavaScript 代码
+      return await runJavaScript(args[0]);
+    case 'runPython':
+      // 执行 Python 代码
+      return await runPython(args[0]);
+    case 'gitInit':
+      // 初始化 Git 仓库
+      return await gitInit(args[0]);
+    case 'gitClone':
+      // 克隆仓库
+      return await gitClone(args[0], args[1], args[2]);
+    case 'gitAdd':
+      // 添加文件
+      return await gitAdd(args[0], args[1]);
+    case 'gitCommit':
+      // 提交变更
+      return await gitCommit(args[0], args[1]);
+    case 'gitPush':
+      // 推送变更
+      return await gitPush(args[0], args[1], args[2]);
+    case 'gitPull':
+      // 拉取变更
+      return await gitPull(args[0], args[1], args[2]);
+    case 'gitStatus':
+      // 查看状态
+      return await gitStatus(args[0]);
+    case 'gitLog':
+      // 查看日志
+      return await gitLog(args[0], args[1]);
+    case 'gitCheckout':
+      // 切换分支
+      return await gitCheckout(args[0], args[1]);
+    case 'gitBranchCreate':
+      // 创建分支
+      return await gitBranchCreate(args[0], args[1]);
+    case 'gitBranchDelete':
+      // 删除分支
+      return await gitBranchDelete(args[0], args[1]);
+    case 'gitBranchList':
+      // 列出分支
+      return await gitBranchList(args[0]);
+    case 'gitMerge':
+      // 合并分支
+      return await gitMerge(args[0], args[1]);
+    case 'gitDiff':
+      // 查看差异
+      return await gitDiff(args[0], args[1]);
+    case 'gitStash':
+      // 暂存文件
+      return await gitStash(args[0]);
+    case 'gitStashPop':
+      // 恢复暂存
+      return await gitStashPop(args[0]);
+    case 'createTask':
+      // 创建任务
+      return await createTask(args[0], args[1], args[2], args[3]);
+    case 'getTasks':
+      // 获取任务列表
+      return await getTasks();
+    case 'getTask':
+      // 获取单个任务
+      return await getTask(args[0]);
+    case 'updateTask':
+      // 更新任务
+      return await updateTask(args[0], args[1]);
+    case 'deleteTask':
+      // 删除任务
+      return await deleteTask(args[0]);
+    case 'completeTask':
+      // 标记任务完成
+      return await completeTask(args[0]);
+    case 'splitTask':
+      // 分解任务
+      return await splitTask(args[0], JSON.parse(args[1]));
+    case 'getTaskStats':
+      // 获取任务统计
+      return await getTaskStats();
+    case 'addMemory':
+      // 添加记忆
+      return await addMemory(args[0], args[1] ? JSON.parse(args[1]) : [], args[2]);
+    case 'searchMemory':
+      // 搜索记忆
+      return await searchMemory(args[0], args[1]);
+    case 'getAllMemories':
+      // 获取所有记忆
+      return await getAllMemories(args[0]);
+    case 'getMemory':
+      // 获取记忆详情
+      return await getMemory(args[0]);
+    case 'updateMemory':
+      // 更新记忆
+      return await updateMemory(args[0], args[1]);
+    case 'deleteMemory':
+      // 删除记忆
+      return await deleteMemory(args[0]);
+    case 'getMemoryStats':
+      // 获取记忆统计
+      return await getMemoryStats();
+    case 'readCSV':
+      // 读取 CSV
+      return await readCSV(args[0]);
+    case 'writeCSV':
+      // 写入 CSV
+      return await writeCSV(args[0], JSON.parse(args[1]), JSON.parse(args[2]));
+    case 'readJSON':
+      // 读取 JSON
+      return await readJSON(args[0]);
+    case 'writeJSON':
+      // 写入 JSON
+      return await writeJSON(args[0], JSON.parse(args[1]));
+    case 'csvToJSON':
+      // CSV 转 JSON
+      return await csvToJSON(args[0], args[1]);
+    case 'jsonToCSV':
+      // JSON 转 CSV
+      return await jsonToCSV(args[0], args[1]);
+    case 'queryData':
+      // 查询数据
+      return await queryData(args[0], JSON.parse(args[1]));
+    case 'analyzeData':
+      // 数据分析
+      return await analyzeData(args[0]);
+    case 'sortData':
+      // 数据排序
+      return await sortData(args[0], args[1], args[2]);
+    case 'executeSQL':
+      // 执行 SQL
+      return await executeSQL(args[0], args[1] ? JSON.parse(args[1]) : []);
+    case 'query':
+      // 查询数据
+      return await query(args[0], args[1] ? JSON.parse(args[1]) : {}, args[2] ? JSON.parse(args[2]) : {});
+    case 'insert':
+      // 插入数据
+      return await insert(args[0], JSON.parse(args[1]));
+    case 'update':
+      // 更新数据
+      return await update(args[0], JSON.parse(args[1]), JSON.parse(args[2]));
+    case 'deleteData':
+      // 删除数据
+      return await deleteData(args[0], JSON.parse(args[1]));
+    case 'createTable':
+      // 创建表
+      return await createTable(args[0], JSON.parse(args[1]));
+    case 'dropTable':
+      // 删除表
+      return await dropTable(args[0]);
+    case 'getTables':
+      // 获取表列表
+      return await getTables();
+    case 'getTableSchema':
+      // 获取表结构
+      return await getTableSchema(args[0]);
+    case 'sendEmail':
+      // 发送邮件
+      return await sendEmail(args[0], args[1], args[2], args[3] ? JSON.parse(args[3]) : {});
+    case 'sendTextEmail':
+      // 发送文本邮件
+      return await sendTextEmail(args[0], args[1], args[2]);
+    case 'sendHtmlEmail':
+      // 发送 HTML 邮件
+      return await sendHtmlEmail(args[0], args[1], args[2]);
+    case 'sendTemplateEmail':
+      // 发送模板邮件
+      return await sendTemplateEmail(args[0], args[1], args[2], JSON.parse(args[3]));
+    case 'checkEmailConfig':
+      // 检查邮件配置
+      return await checkEmailConfig();
+    case 'getCPUInfo':
+      // 获取 CPU 信息
+      return { success: true, data: getCPUInfo() };
+    case 'getMemoryInfo':
+      // 获取内存信息
+      return { success: true, data: getMemoryInfo() };
+    case 'getDiskInfo':
+      // 获取磁盘信息
+      return await getDiskInfo();
+    case 'getNetworkInfo':
+      // 获取网络信息
+      return { success: true, data: getNetworkInfo() };
+    case 'getProcesses':
+      // 获取进程列表
+      return await getProcesses();
+    case 'getSystemInfo':
+      // 获取系统信息
+      return { success: true, data: getSystemInfo() };
+    case 'getSystemLoad':
+      // 获取系统负载
+      return await getSystemLoad();
+    case 'monitorSystem':
+      // 监控系统资源
+      return await monitorSystem();
+    case 'addScheduleTask':
+      // 添加定时任务
+      return await addScheduleTask(args[0], args[1], args[2], args[3] ? JSON.parse(args[3]) : {});
+    case 'getScheduleTasks':
+      // 获取定时任务列表
+      return await getScheduleTasks();
+    case 'updateScheduleTask':
+      // 更新定时任务
+      return await updateScheduleTask(args[0], JSON.parse(args[1]));
+    case 'toggleScheduleTask':
+      // 启用/禁用定时任务
+      return await toggleScheduleTask(args[0]);
+    case 'removeScheduleTask':
+      // 删除定时任务
+      return await removeScheduleTask(args[0]);
     default:
       return { success: false, error: `未知工具：${tool}` };
   }
@@ -351,6 +638,8 @@ async function start() {
   println('  按 ' + printTag('Enter', 'bgBlue') + ' 打断思考，输入 ' + printTag('exit', 'bgBlue') + ' 退出\n', 'gray');
 
   init(handleUserInput);
+
+  await startScheduler();
 
   addUserMessage('你好，我启动了');
   await thinkCycle();

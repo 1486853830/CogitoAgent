@@ -1,88 +1,352 @@
 # CogitoAgent
 
-CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作与联网能力。它直接在用户配置的工作目录下运行，无需上传任何文件至第三方服务器，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
+> 持续思考的本地自主 AI 智能体
 
-不同于传统的聊天机器人，CogitoAgent 具备持续思考、自主探索、工具执行的能力，能够在后台主动发现和整理用户的本地文件资产，并可通过扩展工具集获得更多能力。
+CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作、代码执行与联网能力。它直接在用户配置的工作目录下运行，无需上传任何文件至第三方服务器，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
 
-![主界面](show/main.png)
+不同于传统的聊天机器人，CogitoAgent 具备**持续思考**、**自主探索**、**工具执行**的能力，能够在后台主动发现和整理用户的本地文件资产，并可通过扩展工具集获得更多能力。
 
-## 需要这些依赖
+---
 
-Node.js 18+ 是推荐版本。其他版本可能需要不同的安装命令。
+## 🎯 核心特性
 
-```
+| 特性 | 描述 | 状态 |
+|------|------|------|
+| **持续思考** | 每3秒自动触发思考，无需用户干预 | ✅ |
+| **本地运行** | 所有数据存储在本地，保护隐私 | ✅ |
+| **多模型支持** | 支持 OpenAI、Moark、Anthropic、Google | ✅ |
+| **丰富工具集** | 12+ 工具模块，235+ 工具函数 | ✅ |
+| **记忆系统** | 长期记忆存储与智能检索 | ✅ |
+| **任务管理** | 任务创建、分解、追踪与统计 | ✅ |
+| **代码执行** | 支持 JavaScript 和 Python | ✅ |
+| **Git 集成** | 完整的版本控制操作 | ✅ |
+| **定时任务** | Cron 风格定时任务调度 | ✅ |
+
+---
+
+## 🚀 快速开始
+
+### 环境要求
+
+- **Node.js** 18.0 或更高版本
+- **npm** 或 **yarn** 包管理器
+- **Python** 3.x（可选，用于 Python 代码执行）
+
+### 安装步骤
+
+```bash
+# 克隆项目
+git clone https://gitee.com/cnt-code/cogito-agent.git
+cd cogito-agent
+
+# 安装依赖
 npm install
+
+# 启动程序
+npm start
 ```
 
-非必需依赖，仅用于特定功能。
+### 首次配置
 
+首次运行会自动引导完成以下配置：
+
+1. **API Base URL** - 支持 OpenAI 兼容的第三方 API
+2. **API Key** - 您的 API 密钥
+3. **模型名称** - 如 gpt-4o、claude-3-sonnet 等
+4. **工作区路径** - AI 可以访问的目录
+5. **人设选择** - 选择预设的 AI 人设
+
+### 日常使用
+
+```bash
+npm start
 ```
-# 如果需要开发调试
-npm install --save-dev nodemon
-```
 
-## 文件信息
+启动后：
+- **ENTER** — 打断当前思考，输入指令
+- **指令 + ENTER** — 发送消息给 AI
+- **exit** — 退出程序
 
-以下列出所有相关代码及其他相关文档的存储位置。
+---
+
+## 📁 项目结构
 
 ```
 CogitoAgent/
-├── src/
-│   ├── agent/
-│   │   ├── Agent.js              # 核心智能体与状态机
-│   │   ├── prompt.js             # 对话历史与上下文管理
-│   │   └── tools/                # 工具集
-│   │       ├── index.js          # 工具统一导出入口
-│   │       ├── path.js           # 工作区路径工具
-│   │       ├── file.js           # 文件操作工具
-│   │       ├── web.js            # 网页相关工具
-│   │       ├── system.js         # 系统操作工具
-│   │       └── TOOL_DEVELOPMENT.md  # 工具开发文档
-│   ├── api/
-│   │   ├── client.js             # OpenAI 兼容 API 客户端
-│   │   └── webSearch.js          # 联网搜索模块
-│   ├── io/
-│   │   └── terminal.js           # 终端 UI 与彩色输出
-│   ├── config.js                 # 配置管理
-│   └── setup.js                  # 首次运行引导
-├── personas/                     # 预设人设包
-│   ├── explorer.md
-│   ├── scholar.md
-│   ├── assistant.md
-│   ├── creative.md
-│   ├── critic.md
-│   ├── teacher.md
-│   ├── wenchen.md
-│   ├── wujiang.md
-│   ├── yingwei.md
-│   ├── zhanshi.md
-│   ├── moushi.md
-│   ├── jianguan.md
-│   └── xiake.md
-├── data/
-│   └── conversation.json         # 对话历史持久化
-├── persona.md                    # 当前人设配置
-├── config.json                   # 用户配置
-└── package.json
+├── src/                              # 源代码目录
+│   ├── agent/                        # 智能体核心模块
+│   │   ├── Agent.js                  # 核心智能体与状态机
+│   │   ├── prompt.js                 # 对话历史与上下文管理
+│   │   └── tools/                    # 工具集（12个模块）
+│   │       ├── index.js              # 工具统一导出入口
+│   │       ├── path.js               # 工作区路径工具
+│   │       ├── file.js               # 文件操作工具
+│   │       ├── web.js                # 网页相关工具
+│   │       ├── system.js             # 系统操作工具
+│   │       ├── code.js               # 代码执行引擎
+│   │       ├── git.js                # Git 版本控制
+│   │       ├── task.js               # 任务管理系统
+│   │       ├── memory.js             # 记忆系统
+│   │       ├── data.js               # 数据处理工具
+│   │       ├── db.js                 # 数据库操作
+│   │       ├── email.js              # 邮件功能
+│   │       ├── monitor.js            # 系统监控
+│   │       ├── scheduler.js          # 定时任务
+│   │       └── TOOL_DEVELOPMENT.md   # 工具开发文档
+│   ├── api/                          # API 层
+│   │   ├── client.js                 # OpenAI 兼容 API 客户端
+│   │   ├── webSearch.js              # 联网搜索模块
+│   │   └── models.js                 # 多模型支持
+│   ├── io/                           # 输入输出模块
+│   │   └── terminal.js               # 终端 UI 与彩色输出
+│   ├── config.js                     # 配置管理
+│   └── setup.js                      # 首次运行引导
+├── personas/                         # 预设人设包（13种）
+├── data/                             # 数据存储目录
+│   ├── conversation.json             # 对话历史持久化
+│   └── store/                        # 记忆/任务/定时任务存储
+├── persona.md                        # 当前人设配置
+├── config.json                       # 用户配置
+└── package.json                      # 项目依赖配置
 ```
 
-## 自动操作
+---
 
-### 本地自动操作
+## 🛠️ 工具列表详解
 
-![电脑程序操作](show/system.png)
+### 1. 文件操作工具
 
-### 网页自动操作
+提供基础的文件系统操作能力。
 
-![网页操作](show/web.png)
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `ls(path)` | path: 目录路径（可选） | 列出目录内容 |
+| `read(path)` | path: 文件路径 | 读取文件内容（自动检测二进制文件） |
+| `copy(src, dest)` | src: 源路径, dest: 目标路径 | 复制文件或目录 |
+| `mkdir(path)` | path: 目录路径 | 创建文件夹（支持递归创建） |
+| `create(path, content)` | path: 文件路径, content: 文件内容 | 创建新文件 |
 
-### 文件增删改查
+### 2. 网页工具
 
-![文件操作](show/file.png)
+提供联网搜索和网页抓取能力。
 
-## 可爱的架构图
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `search(query)` | query: 搜索关键词 | 联网搜索，获取最新信息摘要 |
+| `browse(url)` | url: 网址 | 在默认浏览器中打开指定网址 |
+| `fetchPage(url)` | url: 网页地址 | 抓取静态网页正文，提取标题、段落和链接 |
+| `searchOnEngine(query, engine)` | query: 搜索词, engine: 搜索引擎 | 指定搜索引擎搜索（baidu/google/bing） |
 
-CogitoAgent 智能体项目通用架构图。
+### 3. 浏览器自动化
+
+基于 Playwright 的浏览器自动化能力。
+
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `initBrowser(url)` | url: 初始网址 | 初始化浏览器并打开网页 |
+| `clickElement(selector, index)` | selector: CSS选择器, index: 元素索引 | 点击网页元素 |
+| `fillField(selector, value)` | selector: CSS选择器, value: 输入值 | 填写表单字段 |
+| `selectOption(selector, value)` | selector: CSS选择器, value: 选项值 | 选择下拉框选项 |
+| `getPageContent()` | 无 | 获取当前页面内容 |
+| `takeScreenshot(path)` | path: 保存路径 | 截图当前页面 |
+| `closeBrowser()` | 无 | 关闭浏览器 |
+
+### 4. 系统操作
+
+提供系统级别的操作能力。
+
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `listApps()` | 无 | 列出当前电脑已安装的所有软件 |
+| `openApp(name)` | name: 软件名称 | 通过名称打开指定软件 |
+| `closeApp(name)` | name: 软件名称 | 关闭正在运行的指定软件 |
+
+### 5. 代码执行引擎
+
+支持 JavaScript 和 Python 代码执行，带超时保护。
+
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `executeCode(code, language)` | code: 代码内容, language: 语言（js/python） | 执行代码（自动识别语言） |
+| `executeFile(filepath, language)` | filepath: 文件路径, language: 语言（可选） | 执行代码文件 |
+| `runJavaScript(code)` | code: JavaScript 代码 | 执行 JavaScript 代码 |
+| `runPython(code)` | code: Python 代码 | 执行 Python 代码（通过临时文件方式，安全） |
+
+**安全特性：**
+- 代码执行超时限制（30秒）
+- 输出大小限制（100KB）
+- Python 代码通过临时文件执行，防止命令注入
+
+### 6. Git 版本控制
+
+完整的 Git 操作支持。
+
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `gitInit(path)` | path: 目录路径 | 初始化 Git 仓库 |
+| `gitClone(url, dest, branch)` | url: 仓库地址, dest: 目标目录, branch: 分支 | 克隆仓库 |
+| `gitAdd(files, path)` | files: 文件列表, path: 工作目录 | 添加文件到暂存区 |
+| `gitCommit(message, path)` | message: 提交信息, path: 工作目录 | 提交变更（安全参数传递） |
+| `gitPush(remote, branch, path)` | remote: 远程名称, branch: 分支, path: 工作目录 | 推送变更到远程 |
+| `gitPull(remote, branch, path)` | remote: 远程名称, branch: 分支, path: 工作目录 | 拉取远程变更 |
+| `gitStatus(path)` | path: 工作目录 | 查看仓库状态 |
+| `gitLog(path, options)` | path: 工作目录, options: 日志选项 | 查看提交日志 |
+| `gitCheckout(branch, path)` | branch: 分支名, path: 工作目录 | 切换分支 |
+| `gitBranchCreate(name, path)` | name: 分支名, path: 工作目录 | 创建新分支 |
+| `gitBranchDelete(name, path)` | name: 分支名, path: 工作目录 | 删除分支 |
+| `gitBranchList(path)` | path: 工作目录 | 列出所有分支 |
+| `gitMerge(branch, path)` | branch: 分支名, path: 工作目录 | 合并分支 |
+| `gitDiff(options, path)` | options: 选项, path: 工作目录 | 查看差异 |
+| `gitStash(path)` | path: 工作目录 | 暂存当前修改 |
+| `gitStashPop(path)` | path: 工作目录 | 恢复暂存的修改 |
+
+**安全特性：**
+- 使用 `execFile` 替代 `exec`，参数通过数组传递
+- 防止命令注入攻击
+
+### 7. 任务管理系统
+
+任务创建、分解、追踪和统计。
+
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `createTask(title, description, priority, parentId)` | title: 任务标题, description: 描述, priority: 优先级, parentId: 父任务ID | 创建任务 |
+| `getTasks()` | 无 | 获取所有任务列表 |
+| `getTask(id)` | id: 任务ID | 获取单个任务详情 |
+| `updateTask(id, updates)` | id: 任务ID, updates: 更新内容 | 更新任务信息 |
+| `deleteTask(id)` | id: 任务ID | 删除任务 |
+| `completeTask(id)` | id: 任务ID | 标记任务完成 |
+| `splitTask(id, subtasks)` | id: 任务ID, subtasks: 子任务数组 | 分解任务为子任务 |
+| `getTaskStats()` | 无 | 获取任务统计信息 |
+
+**数据持久化：**
+- 任务存储在 `data/store/tasks.json`
+- 支持子任务层级关系
+- 支持优先级排序（high/middle/low）
+
+### 8. 记忆系统
+
+长期记忆存储，支持标签和智能搜索。
+
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `addMemory(content, tags, metadata)` | content: 记忆内容, tags: 标签数组, metadata: 元数据 | 添加记忆 |
+| `searchMemory(query, limit)` | query: 搜索关键词, limit: 返回数量 | 搜索记忆（模糊匹配） |
+| `getAllMemories(limit)` | limit: 返回数量 | 获取所有记忆 |
+| `getMemory(id)` | id: 记忆ID | 获取记忆详情 |
+| `updateMemory(id, updates)` | id: 记忆ID, updates: 更新内容 | 更新记忆 |
+| `deleteMemory(id)` | id: 记忆ID | 删除记忆 |
+| `getMemoryStats()` | 无 | 获取记忆统计信息 |
+
+**特性：**
+- 记忆评分机制，自动计算相关性
+- 支持标签分类
+- 数据持久化存储
+
+### 9. 数据处理工具
+
+CSV/JSON 文件读写、转换和分析。
+
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `readCSV(filepath)` | filepath: 文件路径 | 读取 CSV 文件 |
+| `writeCSV(filepath, data, headers)` | filepath: 文件路径, data: 数据数组, headers: 表头 | 写入 CSV 文件 |
+| `readJSON(filepath)` | filepath: 文件路径 | 读取 JSON 文件 |
+| `writeJSON(filepath, data)` | filepath: 文件路径, data: JSON数据 | 写入 JSON 文件 |
+| `csvToJSON(csvPath, jsonPath)` | csvPath: 源CSV, jsonPath: 目标JSON | CSV 转 JSON |
+| `jsonToCSV(jsonPath, csvPath)` | jsonPath: 源JSON, csvPath: 目标CSV | JSON 转 CSV |
+| `queryData(data, conditions)` | data: 数据数组, conditions: 查询条件 | 查询数据 |
+| `analyzeData(data)` | data: 数据数组 | 数据分析（统计信息） |
+| `sortData(data, field, order)` | data: 数据数组, field: 字段名, order: 排序方式 | 数据排序 |
+
+### 10. 数据库操作
+
+SQLite 数据库操作，支持 SQL 和 ORM 风格。
+
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `executeSQL(sql, params)` | sql: SQL语句, params: 参数数组 | 执行 SQL 语句 |
+| `query(table, where, options)` | table: 表名, where: 查询条件, options: 选项 | 查询数据 |
+| `insert(table, data)` | table: 表名, data: 数据对象 | 插入数据 |
+| `update(table, data, where)` | table: 表名, data: 更新数据, where: 条件 | 更新数据 |
+| `deleteData(table, where)` | table: 表名, where: 删除条件 | 删除数据 |
+| `createTable(table, schema)` | table: 表名, schema: 表结构 | 创建表 |
+| `dropTable(table)` | table: 表名 | 删除表 |
+| `getTables()` | 无 | 获取所有表列表 |
+| `getTableSchema(table)` | table: 表名 | 获取表结构信息 |
+
+**配置：**
+```json
+{
+  "database": {
+    "path": "./data/store/example_db.sqlite"
+  }
+}
+```
+
+### 11. 邮件功能
+
+SMTP 邮件发送，支持多种格式。
+
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `sendEmail(to, subject, body, options)` | to: 收件人, subject: 主题, body: 内容, options: 选项 | 发送邮件 |
+| `sendTextEmail(to, subject, text)` | to: 收件人, subject: 主题, text: 文本内容 | 发送文本邮件 |
+| `sendHtmlEmail(to, subject, html)` | to: 收件人, subject: 主题, html: HTML内容 | 发送 HTML 邮件 |
+| `sendTemplateEmail(to, subject, template, data)` | to: 收件人, subject: 主题, template: 模板, data: 数据 | 发送模板邮件 |
+| `checkEmailConfig()` | 无 | 检查邮件配置是否有效 |
+
+**配置：**
+```json
+{
+  "email": {
+    "host": "smtp.example.com",
+    "port": 587,
+    "secure": false,
+    "auth": {
+      "user": "your-email@example.com",
+      "pass": "your-password"
+    }
+  }
+}
+```
+
+### 12. 系统监控
+
+系统资源监控能力。
+
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `getCPUInfo()` | 无 | 获取 CPU 信息（核心数、型号等） |
+| `getMemoryInfo()` | 无 | 获取内存信息（总量、已用、可用） |
+| `getDiskInfo()` | 无 | 获取磁盘信息（分区、容量、使用率） |
+| `getNetworkInfo()` | 无 | 获取网络接口信息 |
+| `getProcesses()` | 无 | 获取当前运行进程列表 |
+| `getSystemInfo()` | 无 | 获取系统基本信息（OS、版本、架构） |
+| `getSystemLoad()` | 无 | 获取系统负载（CPU使用率、内存使用率） |
+| `monitorSystem()` | 无 | 综合监控系统资源 |
+
+### 13. 定时任务调度
+
+Cron 风格定时任务调度。
+
+| 工具 | 参数 | 功能描述 |
+|------|------|---------|
+| `addScheduleTask(name, cron, command, options)` | name: 任务名, cron: cron表达式, command: 执行命令, options: 选项 | 添加定时任务 |
+| `getScheduleTasks()` | 无 | 获取所有定时任务 |
+| `updateScheduleTask(id, updates)` | id: 任务ID, updates: 更新内容 | 更新定时任务 |
+| `toggleScheduleTask(id)` | id: 任务ID | 启用/禁用定时任务 |
+| `removeScheduleTask(id)` | id: 任务ID | 删除定时任务 |
+
+**Cron 表达式示例：**
+- `* * * * *` - 每分钟执行
+- `0 * * * *` - 每小时执行
+- `0 0 * * *` - 每天凌晨执行
+- `0 0 * * 1` - 每周一执行
+
+---
+
+## 🏗️ 架构设计
 
 ```mermaid
 graph TD
@@ -97,19 +361,29 @@ graph TD
         PromptMgr["Prompt Manager<br/>历史压缩管理"]:::core
     end
 
-    subgraph Tools ["Tools"]
-        FileTools["File Tools<br/>ls/read/copy/mkdir"]:::tools
-        WebTools["Web Tools<br/>search/browse/fetch"]:::tools
-        SystemTools["System Tools<br/>listApps/openApp/closeApp"]:::tools
+    subgraph Tools ["Tools (12+ Modules)"]
+        FileTools["File Tools"]:::tools
+        WebTools["Web Tools"]:::tools
+        BrowserTools["Browser Automation"]:::tools
+        SystemTools["System Tools"]:::tools
+        CodeTools["Code Execution"]:::tools
+        GitTools["Git Integration"]:::tools
+        TaskTools["Task Management"]:::tools
+        MemoryTools["Memory System"]:::tools
+        DataTools["Data Processing"]:::tools
+        DbTools["Database"]:::tools
+        EmailTools["Email"]:::tools
+        MonitorTools["System Monitor"]:::tools
+        SchedulerTools["Scheduler"]:::tools
     end
 
-    subgraph IO ["I/O"]
+    subgraph IO ["I/O Layer"]
         Terminal["Terminal UI<br/>彩色输出"]:::io
         UserInput["User Input<br/>ENTER打断"]:::io
     end
 
     subgraph API ["API Layer"]
-        Client["OpenAI Client<br/>流式响应"]:::api
+        Client["Multi-Model Client<br/>OpenAI/Moark/Anthropic/Google"]:::api
         WebSearch["Web Search<br/>联网搜索"]:::api
     end
 
@@ -117,100 +391,224 @@ graph TD
     StateMachine --> ThinkLoop
     ThinkLoop --> PromptMgr
     PromptMgr --> Client
-    Client --> FileTools
-    Client --> WebTools
-    Client --> SystemTools
-    FileTools --> Terminal
-    WebTools --> Terminal
-    SystemTools --> Terminal
+    Client --> Tools
+    Tools --> Terminal
     WebSearch --> Client
 ```
 
-## 核心功能
+### 核心组件说明
 
-### 核心功能的参数
+| 组件 | 职责 | 说明 |
+|------|------|------|
+| **StateMachine** | 状态管理 | 管理 THINKING / AWAITING_INPUT 两种状态 |
+| **ThinkLoop** | 思考循环 | 每3秒自动触发一次思考 |
+| **PromptMgr** | 上下文管理 | 管理对话历史，自动压缩超过150轮的对话 |
+| **Multi-Model Client** | API 客户端 | 支持多提供商切换，统一接口 |
 
-| 功能       | 说明                             |
-| -------- | ------------------------------ |
-| `思考间隔`   | 3秒                             |
-| `历史压缩阈值` | 150轮对话后自动总结                    |
-| `状态机`    | THINKING / AWAITING\_INPUT 双状态 |
-| `流式输出`   | OpenAI 兼容 API 实时响应             |
+---
 
-### 特别的工具
+## 💡 应用场景
 
-| 工具                      | 功能描述                 |
-| ----------------------- | -------------------- |
-| `ls(path)`              | 列出目录内容（只显示一级）        |
-| `read(path)`            | 读取文件内容（自动检测二进制文件并跳过） |
-| `copy(src, dest)`       | 复制文件                 |
-| `mkdir(path)`           | 创建文件夹（支持递归创建）        |
-| `create(path, content)` | 创建新文件                |
-| `search(query)`         | 联网搜索，获取最新信息摘要与参考链接   |
-| `browse(url)`           | 在默认浏览器中打开指定网址        |
-| `fetchPage(url)`        | 抓取静态网页正文，提取标题、段落和链接  |
-| `listApps()`            | 列出当前电脑已安装的所有软件       |
-| `openApp(name)`         | 通过名称打开指定软件           |
-| `closeApp(name)`        | 关闭正在运行的指定软件          |
-
-(其实还有13种预设人设...)
-
-## 使用指南
-
-### 首次运行
-
-1. 安装依赖：
-
-```bash
-npm install
+### 1. 代码助手
+```
+用户：帮我写一个 Python 脚本，计算斐波那契数列前20项
+AI：好的，我来帮你编写并执行这个脚本。
+[TOOL] runPython("def fibonacci(n):...") [/TOOL]
+执行结果：[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181]
 ```
 
-1. 启动程序：
-
-```bash
-npm start
+### 2. 项目管理
+```
+用户：帮我初始化一个 Git 仓库并提交代码
+AI：好的，我来帮你完成。
+[TOOL] gitInit("./my-project") [/TOOL]
+[TOOL] gitAdd(".") [/TOOL]
+[TOOL] gitCommit("Initial commit") [/TOOL]
 ```
 
-首次运行会自动引导完成以下配置：
-
-1. API Base URL（支持 OpenAI 兼容的第三方 API）
-2. API Key
-3. 模型名称
-4. 工作区路径
-5. 人设选择
-
-### 日常交互
-
-```bash
-npm start
+### 3. 任务追踪
+```
+用户：创建一个任务，完成项目文档编写
+AI：好的，已创建任务。
+[TOOL] createTask("编写项目文档", "完成 README 和技术文档", "high") [/TOOL]
+任务创建成功，ID: task_123
 ```
 
-启动后：
+### 4. 知识管理
+```
+用户：记住这个重要的会议时间：下周一上午9点
+AI：好的，已添加到记忆中。
+[TOOL] addMemory("会议时间：下周一上午9点", ["会议", "时间"], {"date": "2024-01-15"}) [/TOOL]
+```
 
-- **ENTER** — 打断当前思考，输入指令
-- **指令 + ENTER** — 发送消息给 AI
-- **exit** — 退出程序
+### 5. 数据处理
+```
+用户：帮我分析这个 CSV 文件中的销售数据
+AI：好的，我来读取并分析。
+[TOOL] readCSV("./sales.csv") [/TOOL]
+[TOOL] analyzeData(data) [/TOOL]
+分析结果：总销售额 125000，平均订单金额 250，最高销售额月份：12月
+```
 
-### 应用场景
+### 6. 系统监控
+```
+用户：检查一下我的系统资源使用情况
+AI：好的，我来监控系统资源。
+[TOOL] monitorSystem() [/TOOL]
+CPU使用率：23%，内存使用率：67%，磁盘使用率：45%
+```
 
-- **文件检索与管理**: 用自然语言描述需求，AI 在工作区中定位、复制、整理文件
-- **知识挖掘**: 自动发现被遗忘的文件，将分散的文档变成可检索的知识库
-- **项目理解**: 基于探索历史回答"这个目录/文件是做什么的"，帮助快速了解陌生项目
-- **内容摘要**: 读取文件内容并提炼关键信息，节省阅读时间
-- **联网助手**: 结合本地文件与实时网络信息进行综合回答
-- **系统控制**: 列出、打开或关闭软件，作为简易的系统控制助手
-- **数字伙伴**: 自定义人设，拥有持续记忆的个人 AI 伙伴
+### 7. 自动化任务
+```
+用户：每天早上8点发送邮件提醒
+AI：好的，我来设置定时任务。
+[TOOL] addScheduleTask("每日提醒", "0 8 * * *", "sendEmail('me@example.com', '每日提醒', '早上好！')") [/TOOL]
+```
 
+---
 
-## 已知问题
+## ⚙️ 配置说明
 
-- [ ] 工具"downloadFile"会把目标文件下载到%temp%里
-- [ ] AI回复会早于工具调用提示
+配置文件 `config.json` 支持以下选项：
 
-## 项目许可证
+```json
+{
+  "api": {
+    "baseUrl": "https://api.openai.com/v1",
+    "apiKey": "your-api-key",
+    "model": "gpt-4o"
+  },
+  "workspace": "./",
+  "persona": "explorer",
+  "thinkingInterval": 3000,
+  "database": {
+    "path": "./data/store/example_db.sqlite"
+  },
+  "email": {
+    "host": "smtp.example.com",
+    "port": 587,
+    "secure": false,
+    "auth": {
+      "user": "your-email@example.com",
+      "pass": "your-password"
+    }
+  },
+  "code": {
+    "timeout": 30000,
+    "maxOutputSize": 100000
+  },
+  "models": {
+    "providers": ["openai", "moark", "anthropic", "google"]
+  }
+}
+```
 
-本项目采用 Apache 2.0 许可证开源。
+### 配置项说明
 
-如有任何问题、需求或 Bug 反馈，请通过以下方式联系我们。
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `api.baseUrl` | string | - | API 服务地址 |
+| `api.apiKey` | string | - | API 密钥 |
+| `api.model` | string | - | 模型名称 |
+| `workspace` | string | "./" | 工作区路径 |
+| `persona` | string | "explorer" | 人设名称 |
+| `thinkingInterval` | number | 3000 | 思考间隔（毫秒） |
+| `database.path` | string | - | SQLite 数据库路径 |
+| `email.*` | object | - | SMTP 邮件配置 |
+| `code.timeout` | number | 30000 | 代码执行超时（毫秒） |
+| `code.maxOutputSize` | number | 100000 | 最大输出大小 |
 
-Source Issues : <https://gitee.com/cnt-code/cogito-agent/issues>
+---
+
+## 🎭 预设人设
+
+CogitoAgent 提供 13 种预设人设，可根据不同场景选择：
+
+| 人设 | 描述 | 适用场景 |
+|------|------|---------|
+| **explorer** | 探索者 | 文件探索、项目理解 |
+| **scholar** | 学者 | 知识研究、深度分析 |
+| **assistant** | 助手 | 日常任务、生活助手 |
+| **creative** | 创意家 | 写作、创意生成 |
+| **critic** | 评论家 | 代码审查、建议改进 |
+| **teacher** | 教师 | 教学、知识讲解 |
+| **wenchen** | 文人 | 文学创作、诗词歌赋 |
+| **wujiang** | 武将 | 决策果断、执行力强 |
+| **yingwei** | 英伟 | 领导者、战略规划 |
+| **zhanshi** | 战士 | 解决问题、克服困难 |
+| **moushi** | 谋士 | 策略分析、规划 |
+| **jianguan** | 监管 | 质量把控、流程管理 |
+| **xiake** | 侠客 | 自由探索、不拘一格 |
+
+---
+
+## 🤝 贡献指南
+
+欢迎贡献代码！请遵循以下步骤：
+
+1. **Fork 项目** - 在 Gitee 上 Fork 本项目
+2. **创建分支** - `git checkout -b feature/your-feature`
+3. **编写代码** - 实现功能或修复 bug
+4. **测试验证** - 确保代码可以正常运行
+5. **提交 PR** - 创建 Pull Request
+
+### 代码规范
+
+- 使用 ES6+ 语法
+- 使用 `async/await` 处理异步操作
+- 工具函数返回格式：`{ success: boolean, data?: any, error?: string }`
+- 代码注释清晰，便于理解
+
+### 工具开发
+
+如需开发新工具，请参考 `src/agent/tools/TOOL_DEVELOPMENT.md`。
+
+---
+
+## 📝 更新日志
+
+### v2.0.0 (2024-01-XX)
+
+**新增功能：**
+- ✅ 代码执行引擎（JavaScript/Python）
+- ✅ Git 版本控制集成
+- ✅ 任务管理系统
+- ✅ 记忆系统
+- ✅ 数据处理工具（CSV/JSON）
+- ✅ SQLite 数据库操作
+- ✅ 邮件功能
+- ✅ 系统监控
+- ✅ 定时任务调度
+- ✅ 多模型支持
+
+**安全修复：**
+- ✅ 修复 Python 代码执行命令注入风险
+- ✅ 修复 Git 提交信息命令注入风险
+- ✅ 修复变量未定义使用问题
+
+---
+
+## 🐛 已知问题
+
+- [ ] 工具 `downloadFile` 会把目标文件下载到临时目录
+- [ ] AI 回复会早于工具调用提示
+
+---
+
+## 📄 许可证
+
+本项目采用 **Apache 2.0** 许可证开源。
+
+---
+
+## 📞 联系方式
+
+如有任何问题、需求或 Bug 反馈，请通过以下方式联系我们：
+
+- **GitHub**: https://github.com/cnt-code/cogito-agent
+- **Gitee**: https://gitee.com/cnt-code/cogito-agent
+- **Issues**: https://gitee.com/cnt-code/cogito-agent/issues
+
+---
+
+*Built with ❤️ by CogitoAgent Team*

@@ -29,7 +29,42 @@ const DEFAULT_CONFIG = {
     recencyFilter: '',
     siteFilter: ''
   },
-  workspace: 'D:\\'       // 工作区根路径
+  workspace: 'D:\\',      // 工作区根路径
+  database: {
+    path: './data/example.db'  // SQLite 数据库路径
+  },
+  email: {
+    smtpHost: '',        // SMTP 服务器地址
+    smtpPort: 587,       // SMTP 端口
+    user: '',            // 邮箱用户名
+    password: '',        // 邮箱密码
+    from: ''             // 发件人邮箱
+  },
+  models: {
+    openai: {
+      apiKey: '',
+      baseURL: 'https://api.openai.com/v1'
+    },
+    moark: {
+      apiKey: '',
+      baseURL: 'https://api.moark.com/v1'
+    },
+    anthropic: {
+      apiKey: '',
+      baseURL: 'https://api.anthropic.com/v1'
+    },
+    google: {
+      apiKey: '',
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta'
+    }
+  },
+  code: {
+    maxExecutionTime: 30000,    // 最大执行时间（毫秒）
+    maxOutputSize: 100000       // 最大输出大小（字符）
+  },
+  scheduler: {
+    enabled: true        // 是否启用定时任务
+  }
 };
 
 let config = null;
