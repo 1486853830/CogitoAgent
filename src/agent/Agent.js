@@ -324,8 +324,41 @@ function formatLsResult(data) {
   return lines.join('\n');
 }
 
-// 工具输出最大长度限制（防止大文件导致内存膨胀）
-const MAX_TOOL_OUTPUT = 10000;  // 10000 字符
+// 工具输出最大长度限制（根据工具类型智能截断）
+const TOOL_OUTPUT_LIMITS = {
+  // 目录列表较短
+  ls: 5000,
+  
+  // Git 日志中等
+  gitLog: 10000,
+  gitDiff: 10000,
+  
+  // 代码执行结果较长
+  executeCode: 50000,
+  executeFile: 50000,
+  runJavaScript: 50000,
+  runPython: 50000,
+  
+  // 文件内容中等
+  read: 20000,
+  readCSV: 15000,
+  readJSON: 15000,
+  
+  // 数据库查询结果
+  executeSQL: 20000,
+  query: 20000,
+  
+  // 搜索结果
+  searchMemory: 10000,
+  search: 10000,
+  
+  // 系统信息中等
+  getProcesses: 15000,
+  monitorSystem: 15000,
+  
+  // 其他默认限制
+  default: 10000
+};
 
 function formatToolResult(tool, data) {
   let result;
@@ -336,9 +369,12 @@ function formatToolResult(tool, data) {
     result = String(data);
   }
   
+  // 根据工具类型获取截断限制
+  const limit = TOOL_OUTPUT_LIMITS[tool] || TOOL_OUTPUT_LIMITS.default;
+  
   // 截断过长的输出
-  if (result.length > MAX_TOOL_OUTPUT) {
-    return result.slice(0, MAX_TOOL_OUTPUT) + '\n\n... [输出内容过长，已截断]';
+  if (result.length > limit) {
+    return result.slice(0, limit) + '\n\n... [输出内容过长，已截断]';
   }
   
   return result;
@@ -392,18 +428,96 @@ function parseAndPrintResponse(text) {
  * 执行工具 - 使用注册表动态调用
  * 包含危险操作确认机制和 JSON 参数支持
  */
+/**
+ * 工具错误类型识别
+ */
+function classifyToolError(error) {
+  // 网络错误
+  if (error.code === 'ENOTFOUND' || 
+      error.code === 'ECONNREFUSED' || 
+      error.code === 'ETIMEDOUT' ||
+      error.message?.includes('network')) {
+    return 'network';
+  }
+  
+  // 文件系统错误
+  if (error.code === 'ENOENT' || 
+      error.code === 'EACCES' || 
+      error.code === 'EPERM' ||
+      error.code === 'ENOTDIR') {
+    return 'filesystem';
+  }
+  
+  // 权限错误
+  if (error.code === 'EACCES' || error.code === 'EPERM') {
+    return 'permission';
+  }
+  
+  // 超时错误
+  if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
+    return 'timeout';
+  }
+  
+  // 默认：未知错误
+  return 'unknown';
+}
+
+/**
+ * 格式化工具错误信息
+ */
+function formatToolError(error, toolName) {
+  const errorType = classifyToolError(error);
+  
+  let message = '';
+  
+  switch (errorType) {
+    case 'network':
+      message = `[${toolName}] 网络错误: ${error.message}`;
+      break;
+    case 'filesystem':
+      message = `[${toolName}] 文件系统错误: ${error.message}`;
+      break;
+    case 'permission':
+      message = `[${toolName}] 权限错误: ${error.message}`;
+      break;
+    case 'timeout':
+      message = `[${toolName}] 执行超时: ${error.message}`;
+      break;
+    default:
+      message = `[${toolName}] 执行失败: ${error.message}`;
+  }
+  
+  // 在DEBUG模式下添加堆栈跟踪
+  if (process.env.DEBUG === 'true' && error.stack) {
+    const stackLines = error.stack.split('\n').slice(1, 4).join('\n');
+    message += '\n堆栈跟踪:\n' + stackLines;
+  }
+  
+  return message;
+}
+
 async function executeTool(toolName, args) {
   const registry = TOOL_REGISTRY[toolName];
   
   if (!registry) {
-    return { success: false, error: `未知工具：${toolName}` };
+    return { 
+      success: false, 
+      error: `未知工具：${toolName}`,
+      toolName,
+      timestamp: new Date().toISOString()
+    };
   }
 
   // 危险操作确认
   if (isConfirmEnabled() && isDangerousOperation(toolName)) {
     const confirmed = await requestConfirmation(toolName, args);
     if (!confirmed) {
-      return { success: false, error: '用户拒绝执行此危险操作' };
+      return { 
+        success: false, 
+        error: '用户拒绝执行此危险操作',
+        toolName,
+        timestamp: new Date().toISOString()
+      };
     }
     // 恢复思考状态
     state = STATE.THINKING;
@@ -444,21 +558,281 @@ async function executeTool(toolName, args) {
   }
 
   try {
-    return await fn(...processedArgs);
+    const result = await fn(...processedArgs);
+    return {
+      success: true,
+      data: result,
+      toolName,
+      timestamp: new Date().toISOString()
+    };
   } catch (error) {
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: formatToolError(error, toolName),
+      toolName,
+      errorType: classifyToolError(error),
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
+ * 处理特殊命令
+ * @returns {boolean} 是否为特殊命令
+ */
+function handleCommand(input) {
+  const trimmed = input.trim();
+  
+  // 帮助命令
+  if (trimmed === '/help' || trimmed === '/?') {
+    printHelp();
+    return true;
+  }
+  
+  // 状态命令
+  if (trimmed === '/status') {
+    printStatus();
+    return true;
+  }
+  
+  // 清空历史命令
+  if (trimmed === '/clear') {
+    printClearConfirm();
+    return true;
+  }
+  
+  // Person切换命令
+  if (trimmed.startsWith('/persona ')) {
+    const personaName = trimmed.slice(9).trim();
+    if (personaName) {
+      switchPersona(personaName);
+      return true;
+    } else {
+      println('[错误] 请提供 persona 名称', 'red');
+      println('用法: /persona <name>', 'gray');
+      return true;
+    }
+  }
+  
+  // 列出可用 personas
+  if (trimmed === '/personas') {
+    listPersonas();
+    return true;
+  }
+  
+  // 列出可用工具
+  if (trimmed === '/tools') {
+    listTools();
+    return true;
+  }
+  
+  // 导出配置命令
+  if (trimmed === '/config') {
+    printConfig();
+    return true;
+  }
+  
+  // 调试模式切换
+  if (trimmed === '/debug') {
+    toggleDebug();
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * 打印帮助信息
+ */
+function printHelp() {
+  println('');
+  printDivider('=', 'cyan');
+  println('  CogitoAgent 命令帮助', 'cyan');
+  printDivider('=', 'cyan');
+  println('');
+  println('  可用命令:', 'yellow');
+  println('    /help          - 显示此帮助信息', 'gray');
+  println('    /status        - 显示当前状态', 'gray');
+  println('    /clear         - 清空对话历史', 'gray');
+  println('    /persona <name> - 切换 Persona', 'gray');
+  println('    /personas      - 列出所有可用 Persona', 'gray');
+  println('    /tools         - 列出所有可用工具', 'gray');
+  println('    /config        - 显示当前配置', 'gray');
+  println('    /debug         - 切换调试模式', 'gray');
+  println('');
+  println('  基本操作:', 'yellow');
+  println('    ENTER          - 打断当前思考，输入消息', 'gray');
+  println('    exit           - 退出程序', 'gray');
+  println('');
+  printDivider('=', 'cyan');
+  println('');
+}
+
+/**
+ * 打印当前状态
+ */
+function printStatus() {
+  const cfg = loadConfig();
+  println('');
+  printDivider('=', 'cyan');
+  println('  CogitoAgent 当前状态', 'cyan');
+  printDivider('=', 'cyan');
+  println('');
+  println(`  状态: ${printTag(state, state === STATE.THINKING ? 'green' : 'yellow')}`, 'white');
+  println(`  Persona: ${printTag(cfg.persona || 'default', 'bgBlue')}`, 'white');
+  println(`  模型: ${cfg.api.model || 'N/A'}`, 'white');
+  println(`  API: ${cfg.api.baseURL || 'N/A'}`, 'white');
+  println(`  工作区: ${tools.getBasePath()}`, 'white');
+  println(`  思考间隔: ${(thoughtInterval / 1000).toFixed(1)}秒`, 'white');
+  println(`  并发处理: ${isProcessing ? '是' : '否'}`, 'white');
+  println(`  危险操作确认: ${isConfirmEnabled() ? '是' : '否'}`, 'white');
+  println(`  调试模式: ${process.env.DEBUG === 'true' ? '是' : '否'}`, 'white');
+  println(`  工具注册数量: ${Object.keys(TOOL_REGISTRY).length}`, 'white');
+  println('');
+  printDivider('=', 'cyan');
+  println('');
+}
+
+/**
+ * 打印清空确认提示
+ */
+function printClearConfirm() {
+  println('');
+  println('  ⚠️  确定要清空对话历史吗？此操作不可撤销', 'yellow');
+  println(`  输入 ${printTag('y', 'bgGreen')} 确认清空, ${printTag('n', 'bgRed')} 取消`, 'yellow');
+  println('');
+  
+  // 临时设置为等待确认状态
+  state = STATE.AWAITING_CONFIRMATION;
+  pendingConfirmation = { type: 'clearHistory' };
+}
+
+/**
+ * 切换 Persona
+ */
+function switchPersona(personaName) {
+  // TODO: 实现 Persona 切换逻辑
+  println(`[提示] Persona 切换功能正在开发中: ${personaName}`, 'yellow');
+}
+
+/**
+ * 列出所有可用 Persona
+ */
+function listPersonas() {
+  // TODO: 实现列出 Persona 逻辑
+  println('[提示] Persona 列表功能正在开发中', 'yellow');
+}
+
+/**
+ * 列出所有可用工具
+ */
+function listTools() {
+  const toolNames = Object.keys(TOOL_REGISTRY).sort();
+  const categories = {
+    file: ['ls', 'read', 'copy', 'mkdir', 'create'],
+    web: ['search', 'browse', 'fetchPage'],
+    system: ['listApps', 'openApp', 'closeApp'],
+    git: ['gitInit', 'gitClone', 'gitAdd', 'gitCommit', 'gitPush', 'gitPull', 'gitStatus', 'gitLog', 'gitBranchCreate', 'gitBranchDelete', 'gitBranchList', 'gitCheckout', 'gitMerge', 'gitDiff', 'gitStash', 'gitStashPop'],
+    code: ['executeCode', 'executeFile', 'runJavaScript', 'runPython'],
+    task: ['createTask', 'getTasks', 'getTask', 'updateTask', 'deleteTask', 'completeTask', 'splitTask', 'getTaskStats', 'clearTasks'],
+    memory: ['addMemory', 'searchMemory', 'getAllMemories', 'getMemory', 'updateMemory', 'deleteMemory', 'getMemoryStats', 'clearMemory'],
+    data: ['readCSV', 'writeCSV', 'readJSON', 'writeJSON', 'csvToJSON', 'jsonToCSV', 'queryData', 'analyzeData', 'sortData'],
+    db: ['executeSQL', 'query', 'insert', 'update', 'deleteData', 'createTable', 'dropTable', 'getTables', 'getTableSchema'],
+    email: ['sendEmail', 'sendTextEmail', 'sendHtmlEmail', 'sendTemplateEmail', 'checkEmailConfig'],
+    monitor: ['getCPUInfo', 'getMemoryInfo', 'getDiskInfo', 'getNetworkInfo', 'getProcesses', 'getSystemInfo', 'getSystemLoad', 'monitorSystem'],
+    scheduler: ['addScheduleTask', 'removeScheduleTask', 'getScheduleTasks', 'getScheduleTask', 'updateScheduleTask', 'toggleScheduleTask', 'startScheduler', 'stopScheduler']
+  };
+  
+  println('');
+  printDivider('=', 'cyan');
+  println(`  可用工具列表 (共 ${toolNames.length} 个)`, 'cyan');
+  printDivider('=', 'cyan');
+  println('');
+  
+  for (const [category, tools] of Object.entries(categories)) {
+    println(`  ${category.toUpperCase()}:`, 'yellow');
+    println(`    ${tools.join(', ')}`, 'gray');
+    println('');
+  }
+  
+  printDivider('=', 'cyan');
+  println('');
+}
+
+/**
+ * 打印当前配置
+ */
+function printConfig() {
+  const cfg = loadConfig();
+  
+  println('');
+  printDivider('=', 'cyan');
+  println('  当前配置', 'cyan');
+  printDivider('=', 'cyan');
+  println('');
+  println(`  Persona: ${cfg.persona || 'default'}`, 'white');
+  println(`  工作区: ${cfg.workspace || './'}`, 'white');
+  println(`  模型: ${cfg.api.model || 'N/A'}`, 'white');
+  println(`  API Base: ${cfg.api.baseURL || 'N/A'}`, 'white');
+  println(`  API Key: ${cfg.api.apiKey ? '***' + cfg.api.apiKey.slice(-4) : '未设置'}`, 'white');
+  println(`  思考间隔: ${cfg.chat?.thinkingInterval || 3000}ms`, 'white');
+  println(`  数据库: ${cfg.database?.path || '未设置'}`, 'white');
+  println(`  邮件: ${cfg.email?.smtpHost || '未配置'}`, 'white');
+  println(`  调试模式: ${process.env.DEBUG === 'true' ? '开启' : '关闭'}`, 'white');
+  println('');
+  printDivider('=', 'cyan');
+  println('');
+}
+
+/**
+ * 切换调试模式
+ */
+function toggleDebug() {
+  const current = process.env.DEBUG === 'true';
+  process.env.DEBUG = (!current).toString();
+  println(`[调试] 调试模式已${current ? '关闭' : '开启'}`, 'yellow');
+  
+  if (!current) {
+    println('  提示: 开启调试模式后会显示详细的错误堆栈', 'gray');
   }
 }
 
 function handleUserInput(input) {
+  // 检查是否为退出命令
   if (input.toLowerCase() === 'exit') {
     exit();
     return;
+  }
+  
+  // 处理特殊命令
+  if (input.startsWith('/')) {
+    if (handleCommand(input)) {
+      return;
+    }
   }
 
   // 处理危险操作确认
   if (state === STATE.AWAITING_CONFIRMATION) {
     const response = input.toLowerCase().trim();
+    
+    // 处理清空历史确认
+    if (pendingConfirmation?.type === 'clearHistory') {
+      if (response === 'y' || response === 'yes' || response === '确认') {
+        // TODO: 实现清空历史逻辑
+        println('[成功] 对话历史已清空', 'green');
+        pendingConfirmation = null;
+        state = STATE.THINKING;
+      } else if (response === 'n' || response === 'no' || response === '拒绝') {
+        println('[取消] 操作已取消', 'gray');
+        pendingConfirmation = null;
+        state = STATE.THINKING;
+      } else {
+        println(`[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 取消`, 'yellow');
+      }
+      return;
+    }
+    
+    // 处理危险操作确认
     if (response === 'y' || response === 'yes' || response === '确认') {
       println('[确认] 用户同意执行危险操作', 'green');
       pendingConfirmation = null;  // 标记为已确认
@@ -623,4 +997,22 @@ async function start() {
   scheduleNextCycle();
 }
 
-export { start };
+export { 
+  start,
+  parseArgs,
+  formatToolResult,
+  classifyToolError,
+  formatToolError,
+  handleCommand,
+  printHelp,
+  printStatus,
+  printClearConfirm,
+  switchPersona,
+  listPersonas,
+  listTools,
+  printConfig,
+  toggleDebug,
+  handleUserInput,
+  TOOL_OUTPUT_LIMITS,
+  STATE
+};

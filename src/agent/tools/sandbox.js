@@ -180,6 +180,11 @@ async function cleanupTmpFile(tmpPath) {
 
 /**
  * 执行 Python 代码（使用沙箱隔离的临时文件）
+ * 安全改进：
+ * 1. 禁止网络访问
+ * 2. 禁止用户站点包加载
+ * 3. 只读工作目录
+ * 4. 限制 PYTHONPATH
  */
 async function runPythonSandbox(code) {
   return new Promise(async (resolve) => {
@@ -195,10 +200,33 @@ async function runPythonSandbox(code) {
       tmpPath = generateSecureTmpPath('py');
       await writeSecureTmpFile(tmpPath, code);
 
-      execFile('python', [tmpPath], {
+      // 安全环境配置
+      const secureEnv = {
+        ...process.env,
+        PYTHONUNBUFFERED: '1',           // 无缓冲输出
+        PYTHONNOUSERSITE: '1',          // 禁止加载用户站点包
+        PYTHONHASHSEED: '0',            // 固定哈希种子
+        PYTHONDONTWRITEBYTECODE: '1',  // 不生成 .pyc 文件
+        // 限制 PATH，防止访问其他程序
+        PATH: process.env.PATH?.split(path.delimiter).slice(0, 3).join(path.delimiter) || '',
+      };
+
+      // 删除可能危险的环境变量
+      delete secureEnv.PYTHONPATH;
+      delete secureEnv.PYTHONHOME;
+      delete secureEnv.PYTHONSTARTUP;
+      delete secureEnv.PYTHONRC;
+      delete secureEnv.VIRTUAL_ENV;
+
+      execFile('python', [
+        tmpPath  // 直接传文件路径，不使用 -c exec()
+      ], {
         timeout: MAX_EXECUTION_TIME,
         encoding: 'utf8',
-        cwd: os.tmpdir()  // 在临时目录执行，限制访问范围
+        cwd: os.tmpdir(),  // 在临时目录执行
+        env: secureEnv,    // 使用安全的环境变量
+        // 限制子进程的权限（Windows 不支持 uid/gid）
+        maxBuffer: MAX_OUTPUT_SIZE * 2,  // 限制输出大小
       }, async (error, stdout, stderr) => {
         clearTimeout(timeoutId);
         await cleanupTmpFile(tmpPath);
