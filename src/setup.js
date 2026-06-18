@@ -1,5 +1,5 @@
 /**
- * 首次设置引导模块
+ * 首次设置引导模块 - 艺术化终端设计
  */
 
 import readline from 'readline';
@@ -10,6 +10,152 @@ import { DEFAULT_CONFIG, loadEnvConfig } from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ANSI 颜色代码
+const COLORS = {
+  reset: '\x1b[0m',
+  bold: '\x1b[1m',
+  dim: '\x1b[2m',
+  gray: '\x1b[90m',
+  red: '\x1b[91m',
+  green: '\x1b[92m',
+  darkGreen: '\x1b[32m',
+  yellow: '\x1b[93m',
+  blue: '\x1b[94m',
+  magenta: '\x1b[95m',
+  cyan: '\x1b[96m',
+  white: '\x1b[97m',
+  bgBlack: '\x1b[40m',
+  bgBlue: '\x1b[44m',
+  bgCyan: '\x1b[46m',
+  bgGreen: '\x1b[42m',
+};
+
+/**
+ * 打印带颜色的文字
+ */
+function print(text, color = null) {
+  if (color && COLORS[color]) {
+    process.stdout.write(COLORS[color] + text + COLORS.reset);
+  } else {
+    process.stdout.write(text);
+  }
+}
+
+/**
+ * 打印一行带颜色的文字
+ */
+function println(text, color = null) {
+  print(text, color);
+  process.stdout.write('\n');
+}
+
+/**
+ * 打印分隔线
+ */
+function printDivider(char = '─', color = 'cyan') {
+  const width = process.stdout.columns || 60;
+  const colorCode = COLORS[color] || COLORS.reset;
+  println(colorCode + char.repeat(width) + COLORS.reset);
+}
+
+/**
+ * 打印标题框
+ */
+function printTitleBox(title, subtitle = '') {
+  const width = 60;
+  println(COLORS.cyan + COLORS.bold + '╔' + '═'.repeat(width) + '╗' + COLORS.reset);
+  
+  if (subtitle) {
+    const subPad = Math.max(0, width - subtitle.length - 2);
+    println(COLORS.cyan + '║ ' + COLORS.yellow + subtitle + ' '.repeat(subPad) + ' ║' + COLORS.reset);
+  }
+  
+  const titlePad = Math.max(0, width - title.length - 2);
+  println(COLORS.cyan + '║ ' + COLORS.bold + COLORS.white + title + ' '.repeat(titlePad) + ' ║' + COLORS.reset);
+  println(COLORS.cyan + '╚' + '═'.repeat(width) + '╝' + COLORS.reset);
+}
+
+/**
+ * 打印步骤标题
+ */
+function printStepTitle(stepNum, title) {
+  println('');
+  printDivider('─', 'cyan');
+  println(COLORS.cyan + COLORS.bold + `  【第${stepNum}步】` + COLORS.white + title + COLORS.reset);
+  printDivider('─', 'cyan');
+}
+
+/**
+ * 打印成功消息
+ */
+function printSuccess(text) {
+  println(COLORS.green + COLORS.bold + '  ✅ ' + text + COLORS.reset);
+}
+
+/**
+ * 打印警告消息
+ */
+function printWarning(text) {
+  println(COLORS.yellow + '  ⚠️  ' + text + COLORS.reset);
+}
+
+/**
+ * 打印信息消息
+ */
+function printInfo(text) {
+  println(COLORS.blue + '  ℹ️  ' + text + COLORS.reset);
+}
+
+/**
+ * 打印错误消息
+ */
+function printError(text) {
+  println(COLORS.red + COLORS.bold + '  ❌ ' + text + COLORS.reset);
+}
+
+/**
+ * 打印提示消息
+ */
+function printTip(text) {
+  println(COLORS.dim + '  💡 ' + text + COLORS.reset);
+}
+
+/**
+ * 打印设置向导 Banner
+ */
+function printSetupBanner() {
+  const banner = `
+${COLORS.cyan}${COLORS.bold}
+██████╗  ██████╗  ██████╗ ██╗████████╗ ██████╗      █████╗  ██████╗ ███████╗███╗   ██╗████████╗
+██╔═══╝  ██╔═══██╗██╔═══╝  ██║╚══██╔═╝ ██╔═══██╗    ██╔══██╗██╔═══╝  ██╔═══╝ ████╗  ██║╚══██╔═╝
+██║      ██║   ██║██║  ███╗██║   ██║   ██║   ██║    ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
+██║      ██║   ██║██║   ██║██║   ██║   ██║   ██║    ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   
+╚██████╗ ╚██████╔╝╚██████╔╝██║   ██║   ╚██████╔╝    ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   
+ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝   ╚═╝    ╚═════╝     ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   
+${COLORS.reset}
+${COLORS.cyan}${COLORS.bold}            CogitoAgent${COLORS.reset}
+${COLORS.bold}╔══════════════════════════════════════════════════════════════╗
+║  ${COLORS.magenta}🚀 设置向导${COLORS.reset}${COLORS.bold} - 让我来帮你完成初始配置                        ║
+╚══════════════════════════════════════════════════════════════╝${COLORS.reset}
+`;
+  println(banner);
+}
+
+/**
+ * 打印完成 Banner
+ */
+function printCompleteBanner() {
+  println('');
+  println(COLORS.green + COLORS.bold + '╔══════════════════════════════════════════════════════════════╗' + COLORS.reset);
+  println(COLORS.green + '║' + COLORS.reset + '                                                              ' + COLORS.green + '║' + COLORS.reset);
+  println(COLORS.green + '║' + COLORS.reset + '     ' + COLORS.bold + COLORS.white + '🎉 设置完成！' + COLORS.reset + '                                      ' + COLORS.green + '║' + COLORS.reset);
+  println(COLORS.green + '║' + COLORS.reset + '                                                              ' + COLORS.green + '║' + COLORS.reset);
+  println(COLORS.green + '║' + COLORS.reset + '     ' + COLORS.cyan + '重新运行程序即可开始使用 CogitoAgent' + COLORS.reset + '              ' + COLORS.green + '║' + COLORS.reset);
+  println(COLORS.green + '║' + COLORS.reset + '                                                              ' + COLORS.green + '║' + COLORS.reset);
+  println(COLORS.green + COLORS.bold + '╚══════════════════════════════════════════════════════════════╝' + COLORS.reset);
+  println('');
+}
 
 function createInterface() {
   return readline.createInterface({
@@ -65,15 +211,17 @@ function getAvailablePersonas() {
  * 选择人设
  */
 async function selectPersona(rl, personas) {
-  console.log('\n【第5步】请选择人设:\n');
-  console.log('  0 - 不使用人设（使用默认行为）\n');
+  printStepTitle(5, '选择人设');
+  println('');
+  println(COLORS.dim + '  0 - 不使用人设（使用默认行为）' + COLORS.reset);
+  println('');
   
   personas.forEach((p, i) => {
-    console.log(`  ${i + 1} - ${p.firstLine} (${p.name})`);
+    println(COLORS.white + `  ${i + 1} - ` + COLORS.cyan + p.firstLine + COLORS.dim + ` (${p.name})` + COLORS.reset);
   });
-  console.log('');
+  println('');
   
-  const answer = await question(rl, '请输入编号或名称: ');
+  const answer = await question(rl, COLORS.yellow + '  请输入编号或名称: ' + COLORS.reset);
   const trimmed = answer.trim();
   
   if (trimmed === '0' || trimmed === '') {
@@ -136,10 +284,10 @@ function saveEnvConfig(config) {
   
   try {
     fs.writeFileSync(envPath, lines.join('\n'), 'utf-8');
-    console.log('✅ 配置已保存到 .env 文件');
+    printSuccess('配置已保存到 .env 文件');
     return true;
   } catch (e) {
-    console.log(`❌ 保存失败: ${e.message}`);
+    printError(`保存失败: ${e.message}`);
     return false;
   }
 }
@@ -149,22 +297,25 @@ function saveEnvConfig(config) {
  * 返回配置对象
  */
 async function runSetup() {
-  console.log('\n========== CogitoAgent 首次设置 ==========\n');
+  printSetupBanner();
   
   // 检查环境变量配置
   const hasEnvConfig = checkEnvConfig();
   
   if (hasEnvConfig) {
-    console.log('✅ 已检测到 .env 环境变量配置！');
-    console.log('   配置将保存到 .env 文件\n');
+    printSuccess('已检测到 .env 环境变量配置！');
+    printTip('配置将保存到 .env 文件');
+    println('');
     
     const rl = createInterface();
-    const choice = await question(rl, '是否跳过设置向导，直接使用环境变量？(y/n): ');
+    const choice = await question(rl, COLORS.yellow + '  是否跳过设置向导，直接使用环境变量？' + COLORS.dim + ' (y/n): ' + COLORS.reset);
     rl.close();
     
     if (choice.trim().toLowerCase() === 'y' || choice.trim() === '') {
-      console.log('\n✅ 将使用环境变量配置启动程序');
-      console.log('   如需修改配置，请编辑 .env 文件\n');
+      println('');
+      printSuccess('将使用环境变量配置启动程序');
+      printTip('如需修改配置，请编辑 .env 文件');
+      println('');
       
       // 加载环境变量配置并返回
       const config = {
@@ -174,50 +325,65 @@ async function runSetup() {
       return config;
     }
     
-    console.log('\n继续使用设置向导...\n');
+    println('');
+    printInfo('继续使用设置向导...');
+    println('');
   }
 
-  console.log('欢迎使用 CogitoAgent！让我来帮你完成初始配置。\n');
-  console.log('提示：配置将保存到 .env 文件\n');
-  console.log('      如需修改配置，请直接编辑 .env 文件\n\n');
+  printTip('配置将保存到 .env 文件');
+  printTip('如需修改配置，请直接编辑 .env 文件');
+  println('');
 
   const rl = createInterface();
 
   // 1. API Base URL
-  const baseURL = await question(rl, '【第1步】请输入 API Base URL (如 https://api.moark.com/v1): ');
+  printStepTitle(1, '输入 API Base URL');
+  printTip('例如: https://api.openai.com/v1 或 https://api.moark.com/v1');
+  println('');
+  const baseURL = await question(rl, COLORS.yellow + '  请输入: ' + COLORS.reset);
   if (!baseURL.trim()) {
-    console.log('  Base URL 不能为空！');
+    printError('Base URL 不能为空！');
     rl.close();
     return null;
   }
-  console.log('');
+  println('');
 
   // 2. API 密钥
-  const apiKey = await question(rl, '【第2步】请输入 API 密钥: ');
+  printStepTitle(2, '输入 API 密钥');
+  printTip('您的 API Key，用于访问 AI 服务');
+  println('');
+  const apiKey = await question(rl, COLORS.yellow + '  请输入: ' + COLORS.reset);
   if (!apiKey.trim()) {
-    console.log('  密钥不能为空！');
+    printError('密钥不能为空！');
     rl.close();
     return null;
   }
-  console.log('');
+  println('');
 
   // 3. 模型名称
-  const model = await question(rl, '【第3步】请输入模型名称 (如 DeepSeek-V4-Flash): ');
+  printStepTitle(3, '输入模型名称');
+  printTip('例如: gpt-4o 或 DeepSeek-V4-Flash');
+  println('');
+  const model = await question(rl, COLORS.yellow + '  请输入: ' + COLORS.reset);
   if (!model.trim()) {
-    console.log('  模型名称不能为空！');
+    printError('模型名称不能为空！');
     rl.close();
     return null;
   }
-  console.log('');
+  println('');
 
   // 4. 工作区路径
-  const workspace = await question(rl, '【第4步】请输入工作区路径 (如 D:\\ 或 D:\\my-project\\): ');
+  printStepTitle(4, '输入工作区路径');
+  printTip('例如: D:\\ 或 D:\\my-project\\');
+  println('');
+  const workspace = await question(rl, COLORS.yellow + '  请输入: ' + COLORS.reset);
   const workspacePath = workspace.trim() || 'D:\\';
   // 确保路径以 \\ 结尾
   const normalizedWorkspace = workspacePath.endsWith('\\') || workspacePath.endsWith('/')
     ? workspacePath
     : workspacePath + '\\';
-  console.log(`  工作区: ${normalizedWorkspace}\n`);
+  printInfo(`工作区: ${normalizedWorkspace}`);
+  println('');
 
   // 5. 人设选择
   const personas = getAvailablePersonas();
@@ -244,23 +410,27 @@ async function runSetup() {
   };
 
   // 保存到 .env 文件
+  println('');
+  printDivider('─', 'cyan');
+  println('');
+  
   const saved = saveEnvConfig(config);
   if (saved) {
     // 应用人设
     if (selectedPersona) {
       if (applyPersona(selectedPersona)) {
-        console.log(`✅ 已应用人设: ${selectedPersona.firstLine}`);
+        printSuccess(`已应用人设: ${selectedPersona.firstLine}`);
       } else {
-        console.log('⚠️ 人设应用失败，将使用默认行为');
+        printWarning('人设应用失败，将使用默认行为');
       }
     } else {
-      console.log('ℹ️ 未选择人设，使用默认行为');
+      printInfo('未选择人设，使用默认行为');
     }
     
-    console.log('\n设置完成！重新运行程序即可开始使用。\n');
-    console.log('提示：如需修改配置，请编辑 .env 文件\n');
+    printCompleteBanner();
+    printTip('如需修改配置，请编辑 .env 文件');
   } else {
-    console.log('❌ 配置保存失败，请检查目录权限。\n');
+    printError('配置保存失败，请检查目录权限');
   }
 
   return saved ? config : null;
