@@ -6,12 +6,106 @@
  */
 
 import { 
+  parseArgs,
+  parseToolCall,
+  parseAllToolCalls,
   formatToolResult,
   TOOL_OUTPUT_LIMITS,
   STATE 
 } from '../src/agent/Agent.js';
 
 describe('Agent.js', () => {
+  describe('parseArgs', () => {
+    test('应该正确解析 JSON 格式参数', () => {
+      const result = parseArgs('{"path": "test.txt", "content": "hello"}');
+      expect(result.isJson).toBe(true);
+      expect(result.data.path).toBe('test.txt');
+      expect(result.data.content).toBe('hello');
+    });
+    
+    test('应该正确解析带引号的参数（内容包含逗号）', () => {
+      const result = parseArgs('"test.txt", "hello, world, test"');
+      expect(result).toEqual(['test.txt', 'hello, world, test']);
+    });
+    
+    test('应该正确解析简单逗号分隔参数', () => {
+      const result = parseArgs('arg1, arg2, arg3');
+      expect(result).toEqual(['arg1', 'arg2', 'arg3']);
+    });
+    
+    test('应该正确解析带引号的简单参数', () => {
+      const result = parseArgs('"path/to/file", "content"');
+      expect(result).toEqual(['path/to/file', 'content']);
+    });
+    
+    test('应该处理空参数', () => {
+      const result = parseArgs('');
+      expect(result).toEqual([]);
+    });
+    
+    test('应该处理单个参数', () => {
+      const result = parseArgs('singleArg');
+      expect(result).toEqual(['singleArg']);
+    });
+    
+    test('应该处理单引号包裹的参数', () => {
+      const result = parseArgs("'path', 'content'");
+      expect(result).toEqual(['path', 'content']);
+    });
+    
+    test('应该处理混合引号的参数', () => {
+      const result = parseArgs('"path", \'content\'');
+      expect(result).toEqual(['path', 'content']);
+    });
+  });
+  
+  describe('parseToolCall', () => {
+    test('应该正确解析工具调用', () => {
+      const result = parseToolCall('[TOOL] create("test.txt", "hello") [/TOOL]');
+      expect(result.tool).toBe('create');
+      expect(result.args).toEqual(['test.txt', 'hello']);
+    });
+    
+    test('应该正确解析带 JSON 参数的工具调用', () => {
+      const result = parseToolCall('[TOOL] create({"path": "test.txt", "content": "hello"}) [/TOOL]');
+      expect(result.tool).toBe('create');
+      expect(result.args.isJson).toBe(true);
+      expect(result.args.data.path).toBe('test.txt');
+    });
+    
+    test('应该正确解析多行参数', () => {
+      const result = parseToolCall('[TOOL] create("test.txt", "line1\nline2\nline3") [/TOOL]');
+      expect(result.tool).toBe('create');
+      expect(result.args[1]).toBe('line1\nline2\nline3');
+    });
+    
+    test('应该返回 null 对于无效格式', () => {
+      const result = parseToolCall('invalid format');
+      expect(result).toBeNull();
+    });
+    
+    test('应该正确解析无参数的工具调用', () => {
+      const result = parseToolCall('[TOOL] ls() [/TOOL]');
+      expect(result.tool).toBe('ls');
+      expect(result.args).toEqual([]);
+    });
+  });
+  
+  describe('parseAllToolCalls', () => {
+    test('应该解析多个工具调用', () => {
+      const text = '[TOOL] ls(".") [/TOOL] some text [TOOL] read("file.txt") [/TOOL]';
+      const result = parseAllToolCalls(text);
+      expect(result.length).toBe(2);
+      expect(result[0].tool).toBe('ls');
+      expect(result[1].tool).toBe('read');
+    });
+    
+    test('应该返回空数组对于无工具调用的文本', () => {
+      const result = parseAllToolCalls('just some text');
+      expect(result).toEqual([]);
+    });
+  });
+  
   describe('TOOL_OUTPUT_LIMITS', () => {
     test('应该包含所有预期工具的限制', () => {
       expect(TOOL_OUTPUT_LIMITS).toHaveProperty('ls');

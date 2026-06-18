@@ -175,6 +175,54 @@ async function cleanupTmpFile(tmpPath) {
 }
 
 /**
+ * 检测代码是否包含 GUI 阻塞调用
+ * @param {string} code Python 代码
+ * @returns {boolean} 是否包含 GUI 阻塞调用
+ */
+function hasGuiBlockingCall(code) {
+  const guiPatterns = [
+    /\.mainloop\s*\(/,      // tkinter: root.mainloop()
+    /\.show\s*\(/,          // PyQt: widget.show()
+    /app\.exec\s*\(/,       // PyQt: app.exec()
+    /plt\.show\s*\(/,       // matplotlib: plt.show()
+    /turtle\.mainloop/,     // turtle: turtle.mainloop()
+    /\.wait_window\s*\(/,   // tkinter: wait_window
+  ];
+  
+  return guiPatterns.some(pattern => pattern.test(code));
+}
+
+/**
+ * 为 GUI 代码注入超时退出机制
+ * @param {string} code Python 代码
+ * @returns {string} 处理后的代码
+ */
+function injectGuiTimeout(code) {
+  // 检测使用的 GUI 库类型
+  const guiWrapper = `
+import sys
+import threading
+
+# GUI 超时退出机制（由 CogitoAgent 注入）
+def _gui_timeout_exit(delay=10):
+    """延迟后自动关闭 GUI"""
+    import time
+    time.sleep(delay)
+    print("\\n[提示] GUI 窂口将在 10 秒后自动关闭...")
+    sys.exit(0)
+
+# 启动超时线程
+_timeout_thread = threading.Thread(target=_gui_timeout_exit, daemon=True)
+_timeout_thread.start()
+
+# 用户原始代码
+${code}
+`;
+  
+  return guiWrapper;
+}
+
+/**
  * 执行 Python 代码
  * 使用安全的环境配置，限制网络和系统访问
  */
@@ -189,9 +237,18 @@ async function runPython(code) {
 
     let tmpPath = null;
     try {
+      // 检测 GUI 阻塞调用并注入超时机制
+      let processedCode = code;
+      const isGuiCode = hasGuiBlockingCall(code);
+      
+      if (isGuiCode) {
+        processedCode = injectGuiTimeout(code);
+        console.log('[提示] 检测到 GUI 程序，已注入超时退出机制');
+      }
+      
       // 使用安全的临时文件路径
       tmpPath = generateSecureTmpPath('py');
-      await writeSecureTmpFile(tmpPath, code);
+      await writeSecureTmpFile(tmpPath, processedCode);
 
       // 安全环境配置：清理危险环境变量
       const secureEnv = {
@@ -243,6 +300,15 @@ async function runPython(code) {
         }
 
         let result = stdout || '执行完成，无输出';
+        
+        // GUI 程序特殊提示
+        if (isGuiCode) {
+          result = '🖼️ [GUI 程序已执行]\n' + 
+                   '提示：窗口将在 10 秒后自动关闭\n' +
+                   '如果窗口未显示，可能是因为当前环境不支持图形界面\n\n' + 
+                   (stdout ? '[程序输出]:\n' + stdout : '');
+        }
+        
         if (stderr) {
           result += '\n[错误输出]: ' + stderr;
         }
