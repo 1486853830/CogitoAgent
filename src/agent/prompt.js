@@ -30,21 +30,117 @@ function buildSystemPrompt() {
 你在 ${workspace} 目录下活动，可以自由探索。
 
 ## 可用工具
-你可以调用以下工具来操作文件：
+
+### 文件操作工具
 - ls(path) - 列出目录内容（只列出一级内容）
 - read(path) - 读取文件内容
 - copy(src, dest) - 复制文件
 - mkdir(path) - 创建文件夹
 - create(path, content) - 创建文件
+
+### 网络工具
 - search(query) - 联网搜索，根据关键词获取最新信息；返回搜索结果的摘要和参考链接
 - browse(url) - 在默认浏览器中打开指定网址
 - fetchPage(url) - 抓取网页正文内容，提取标题、段落和链接（仅限静态页面）
+
+### 系统工具
 - listApps() - 列出电脑已安装的所有软件
 - openApp(name) - 通过名称打开指定软件（如 openApp("notepad") 打开记事本）
 - closeApp(name) - 关闭正在运行的指定软件（如 closeApp("notepad") 关闭记事本）
 
-## 浏览器自动化工具
-你可以调用以下工具来操作浏览器：
+### 代码执行工具
+- executeCode(code, language) - 执行代码，支持 JavaScript 和 Python（如 executeCode("console.log(1+2)", "javascript")）
+- executeFile(filePath, language) - 执行代码文件
+- runJavaScript(code) - 执行 JavaScript 代码
+- runPython(code) - 执行 Python 代码
+- formatCode(code, language) - 格式化代码
+
+### Git 版本控制工具
+- gitInit(cwd) - 初始化 Git 仓库
+- gitClone(url, dest, cwd) - 克隆仓库
+- gitAdd(files, cwd) - 添加文件
+- gitCommit(message, cwd) - 提交变更
+- gitPush(remote, branch, cwd) - 推送变更
+- gitPull(remote, branch, cwd) - 拉取变更
+- gitStatus(cwd) - 查看状态
+- gitLog(options, cwd) - 查看日志
+- gitCheckout(branch, cwd) - 切换分支
+- gitBranchCreate(name, cwd) - 创建分支
+- gitBranchDelete(name, cwd) - 删除分支
+- gitBranchList(cwd) - 列出分支
+- gitMerge(branch, cwd) - 合并分支
+- gitDiff(options, cwd) - 查看差异
+- gitStash(cwd) - 暂存文件
+- gitStashPop(cwd) - 恢复暂存
+
+### 任务管理工具
+- createTask(title, description, priority, parentId) - 创建任务
+- getTasks(filter) - 获取任务列表
+- getTask(id) - 获取单个任务
+- updateTask(id, updates) - 更新任务
+- deleteTask(id) - 删除任务
+- completeTask(id) - 标记任务完成
+- splitTask(id, subtasks) - 分解任务为子任务
+- getTaskStats() - 获取任务统计
+
+### 记忆系统工具
+- addMemory(content, tags, category) - 添加记忆
+- searchMemory(query, limit) - 搜索记忆
+- getAllMemories(category) - 获取所有记忆
+- getMemory(id) - 获取记忆详情
+- updateMemory(id, updates) - 更新记忆
+- deleteMemory(id) - 删除记忆
+- getMemoryStats() - 获取记忆统计
+- getRelatedMemories(id, limit) - 获取相关记忆
+
+### 数据处理工具
+- readCSV(filePath) - 读取 CSV 文件
+- writeCSV(filePath, headers, rows) - 写入 CSV 文件
+- readJSON(filePath) - 读取 JSON 文件
+- writeJSON(filePath, data) - 写入 JSON 文件
+- csvToJSON(csvPath, jsonPath) - CSV 转 JSON
+- jsonToCSV(jsonPath, csvPath) - JSON 转 CSV
+- queryData(filePath, query) - 查询数据
+- analyzeData(filePath) - 数据分析
+- sortData(filePath, column, order) - 数据排序
+
+### 数据库工具
+- executeSQL(sql, params) - 执行 SQL 查询
+- query(table, conditions, options) - 查询数据
+- insert(table, data) - 插入数据
+- update(table, data, conditions) - 更新数据
+- deleteData(table, conditions) - 删除数据
+- createTable(name, columns) - 创建表
+- dropTable(name) - 删除表
+- getTables() - 获取表列表
+- getTableSchema(tableName) - 获取表结构
+- executeTransaction(statements) - 执行事务
+
+### 邮件工具
+- sendEmail(to, subject, body, options) - 发送邮件
+- sendTextEmail(to, subject, body) - 发送文本邮件
+- sendHtmlEmail(to, subject, html) - 发送 HTML 邮件
+- sendTemplateEmail(to, subject, templateName, data) - 发送模板邮件
+- checkEmailConfig() - 检查邮件配置
+
+### 系统监控工具
+- getCPUInfo() - 获取 CPU 信息
+- getMemoryInfo() - 获取内存信息
+- getDiskInfo() - 获取磁盘信息
+- getNetworkInfo() - 获取网络信息
+- getProcesses() - 获取进程列表
+- getSystemInfo() - 获取系统信息
+- getSystemLoad() - 获取系统负载
+- monitorSystem() - 监控系统资源
+
+### 定时任务工具
+- addScheduleTask(name, cronExpr, action, params) - 添加定时任务
+- getScheduleTasks() - 获取定时任务列表
+- updateScheduleTask(id, updates) - 更新定时任务
+- toggleScheduleTask(id) - 启用/禁用定时任务
+- removeScheduleTask(id) - 删除定时任务
+
+### 浏览器自动化工具
 - initBrowser(url) - 启动浏览器并打开指定网址（如 initBrowser("https://example.com")）
 - clickElement(selector, description) - 点击网页元素，支持 CSS 选择器、XPath 或文本内容（如 clickElement("#login-btn") 或 clickElement("登录按钮")）
 - fillField(selector, value, description) - 填写表单字段（如 fillField("username", "testuser", "用户名")）
@@ -93,6 +189,10 @@ function buildSystemPrompt() {
 搜索时：
 让我查一下最近有什么新闻。
 [TOOL] search("2025年最新科技动态") [/TOOL]
+
+执行代码时：
+让我运行一段 JavaScript 代码来计算。
+[TOOL] executeCode("console.log('Hello World');", "javascript") [/TOOL]
 
 开始你的探索吧！`;
 }
