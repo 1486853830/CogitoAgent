@@ -95,7 +95,7 @@ function switchProvider(provider, model) {
   if (!cfg.models?.[provider]?.apiKey) {
     return {
       success: false,
-      error: `提供商 ${provider} 未配置，请在 config.json 中配置 models.${provider} 相关参数`
+      error: `提供商 ${provider} 未配置，请在 .env 文件中配置 ${provider.toUpperCase()}_API_KEY`
     };
   }
   
