@@ -18,6 +18,7 @@ async function loadTasks() {
       nextId = loaded.nextId || 1;
     }
   } catch (e) {
+    console.error(`[任务] 加载失败: ${e.message}`);
     tasks = [];
     nextId = 1;
   }
@@ -25,16 +26,22 @@ async function loadTasks() {
 
 /**
  * 保存任务列表
+ * @returns {Promise<boolean>} 保存是否成功
+ * @throws 当保存失败时抛出错误
  */
 async function saveTasks() {
+  const dir = path.dirname(TASKS_FILE);
   try {
-    const dir = path.dirname(TASKS_FILE);
     if (!(await fs.access(dir).then(() => true).catch(() => false))) {
       await fs.mkdir(dir, { recursive: true });
     }
     await fs.writeFile(TASKS_FILE, JSON.stringify({ tasks, nextId }, null, 2), 'utf-8');
+    return true;
   } catch (e) {
-    console.error(`[任务] 保存失败: ${e.message}`);
+    const error = new Error(`[任务] 保存失败: ${e.message}`);
+    error.code = 'TASK_SAVE_FAILED';
+    console.error(error.message);
+    throw error;
   }
 }
 

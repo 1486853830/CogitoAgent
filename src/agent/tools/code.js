@@ -1,6 +1,5 @@
 import { execFile, exec } from 'child_process';
 import vm from 'vm';
-import { NodeVM } from 'vm2';
 import fs from 'fs/promises';
 import fsSync from 'fs';
 import path from 'path';
@@ -48,12 +47,55 @@ async function writeSecureTmpFile(filePath, content) {
 }
 
 /**
+ * 创建 JavaScript 沙箱环境
+ */
+function createSandbox() {
+  const sandbox = {
+    console: {
+      log: (...args) => {
+        console.log(args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+        ).join(' '));
+      },
+      error: (...args) => {
+        console.error(args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+        ).join(' '));
+      },
+      warn: (...args) => {
+        console.warn(args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+        ).join(' '));
+      },
+      info: (...args) => {
+        console.info(args.map(a =>
+          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+        ).join(' '));
+      }
+    },
+    setTimeout: undefined,
+    setInterval: undefined,
+    setImmediate: undefined,
+    process: undefined,
+    require: undefined,
+    __dirname: undefined,
+    __filename: undefined,
+    exports: undefined,
+    module: undefined,
+    global: undefined,
+    globalThis: undefined
+  };
+
+  return { sandbox, context: vm.createContext(sandbox) };
+}
+
+/**
  * 执行 JavaScript 代码
- * 使用 vm2.NodeVM 提供更安全的沙箱隔离
+ * 使用 Node.js 原生 vm 模块提供沙箱隔离
  */
 async function runJavaScript(code) {
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       resolve({
         success: false,
         error: '执行超时（超过30秒）'
@@ -61,98 +103,51 @@ async function runJavaScript(code) {
     }, MAX_EXECUTION_TIME);
 
     try {
-      // 用于捕获 console 输出
-      let output = '';
-      let errors = '';
+      const { context } = createSandbox();
 
-      // 创建 vm2 沙箱环境
-      const sandbox = {
-        console: {
-          log: (...args) => {
-            output += args.map(a => 
-              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-            ).join(' ') + '\n';
-          },
-          error: (...args) => {
-            errors += args.map(a => 
-              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-            ).join(' ') + '\n';
-          }
-        },
-        setTimeout: undefined,
-        setInterval: undefined,
-        setImmediate: undefined,
-        process: undefined,
-        require: undefined,
-        __result: null
-      };
-
-      const vm2 = new NodeVM({
-        timeout: MAX_EXECUTION_TIME,
-        sandbox: sandbox,
-        eval: false,
-        require: {
-          external: false,
-          builtin: []
-        },
-        wrapper: 'none',
-        strict: true
-      });
-
-      // 执行代码
       const wrappedCode = `
         (function() {
-          var __result = null;
           try {
-            __result = (function() {
-              ${code}
-            })();
-            return { success: true, result: __result };
+            return { success: true, result: (function() { ${code} })() };
           } catch (e) {
             return { success: false, error: e.message };
           }
         })()
       `;
 
-      const result = vm2.run(wrappedCode);
-      
-      clearTimeout(timeout);
-
-      let finalOutput = '';
-      
-      // 添加 console.log 输出
-      if (output) {
-        finalOutput += '[标准输出]:\n' + output;
-      }
-      
-      // 添加 console.error 输出
-      if (errors) {
-        finalOutput += '\n[错误输出]:\n' + errors;
-      }
-      
-      if (result.success) {
-        if (result.result !== undefined) {
-          let returnValue = typeof result.result === 'object' 
-            ? JSON.stringify(result.result, null, 2) 
-            : String(result.result);
-          finalOutput += '[返回值]: ' + returnValue;
-        } else if (!finalOutput) {
-          finalOutput = '执行完成，无输出';
-        }
-      } else {
-        finalOutput += '[执行错误]: ' + result.error;
-      }
-
-      if (finalOutput.length > MAX_OUTPUT_SIZE) {
-        finalOutput = finalOutput.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
-      }
-
-      resolve({
-        success: true,
-        data: finalOutput
+      const result = vm.runInContext(wrappedCode, context, {
+        timeout: MAX_EXECUTION_TIME,
+        displayErrors: true
       });
+
+      clearTimeout(timeoutId);
+
+      if (result.success) {
+        let output;
+        if (result.result === undefined) {
+          output = '执行完成，无返回值';
+        } else if (typeof result.result === 'object') {
+          output = JSON.stringify(result.result, null, 2);
+        } else {
+          output = String(result.result);
+        }
+
+        if (output.length > MAX_OUTPUT_SIZE) {
+          output = output.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
+        }
+
+        resolve({
+          success: true,
+          data: output
+        });
+      } else {
+        resolve({
+          success: false,
+          error: `执行失败: ${result.error}`
+        });
+      }
     } catch (e) {
-      clearTimeout(timeout);
+      clearTimeout(timeoutId);
       resolve({
         success: false,
         error: `执行失败: ${e.message}`
@@ -228,14 +223,18 @@ ${code}
  */
 async function runPython(code) {
   return new Promise(async (resolve) => {
-    const timeout = setTimeout(() => {
+    let tmpPath = null;
+    let timedOut = false;
+
+    const timeoutId = setTimeout(async () => {
+      timedOut = true;
+      await cleanupTmpFile(tmpPath);  // 超时时也清理临时文件
       resolve({
         success: false,
         error: '执行超时（超过30秒）'
       });
     }, MAX_EXECUTION_TIME);
 
-    let tmpPath = null;
     try {
       // 检测 GUI 阻塞调用并注入超时机制
       let processedCode = code;
@@ -287,7 +286,9 @@ async function runPython(code) {
         gid: process.getgid ? process.getgid() : undefined,
         uid: process.getuid ? process.getuid() : undefined
       }, async (error, stdout, stderr) => {
-        clearTimeout(timeout);
+        if (timedOut) return;  // 如果已经超时，忽略回调
+
+        clearTimeout(timeoutId);
         
         await cleanupTmpFile(tmpPath);
 

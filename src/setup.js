@@ -5,6 +5,7 @@
 import readline from 'readline';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { DEFAULT_CONFIG, loadEnvConfig } from './config.js';
 
@@ -374,14 +375,14 @@ async function runSetup() {
 
   // 4. 工作区路径
   printStepTitle(4, '输入工作区路径');
-  printTip('例如: D:\\ 或 D:\\my-project\\');
+  printTip(`例如: ${os.homedir()} 或 /home/user/projects`);
   println('');
   const workspace = await question(rl, COLORS.yellow + '  请输入: ' + COLORS.reset);
-  const workspacePath = workspace.trim() || 'D:\\';
-  // 确保路径以 \\ 结尾
-  const normalizedWorkspace = workspacePath.endsWith('\\') || workspacePath.endsWith('/')
+  const workspacePath = workspace.trim() || os.homedir();
+  // 确保路径以分隔符结尾
+  const normalizedWorkspace = workspacePath.endsWith(path.sep) || workspacePath.endsWith('/')
     ? workspacePath
-    : workspacePath + '\\';
+    : workspacePath + path.sep;
   printInfo(`工作区: ${normalizedWorkspace}`);
   println('');
 

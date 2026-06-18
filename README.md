@@ -6,6 +6,8 @@ CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管�
 
 不同于传统的聊天机器人，CogitoAgent 具备**持续思考**、**自主探索**、**工具执行**的能力，能够在后台主动发现和整理用户的本地文件资产，并可通过扩展工具集获得更多能力。
 
+![](show/main.png)
+
 ---
 
 ## 🎯 核心特性
@@ -14,9 +16,10 @@ CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管�
 |------|------|------|
 | **持续思考** | 每3秒自动触发思考，无需用户干预 | ✅ |
 | **本地运行** | 所有数据存储在本地，保护隐私 | ✅ |
+| **跨平台支持** | 支持 Windows、Linux、macOS | ✅ |
 | **多模型支持** | 支持 OpenAI、Moark、Anthropic、Google | ✅ |
 | **丰富工具集** | 12+ 工具模块，235+ 工具函数 | ✅ |
-| **记忆系统** | 长期记忆存储与智能检索 | ✅ |
+| **记忆系统** | 期记忆存储与智能检索 | ✅ |
 | **任务管理** | 任务创建、分解、追踪与统计 | ✅ |
 | **代码执行** | 支持 JavaScript 和 Python（沙箱安全执行） | ✅ |
 | **Git 集成** | 完整的版本控制操作 | ✅ |
@@ -24,7 +27,7 @@ CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管�
 | **动态工具注册** | 灵活的插件式工具系统 | ✅ |
 | **危险操作确认** | 关键操作需要用户确认 | ✅ |
 | **环境变量管理** | 支持 .env 配置敏感信息 | ✅ |
-| **完整测试覆盖** | 43+ 单元测试和集成测试 | ✅ |
+| **完整测试覆盖** | 79+ 单元测试和集成测试 | ✅ |
 
 ---
 
@@ -57,7 +60,7 @@ npm start
 1. **API Base URL** - 支持 OpenAI 兼容的第三方 API
 2. **API Key** - 您的 API 密钥
 3. **模型名称** - 如 gpt-4o、claude-3-sonnet 等
-4. **工作区路径** - AI 可以访问的目录
+4. **工作区路径** - AI 可以访问的目录（默认为用户主目录）
 5. **人设选择** - 选择预设的 AI 人设
 
 ### 日常使用
@@ -88,6 +91,7 @@ CogitoAgent/
 │   │       ├── web.js                # 网页相关工具
 │   │       ├── system.js             # 系统操作工具
 │   │       ├── code.js               # 代码执行引擎
+│   │       ├── sandbox.js            # 沙箱安全执行
 │   │       ├── git.js                # Git 版本控制
 │   │       ├── task.js               # 任务管理系统
 │   │       ├── memory.js             # 记忆系统
@@ -102,10 +106,12 @@ CogitoAgent/
 │   │   ├── webSearch.js              # 联网搜索模块
 │   │   └── models.js                 # 多模型支持
 │   ├── io/                           # 输入输出模块
-│   │   └── terminal.js               # 终端 UI 与彩色输出
+│   │   ├── terminal.js               # 终端 UI 与彩色输出
+│   │   └── logger.js                 # 日志管理
 │   ├── config.js                     # 配置管理
 │   └── setup.js                      # 首次运行引导
 ├── personas/                         # 预设人设包（13种）
+├── tests/                            # 测试文件目录
 ├── data/                             # 数据存储目录
 │   ├── conversation.json             # 对话历史持久化
 │   └── store/                        # 记忆/任务/定时任务存储
@@ -179,9 +185,10 @@ CogitoAgent/
 **安全特性：**
 - 代码执行超时限制（30秒）
 - 输出大小限制（100KB）
-- JavaScript 代码通过 vm2 沙箱执行，资源访问受限
+- JavaScript 代码通过 Node.js 原生 vm 模块沙箱执行，资源访问受限
 - Python 代码通过临时文件执行，防止命令注入
 - 沙箱环境禁止访问文件系统、网络等危险操作
+- 临时文件超时自动清理
 
 ### 6. Git 版本控制
 
@@ -227,7 +234,7 @@ CogitoAgent/
 | `getTaskStats()` | 无 | 获取任务统计信息 |
 
 **数据持久化：**
-- 任务存储在 `data/store/tasks.json`
+- 任务存储在 `data/tasks.json`
 - 支持子任务层级关系
 - 支持优先级排序（high/middle/low）
 
@@ -282,15 +289,6 @@ SQLite 数据库操作，支持 SQL 和 ORM 风格。
 | `getTables()` | 无 | 获取所有表列表 |
 | `getTableSchema(table)` | table: 表名 | 获取表结构信息 |
 
-**配置：**
-```json
-{
-  "database": {
-    "path": "./data/store/example_db.sqlite"
-  }
-}
-```
-
 ### 11. 邮件功能
 
 SMTP 邮件发送，支持多种格式。
@@ -302,21 +300,6 @@ SMTP 邮件发送，支持多种格式。
 | `sendHtmlEmail(to, subject, html)` | to: 收件人, subject: 主题, html: HTML内容 | 发送 HTML 邮件 |
 | `sendTemplateEmail(to, subject, template, data)` | to: 收件人, subject: 主题, template: 模板, data: 数据 | 发送模板邮件 |
 | `checkEmailConfig()` | 无 | 检查邮件配置是否有效 |
-
-**配置：**
-```json
-{
-  "email": {
-    "host": "smtp.example.com",
-    "port": 587,
-    "secure": false,
-    "auth": {
-      "user": "your-email@example.com",
-      "pass": "your-password"
-    }
-  }
-}
-```
 
 ### 12. 系统监控
 
@@ -345,77 +328,9 @@ Cron 风格定时任务调度。
 | `toggleScheduleTask(id)` | id: 任务ID | 启用/禁用定时任务 |
 | `removeScheduleTask(id)` | id: 任务ID | 删除定时任务 |
 
-**Cron 表达式示例：**
-- `* * * * *` - 每分钟执行
-- `0 * * * *` - 每小时执行
-- `0 0 * * *` - 每天凌晨执行
-- `0 0 * * 1` - 每周一执行
-
 ---
 
 ## 🏗️ 架构设计
-
-```mermaid
-graph TD
-    classDef core fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
-    classDef tools fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#e65100
-    classDef io fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c
-    classDef api fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray: 5 5,color:#1b5e20
-    classDef security fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#c62828
-
-    subgraph Core ["Agent Core"]
-        StateMachine["State Machine<br/>THINKING / AWAITING_INPUT"]:::core
-        ThinkLoop["Think Loop<br/>每3秒触发"]:::core
-        PromptMgr["Prompt Manager<br/>历史压缩管理"]:::core
-        ToolRegistry["Dynamic Tool Registry<br/>动态工具注册"]:::core
-    end
-
-    subgraph Tools ["Tools (12+ Modules)"]
-        FileTools["File Tools"]:::tools
-        WebTools["Web Tools"]:::tools
-        BrowserTools["Browser Automation"]:::tools
-        SystemTools["System Tools"]:::tools
-        CodeTools["Code Execution<br/>沙箱安全"]:::tools
-        GitTools["Git Integration"]:::tools
-        TaskTools["Task Management"]:::tools
-        MemoryTools["Memory System"]:::tools
-        DataTools["Data Processing"]:::tools
-        DbTools["Database"]:::tools
-        EmailTools["Email"]:::tools
-        MonitorTools["System Monitor"]:::tools
-        SchedulerTools["Scheduler"]:::tools
-    end
-
-    subgraph Security ["安全层"]
-        Sandbox["Code Sandbox<br/>vm2 隔离执行"]:::security
-        EnvManager["Environment Variables<br/>.env 配置管理"]:::security
-        ConfirmGate["Dangerous Operation<br/>危险操作确认"]:::security
-    end
-
-    subgraph IO ["I/O Layer"]
-        Terminal["Terminal UI<br/>彩色输出"]:::io
-        UserInput["User Input<br/>ENTER打断"]:::io
-    end
-
-    subgraph API ["API Layer"]
-        Client["Multi-Model Client<br/>OpenAI/Moark/Anthropic/Google"]:::api
-        WebSearch["Web Search<br/>联网搜索"]:::api
-    end
-
-    UserInput --> StateMachine
-    StateMachine --> ThinkLoop
-    ThinkLoop --> ToolRegistry
-    ToolRegistry --> Tools
-    Tools --> Sandbox
-    Sandbox --> Terminal
-    ToolRegistry --> ConfirmGate
-    ConfirmGate --> Terminal
-    PromptMgr --> Client
-    Client --> Tools
-    WebSearch --> Client
-    EnvManager -.-> Client
-    EnvManager -.-> Tools
-```
 
 ### 核心组件说明
 
@@ -426,7 +341,7 @@ graph TD
 | **PromptMgr** | 上下文管理 | 管理对话历史，自动压缩超过150轮的对话 |
 | **Multi-Model Client** | API 客户端 | 支持多提供商切换，统一接口 |
 | **ToolRegistry** | 动态工具注册 | 替代传统 switch-case，灵活的插件式架构 |
-| **Sandbox** | 代码沙箱 | vm2 隔离执行 JavaScript，限制资源访问 |
+| **Sandbox** | 代码沙箱 | Node.js 原生 vm 模块隔离执行 JavaScript，限制资源访问 |
 | **EnvManager** | 环境变量管理 | 通过 .env 文件管理敏感配置 |
 | **ConfirmGate** | 危险操作确认 | git push、代码执行等高风险操作需用户确认 |
 
@@ -466,30 +381,6 @@ AI：好的，已添加到记忆中。
 [TOOL] addMemory("会议时间：下周一上午9点", ["会议", "时间"], {"date": "2024-01-15"}) [/TOOL]
 ```
 
-### 5. 数据处理
-```
-用户：帮我分析这个 CSV 文件中的销售数据
-AI：好的，我来读取并分析。
-[TOOL] readCSV("./sales.csv") [/TOOL]
-[TOOL] analyzeData(data) [/TOOL]
-分析结果：总销售额 125000，平均订单金额 250，最高销售额月份：12月
-```
-
-### 6. 系统监控
-```
-用户：检查一下我的系统资源使用情况
-AI：好的，我来监控系统资源。
-[TOOL] monitorSystem() [/TOOL]
-CPU使用率：23%，内存使用率：67%，磁盘使用率：45%
-```
-
-### 7. 自动化任务
-```
-用户：每天早上8点发送邮件提醒
-AI：好的，我来设置定时任务。
-[TOOL] addScheduleTask("每日提醒", "0 8 * * *", "sendEmail('me@example.com', '每日提醒', '早上好！')") [/TOOL]
-```
-
 ---
 
 ## ⚙️ 配置说明
@@ -507,23 +398,15 @@ AI：好的，我来设置定时任务。
   "persona": "explorer",
   "thinkingInterval": 3000,
   "database": {
-    "path": "./data/store/example_db.sqlite"
+    "path": "./data/example.db"
   },
   "email": {
-    "host": "smtp.example.com",
-    "port": 587,
-    "secure": false,
-    "auth": {
-      "user": "your-email@example.com",
-      "pass": "your-password"
-    }
+    "smtpHost": "smtp.example.com",
+    "smtpPort": 587
   },
   "code": {
-    "timeout": 30000,
+    "maxExecutionTime": 30000,
     "maxOutputSize": 100000
-  },
-  "models": {
-    "providers": ["openai", "moark", "anthropic", "google"]
   }
 }
 ```
@@ -534,33 +417,17 @@ AI：好的，我来设置定时任务。
 
 ```bash
 # .env 文件示例
-API_KEY=your-api-key-here
-API_BASE_URL=https://api.openai.com/v1
-DATABASE_PATH=./data/store/example_db.sqlite
-EMAIL_HOST=smtp.example.com
-EMAIL_USER=your-email@example.com
-EMAIL_PASS=your-email-password
+COGITO_API_KEY=your-api-key-here
+COGITO_API_BASE_URL=https://api.openai.com/v1
+COGITO_MODEL=gpt-4o
+COGITO_WORKSPACE=/home/user/projects
+COGITO_EMAIL_PASSWORD=your-email-password
 ```
 
 **优势：**
 - 敏感信息与代码分离，提高安全性
 - 避免配置文件中的明文密码
 - 支持多环境配置切换
-
-### 配置项说明
-
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `api.baseUrl` | string | - | API 服务地址 |
-| `api.apiKey` | string | - | API 密钥 |
-| `api.model` | string | - | 模型名称 |
-| `workspace` | string | "./" | 工作区路径 |
-| `persona` | string | "explorer" | 人设名称 |
-| `thinkingInterval` | number | 3000 | 思考间隔（毫秒） |
-| `database.path` | string | - | SQLite 数据库路径 |
-| `email.*` | object | - | SMTP 邮件配置 |
-| `code.timeout` | number | 30000 | 代码执行超时（毫秒） |
-| `code.maxOutputSize` | number | 100000 | 最大输出大小 |
 
 ---
 
@@ -580,7 +447,7 @@ CogitoAgent 提供 13 种预设人设，可根据不同场景选择：
 | **wujiang** | 武将 | 决策果断、执行力强 |
 | **yingwei** | 英伟 | 领导者、战略规划 |
 | **zhanshi** | 战士 | 解决问题、克服困难 |
-| **moushi** | 谋士 | 策略分析、规划 |
+| **moushi** | 谋士 | 略分析、规划 |
 | **jianguan** | 监管 | 质量把控、流程管理 |
 | **xiake** | 侠客 | 自由探索、不拘一格 |
 
@@ -607,8 +474,9 @@ npm test -- --coverage
 
 | 测试模块 | 测试用例数 | 覆盖内容 |
 |---------|-----------|---------|
-| **配置管理** | 8 | 环境变量解析、配置合并、默认值处理 |
-| **参数解析** | 5 | JSON 解析、参数验证、错误处理 |
+| **Agent** | 27 | 参数解析、工具调用、状态管理 |
+| **配置管理** | 12 | 环境变量解析、配置合并、默认值处理 |
+| **参数解析** | 10 | JSON 解析、参数验证、错误处理 |
 | **Git 操作** | 20 | 仓库操作、文件操作、安全参数传递 |
 | **文件存储** | 10 | 读写操作、目录管理、错误处理 |
 
@@ -618,13 +486,6 @@ npm test -- --coverage
 - ✅ **ES Module 支持** - 原生 ESM 测试环境
 - ✅ **Mock 支持** - 完整的函数和模块模拟能力
 - ✅ **覆盖率报告** - 详细的代码覆盖率分析
-
-### 测试原则
-
-1. **单元测试** - 每个工具函数独立测试
-2. **集成测试** - 工具间交互测试
-3. **边界测试** - 异常情况处理测试
-4. **安全测试** - 命令注入等安全漏洞测试
 
 ---
 
@@ -652,40 +513,31 @@ npm test -- --coverage
 - 所有测试必须通过：`npm test`
 - 参考现有测试文件的编写风格
 
-### 工具开发
-
-如需开发新工具，请参考 `src/agent/tools/TOOL_DEVELOPMENT.md`。
-
 ---
 
 ## 📝 更新日志
 
-### v2.1.0 (2024-01-XX)
-
-**架构优化：**
-- ✅ 实现动态工具注册系统，替代传统 switch-case 模式
-- ✅ 引入统一文件存储抽象（FileStorage 类），消除代码冗余
-- ✅ 改进对话历史压缩策略，保留更多上下文信息
+### v2.1.0 (2025-06)
 
 **安全增强：**
-- ✅ 实现 JavaScript 代码执行沙箱（基于 vm2）
-- ✅ 添加危险操作确认机制（git push、代码执行等）
-- ✅ 完善环境变量管理，支持 .env 文件配置敏感信息
-- ✅ 修复 SQL.js WebAssembly 本地文件加载问题
-- ✅ 修复 Git 命令参数传递安全性
-- ✅ 修复 Python 代码执行命令注入风险
+- ✅ 移除 vm2 依赖（存在已知沙箱逃逸漏洞）
+- ✅ 改用 Node.js 原生 vm 模块执行 JavaScript
+- ✅ 修复 config.js loadEnvConfig 属性覆盖 bug
+- ✅ 临时文件超时自动清理
+- ✅ 错误处理不再静默吞掉，保存失败时抛出错误
+
+**跨平台支持：**
+- ✅ 工作区路径默认使用用户主目录（`os.homedir()`）
+- ✅ 移除硬编码 Windows 路径
 
 **稳定性改进：**
-- ✅ 添加记忆系统参数验证，防止类型错误
-- ✅ 完善错误处理和日志记录
-- ✅ 优化数据库连接管理
+- ✅ 添加退出清理回调机制
+- ✅ 修正依赖版本号
 
 **测试覆盖：**
-- ✅ 建立完整的 Jest 测试框架
-- ✅ 添加 43+ 测试用例，覆盖核心功能
-- ✅ 测试覆盖配置管理、Git 操作、文件存储等模块
+- ✅ 测试用例增至 79+
 
-### v2.0.0 (2024-01-XX)
+### v2.0.0 (2024-01)
 
 **新增功能：**
 - ✅ 代码执行引擎（JavaScript/Python）
@@ -699,22 +551,12 @@ npm test -- --coverage
 - ✅ 定时任务调度
 - ✅ 多模型支持
 
-**安全修复：**
-- ✅ 修复 Python 代码执行命令注入风险
-- ✅ 修复 Git 提交信息命令注入风险
-- ✅ 修复变量未定义使用问题
-
 ---
 
 ## 🐛 已知问题
 
 - [ ] 工具 `downloadFile` 会把目标文件下载到临时目录
 - [ ] AI 回复会早于工具调用提示
-
-> ⚠️ 其他已知问题已在 v2.1.0 中修复，包括：
-> - SQL.js WebAssembly 加载问题
-> - 记忆系统参数验证问题
-> - 代码执行安全性问题
 
 ---
 
@@ -728,7 +570,6 @@ npm test -- --coverage
 
 如有任何问题、需求或 Bug 反馈，请通过以下方式联系我们：
 
-- **GitHub**: https://github.com/cnt-code/cogito-agent
 - **Gitee**: https://gitee.com/cnt-code/cogito-agent
 - **Issues**: https://gitee.com/cnt-code/cogito-agent/issues
 

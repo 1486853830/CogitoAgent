@@ -3,9 +3,11 @@
  */
 
 import readline from 'readline';
+import process from 'process';
 
 let rl = null;
 let userInputCallback = null;
+let cleanupCallback = null;  // 清理回调
 
 // ANSI 颜色代码
 const COLORS = {
@@ -201,11 +203,34 @@ function waitForConfirm(question) {
 /**
  * 退出
  */
-function exit() {
+async function exit() {
+  console.log('\n正在清理资源...');
+
+  // 调用清理回调
+  if (cleanupCallback) {
+    try {
+      await cleanupCallback();
+    } catch (e) {
+      console.error('清理失败:', e.message);
+    }
+  }
+
+  // 关闭 readline
   if (rl) {
     rl.close();
   }
-  process.exit(0);
+
+  // 延迟退出，确保日志输出
+  setTimeout(() => {
+    process.exit(0);
+  }, 100);
+}
+
+/**
+ * 注册清理回调
+ */
+function onCleanup(callback) {
+  cleanupCallback = callback;
 }
 
 /**
@@ -247,5 +272,6 @@ export {
   rainbow,
   waitForConfirm,
   exit,
+  onCleanup,
   COLORS
 };
