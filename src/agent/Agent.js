@@ -251,8 +251,13 @@ async function requestConfirmation(toolName, args) {
   });
 }
 
+/**
+ * 解析单个工具调用
+ * 支持更复杂的参数格式（包含括号、引号等）
+ */
 function parseToolCall(text) {
-  const fullMatch = text.match(/\[TOOL\]\s*(\w+)\s*\(([^)]*)\)\s*\[\/TOOL\]/);
+  // 改进的正则：匹配工具名和括号内的所有内容（包括嵌套括号）
+  const fullMatch = text.match(/\[TOOL\]\s*(\w+)\s*\(([\s\S]*?)\)\s*\[\/TOOL\]/);
   if (fullMatch) {
     const tool = fullMatch[1];
     const argsStr = fullMatch[2];
@@ -262,9 +267,14 @@ function parseToolCall(text) {
   return null;
 }
 
+/**
+ * 解析所有工具调用
+ * 支持多行参数和复杂格式
+ */
 function parseAllToolCalls(text) {
   const results = [];
-  const regex = /\[TOOL\]\s*(\w+)\s*\(([^)]*)\)\s*\[\/TOOL\]/g;
+  // 使用更宽松的正则，支持多行参数
+  const regex = /\[TOOL\]\s*(\w+)\s*\(([\s\S]*?)\)\s*\[\/TOOL\]/g;
   let match;
   while ((match = regex.exec(text)) !== null) {
     const tool = match[1];
@@ -276,10 +286,11 @@ function parseAllToolCalls(text) {
 }
 
 /**
- * 解析工具参数
- * 支持两种格式：
- * 1. 逗号分隔的简单参数：arg1, arg2, arg3
- * 2. JSON 格式参数：{"path": "file.txt", "content": "hello"}
+ * 解析工具参数（改进版）
+ * 支持多种格式：
+ * 1. JSON 格式：{"path": "file.txt", "content": "hello"}
+ * 2. 逗号分隔的简单参数：arg1, arg2, arg3
+ * 3. 多行内容（使用特殊分隔符）
  */
 function parseArgs(argsStr) {
   if (!argsStr || argsStr.trim() === '') {
@@ -292,15 +303,62 @@ function parseArgs(argsStr) {
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
     try {
       const jsonObj = JSON.parse(trimmed);
-      // 将 JSON 对象转换为参数数组（按工具定义的参数顺序）
-      // 这里返回对象，让 executeTool 处理
       return { isJson: true, data: jsonObj };
     } catch (e) {
-      // JSON 解析失败，继续用逗号分隔方式
+      // JSON 解析失败，继续用其他方式
     }
   }
 
-  // 逗号分隔方式（向后兼容）
+  // 尝试解析带引号的参数（支持内容中包含逗号）
+  // 格式："path", "content with commas, etc"
+  if (trimmed.includes('"') || trimmed.includes("'")) {
+    try {
+      // 使用更智能的分割方式：只在引号外的逗号处分割
+      const args = [];
+      let current = '';
+      let inQuote = false;
+      let quoteChar = '';
+      
+      for (let i = 0; i < trimmed.length; i++) {
+        const char = trimmed[i];
+        
+        if ((char === '"' || char === "'") && !inQuote) {
+          inQuote = true;
+          quoteChar = char;
+          current += char;
+        } else if (char === quoteChar && inQuote) {
+          inQuote = false;
+          quoteChar = '';
+          current += char;
+        } else if (char === ',' && !inQuote) {
+          // 引号外的逗号是分隔符
+          args.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      
+      // 添加最后一个参数
+      if (current.trim()) {
+        args.push(current.trim());
+      }
+      
+      // 处理引号包裹的参数
+      return args.map(arg => {
+        const p = arg.trim();
+        if ((p.startsWith('"') && p.endsWith('"')) ||
+            (p.startsWith("'") && p.endsWith("'"))) {
+          return p.slice(1, -1);
+        }
+        return p;
+      });
+    } catch (e) {
+      // 智能分割失败，回退到简单分割
+    }
+  }
+
+  // 简单逗号分隔（向后兼容）
   const result = [];
   const parts = trimmed.split(',');
   for (const part of parts) {
@@ -367,8 +425,15 @@ const TOOL_OUTPUT_LIMITS = {
 function formatToolResult(tool, data) {
   let result;
   
+  // 处理嵌套的 { success, data } 结构
+  if (data && typeof data === 'object' && 'data' in data) {
+    data = data.data;
+  }
+  
   if (tool === 'ls' && Array.isArray(data)) {
     result = formatLsResult(data);
+  } else if (typeof data === 'object') {
+    result = JSON.stringify(data, null, 2);
   } else {
     result = String(data);
   }
@@ -563,6 +628,27 @@ async function executeTool(toolName, args) {
 
   try {
     const result = await fn(...processedArgs);
+    
+    // 防御性检查：确保 result 是有效对象
+    if (result === undefined || result === null) {
+      return {
+        success: true,
+        data: '执行完成（无返回值）',
+        toolName,
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    // 如果工具已经返回了标准格式 { success, data/error }，直接使用
+    if (typeof result === 'object' && 'success' in result) {
+      return {
+        ...result,
+        toolName,
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    // 否则包装成标准格式
     return {
       success: true,
       data: result,
@@ -1002,6 +1088,8 @@ async function start() {
 export { 
   start,
   parseArgs,
+  parseToolCall,
+  parseAllToolCalls,
   formatToolResult,
   classifyToolError,
   formatToolError,
