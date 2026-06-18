@@ -8,6 +8,11 @@ npm-debug.log*
 # Config(contains API keys, do not commit!!!!!!!!)
 config.json
 
+# Environment variables (contains sensitive data)
+.env
+.env.local
+.env.*.local
+
 # Data
 data/
 conversation.json
