@@ -27,7 +27,7 @@ CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管�
 | **动态工具注册** | 灵活的插件式工具系统 | ✅ |
 | **危险操作确认** | 关键操作需要用户确认 | ✅ |
 | **环境变量管理** | 支持 .env 配置敏感信息 | ✅ |
-| **完整测试覆盖** | 79+ 单元测试和集成测试 | ✅ |
+| **完整测试覆盖** | 103+ 单元测试和集成测试 | ✅ |
 
 ---
 
@@ -82,7 +82,10 @@ npm start
 CogitoAgent/
 ├── src/                              # 源代码目录
 │   ├── agent/                        # 智能体核心模块
-│   │   ├── Agent.js                  # 核心智能体与状态机
+│   │   ├── Agent.js                  # 核心智能体（状态机委托给 state.js）
+│   │   ├── state.js                  # 状态机模块（THINKING/AWAITING_INPUT/AWAITING_CONFIRMATION）
+│   │   ├── registry.js               # 工具注册表（100+ 工具管理）
+│   │   ├── commands.js               # 命令处理（/help、/status 等特殊命令）
 │   │   ├── prompt.js                 # 对话历史与上下文管理
 │   │   └── tools/                    # 工具集（12个模块）
 │   │       ├── index.js              # 工具统一导出入口
@@ -90,24 +93,24 @@ CogitoAgent/
 │   │       ├── file.js               # 文件操作工具
 │   │       ├── web.js                # 网页相关工具
 │   │       ├── system.js             # 系统操作工具
-│   │       ├── code.js               # 代码执行引擎
-│   │       ├── sandbox.js            # 沙箱安全执行
+│   │       ├── code.js              # 代码执行引擎
+│   │       ├── sandbox.js            # 沙箱安全执行（Object.freeze 保护）
 │   │       ├── git.js                # Git 版本控制
 │   │       ├── task.js               # 任务管理系统
 │   │       ├── memory.js             # 记忆系统
-│   │       ├── data.js               # 数据处理工具
-│   │       ├── db.js                 # 数据库操作
+│   │       ├── data.js              # 数据处理工具
+│   │       ├── db.js                # 数据库操作
 │   │       ├── email.js              # 邮件功能
 │   │       ├── monitor.js            # 系统监控
 │   │       ├── scheduler.js          # 定时任务
 │   │       └── TOOL_DEVELOPMENT.md   # 工具开发文档
 │   ├── api/                          # API 层
 │   │   ├── client.js                 # OpenAI 兼容 API 客户端
-│   │   ├── webSearch.js              # 联网搜索模块
+│   │   ├── webSearch.js             # 联网搜索模块
 │   │   └── models.js                 # 多模型支持
 │   ├── io/                           # 输入输出模块
 │   │   ├── terminal.js               # 终端 UI 与彩色输出
-│   │   └── logger.js                 # 日志管理
+│   │   └── logger.js                 # 日志管理（DEBUG/INFO/WARN/ERROR 分级）
 │   ├── config.js                     # 配置管理
 │   └── setup.js                      # 首次运行引导
 ├── personas/                         # 预设人设包（13种）
@@ -336,12 +339,14 @@ Cron 风格定时任务调度。
 
 | 组件 | 职责 | 说明 |
 |------|------|------|
-| **StateMachine** | 状态管理 | 管理 THINKING / AWAITING_INPUT 两种状态 |
+| **StateMachine** | 状态管理 | 独立 state.js 模块，管理 THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
 | **ThinkLoop** | 思考循环 | 每3秒自动触发一次思考 |
 | **PromptMgr** | 上下文管理 | 管理对话历史，自动压缩超过150轮的对话 |
 | **Multi-Model Client** | API 客户端 | 支持多提供商切换，统一接口 |
-| **ToolRegistry** | 动态工具注册 | 替代传统 switch-case，灵活的插件式架构 |
-| **Sandbox** | 代码沙箱 | Node.js 原生 vm 模块隔离执行 JavaScript，限制资源访问 |
+| **ToolRegistry** | 动态工具注册 | 独立 registry.js 模块，100+ 工具集中管理 |
+| **CommandHandler** | 命令处理 | 独立 commands.js 模块，处理 /help、/status 等特殊命令 |
+| **Sandbox** | 代码沙箱 | Node.js 原生 vm 模块，Object.create(null) + Object.freeze 防护 |
+| **Logger** | 日志管理 | 独立 logger.js 模块，DEBUG/INFO/WARN/ERROR 分级输出 |
 | **EnvManager** | 环境变量管理 | 通过 .env 文件管理敏感配置 |
 | **ConfirmGate** | 危险操作确认 | git push、代码执行等高风险操作需用户确认 |
 
@@ -479,6 +484,10 @@ npm test -- --coverage
 | **参数解析** | 10 | JSON 解析、参数验证、错误处理 |
 | **Git 操作** | 20 | 仓库操作、文件操作、安全参数传递 |
 | **文件存储** | 10 | 读写操作、目录管理、错误处理 |
+| **代码执行** | 8 | 沙箱安全、原型链隔离、危险代码拒绝 |
+| **数据库** | 10 | SQL 执行、CRUD、事务、回滚 |
+| **Web 模块** | 3 | browse、fetchPage |
+| **Browser** | 2 | Playwright 生命周期 |
 
 ### 测试特性
 
@@ -516,6 +525,26 @@ npm test -- --coverage
 ---
 
 ## 📝 更新日志
+
+### v2.2.0 (2025-06)
+
+**架构重构：**
+- ✅ Agent.js 拆分为独立模块：state.js、registry.js、commands.js
+- ✅ 新增 logger.js 日志框架，支持 DEBUG/INFO/WARN/ERROR 分级
+- ✅ 状态管理委托给 state.js，消除冗余状态变量
+
+**安全增强：**
+- ✅ 沙箱使用 `Object.create(null)` 创建无原型链对象
+- ✅ 内置对象（JSON、Math、Array 等）使用 `Object.freeze()` 冻结
+- ✅ 修复 config.js thinkingInterval 覆盖 chat 配置问题
+- ✅ 修复 logger.js const currentLevel 无法修改的问题
+
+**测试覆盖：**
+- ✅ 新增 code.test.js（沙箱安全测试）
+- ✅ 新增 db.test.js（数据库操作测试）
+- ✅ 新增 web.test.js（Web 模块测试）
+- ✅ 新增 browser.test.js（Playwright 生命周期测试）
+- ✅ 测试用例从 79 增至 103+
 
 ### v2.1.0 (2025-06)
 
