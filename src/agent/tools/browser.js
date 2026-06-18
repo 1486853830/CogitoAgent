@@ -1,94 +1,23 @@
-import { chromium } from 'playwright';
-
 /**
- * 浏览器自动化实例管理
+ * 浏览器自动化工具 - 延迟加载 playwright
  */
 let browser = null;
 let page = null;
 let pageStateSnapshot = null;
+let chromium = null;
 
 /**
- * 初始化浏览器并打开网页
+ * 检查 playwright 是否可用
  */
-async function initBrowser(url) {
-  try {
-    // 清理可能已关闭的旧实例
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (e) {
-        // 忽略关闭错误
-      }
-      browser = null;
-      page = null;
-    }
-    
-    browser = await chromium.launch({
-      headless: false,
-      args: ['--start-maximized']
-    });
-    
-    const context = await browser.newContext({
-      viewport: { width: 1920, height: 1080 },
-      acceptDownloads: true,  // 接受下载
-      downloadsPath: './downloads'  // 设置默认下载目录
-    });
-    page = await context.newPage();
-    
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
-    pageStateSnapshot = await capturePageState();
-    
-    return { 
-      success: true, 
-      data: `已成功打开网页：${url}` 
-    };
-  } catch (error) {
-    // 确保失败后清理状态
-    browser = null;
-    page = null;
-    return { 
-      success: false, 
-      error: `打开网页失败：${error.message}` 
-    };
-  }
-}
-
-/**
- * 捕获页面当前状态（用于后续对比变化）
- */
-async function capturePageState() {
-  if (!page) return null;
+async function checkPlaywright() {
+  if (chromium) return true;
   
   try {
-    const state = await page.evaluate(() => {
-      // 获取所有表单元素
-      const forms = [];
-      document.querySelectorAll('form, input, select, textarea, button, table').forEach((el, idx) => {
-        forms.push({
-          tag: el.tagName.toLowerCase(),
-          id: el.id || null,
-          class: el.className || null,
-          name: el.name || null,
-          type: el.type || null,
-          value: el.value || null,
-          text: el.innerText?.slice(0, 100) || null,
-          placeholder: el.placeholder || null,
-          href: el.href || null,
-          xpath: getXPath(el)
-        });
-      });
-      
-      return {
-        url: window.location.href,
-        title: document.title,
-        forms: forms.slice(0, 50), // 限制数量避免过多
-        bodyText: document.body.innerText.slice(0, 2000)
-      };
-    });
-    
-    return state;
-  } catch (error) {
-    return { error: error.message };
+    const { chromium: chromiumModule } = await import('playwright');
+    chromium = chromiumModule;
+    return true;
+  } catch (err) {
+    return false;
   }
 }
 
@@ -117,16 +46,145 @@ function getXPath(element) {
 }
 
 /**
+ * 捕获页面当前状态（用于后续对比变化）
+ */
+async function capturePageState() {
+  if (!page) return null;
+  
+  try {
+    const state = await page.evaluate(() => {
+      const forms = [];
+      document.querySelectorAll('form, input, select, textarea, button, table').forEach((el, idx) => {
+        forms.push({
+          tag: el.tagName.toLowerCase(),
+          id: el.id || null,
+          class: el.className || null,
+          name: el.name || null,
+          type: el.type || null,
+          value: el.value || null,
+          text: el.innerText?.slice(0, 100) || null,
+          placeholder: el.placeholder || null,
+          href: el.href || null,
+          xpath: getXPath(el)
+        });
+      });
+      
+      return {
+        url: window.location.href,
+        title: document.title,
+        forms: forms.slice(0, 50),
+        bodyText: document.body.innerText.slice(0, 2000)
+      };
+    });
+    
+    return state;
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+/**
+ * 比较页面状态变化
+ */
+function comparePageState(oldState, newState) {
+  if (!oldState || !newState) return '';
+  
+  const changes = [];
+  
+  if (oldState.url !== newState.url) {
+    changes.push(`URL 变化：${oldState.url} → ${newState.url}`);
+  }
+  
+  if (oldState.title !== newState.title) {
+    changes.push(`标题变化：${oldState.title} → ${newState.title}`);
+  }
+  
+  if (oldState.forms && newState.forms) {
+    const oldValues = new Map(oldState.forms.map(f => [f.xpath, f.value]));
+    const newValues = new Map(newState.forms.map(f => [f.xpath, f.value]));
+    
+    for (const [xpath, newValue] of newValues.entries()) {
+      const oldValue = oldValues.get(xpath);
+      if (oldValue !== newValue) {
+        const form = newState.forms.find(f => f.xpath === xpath);
+        changes.push(`表单变化：${form?.tag || '元素'}${form?.name ? `[name="${form.name}"]` : ''}${form?.id ? `[id="${form.id}"]` : ''} 值从 "${oldValue || '空'}" 变为 "${newValue || '空'}"`);
+      }
+    }
+  }
+  
+  if (oldState.bodyText !== newState.bodyText) {
+    changes.push('页面文本内容发生变化');
+  }
+  
+  return changes.length > 0 ? changes.join('\n') : '无明显变化';
+}
+
+/**
+ * 初始化浏览器并打开网页
+ */
+async function initBrowser(url) {
+  if (!await checkPlaywright()) {
+    return { 
+      success: false, 
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install' 
+    };
+  }
+  
+  try {
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (e) {
+        // 忽略关闭错误
+      }
+      browser = null;
+      page = null;
+    }
+    
+    browser = await chromium.launch({
+      headless: false,
+      args: ['--start-maximized']
+    });
+    
+    const context = await browser.newContext({
+      viewport: { width: 1920, height: 1080 },
+      acceptDownloads: true,
+      downloadsPath: './downloads'
+    });
+    page = await context.newPage();
+    
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    pageStateSnapshot = await capturePageState();
+    
+    return { 
+      success: true, 
+      data: `已成功打开网页：${url}` 
+    };
+  } catch (error) {
+    browser = null;
+    page = null;
+    return { 
+      success: false, 
+      error: `打开网页失败：${error.message}` 
+    };
+  }
+}
+
+/**
  * 点击网页元素
- * @param {string} selector - CSS 选择器或 XPath
- * @param {string} description - 元素描述（可选）
  */
 async function clickElement(selector, description = '') {
+  if (!await checkPlaywright()) {
+    return { 
+      success: false, 
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install' 
+    };
+  }
+  
   if (!page) {
     return { success: false, error: '请先使用 initBrowser 打开网页' };
   }
   
-  // 检查页面是否仍然有效
   try {
     await page.evaluate('1');
   } catch (e) {
@@ -134,22 +192,18 @@ async function clickElement(selector, description = '') {
   }
   
   try {
-    // 尝试多种选择器策略
     let element = null;
     
-    // 1. 尝试作为 CSS 选择器
     try {
       element = await page.$(selector);
     } catch (e) {
       // 不是有效的 CSS 选择器
     }
     
-    // 2. 如果没找到，尝试 XPath
-    if (!element && selector.startsWith('//') || selector.startsWith('id(')) {
+    if (!element && (selector.startsWith('//') || selector.startsWith('id('))) {
       element = await page.$(`xpath=${selector}`);
     }
     
-    // 3. 如果还是没找到，尝试通过文本内容查找
     if (!element) {
       const textSelector = selector.trim();
       element = await page.locator(`text=${textSelector}`).first();
@@ -158,7 +212,6 @@ async function clickElement(selector, description = '') {
       }
     }
     
-    // 4. 尝试通过常见属性查找
     if (!element) {
       const selectors = [
         `[id="${selector}"]`,
@@ -207,16 +260,19 @@ async function clickElement(selector, description = '') {
 
 /**
  * 填写表格字段
- * @param {string} selector - 输入框选择器
- * @param {string} value - 要填写的值
- * @param {string} description - 字段描述（可选）
  */
 async function fillField(selector, value, description = '') {
+  if (!await checkPlaywright()) {
+    return { 
+      success: false, 
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install' 
+    };
+  }
+  
   if (!page) {
     return { success: false, error: '请先使用 initBrowser 打开网页' };
   }
   
-  // 检查页面是否仍然有效
   try {
     await page.evaluate('1');
   } catch (e) {
@@ -226,14 +282,13 @@ async function fillField(selector, value, description = '') {
   try {
     let element = null;
     
-    // 尝试多种选择器策略
     try {
       element = await page.$(selector);
     } catch (e) {
       // 不是有效的 CSS 选择器
     }
     
-    if (!element && selector.startsWith('//') || selector.startsWith('id(')) {
+    if (!element && (selector.startsWith('//') || selector.startsWith('id('))) {
       element = await page.$(`xpath=${selector}`);
     }
     
@@ -285,10 +340,15 @@ async function fillField(selector, value, description = '') {
 
 /**
  * 选择下拉框选项
- * @param {string} selector - 下拉框选择器
- * @param {string} value - 选项值或文本
  */
 async function selectOption(selector, value) {
+  if (!await checkPlaywright()) {
+    return { 
+      success: false, 
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install' 
+    };
+  }
+  
   if (!page) {
     return { success: false, error: '请先使用 initBrowser 打开网页' };
   }
@@ -316,6 +376,13 @@ async function selectOption(selector, value) {
  * 查看页面变化（对比当前状态和上次快照）
  */
 async function viewChanges() {
+  if (!await checkPlaywright()) {
+    return { 
+      success: false, 
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install' 
+    };
+  }
+  
   if (!page) {
     return { success: false, error: '请先使用 initBrowser 打开网页' };
   }
@@ -341,6 +408,13 @@ async function viewChanges() {
  * 获取页面内容
  */
 async function getPageContent() {
+  if (!await checkPlaywright()) {
+    return { 
+      success: false, 
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install' 
+    };
+  }
+  
   if (!page) {
     return { success: false, error: '请先使用 initBrowser 打开网页' };
   }
@@ -383,6 +457,13 @@ async function getPageContent() {
  * 截图页面
  */
 async function takeScreenshot(name = 'screenshot') {
+  if (!await checkPlaywright()) {
+    return { 
+      success: false, 
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install' 
+    };
+  }
+  
   if (!page) {
     return { success: false, error: '请先使用 initBrowser 打开网页' };
   }
@@ -416,7 +497,6 @@ async function closeBrowser() {
     }
     return { success: true, data: '浏览器已关闭' };
   } catch (error) {
-    // 即使出错也清理状态
     browser = null;
     page = null;
     pageStateSnapshot = null;
@@ -425,21 +505,24 @@ async function closeBrowser() {
 }
 
 /**
- * 下载文件（自动查找并点击下载链接/按钮）
- * @param {string} urlOrSelector - 下载页面 URL 或当前页面上的下载链接选择器
- * @param {string} description - 下载描述（可选）
- * @param {object} options - 下载选项（可选）
+ * 下载文件
  */
 async function downloadFile(urlOrSelector, description = '', options = {}) {
+  if (!await checkPlaywright()) {
+    return { 
+      success: false, 
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install' 
+    };
+  }
+  
   try {
     const {
-      savePath = './downloads',  // 保存目录
-      fullPath,                  // 直接指定完整保存路径（包括文件名），如果提供则覆盖 savePath
-      timeout = 60000,           // 下载超时时间（毫秒）
-      acceptDownloads = true     // 接受下载
+      savePath = './downloads',
+      fullPath,
+      timeout = 60000,
+      acceptDownloads = true
     } = options;
     
-    // 确保下载目录存在
     const fs = await import('fs');
     const path = await import('path');
     
@@ -448,11 +531,9 @@ async function downloadFile(urlOrSelector, description = '', options = {}) {
       fs.mkdirSync(downloadDir, { recursive: true });
     }
     
-    // 如果没有打开的浏览器，初始化一个新的
     let needInit = !page;
     
     if (needInit) {
-      // 检查是否是 URL
       if (urlOrSelector.startsWith('http')) {
         const initResult = await initBrowser(urlOrSelector);
         if (!initResult.success) {
@@ -465,21 +546,17 @@ async function downloadFile(urlOrSelector, description = '', options = {}) {
         };
       }
     } else {
-      // 如果提供了 URL，导航到该 URL
       if (urlOrSelector.startsWith('http')) {
         await page.goto(urlOrSelector, { waitUntil: 'networkidle', timeout: 30000 });
       }
     }
     
-    // 等待页面加载
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(1000);
     
-    // 查找下载链接或按钮
     let downloadElement = null;
     let usedSelector = '';
     
-    // 如果提供了选择器，尝试直接查找
     if (!urlOrSelector.startsWith('http')) {
       try {
         downloadElement = await page.$(urlOrSelector);
@@ -489,10 +566,8 @@ async function downloadFile(urlOrSelector, description = '', options = {}) {
       }
     }
     
-    // 如果没找到，尝试自动查找下载链接
     if (!downloadElement) {
       const downloadSelectors = [
-        // 常见下载按钮选择器
         'a[download]',
         'a[href*=".exe"]',
         'a[href*=".zip"]',
@@ -530,7 +605,6 @@ async function downloadFile(urlOrSelector, description = '', options = {}) {
       }
     }
     
-    // 如果还是没找到，尝试通过文本内容查找
     if (!downloadElement && description) {
       try {
         downloadElement = await page.locator(`text=${description}`).first();
@@ -545,11 +619,8 @@ async function downloadFile(urlOrSelector, description = '', options = {}) {
     }
     
     if (!downloadElement) {
-      // 获取页面信息帮助调试
       const pageInfo = await page.evaluate(() => {
         const links = Array.from(document.querySelectorAll('a[href]'));
-        const buttons = Array.from(document.querySelectorAll('button'));
-        
         const downloadLinks = links.filter(a => {
           const href = a.href || '';
           const text = (a.innerText || a.textContent || '').toLowerCase();
@@ -578,26 +649,18 @@ async function downloadFile(urlOrSelector, description = '', options = {}) {
       };
     }
     
-    // 获取下载链接
     const href = await downloadElement.getAttribute('href');
     const text = await downloadElement.innerText();
     
-    // 确保下载事件已经触发
     const [download] = await Promise.all([
       page.waitForEvent('download', { timeout }),
       downloadElement.click()
     ]);
     
-    // 获取建议的文件名
     const suggestedFilename = download.suggestedFilename();
-    
-    // 确定保存路径：如果提供了 fullPath 则使用，否则使用 savePath + 文件名
     const finalPath = fullPath ? fullPath : path.join(savePath, suggestedFilename);
     
-    // 保存文件
     await download.saveAs(finalPath);
-    
-    // 等待下载完成
     await download.finished();
     
     return { 
@@ -614,17 +677,21 @@ async function downloadFile(urlOrSelector, description = '', options = {}) {
 
 /**
  * 在页面内搜索文本内容
- * @param {string} text - 要搜索的文本
- * @param {string} description - 搜索描述（可选）
  */
 async function searchOnPage(text, description = '') {
+  if (!await checkPlaywright()) {
+    return { 
+      success: false, 
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install' 
+    };
+  }
+  
   if (!page) {
     return { success: false, error: '请先使用 initBrowser 打开网页' };
   }
   
   try {
     const results = await page.evaluate((searchText) => {
-      // 内部 XPath 生成函数
       function getXPathInternal(element) {
         if (!element) return null;
         if (element.id !== '') return `id("${element.id}")`;
@@ -648,7 +715,6 @@ async function searchOnPage(text, description = '') {
       
       const matches = [];
       
-      // 搜索文本节点
       const walker = document.createTreeWalker(
         document.body,
         NodeFilter.SHOW_TEXT,
@@ -671,7 +737,6 @@ async function searchOnPage(text, description = '') {
         }
       }
       
-      // 搜索 input 的 value 和 placeholder
       document.querySelectorAll('input, textarea').forEach((el) => {
         const value = el.value || '';
         const placeholder = el.placeholder || '';
@@ -689,7 +754,6 @@ async function searchOnPage(text, description = '') {
         }
       });
       
-      // 搜索按钮和链接文本
       document.querySelectorAll('button, a').forEach((el) => {
         const text = el.innerText || el.textContent || '';
         if (text.toLowerCase().includes(searchText.toLowerCase())) {
@@ -704,7 +768,7 @@ async function searchOnPage(text, description = '') {
         }
       });
       
-      return matches.slice(0, 20); // 限制结果数量
+      return matches.slice(0, 20);
     }, text);
     
     if (results.length === 0) {
@@ -734,17 +798,21 @@ async function searchOnPage(text, description = '') {
 
 /**
  * 查找页面元素并返回详细信息
- * @param {string} selector - CSS 选择器或文本
- * @param {string} description - 描述（可选）
  */
 async function findElements(selector, description = '') {
+  if (!await checkPlaywright()) {
+    return { 
+      success: false, 
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install' 
+    };
+  }
+  
   if (!page) {
     return { success: false, error: '请先使用 initBrowser 打开网页' };
   }
   
   try {
     const elements = await page.evaluate((searchSelector) => {
-      // 内部 XPath 生成函数
       function getXPathInternal(element) {
         if (!element) return null;
         if (element.id !== '') return `id("${element.id}")`;
@@ -767,11 +835,8 @@ async function findElements(selector, description = '') {
       }
       
       const results = [];
-      
-      // 尝试 CSS 选择器
       let found = document.querySelectorAll(searchSelector);
       
-      // 如果没找到，尝试通过文本查找
       if (found.length === 0) {
         document.querySelectorAll('*').forEach((el) => {
           const text = el.innerText || el.textContent || '';
@@ -825,13 +890,17 @@ async function findElements(selector, description = '') {
 }
 
 /**
- * 在搜索引擎中搜索（自动打开搜索引擎并执行搜索）
- * @param {string} query - 搜索关键词
- * @param {string} engine - 搜索引擎名称或 URL（可选，默认使用 Bing）
+ * 在搜索引擎中搜索
  */
 async function searchOnEngine(query, engine = 'bing') {
+  if (!await checkPlaywright()) {
+    return { 
+      success: false, 
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install' 
+    };
+  }
+  
   try {
-    // 确定搜索引擎 URL
     let searchUrl;
     if (engine.startsWith('http')) {
       searchUrl = engine;
@@ -846,35 +915,25 @@ async function searchOnEngine(query, engine = 'bing') {
       searchUrl = engines[engine.toLowerCase()] || engines['baidu'];
     }
     
-    // 初始化浏览器并打开搜索引擎
     const initResult = await initBrowser(searchUrl);
     if (!initResult.success) {
       return initResult;
     }
     
-    // 等待页面加载
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-    await page.waitForTimeout(1000); // 额外等待确保页面完全渲染
+    await page.waitForTimeout(1000);
     
-    // 查找搜索框并输入关键词 - 增强版选择器列表
     const searchInputSelectors = [
-      // 百度特定
       'input[name="wd"]',
       '#kw',
       'input#kw',
-      // Google
       'input[name="q"]',
       'textarea[name="q"]',
-      // Bing
-      'input[name="q"]',
       '#sb_form_q',
-      // 360
       'input[name="keyword"]',
       '#keyword',
-      // 搜狗
       'input[name="query"]',
       '#query',
-      // 通用选择器
       'input[type="search"]',
       'input[type="text"]',
       'input[role="combobox"]',
@@ -904,10 +963,8 @@ async function searchOnEngine(query, engine = 'bing') {
       }
     }
     
-    // 如果还是没找到，尝试通过表单和位置查找
     if (!searchInput) {
       try {
-        // 获取页面上所有可见的输入框
         const inputs = await page.$$('input, textarea');
         for (const input of inputs) {
           const isVisible = await input.isVisible().catch(() => false);
@@ -917,7 +974,6 @@ async function searchOnEngine(query, engine = 'bing') {
             const className = await input.getAttribute('class');
             const placeholder = await input.getAttribute('placeholder');
             
-            // 检查是否是搜索相关的输入框
             const isSearchInput = 
               (type === 'text' || type === 'search' || type === null) &&
               (id?.includes('kw') || id?.includes('search') || id?.includes('q') ||
@@ -938,7 +994,6 @@ async function searchOnEngine(query, engine = 'bing') {
     }
     
     if (!searchInput) {
-      // 最后尝试：获取页面第一个可见的文本输入框
       try {
         const inputs = await page.$$('input[type="text"], input:not([type])');
         for (const input of inputs) {
@@ -957,7 +1012,6 @@ async function searchOnEngine(query, engine = 'bing') {
     }
     
     if (!searchInput) {
-      // 获取页面信息帮助调试
       const pageInfo = await page.evaluate(() => {
         const inputs = Array.from(document.querySelectorAll('input, textarea'));
         return {
@@ -981,37 +1035,28 @@ async function searchOnEngine(query, engine = 'bing') {
       };
     }
     
-    // 填写搜索关键词 - 使用 JavaScript 直接设置值，避免可见性检查问题
     try {
       await page.evaluate((selector, value) => {
         let element = null;
         
-        // CSS 选择器
         try {
           element = document.querySelector(selector);
         } catch (e) {}
         
-        // XPath
         if (!element && (selector.startsWith('//') || selector.startsWith('id('))) {
           const result = document.evaluate(selector, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
           element = result.singleNodeValue;
         }
         
-        // ID 选择器（没有特殊前缀）
         if (!element && !selector.includes(' ') && !selector.startsWith('.') && !selector.startsWith('[')) {
           element = document.getElementById(selector);
         }
         
         if (element) {
-          // 直接设置值
           element.value = value;
-          
-          // 触发事件（让页面认为用户输入了内容）
           element.dispatchEvent(new Event('input', { bubbles: true }));
           element.dispatchEvent(new Event('change', { bubbles: true }));
           element.dispatchEvent(new Event('focus', { bubbles: true }));
-          
-          // 对于某些搜索引擎，还需要触发 keydown/keyup 事件
           element.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
           element.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true }));
         } else {
@@ -1019,7 +1064,6 @@ async function searchOnEngine(query, engine = 'bing') {
         }
       }, usedSelector, query);
     } catch (fillError) {
-      // 如果通过选择器失败，尝试直接使用 searchInput 元素
       try {
         await searchInput.evaluate((el, value) => {
           el.value = value;
@@ -1034,19 +1078,13 @@ async function searchOnEngine(query, engine = 'bing') {
       }
     }
     
-    // 查找并提交搜索按钮
     const submitSelectors = [
-      // 百度
       'input[type="submit"]',
       '#su',
       'button[type="submit"]',
       '.btn',
-      // Google
       'input[value="Google 搜索"]',
       'input[value*="Search"]',
-      // Bing
-      'input[type="submit"]',
-      // 通用
       'button[aria-label*="搜索"]',
       'button[aria-label*="search" i]',
       'input[value*="搜索"]',
@@ -1071,28 +1109,21 @@ async function searchOnEngine(query, engine = 'bing') {
     if (submitButton) {
       await submitButton.click();
     } else {
-      // 如果没找到按钮，直接按回车
       await searchInput.press('Enter');
     }
     
-    // 等待搜索结果加载
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-    await page.waitForTimeout(2000); // 额外等待，确保动态内容加载
+    await page.waitForTimeout(2000);
     
-    // 获取搜索结果
     const searchResults = await page.evaluate(() => {
       const results = [];
-      
-      // 尝试获取常见搜索结果容器
       const resultContainers = document.querySelectorAll('#content_left, #search, .results, .search-results, [role="main"], #main');
       const container = resultContainers[0] || document.body;
       
-      // 提取搜索结果链接
       container.querySelectorAll('a[href]').forEach((link) => {
         const href = link.href;
         const text = (link.innerText || link.textContent || '').trim();
         
-        // 过滤掉无关链接
         if (href && text && text.length > 5 && text.length < 200 &&
             !href.includes('javascript:') &&
             !text.includes('登录') && 
@@ -1105,7 +1136,6 @@ async function searchOnEngine(query, engine = 'bing') {
         }
       });
       
-      // 去重并限制数量
       const unique = [];
       const seen = new Set();
       for (const item of results) {
@@ -1118,7 +1148,6 @@ async function searchOnEngine(query, engine = 'bing') {
       return unique;
     });
     
-    // 格式化结果
     let output = `已在 ${engine} 搜索 "${query}"\n\n`;
     output += `当前页面：${page.url()}\n`;
     output += `使用搜索框选择器：${usedSelector}\n\n`;
@@ -1133,53 +1162,12 @@ async function searchOnEngine(query, engine = 'bing') {
       output += `未提取到搜索结果，可能需要手动查看页面。\n`;
     }
     
-    // 更新页面快照
     pageStateSnapshot = await capturePageState();
     
     return { success: true, data: output };
   } catch (error) {
     return { success: false, error: `搜索引擎搜索失败：${error.message}` };
   }
-}
-
-/**
- * 比较页面状态变化
- */
-function comparePageState(oldState, newState) {
-  if (!oldState || !newState) return '';
-  
-  const changes = [];
-  
-  // URL 变化
-  if (oldState.url !== newState.url) {
-    changes.push(`URL 变化：${oldState.url} → ${newState.url}`);
-  }
-  
-  // 标题变化
-  if (oldState.title !== newState.title) {
-    changes.push(`标题变化：${oldState.title} → ${newState.title}`);
-  }
-  
-  // 表单元素变化
-  if (oldState.forms && newState.forms) {
-    const oldValues = new Map(oldState.forms.map(f => [f.xpath, f.value]));
-    const newValues = new Map(newState.forms.map(f => [f.xpath, f.value]));
-    
-    for (const [xpath, newValue] of newValues.entries()) {
-      const oldValue = oldValues.get(xpath);
-      if (oldValue !== newValue) {
-        const form = newState.forms.find(f => f.xpath === xpath);
-        changes.push(`表单变化：${form?.tag || '元素'}${form?.name ? `[name="${form.name}"]` : ''}${form?.id ? `[id="${form.id}"]` : ''} 值从 "${oldValue || '空'}" 变为 "${newValue || '空'}"`);
-      }
-    }
-  }
-  
-  // 页面文本内容变化（简化检测）
-  if (oldState.bodyText !== newState.bodyText) {
-    changes.push('页面文本内容发生变化');
-  }
-  
-  return changes.length > 0 ? changes.join('\n') : '无明显变化';
 }
 
 export {

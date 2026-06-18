@@ -10,8 +10,8 @@
   "dependencies": {
     "cheerio": "^1.2.0",
     "openai": "^4.0.0",
-    "playwright": "^1.60.0",
-    "sqlite3": "^5.1.7",
-    "nodemailer": "^6.9.13"
+    "sql.js": "^1.14.0",
+    "nodemailer": "^6.9.13",
+    "playwright": "^1.60.0"
   }
 }

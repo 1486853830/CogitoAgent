@@ -1,4 +1,4 @@
-import { execFile } from 'child_process';
+import { execFile, exec } from 'child_process';
 import vm from 'vm';
 import fs from 'fs/promises';
 import path from 'path';
@@ -89,6 +89,19 @@ async function runJavaScript(code) {
 }
 
 /**
+ * 清理临时文件
+ */
+async function cleanupTmpFile(tmpPath) {
+  if (tmpPath) {
+    try {
+      await fs.unlink(tmpPath);
+    } catch {
+      // 忽略删除失败
+    }
+  }
+}
+
+/**
  * 执行 Python 代码
  */
 async function runPython(code) {
@@ -108,12 +121,10 @@ async function runPython(code) {
       execFile('python', [tmpPath], {
         timeout: MAX_EXECUTION_TIME,
         encoding: 'utf8'
-      }, (error, stdout, stderr) => {
+      }, async (error, stdout, stderr) => {
         clearTimeout(timeout);
         
-        if (tmpPath) {
-          fs.unlink(tmpPath).catch(() => {});
-        }
+        await cleanupTmpFile(tmpPath);
 
         if (error) {
           resolve({
@@ -139,9 +150,7 @@ async function runPython(code) {
       });
     } catch (e) {
       clearTimeout(timeout);
-      if (tmpPath) {
-        fs.unlink(tmpPath).catch(() => {});
-      }
+      await cleanupTmpFile(tmpPath);
       resolve({
         success: false,
         error: `执行失败: ${e.message}`
