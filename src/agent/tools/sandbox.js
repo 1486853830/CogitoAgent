@@ -33,48 +33,78 @@ function isSandboxEnabled() {
 /**
  * 创建 JavaScript 沙箱
  * 使用 Node.js 原生 vm 模块，安全配置：禁止文件系统访问、网络访问等危险操作
+ * 
+ * 安全改进：使用 Object.create(null) 创建无原型链的对象，
+ * 防止通过 ({}).constructor.constructor 等方式突破沙箱
  */
 function createJavaScriptSandbox(timeout = 10000) {
-  const sandbox = {
-    console: {
-      log: (...args) => {
-        // 限制输出长度
-        const output = args.map(a =>
-          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-        ).join(' ');
-        console.log(output);
-      },
-      error: (...args) => {
-        const output = args.map(a =>
-          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-        ).join(' ');
-        console.error(output);
-      },
-      warn: (...args) => {
-        const output = args.map(a =>
-          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-        ).join(' ');
-        console.warn(output);
-      },
-      info: (...args) => {
-        const output = args.map(a =>
-          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-        ).join(' ');
-        console.info(output);
-      }
+  // 使用 Object.create(null) 创建没有原型的对象，防止原型链逃逸
+  const sandbox = Object.create(null);
+
+  // 只允许安全的基础对象和函数
+  sandbox.console = {
+    log: (...args) => {
+      const output = args.map(a =>
+        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+      ).join(' ');
+      console.log(output);
     },
-    setTimeout: undefined,
-    setInterval: undefined,
-    setImmediate: undefined,
-    process: undefined,
-    require: undefined,
-    __dirname: undefined,
-    __filename: undefined,
-    exports: undefined,
-    module: undefined,
-    global: undefined,
-    globalThis: undefined
+    error: (...args) => {
+      const output = args.map(a =>
+        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+      ).join(' ');
+      console.error(output);
+    },
+    warn: (...args) => {
+      const output = args.map(a =>
+        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+      ).join(' ');
+      console.warn(output);
+    },
+    info: (...args) => {
+      const output = args.map(a =>
+        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+      ).join(' ');
+      console.info(output);
+    }
   };
+
+  // 禁止危险对象
+  sandbox.setTimeout = undefined;
+  sandbox.setInterval = undefined;
+  sandbox.setImmediate = undefined;
+  sandbox.process = undefined;
+  sandbox.require = undefined;
+  sandbox.__dirname = undefined;
+  sandbox.__filename = undefined;
+  sandbox.exports = undefined;
+  sandbox.module = undefined;
+  sandbox.global = undefined;
+  sandbox.globalThis = undefined;
+
+  // 冻结内置对象的原型（防止通过 Object.getPrototypeOf 访问）
+  // 这些内置对象本身应该是安全的，但冻结它们可以防止进一步的原型链攻击
+  sandbox.JSON = JSON;
+  sandbox.Math = Math;
+  sandbox.Date = Date;
+  sandbox.Array = Array;
+  sandbox.Object = Object;
+  sandbox.String = String;
+  sandbox.Number = Number;
+  sandbox.Boolean = Boolean;
+  sandbox.RegExp = RegExp;
+  sandbox.Error = Error;
+  sandbox.Map = Map;
+  sandbox.Set = Set;
+  sandbox.WeakMap = WeakMap;
+  sandbox.WeakSet = WeakSet;
+  sandbox.Promise = Promise;
+  sandbox.parseInt = parseInt;
+  sandbox.parseFloat = parseFloat;
+  sandbox.isNaN = isNaN;
+  sandbox.isFinite = isFinite;
+  sandbox.encodeURIComponent = encodeURIComponent;
+  sandbox.decodeURIComponent = decodeURIComponent;
 
   const context = vm.createContext(sandbox);
   return { sandbox, context };

@@ -101,7 +101,7 @@ function loadEnvConfig() {
   if (process.env.COGITO_THINKING_INTERVAL) {
     const interval = parseInt(process.env.COGITO_THINKING_INTERVAL, 10);
     if (!isNaN(interval) && interval >= 1000) {
-      envConfig.chat = { thinkingInterval: interval };
+      envConfig.chat = { ...envConfig.chat, thinkingInterval: interval };
     }
   }
 

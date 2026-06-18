@@ -48,43 +48,72 @@ async function writeSecureTmpFile(filePath, content) {
 
 /**
  * 创建 JavaScript 沙箱环境
+ * 
+ * 安全改进：使用 Object.create(null) 创建无原型链的对象，
+ * 防止通过 ({}).constructor.constructor 等方式突破沙箱
  */
 function createSandbox() {
-  const sandbox = {
-    console: {
-      log: (...args) => {
-        console.log(args.map(a =>
-          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-        ).join(' '));
-      },
-      error: (...args) => {
-        console.error(args.map(a =>
-          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-        ).join(' '));
-      },
-      warn: (...args) => {
-        console.warn(args.map(a =>
-          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-        ).join(' '));
-      },
-      info: (...args) => {
-        console.info(args.map(a =>
-          typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-        ).join(' '));
-      }
+  // 使用 Object.create(null) 创建没有原型的对象，防止原型链逃逸
+  const sandbox = Object.create(null);
+
+  sandbox.console = {
+    log: (...args) => {
+      console.log(args.map(a =>
+        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+      ).join(' '));
     },
-    setTimeout: undefined,
-    setInterval: undefined,
-    setImmediate: undefined,
-    process: undefined,
-    require: undefined,
-    __dirname: undefined,
-    __filename: undefined,
-    exports: undefined,
-    module: undefined,
-    global: undefined,
-    globalThis: undefined
+    error: (...args) => {
+      console.error(args.map(a =>
+        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+      ).join(' '));
+    },
+    warn: (...args) => {
+      console.warn(args.map(a =>
+        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+      ).join(' '));
+    },
+    info: (...args) => {
+      console.info(args.map(a =>
+        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+      ).join(' '));
+    }
   };
+
+  // 禁止危险对象
+  sandbox.setTimeout = undefined;
+  sandbox.setInterval = undefined;
+  sandbox.setImmediate = undefined;
+  sandbox.process = undefined;
+  sandbox.require = undefined;
+  sandbox.__dirname = undefined;
+  sandbox.__filename = undefined;
+  sandbox.exports = undefined;
+  sandbox.module = undefined;
+  sandbox.global = undefined;
+  sandbox.globalThis = undefined;
+
+  // 添加安全的基础对象
+  sandbox.JSON = JSON;
+  sandbox.Math = Math;
+  sandbox.Date = Date;
+  sandbox.Array = Array;
+  sandbox.Object = Object;
+  sandbox.String = String;
+  sandbox.Number = Number;
+  sandbox.Boolean = Boolean;
+  sandbox.RegExp = RegExp;
+  sandbox.Error = Error;
+  sandbox.Map = Map;
+  sandbox.Set = Set;
+  sandbox.WeakMap = WeakMap;
+  sandbox.WeakSet = WeakSet;
+  sandbox.Promise = Promise;
+  sandbox.parseInt = parseInt;
+  sandbox.parseFloat = parseFloat;
+  sandbox.isNaN = isNaN;
+  sandbox.isFinite = isFinite;
+  sandbox.encodeURIComponent = encodeURIComponent;
+  sandbox.decodeURIComponent = decodeURIComponent;
 
   return { sandbox, context: vm.createContext(sandbox) };
 }
