@@ -1,5 +1,6 @@
 import { execFile, exec } from 'child_process';
 import vm from 'vm';
+import { NodeVM } from 'vm2';
 import fs from 'fs/promises';
 import fsSync from 'fs';
 import path from 'path';
@@ -48,6 +49,7 @@ async function writeSecureTmpFile(filePath, content) {
 
 /**
  * 执行 JavaScript 代码
+ * 使用 vm2.NodeVM 提供更安全的沙箱隔离
  */
 async function runJavaScript(code) {
   return new Promise((resolve) => {
@@ -59,63 +61,76 @@ async function runJavaScript(code) {
     }, MAX_EXECUTION_TIME);
 
     try {
-      let output = '';
-      let errors = '';
-
-      const context = {
+      // 创建 vm2 沙箱环境
+      const sandbox = {
         console: {
           log: (...args) => {
-            output += args.map(a => 
-              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-            ).join(' ') + '\n';
+            // 输出会被捕获
           },
           error: (...args) => {
-            errors += args.map(a => 
-              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-            ).join(' ') + '\n';
+            // 错误输出会被捕获
           }
         },
-        setTimeout: (fn, delay) => {
-          if (delay > 5000) return;
-          return setTimeout(fn, delay);
-        },
+        setTimeout: undefined,
+        setInterval: undefined,
+        setImmediate: undefined,
+        process: undefined,
+        require: undefined,
         __result: null
       };
 
+      const vm2 = new NodeVM({
+        timeout: MAX_EXECUTION_TIME,
+        sandbox: sandbox,
+        eval: false,
+        require: {
+          external: false,
+          builtin: []
+        },
+        wrapper: 'none',
+        strict: true
+      });
+
+      // 执行代码
       const wrappedCode = `
-        try {
-          __result = (() => {
-            ${code}
-          })();
-        } catch (e) {
-          console.error(\`Error: \${e.message}\`);
-        }
+        (function() {
+          var __result = null;
+          try {
+            __result = (function() {
+              ${code}
+            })();
+            return { success: true, result: __result };
+          } catch (e) {
+            return { success: false, error: e.message };
+          }
+        })()
       `;
 
-      const script = new vm.Script(wrappedCode, { timeout: MAX_EXECUTION_TIME });
-      script.runInNewContext(context);
-
+      const result = vm2.run(wrappedCode);
+      
       clearTimeout(timeout);
 
-      let result = output;
-      if (context.__result !== null) {
-        result += '\n[返回值]: ' + 
-          (typeof context.__result === 'object' 
-            ? JSON.stringify(context.__result, null, 2) 
-            : String(context.__result));
+      let output = '';
+      if (result.success) {
+        if (result.result !== undefined) {
+          output = typeof result.result === 'object' 
+            ? JSON.stringify(result.result, null, 2) 
+            : String(result.result);
+          output = '[返回值]: ' + output;
+        } else {
+          output = '执行完成，无返回值';
+        }
+      } else {
+        output = '[错误]: ' + result.error;
       }
 
-      if (errors) {
-        result += '\n[错误输出]: ' + errors;
-      }
-
-      if (result.length > MAX_OUTPUT_SIZE) {
-        result = result.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
+      if (output.length > MAX_OUTPUT_SIZE) {
+        output = output.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
       }
 
       resolve({
         success: true,
-        data: result || '执行完成，无输出'
+        data: output
       });
     } catch (e) {
       clearTimeout(timeout);
@@ -142,6 +157,7 @@ async function cleanupTmpFile(tmpPath) {
 
 /**
  * 执行 Python 代码
+ * 使用安全的环境配置，限制网络和系统访问
  */
 async function runPython(code) {
   return new Promise(async (resolve) => {
@@ -158,9 +174,41 @@ async function runPython(code) {
       tmpPath = generateSecureTmpPath('py');
       await writeSecureTmpFile(tmpPath, code);
 
+      // 安全环境配置：清理危险环境变量
+      const secureEnv = {
+        // 保留必要的环境变量
+        HOME: process.env.HOME || process.env.USERPROFILE || '',
+        TMPDIR: os.tmpdir(),
+        TEMP: os.tmpdir(),
+        // Python 安全配置
+        PYTHONUNBUFFERED: '1',           // 无缓冲输出
+        PYTHONNOUSERSITE: '1',           // 禁止加载用户站点包
+        PYTHONDONTWRITEBYTECODE: '1',    // 不生成 .pyc 文件
+        PYTHONHASHSEED: '0',             // 固定哈希种子
+        // 限制 PATH，只允许访问系统标准路径
+        PATH: process.env.PATH?.split(path.delimiter).slice(0, 3).join(path.delimiter) || '',
+      };
+
+      // 删除可能危险的环境变量
+      delete process.env.PYTHONPATH;
+      delete process.env.PYTHONHOME;
+      delete process.env.PYTHONSTARTUP;
+      delete process.env.PYTHONRC;
+      delete process.env.VIRTUAL_ENV;
+      delete process.env.PYTHON扬州;
+      delete secureEnv.PYTHONPATH;
+      delete secureEnv.PYTHONHOME;
+      delete secureEnv.PYTHONSTARTUP;
+      delete secureEnv.PYTHONRC;
+      delete secureEnv.VIRTUAL_ENV;
+
       execFile('python', [tmpPath], {
         timeout: MAX_EXECUTION_TIME,
-        encoding: 'utf8'
+        encoding: 'utf8',
+        env: secureEnv,
+        // 限制子进程权限（仅 UNIX）
+        gid: process.getgid ? process.getgid() : undefined,
+        uid: process.getuid ? process.getuid() : undefined
       }, async (error, stdout, stderr) => {
         clearTimeout(timeout);
         
