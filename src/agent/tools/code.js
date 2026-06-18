@@ -61,14 +61,22 @@ async function runJavaScript(code) {
     }, MAX_EXECUTION_TIME);
 
     try {
+      // 用于捕获 console 输出
+      let output = '';
+      let errors = '';
+
       // 创建 vm2 沙箱环境
       const sandbox = {
         console: {
           log: (...args) => {
-            // 输出会被捕获
+            output += args.map(a => 
+              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+            ).join(' ') + '\n';
           },
           error: (...args) => {
-            // 错误输出会被捕获
+            errors += args.map(a => 
+              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
+            ).join(' ') + '\n';
           }
         },
         setTimeout: undefined,
@@ -110,27 +118,38 @@ async function runJavaScript(code) {
       
       clearTimeout(timeout);
 
-      let output = '';
+      let finalOutput = '';
+      
+      // 添加 console.log 输出
+      if (output) {
+        finalOutput += '[标准输出]:\n' + output;
+      }
+      
+      // 添加 console.error 输出
+      if (errors) {
+        finalOutput += '\n[错误输出]:\n' + errors;
+      }
+      
       if (result.success) {
         if (result.result !== undefined) {
-          output = typeof result.result === 'object' 
+          let returnValue = typeof result.result === 'object' 
             ? JSON.stringify(result.result, null, 2) 
             : String(result.result);
-          output = '[返回值]: ' + output;
-        } else {
-          output = '执行完成，无返回值';
+          finalOutput += '[返回值]: ' + returnValue;
+        } else if (!finalOutput) {
+          finalOutput = '执行完成，无输出';
         }
       } else {
-        output = '[错误]: ' + result.error;
+        finalOutput += '[执行错误]: ' + result.error;
       }
 
-      if (output.length > MAX_OUTPUT_SIZE) {
-        output = output.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
+      if (finalOutput.length > MAX_OUTPUT_SIZE) {
+        finalOutput = finalOutput.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
       }
 
       resolve({
         success: true,
-        data: output
+        data: finalOutput
       });
     } catch (e) {
       clearTimeout(timeout);
@@ -195,7 +214,8 @@ async function runPython(code) {
       delete process.env.PYTHONSTARTUP;
       delete process.env.PYTHONRC;
       delete process.env.VIRTUAL_ENV;
-      delete process.env.PYTHON扬州;
+      
+      // 删除 secureEnv 中的危险变量（如果存在）
       delete secureEnv.PYTHONPATH;
       delete secureEnv.PYTHONHOME;
       delete secureEnv.PYTHONSTARTUP;
