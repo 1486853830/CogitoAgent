@@ -195,7 +195,7 @@ function saveConfig(newConfig) {
     const sanitized = sanitizeConfig(newConfig);
     writeFileSync(CONFIG_FILE, JSON.stringify(sanitized, null, 2), 'utf-8');
     config = newConfig;  // 内部保留完整配置（包含环境变量）
-    console.error('[配置] 配置已保存到 config.json（敏感信息已过滤）');
+    console.error('[配置] 配置已保存（敏感信息已过滤）');
     return true;
   } catch (e) {
     console.error(`[配置] 保存失败: ${e.message}`);
@@ -228,6 +228,7 @@ function deepMerge(target, source) {
 
 export {
   loadConfig,
+  loadEnvConfig,
   saveConfig,
   isConfigured,
   deepMerge,

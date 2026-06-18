@@ -10,7 +10,7 @@ async function sendEmail(to, subject, body, options = {}) {
   if (!emailConfig.smtpHost || !emailConfig.smtpPort || !emailConfig.user || !emailConfig.password) {
     return {
       success: false,
-      error: '邮件配置不完整，请在 config.json 中配置 email 相关参数'
+      error: '邮件配置不完整，请在 .env 文件中配置 COGITO_EMAIL_* 相关参数'
     };
   }
   

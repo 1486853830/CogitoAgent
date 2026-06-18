@@ -6,7 +6,7 @@ import readline from 'readline';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { saveConfig, DEFAULT_CONFIG } from './config.js';
+import { DEFAULT_CONFIG, loadEnvConfig } from './config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +24,16 @@ function question(rl, text) {
       resolve(answer);
     });
   });
+}
+
+/**
+ * 检查环境变量是否已配置
+ */
+function checkEnvConfig() {
+  const envConfig = loadEnvConfig();
+  const hasApiConfig = envConfig.api && 
+    (envConfig.api.apiKey || envConfig.api.baseURL || envConfig.api.model);
+  return hasApiConfig;
 }
 
 /**
@@ -103,12 +113,73 @@ function applyPersona(persona) {
 }
 
 /**
+ * 保存配置到 .env 文件
+ */
+function saveEnvConfig(config) {
+  const envPath = path.join(__dirname, '..', '.env');
+  
+  const lines = [
+    '# CogitoAgent 配置文件',
+    '# 由设置向导自动生成',
+    '',
+    '# API 配置',
+    `COGITO_API_KEY=${config.api?.apiKey || ''}`,
+    `COGITO_API_BASE_URL=${config.api?.baseURL || ''}`,
+    `COGITO_API_PROVIDER=${config.api?.provider || 'custom'}`,
+    `COGITO_MODEL=${config.api?.model || ''}`,
+    '',
+    '# 工作区配置',
+    `COGITO_WORKSPACE=${config.workspace || ''}`,
+    '',
+    '# 其他配置可在 .env.example 中查看',
+  ];
+  
+  try {
+    fs.writeFileSync(envPath, lines.join('\n'), 'utf-8');
+    console.log('✅ 配置已保存到 .env 文件');
+    return true;
+  } catch (e) {
+    console.log(`❌ 保存失败: ${e.message}`);
+    return false;
+  }
+}
+
+/**
  * 运行设置向导
  * 返回配置对象
  */
 async function runSetup() {
   console.log('\n========== CogitoAgent 首次设置 ==========\n');
+  
+  // 检查环境变量配置
+  const hasEnvConfig = checkEnvConfig();
+  
+  if (hasEnvConfig) {
+    console.log('✅ 已检测到 .env 环境变量配置！');
+    console.log('   配置将保存到 .env 文件\n');
+    
+    const rl = createInterface();
+    const choice = await question(rl, '是否跳过设置向导，直接使用环境变量？(y/n): ');
+    rl.close();
+    
+    if (choice.trim().toLowerCase() === 'y' || choice.trim() === '') {
+      console.log('\n✅ 将使用环境变量配置启动程序');
+      console.log('   如需修改配置，请编辑 .env 文件\n');
+      
+      // 加载环境变量配置并返回
+      const config = {
+        ...DEFAULT_CONFIG,
+        ...loadEnvConfig()
+      };
+      return config;
+    }
+    
+    console.log('\n继续使用设置向导...\n');
+  }
+
   console.log('欢迎使用 CogitoAgent！让我来帮你完成初始配置。\n');
+  console.log('提示：配置将保存到 .env 文件\n');
+  console.log('      如需修改配置，请直接编辑 .env 文件\n\n');
 
   const rl = createInterface();
 
@@ -172,11 +243,9 @@ async function runSetup() {
     workspace: normalizedWorkspace
   };
 
-  // 保存
-  const saved = saveConfig(config);
+  // 保存到 .env 文件
+  const saved = saveEnvConfig(config);
   if (saved) {
-    console.log('✅ 配置已保存到 config.json');
-    
     // 应用人设
     if (selectedPersona) {
       if (applyPersona(selectedPersona)) {
@@ -189,6 +258,7 @@ async function runSetup() {
     }
     
     console.log('\n设置完成！重新运行程序即可开始使用。\n');
+    console.log('提示：如需修改配置，请编辑 .env 文件\n');
   } else {
     console.log('❌ 配置保存失败，请检查目录权限。\n');
   }
