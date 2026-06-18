@@ -175,6 +175,7 @@ let thinkingTimer = null;
 let shouldStop = false;
 let thoughtInterval = 3000;
 let pendingConfirmation = null;  // 待确认的操作
+let isProcessing = false;  // 并发控制标志，防止多个思考循环同时执行
 
 /**
  * 检查是否需要危险操作确认
@@ -205,6 +206,7 @@ async function requestConfirmation(toolName, args) {
   println(`  ⚠️  危险操作请求: ${printTag(toolName, 'bgYellow')}`, 'yellow');
   println(`  参数: ${args.join(', ')}`, 'yellow');
   println(`  是否执行此操作? 输入 ${printTag('y', 'bgGreen')} 确认, ${printTag('n', 'bgRed')} 拒绝`, 'yellow');
+  println(`  ⏱️  等待超时: 5分钟无响应将自动拒绝`, 'yellow');
   printDivider('!', 'yellow');
   println('');
 
@@ -212,17 +214,32 @@ async function requestConfirmation(toolName, args) {
   state = STATE.AWAITING_CONFIRMATION;
   pendingConfirmation = { toolName, args };
 
-  // 等待用户输入
+  // 等待用户输入（带超时机制）
+  const CONFIRM_TIMEOUT = 5 * 60 * 1000; // 5分钟超时
+  
   return new Promise((resolve) => {
+    const startTime = Date.now();
+    
     const checkConfirm = () => {
+      // 检查超时
+      if (Date.now() - startTime > CONFIRM_TIMEOUT) {
+        pendingConfirmation = false;
+        state = STATE.THINKING;
+        println('');
+        println('⏱️  等待超时，危险操作已自动拒绝', 'yellow');
+        println('');
+        resolve(false);
+        return;
+      }
+      
       if (pendingConfirmation === null) {
-        // 用户已响应
+        // 用户已确认
         resolve(true);
       } else if (pendingConfirmation === false) {
         // 用户拒绝
         resolve(false);
       } else {
-        // 继续等待
+        // 继续等待（每100ms检查一次）
         setTimeout(checkConfirm, 100);
       }
     };
@@ -307,11 +324,24 @@ function formatLsResult(data) {
   return lines.join('\n');
 }
 
+// 工具输出最大长度限制（防止大文件导致内存膨胀）
+const MAX_TOOL_OUTPUT = 10000;  // 10000 字符
+
 function formatToolResult(tool, data) {
+  let result;
+  
   if (tool === 'ls' && Array.isArray(data)) {
-    return formatLsResult(data);
+    result = formatLsResult(data);
+  } else {
+    result = String(data);
   }
-  return String(data);
+  
+  // 截断过长的输出
+  if (result.length > MAX_TOOL_OUTPUT) {
+    return result.slice(0, MAX_TOOL_OUTPUT) + '\n\n... [输出内容过长，已截断]';
+  }
+  
+  return result;
 }
 
 /**
@@ -467,7 +497,16 @@ function handleUserInput(input) {
 }
 
 async function thinkCycle() {
+  // 并发控制：如果正在处理其他请求，直接返回
+  if (isProcessing) {
+    return;
+  }
+  
+  // 状态检查
   if (state !== STATE.THINKING) return;
+
+  // 设置处理标志
+  isProcessing = true;
 
   try {
     const messages = getMessages();
@@ -548,6 +587,9 @@ async function thinkCycle() {
       return;
     }
     println(`[错误] ${error.message}`, 'red');
+  } finally {
+    // 确保处理标志总是被重置
+    isProcessing = false;
   }
 }
 

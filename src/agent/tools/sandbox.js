@@ -31,14 +31,15 @@ function isSandboxEnabled() {
 
 /**
  * 创建 JavaScript 沙箱
+ * 安全配置：禁止文件系统访问、网络访问等危险操作
  */
 function createJavaScriptSandbox(timeout = 10000) {
   return new NodeVM({
     timeout,
     sandbox: {},
     require: {
-      external: true,
-      builtin: ['fs', 'path', 'os', 'crypto', 'util'],
+      external: false,  // 禁止外部模块
+      builtin: [],      // 禁止所有内置模块（防止文件系统、网络访问）
       root: './',
       mock: {}
     },

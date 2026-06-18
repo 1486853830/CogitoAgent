@@ -159,13 +159,43 @@ function loadConfig() {
 }
 
 /**
- * 保存配置
+ * 过滤敏感字段，防止写入配置文件
+ */
+function sanitizeConfig(config) {
+  const sanitized = deepMerge({}, config);
+  
+  // 过滤 API 密钥
+  if (sanitized.api && sanitized.api.apiKey) {
+    delete sanitized.api.apiKey;
+  }
+  
+  // 过滤邮箱密码
+  if (sanitized.email && sanitized.email.password) {
+    delete sanitized.email.password;
+  }
+  
+  // 过滤所有模型的 API 密钥
+  if (sanitized.models) {
+    for (const provider in sanitized.models) {
+      if (sanitized.models[provider] && sanitized.models[provider].apiKey) {
+        delete sanitized.models[provider].apiKey;
+      }
+    }
+  }
+  
+  return sanitized;
+}
+
+/**
+ * 保存配置（自动过滤敏感字段）
  */
 function saveConfig(newConfig) {
   try {
-    writeFileSync(CONFIG_FILE, JSON.stringify(newConfig, null, 2), 'utf-8');
-    config = newConfig;
-    console.error('[配置] 配置已保存到 config.json');
+    // 过滤敏感字段，防止写入文件
+    const sanitized = sanitizeConfig(newConfig);
+    writeFileSync(CONFIG_FILE, JSON.stringify(sanitized, null, 2), 'utf-8');
+    config = newConfig;  // 内部保留完整配置（包含环境变量）
+    console.error('[配置] 配置已保存到 config.json（敏感信息已过滤）');
     return true;
   } catch (e) {
     console.error(`[配置] 保存失败: ${e.message}`);
