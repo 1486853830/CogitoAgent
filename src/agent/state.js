@@ -119,6 +119,13 @@ function cancelConfirmation() {
   }
 }
 
+// 导出一个共享的状态对象，供外部模块使用
+// 使用 getter/setter 确保状态一致
+const state = {
+  get current() { return currentState; },
+  set current(v) { setState(v); }
+};
+
 export {
   STATE,
   getState,
@@ -130,5 +137,6 @@ export {
   setPendingConfirmation,
   requestConfirmation,
   resolveConfirmation,
-  cancelConfirmation
+  cancelConfirmation,
+  state
 };
