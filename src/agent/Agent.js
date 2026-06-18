@@ -176,6 +176,7 @@ let shouldStop = false;
 let thoughtInterval = 3000;
 let pendingConfirmation = null;  // 待确认的操作
 let isProcessing = false;  // 并发控制标志，防止多个思考循环同时执行
+let confirmationResolve = null;  // 确认 Promise 的 resolve 函数（事件驱动）
 
 /**
  * 检查是否需要危险操作确认
@@ -192,6 +193,18 @@ function isConfirmEnabled() {
  */
 function isDangerousOperation(toolName) {
   return DANGEROUS_OPERATIONS.has(toolName);
+}
+
+/**
+ * 处理确认结果（事件驱动）
+ * 当用户在 handleUserInput 中输入 y/n 时调用此函数
+ */
+function resolveConfirmation(confirmed) {
+  if (confirmationResolve) {
+    confirmationResolve(confirmed);
+    confirmationResolve = null;
+    pendingConfirmation = null;
+  }
 }
 
 /**
@@ -213,37 +226,28 @@ async function requestConfirmation(toolName, args) {
   // 设置等待确认状态
   state = STATE.AWAITING_CONFIRMATION;
   pendingConfirmation = { toolName, args };
-
-  // 等待用户输入（带超时机制）
+  
+  // 超时配置
   const CONFIRM_TIMEOUT = 5 * 60 * 1000; // 5分钟超时
   
+  // 返回 Promise，在用户输入时 resolve（事件驱动，无轮询）
   return new Promise((resolve) => {
-    const startTime = Date.now();
+    // 保存 resolve 函数
+    confirmationResolve = resolve;
     
-    const checkConfirm = () => {
-      // 检查超时
-      if (Date.now() - startTime > CONFIRM_TIMEOUT) {
-        pendingConfirmation = false;
+    // 设置超时
+    setTimeout(() => {
+      if (confirmationResolve === resolve) {
+        // 仍未被解决（用户未响应）
+        confirmationResolve = null;
+        pendingConfirmation = null;
         state = STATE.THINKING;
         println('');
         println('⏱️  等待超时，危险操作已自动拒绝', 'yellow');
         println('');
         resolve(false);
-        return;
       }
-      
-      if (pendingConfirmation === null) {
-        // 用户已确认
-        resolve(true);
-      } else if (pendingConfirmation === false) {
-        // 用户拒绝
-        resolve(false);
-      } else {
-        // 继续等待（每100ms检查一次）
-        setTimeout(checkConfirm, 100);
-      }
-    };
-    checkConfirm();
+    }, CONFIRM_TIMEOUT);
   });
 }
 
@@ -811,7 +815,7 @@ function handleUserInput(input) {
     }
   }
 
-  // 处理危险操作确认
+  // 处理危险操作确认（事件驱动）
   if (state === STATE.AWAITING_CONFIRMATION) {
     const response = input.toLowerCase().trim();
     
@@ -832,15 +836,13 @@ function handleUserInput(input) {
       return;
     }
     
-    // 处理危险操作确认
+    // 处理危险操作确认（调用 resolveConfirmation 事件）
     if (response === 'y' || response === 'yes' || response === '确认') {
       println('[确认] 用户同意执行危险操作', 'green');
-      pendingConfirmation = null;  // 标记为已确认
-      state = STATE.THINKING;
+      resolveConfirmation(true);  // 事件驱动 resolve
     } else if (response === 'n' || response === 'no' || response === '拒绝') {
       println('[拒绝] 用户拒绝执行危险操作', 'red');
-      pendingConfirmation = false;  // 标记为拒绝
-      state = STATE.THINKING;
+      resolveConfirmation(false);  // 事件驱动 resolve
     } else {
       println(`[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 拒绝`, 'yellow');
     }
