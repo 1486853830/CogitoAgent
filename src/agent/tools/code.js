@@ -92,22 +92,22 @@ function createSandbox() {
   sandbox.global = undefined;
   sandbox.globalThis = undefined;
 
-  // 添加安全的基础对象
-  sandbox.JSON = JSON;
-  sandbox.Math = Math;
-  sandbox.Date = Date;
-  sandbox.Array = Array;
-  sandbox.Object = Object;
-  sandbox.String = String;
-  sandbox.Number = Number;
-  sandbox.Boolean = Boolean;
-  sandbox.RegExp = RegExp;
-  sandbox.Error = Error;
-  sandbox.Map = Map;
-  sandbox.Set = Set;
-  sandbox.WeakMap = WeakMap;
-  sandbox.WeakSet = WeakSet;
-  sandbox.Promise = Promise;
+  // 添加安全的基础对象（冻结原型防止原型链攻击）
+  sandbox.JSON = Object.freeze(JSON);
+  sandbox.Math = Object.freeze(Math);
+  sandbox.Date = Object.freeze(Date);
+  sandbox.Array = Object.freeze(Array);
+  sandbox.Object = Object.freeze(Object);
+  sandbox.String = Object.freeze(String);
+  sandbox.Number = Object.freeze(Number);
+  sandbox.Boolean = Object.freeze(Boolean);
+  sandbox.RegExp = Object.freeze(RegExp);
+  sandbox.Error = Object.freeze(Error);
+  sandbox.Map = Object.freeze(Map);
+  sandbox.Set = Object.freeze(Set);
+  sandbox.WeakMap = Object.freeze(WeakMap);
+  sandbox.WeakSet = Object.freeze(WeakSet);
+  sandbox.Promise = Object.freeze(Promise);
   sandbox.parseInt = parseInt;
   sandbox.parseFloat = parseFloat;
   sandbox.isNaN = isNaN;
