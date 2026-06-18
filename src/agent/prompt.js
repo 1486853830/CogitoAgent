@@ -202,6 +202,8 @@ let conversationHistory = [
 ];
 let turnCount = 0;
 const COMPRESS_TURNS = 150;
+const KEEP_RECENT_TURNS = 10;  // 压缩时保留的最近对话轮数
+const ARCHIVE_FILE = path.resolve(process.cwd(), 'data', 'conversation_archive.json');
 
 // 加载历史记录
 function loadHistory() {
@@ -263,21 +265,112 @@ function shouldCompress() {
   return turnCount >= COMPRESS_TURNS;
 }
 
+/**
+ * 归档对话到文件
+ */
+function archiveConversation(messages) {
+  try {
+    const dir = path.dirname(ARCHIVE_FILE);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+
+    let archives = [];
+    if (existsSync(ARCHIVE_FILE)) {
+      try {
+        const data = readFileSync(ARCHIVE_FILE, 'utf-8');
+        archives = JSON.parse(data);
+      } catch {
+        archives = [];
+      }
+    }
+
+    // 添加时间戳
+    archives.push({
+      timestamp: new Date().toISOString(),
+      messages: messages.filter(m => m.role !== 'system')
+    });
+
+    // 只保留最近 10 个归档
+    if (archives.length > 10) {
+      archives = archives.slice(-10);
+    }
+
+    writeFileSync(ARCHIVE_FILE, JSON.stringify(archives, null, 2), 'utf-8');
+    console.error(`[历史] 已归档 ${messages.length} 条对话到存档`);
+  } catch (e) {
+    console.error(`[历史] 归档失败: ${e.message}`);
+  }
+}
+
+/**
+ * 压缩历史记录
+ * 改进策略：
+ * 1. 保留最近 N 轮对话
+ * 2. 将之前的对话归档到文件
+ * 3. 生成简洁的上下文摘要
+ */
 function compressHistory() {
-  const summaryPrompt = `请总结以下对话的核心内容，保留：
-1. 智能体已发现的重要文件/目录
-2. 已执行的重要操作
-3. 当前的工作状态和上下文
+  // 分离系统消息和其他消息
+  const nonSystemMessages = conversationHistory.filter(m => m.role !== 'system');
 
-对话记录：
-${conversationHistory.map(m => `${m.role}: ${m.content}`).join('\n')}`;
+  if (nonSystemMessages.length <= KEEP_RECENT_TURNS) {
+    // 对话不多，不需要压缩
+    return;
+  }
 
+  // 保留最近的对话
+  const recentMessages = nonSystemMessages.slice(-KEEP_RECENT_TURNS);
+
+  // 归档之前的对话
+  const archivedMessages = nonSystemMessages.slice(0, -KEEP_RECENT_TURNS);
+  if (archivedMessages.length > 0) {
+    archiveConversation(archivedMessages);
+  }
+
+  // 生成上下文摘要
+  const contextSummary = generateContextSummary(recentMessages);
+
+  // 重建对话历史
   conversationHistory = [
     { role: 'system', content: buildSystemPrompt() },
-    { role: 'user', content: summaryPrompt }
+    { role: 'user', content: `[上下文摘要] ${contextSummary}` },
+    ...recentMessages
   ];
-  turnCount = 1;
+
+  turnCount = recentMessages.length;
   saveHistory();
+}
+
+/**
+ * 生成上下文摘要
+ */
+function generateContextSummary(messages) {
+  const recentFiles = [];
+  const recentTools = new Set();
+  const userRequests = [];
+
+  for (const msg of messages) {
+    if (msg.role === 'user') {
+      userRequests.push(msg.content.slice(0, 100));
+    }
+    // 提取工具调用
+    const toolMatches = msg.content.matchAll(/\[TOOL\]\s*(\w+)/g);
+    for (const match of toolMatches) {
+      recentTools.add(match[1]);
+    }
+  }
+
+  let summary = `最近 ${messages.length} 轮对话摘要：\n`;
+  if (recentTools.size > 0) {
+    summary += `- 使用的工具: ${[...recentTools].join(', ')}\n`;
+  }
+  if (userRequests.length > 0) {
+    summary += `- 用户请求: ${userRequests.slice(-3).join(' | ')}\n`;
+  }
+  summary += `(更早的对话已归档到文件)`;
+
+  return summary;
 }
 
 function getHistoryLength() {

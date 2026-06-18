@@ -11,9 +11,15 @@ let SQL = null;
  */
 async function initSQL() {
   if (SQL) return SQL;
-  SQL = await initSqlJs({
-    locateFile: file => `https://sql.js.org/dist/${file}`
-  });
+  try {
+    const { pathname: modulePath } = new URL(import.meta.url);
+    const sqlJsDir = path.dirname(modulePath).replace(/\\/g, '/');
+    SQL = await initSqlJs({
+      locateFile: file => `file://${sqlJsDir}/../../../node_modules/sql.js/dist/${file}`
+    });
+  } catch {
+    SQL = await initSqlJs();
+  }
   return SQL;
 }
 

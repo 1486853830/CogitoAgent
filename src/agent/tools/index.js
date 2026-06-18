@@ -117,6 +117,14 @@ import {
   startScheduler,
   stopScheduler
 } from './scheduler.js';
+import { FileStorage, createStorage } from './storage.js';
+import {
+  isSandboxEnabled,
+  createJavaScriptSandbox,
+  runJavaScriptSandbox,
+  runPythonSandbox,
+  executeCodeSandbox
+} from './sandbox.js';
 
 export {
   getBasePath,
@@ -231,5 +239,12 @@ export {
   updateScheduleTask,
   toggleScheduleTask,
   startScheduler,
-  stopScheduler
+  stopScheduler,
+  FileStorage,
+  createStorage,
+  isSandboxEnabled,
+  createJavaScriptSandbox,
+  runJavaScriptSandbox,
+  runPythonSandbox,
+  executeCodeSandbox
 };
