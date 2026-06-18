@@ -49,7 +49,7 @@ function getMemoryInfo() {
 /**
  * 获取磁盘信息（Windows）
  */
-async function getDiskInfo() {
+async function getDiskInfoWindows() {
   return new Promise((resolve) => {
     exec('wmic logicaldisk get Size,FreeSpace,DeviceID,VolumeName', (error, stdout) => {
       if (error) {
@@ -92,6 +92,81 @@ async function getDiskInfo() {
       });
     });
   });
+}
+
+/**
+ * 获取磁盘信息（Linux/macOS）
+ */
+async function getDiskInfoUnix() {
+  return new Promise((resolve) => {
+    exec('df -h', (error, stdout) => {
+      if (error) {
+        resolve({
+          success: false,
+          error: `获取磁盘信息失败: ${error.message}`
+        });
+        return;
+      }
+      
+      const lines = stdout.split('\n').filter(line => line.trim());
+      const drives = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].trim().split(/\s+/);
+        if (parts.length >= 6) {
+          const deviceId = parts[0];
+          const size = parseHumanReadableSize(parts[1]);
+          const used = parseHumanReadableSize(parts[2]);
+          const free = parseHumanReadableSize(parts[3]);
+          const usage = parts[4].replace('%', '');
+          const mountPoint = parts[5];
+          
+          if (size > 0) {
+            drives.push({
+              deviceId,
+              volumeName: mountPoint,
+              total: formatBytes(size),
+              used: formatBytes(used),
+              free: formatBytes(free),
+              usage: `${usage}%`,
+              usagePercent: parseFloat(usage)
+            });
+          }
+        }
+      }
+      
+      resolve({
+        success: true,
+        data: drives
+      });
+    });
+  });
+}
+
+/**
+ * 解析人类可读的大小字符串
+ */
+function parseHumanReadableSize(sizeStr) {
+  const units = { 'B': 1, 'K': 1024, 'M': 1024 ** 2, 'G': 1024 ** 3, 'T': 1024 ** 4 };
+  const match = sizeStr.match(/^([\d.]+)([BKMGTP]?)$/i);
+  
+  if (!match) return 0;
+  
+  const value = parseFloat(match[1]);
+  const unit = match[2].toUpperCase() || 'B';
+  
+  return value * (units[unit] || 1);
+}
+
+/**
+ * 获取磁盘信息（跨平台）
+ */
+async function getDiskInfo() {
+  if (os.platform() === 'win32') {
+    return await getDiskInfoWindows();
+  } else {
+    return await getDiskInfoUnix();
+  }
 }
 
 /**

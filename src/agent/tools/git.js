@@ -1,10 +1,50 @@
 import { execFile } from 'child_process';
 
 /**
+ * 验证 Git 参数是否安全
+ * 防止命令注入攻击
+ */
+function validateGitArgs(args) {
+  if (!Array.isArray(args) || args.length === 0) {
+    return false;
+  }
+  
+  const dangerousPatterns = [
+    /[;&|`$<>]/,
+    /\(\)/,
+    /\{|\}/,
+    /\/\*/,
+    /\.\./
+  ];
+  
+  for (const arg of args) {
+    if (typeof arg !== 'string') {
+      return false;
+    }
+    
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(arg)) {
+        return false;
+      }
+    }
+  }
+  
+  return true;
+}
+
+/**
  * 执行 Git 命令
  */
 function gitCommand(args, cwd = process.cwd()) {
   return new Promise((resolve) => {
+    if (!validateGitArgs(args)) {
+      resolve({
+        success: false,
+        error: 'Git 命令参数包含危险字符，操作已拒绝'
+      });
+      return;
+    }
+    
     execFile('git', args, {
       cwd: cwd,
       timeout: 30000,
