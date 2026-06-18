@@ -248,3 +248,177 @@ export {
   runPythonSandbox,
   executeCodeSandbox
 };
+
+// ============================================
+// 工具元数据定义（用于自动生成注册表）
+// ============================================
+const TOOL_METADATA = {
+  // 文件操作
+  ls: { argCount: 1 },
+  read: { argCount: 1 },
+  copy: { argCount: 2 },
+  mkdir: { argCount: 1 },
+  create: { argCount: 2, customArgs: true },
+
+  // 网络
+  search: { argCount: 1, customArgs: true },
+  browse: { argCount: 1 },
+  fetchPage: { argCount: 1 },
+
+  // 系统
+  listApps: { argCount: 0 },
+  openApp: { argCount: 1 },
+  closeApp: { argCount: 1 },
+
+  // 浏览器自动化
+  initBrowser: { argCount: 1 },
+  clickElement: { argCount: 2 },
+  fillField: { argCount: 3 },
+  selectOption: { argCount: 2 },
+  viewChanges: { argCount: 0 },
+  getPageContent: { argCount: 0 },
+  takeScreenshot: { argCount: 1 },
+  closeBrowser: { argCount: 0 },
+  searchOnPage: { argCount: 2 },
+  findElements: { argCount: 2 },
+  searchOnEngine: { argCount: 2 },
+  downloadFile: { argCount: 3 },
+
+  // 代码执行
+  executeCode: { argCount: 2 },
+  executeFile: { argCount: 2 },
+  runJavaScript: { argCount: 1 },
+  runPython: { argCount: 1 },
+  formatCode: { argCount: 2 },
+
+  // Git
+  gitInit: { argCount: 1 },
+  gitClone: { argCount: 3 },
+  gitAdd: { argCount: 2 },
+  gitCommit: { argCount: 2 },
+  gitPush: { argCount: 3 },
+  gitPull: { argCount: 3 },
+  gitStatus: { argCount: 1 },
+  gitLog: { argCount: 2 },
+  gitBranchCreate: { argCount: 2 },
+  gitBranchDelete: { argCount: 2 },
+  gitBranchList: { argCount: 1 },
+  gitCheckout: { argCount: 2 },
+  gitCheckoutNew: { argCount: 2 },
+  gitMerge: { argCount: 3 },
+  gitDiff: { argCount: 2 },
+  gitRemoteAdd: { argCount: 3 },
+  gitRemoteList: { argCount: 1 },
+  gitConfigUser: { argCount: 3 },
+  gitReset: { argCount: 2 },
+  gitStash: { argCount: 1 },
+  gitStashPop: { argCount: 1 },
+
+  // 任务管理
+  createTask: { argCount: 4 },
+  getTasks: { argCount: 0 },
+  getTask: { argCount: 1 },
+  updateTask: { argCount: 2 },
+  deleteTask: { argCount: 1 },
+  completeTask: { argCount: 1 },
+  splitTask: { argCount: 2 },
+  getTaskStats: { argCount: 0 },
+  clearTasks: { argCount: 0 },
+
+  // 记忆系统
+  addMemory: { argCount: 3 },
+  searchMemory: { argCount: 2 },
+  getAllMemories: { argCount: 1 },
+  getMemory: { argCount: 1 },
+  updateMemory: { argCount: 2 },
+  deleteMemory: { argCount: 1 },
+  getMemoryStats: { argCount: 0 },
+  getRelatedMemories: { argCount: 1 },
+  clearMemory: { argCount: 0 },
+
+  // 数据处理
+  readCSV: { argCount: 1 },
+  writeCSV: { argCount: 3 },
+  readJSON: { argCount: 1 },
+  writeJSON: { argCount: 2 },
+  csvToJSON: { argCount: 2 },
+  jsonToCSV: { argCount: 2 },
+  queryData: { argCount: 2 },
+  analyzeData: { argCount: 1 },
+  sortData: { argCount: 3 },
+
+  // 数据库
+  executeSQL: { argCount: 2 },
+  query: { argCount: 3 },
+  insert: { argCount: 2 },
+  update: { argCount: 3 },
+  deleteData: { argCount: 2 },
+  createTable: { argCount: 2 },
+  dropTable: { argCount: 1 },
+  getTables: { argCount: 0 },
+  getTableSchema: { argCount: 1 },
+  executeTransaction: { argCount: 1 },
+  closeDB: { argCount: 0 },
+
+  // 邮件
+  sendEmail: { argCount: 4 },
+  sendTextEmail: { argCount: 3 },
+  sendHtmlEmail: { argCount: 3 },
+  sendEmailWithAttachments: { argCount: 4 },
+  sendTemplateEmail: { argCount: 3 },
+  checkEmailConfig: { argCount: 0 },
+
+  // 系统监控
+  getCPUInfo: { argCount: 0 },
+  getMemoryInfo: { argCount: 0 },
+  getDiskInfo: { argCount: 0 },
+  getNetworkInfo: { argCount: 0 },
+  getProcesses: { argCount: 0 },
+  getSystemInfo: { argCount: 0 },
+  getCurrentProcess: { argCount: 0 },
+  getSystemLoad: { argCount: 0 },
+  monitorSystem: { argCount: 0 },
+  formatBytes: { argCount: 1 },
+  formatUptime: { argCount: 1 },
+
+  // 定时任务
+  addScheduleTask: { argCount: 4 },
+  removeScheduleTask: { argCount: 1 },
+  getScheduleTasks: { argCount: 0 },
+  getScheduleTask: { argCount: 1 },
+  updateScheduleTask: { argCount: 2 },
+  toggleScheduleTask: { argCount: 1 },
+  startScheduler: { argCount: 0 },
+  stopScheduler: { argCount: 0 },
+
+  // 存储
+  createStorage: { argCount: 2 },
+};
+
+/**
+ * 自动生成工具注册表
+ * 基于 TOOL_METADATA 和实际的工具函数
+ */
+function generateToolRegistry() {
+  const registry = {};
+
+  for (const [toolName, metadata] of Object.entries(TOOL_METADATA)) {
+    // 跳过非工具导出（如 FileStorage 类）
+    if (toolName === 'FileStorage') {
+      continue;
+    }
+
+    const fn = toolExport[toolName];
+    if (typeof fn === 'function') {
+      registry[toolName] = {
+        fn,
+        ...metadata
+      };
+    }
+  }
+
+  return registry;
+}
+
+// 导出工具元数据和注册表生成器
+export { TOOL_METADATA, generateToolRegistry };
