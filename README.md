@@ -8,32 +8,144 @@ CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管�
 
 ![](introduction/main.png)
 
-![](introduction/desktop.png)
+***
+
+## 📑 目录
+
+- [🎯 核心特性](#-核心特性)
+- [🧠 核心原理](#-核心原理)
+- [🚀 快速开始](#-快速开始)
+- [🖥️ 桌面模式详解](#️-桌面模式详解)
+- [📁 项目结构](#-项目结构)
+- [🛠️ 工具列表详解](#️-工具列表详解)
+- [🏗️ 架构设计](#️-架构设计)
+- [💡 应用场景](#-应用场景)
+- [⚙️ 配置说明](#️-配置说明)
+- [🎭 预设人设](#-预设人设)
 
 ***
 
 ## 🎯 核心特性
 
-| 特性         | 描述                               | 状态 |
-| ---------- | -------------------------------- | -- |
-| **持续思考**   | 每3秒自动触发思考，无需用户干预                 | ✅  |
-| **本地运行**   | 所有数据存储在本地，保护隐私                   | ✅  |
-| **跨平台支持**  | 支持 Windows、Linux、macOS           | ✅  |
-| **多模型支持**  | 支持 OpenAI、Moark、Anthropic、Google | ✅  |
-| **丰富工具集**  | 12+ 工具模块，235+ 工具函数               | ✅  |
-| **记忆系统**   | 期记忆存储与智能检索                       | ✅  |
-| **任务管理**   | 任务创建、分解、追踪与统计                    | ✅  |
-| **代码执行**   | 支持 JavaScript 和 Python（沙箱安全执行）   | ✅  |
-| **Git 集成** | 完整的版本控制操作                        | ✅  |
-| **定时任务**   | Cron 风格定时任务调度                    | ✅  |
-| **动态工具注册** | 灵活的插件式工具系统                       | ✅  |
-| **危险操作确认** | 关键操作需要用户确认                       | ✅  |
-| **环境变量管理** | 支持 .env 配置敏感信息                   | ✅  |
-| **多会话管理**  | 支持多个独立对话会话                       | ✅  |
-| **完整测试覆盖** | 103+ 单元测试和集成测试                   | ✅  |
-| **桌面模式**   | Electron 半透明桌面覆盖层，虚拟人物视频    | ✅  |
+| 特性 | 描述 | 状态 |
+| --- | --- | :-: |
+| **持续思考** | 每3秒自动触发思考，无需用户干预 | ✅ |
+| **本地运行** | 所有数据存储在本地，保护隐私 | ✅ |
+| **跨平台支持** | 支持 Windows、Linux、macOS | ✅ |
+| **多模型支持** | 支持 OpenAI、Moark、Anthropic、Google | ✅ |
+| **丰富工具集** | 12+ 工具模块，235+ 工具函数 | ✅ |
+| **记忆系统** | 长期记忆存储与智能检索 | ✅ |
+| **任务管理** | 任务创建、分解、追踪与统计 | ✅ |
+| **代码执行** | 支持 JavaScript 和 Python（沙箱安全执行） | ✅ |
+| **Git 集成** | 完整的版本控制操作 | ✅ |
+| **定时任务** | Cron 风格定时任务调度 | ✅ |
+| **动态工具注册** | 灵活的插件式工具系统 | ✅ |
+| **危险操作确认** | 关键操作需要用户确认 | ✅ |
+| **环境变量管理** | 支持 .env 配置敏感信息 | ✅ |
+| **多会话管理** | 支持多个独立对话会话 | ✅ |
+| **完整测试覆盖** | 103+ 单元测试和集成测试 | ✅ |
+| **桌面模式** | Electron 半透明桌面覆盖层，虚拟人物视频 | ✅ |
 
 ***
+
+## 🧠 核心原理
+
+### 思考循环 (Think Cycle)
+
+Agent 的核心是一个持续运行的思考循环，每隔固定间隔自动触发一轮思考，直到用户打断。
+
+```mermaid
+flowchart TD
+    START([启动]) --> INIT[初始化会话<br/>加载 persona + 工具注册表]
+    INIT --> LOOP{思考循环}
+    
+    LOOP -->|定时触发| BUILD[构建消息上下文<br/>系统提示词 + 历史 + 当前输入]
+    BUILD --> CALL[调用 AI API<br/>流式返回]
+    CALL --> PARSE{解析输出}
+    
+    PARSE -->|普通文本| APPEND[追加到回复]
+    PARSE -->|工具调用| EXEC[执行工具]
+    PARSE -->|WAIT 标记| WAIT[等待用户输入]
+    
+    APPEND --> LOOP
+    EXEC --> RESULT[获取工具结果]
+    RESULT -->|成功| APPEND_RESULT[结果追加到上下文]
+    RESULT -->|失败| APPEND_ERROR[错误追加到上下文]
+    APPEND_RESULT --> LOOP
+    APPEND_ERROR --> LOOP
+    
+    WAIT -->|用户输入| HANDLE[处理用户消息]
+    HANDLE -->|普通消息| BUILD
+    HANDLE -->|命令 /xxx| CMD[执行命令]
+    CMD --> LOOP
+    
+    LOOP -->|退出| DONE([结束])
+```
+
+### 工具调用流程
+
+AI 输出的工具调用被解析为结构化指令，然后通过注册表查找并执行。
+
+```mermaid
+sequenceDiagram
+    participant AI as AI 模型
+    participant Parser as 解析器
+    participant Registry as 工具注册表
+    participant Tool as 工具函数
+    participant Sandbox as 沙箱
+    
+    AI->>Parser: 输出 "[TOOL] ls("C:/") [/TOOL]"
+    Parser->>Parser: 正则匹配提取 toolName + args
+    Parser->>Registry: 查找 "ls"
+    Registry-->>Parser: { fn, argCount, category }
+    
+    alt 危险操作
+        Parser->>Parser: 请求用户确认
+    end
+    
+    Parser->>Tool: 调用 fn(args)
+    
+    alt 代码执行工具
+        Tool->>Sandbox: isolated-vm 隔离执行
+        Sandbox-->>Tool: 执行结果
+    else 普通工具
+        Tool-->>Parser: 返回结果
+    end
+    
+    Parser->>AI: 结果追加到上下文
+```
+
+### 桌面模式消息流
+
+Electron 桌面窗口与终端 Agent 之间通过 WebSocket 双向通信。
+
+```mermaid
+sequenceDiagram
+    participant User as 用户
+    participant UI as 桌面 UI<br/>(renderer.js)
+    participant Bridge as agent-bridge.js<br/>(WS 客户端)
+    participant WS as ws-server.js<br/>(9527 端口)
+    participant Agent as Agent.js<br/>(思考循环)
+    participant AI as AI API
+
+    User->>UI: 输入消息
+    UI->>Bridge: IPC sendMessage(text)
+    Bridge->>WS: JSON { type: "user-message", text }
+    WS->>Agent: handleUserInput(text)
+    Agent->>AI: 流式 API 调用
+    
+    loop 流式输出
+        AI-->>Agent: chunk
+        Agent->>WS: broadcast('agent-reply', { type: 'chunk', content })
+        WS->>Bridge: 转发
+        Bridge->>UI: IPC agent-reply
+        UI->>UI: 渲染 Markdown + 过滤工具块
+    end
+    
+    Agent->>WS: broadcast('agent-reply', { type: 'done' })
+    WS->>Bridge: 转发
+    Bridge->>UI: 更新按钮状态
+```
 
 ## 🚀 快速开始
 
@@ -69,45 +181,137 @@ npm start
 
 ### 日常使用
 
-**终端模式**（原有方式）：
-
 ```bash
 npm start
 ```
 
-启动后：
+一键启动，Electron 主进程会自动拉起终端 Agent，创建桌面窗口并连接。
 
-- **ENTER** — 打断当前思考，输入指令
-- **指令 + ENTER** — 发送消息给 AI
-- **exit** — 退出程序
+**交互方式：**
 
-**桌面模式**（Electron 半透明窗口）：
+- **桌面窗口** — 半透明毛玻璃对话框 + 虚拟人物视频，直接在桌面上输入
+- **终端输入** — 在启动终端中直接输入指令，按 ENTER 发送
+- **ENTER** — 打断当前 AI 思考，进入输入状态
+- **exit** — 退出程序（或直接关闭桌面窗口）
 
-```bash
-npm run desktop
+***
+
+## 🖥️ 桌面模式详解
+
+`npm start` 会同时启动终端 Agent 和 Electron 桌面窗口，两者通过 WebSocket 实时同步。
+
+### 视觉效果
+
+![](introduction/desktop.png)
+
+### 核心特性
+
+| 特性 | 说明 |
+|------|------|
+| **半透明窗口** | `backdrop-filter: blur()` 毛玻璃效果，融合桌面背景 |
+| **无边框设计** | `frame: false`，无标题栏，极简风格 |
+| **虚拟人物** | 右下角视频循环播放 |
+| **Markdown 渲染** | 标题、代码块、列表、表格、引用等完整支持 |
+| **工具调用过滤** | 自动隐藏 `[TOOL]...[/TOOL]` 块，只显示纯文本回复 |
+| **打断按钮** | 发送按钮在 AI 思考时变为红色停止按钮，点击即可打断 |
+| **任务栏可见** | 最小化后在任务栏可见，点击恢复 |
+| **一键启动** | `npm start` 自动拉起后端 + 前端，关闭窗口即退出 |
+
+### 架构
+
+#### 模块关系
+
+```mermaid
+flowchart TB
+    subgraph Electron["Electron 主进程"]
+        Main[main.js]
+        Spawn[spawn 子进程]
+        IPC[IPC 处理]
+        Kill[端口清理]
+    end
+
+    subgraph AgentNode["Agent 子进程 (node src/index.js)"]
+        Agent[Agent.js<br/>思考循环]
+        Session[session.js<br/>会话管理]
+        Registry[registry.js<br/>工具注册表]
+        WSServer[ws-server.js<br/>WebSocket 服务]
+        API[AI API 客户端]
+    end
+
+    subgraph Desktop["桌面 UI (desktop/)"]
+        HTML[index.html<br/>布局]
+        CSS[style.css<br/>毛玻璃样式]
+        Renderer[renderer.js<br/>交互逻辑]
+        Video[人物视频]
+    end
+
+    subgraph Bridge["IPC 桥接"]
+        Preload[preload.cjs<br/>安全暴露 API]
+        BridgeWS[agent-bridge.js<br/>WS 客户端]
+    end
+
+    Main --> Spawn
+    Spawn --> Agent
+    Main --> Kill
+    Main --> IPC
+    
+    Agent --> Session
+    Agent --> Registry
+    Agent --> WSServer
+    Agent --> API
+    
+    IPC --> Preload
+    Preload --> Renderer
+    Renderer --> HTML
+    Renderer --> CSS
+    Renderer --> Video
+    
+    WSServer <==>|"WebSocket<br/>ws://9527"| BridgeWS
+    BridgeWS --> IPC
 ```
 
-桌面模式特性：
+#### 启动与退出时序
 
-- 半透明毛玻璃对话框，嵌入桌面背景
-- 虚拟人物视频（待机/思考/说话三种状态）
-- Markdown 渲染支持
-- 工具调用内容自动过滤，只显示纯文本回复
-- 发送按钮可打断 AI 思考
+```mermaid
+sequenceDiagram
+    participant User as 用户
+    participant Main as main.js
+    participant Agent as Agent 子进程
+    participant WS as ws-server
+    participant Window as 桌面窗口
+    participant Bridge as agent-bridge
 
-> ⚠️ 桌面模式需要先启动终端模式（`npm start`），再启动 Electron（`npm run desktop`），两者通过 WebSocket 通信同步。
+    User->>Main: npm start
+    Main->>Main: killPortProcess(9527)
+    Main->>Agent: spawn('node', ['src/index.js'])
+    
+    Agent->>Agent: 加载配置 + 初始化会话
+    Agent->>WS: startWsServer(9527)
+    WS-->>Agent: 服务已启动
+    Agent-->>Main: stdout: "WebSocket 服务已启动"
+    
+    Main->>Window: createWindow()
+    Main->>Bridge: initAgentBridge()
+    Bridge->>WS: 连接 ws://localhost:9527
+    WS-->>Bridge: 连接成功
+    
+    User->>Window: 发送消息
+    Window->>Bridge: IPC
+    Bridge->>WS: JSON 消息
+    
+    User->>Window: 关闭窗口
+    Window->>Main: window-all-closed
+    Main->>Agent: stdin.write('exit\n')
+    Agent->>Agent: 优雅退出
+    Main->>Agent: 3s 后 kill()
+    Main->>Main: app.quit()
+```
 
 ### 视频素材
 
-将以下视频文件放入 `electron/assets/` 目录：
+将人物视频放入 `electron/assets/` 目录，命名为 `zhanshi.mp4`（或其他名称，在 `renderer.js` 的 `videoStates` 中修改）。
 
-| 文件名 | 状态 | 说明 |
-|--------|------|------|
-| `idle.mp4` | 待机 | AI 等待用户输入时播放 |
-| `thinking.mp4` | 思考 | AI 正在处理请求时播放 |
-| `speaking.mp4` | 说话 | AI 正在输出回复时播放 |
-
-> 💡 目前支持单视频模式，只需放入一个视频文件即可。
+> 💡 单视频模式，视频循环播放。如需状态切换，可在 `videoStates` 中配置多个视频。
 
 ### 会话管理命令
 
@@ -120,6 +324,24 @@ CogitoAgent 支持多会话管理，可以同时进行多个独立的对话：
 /delete <id>    # 删除指定会话
 /rename <name>  # 重命名当前会话
 ```
+
+#### 会话生命周期
+
+```mermaid
+stateDiagram-v2
+    [*] --> 创建会话: npm start / /new
+    创建会话 --> 活跃: 加载 meta.json
+    活跃 --> 对话中: 用户发送消息
+    对话中 --> 存档: 消息数 > 阈值
+    存档 --> 对话中: 用户继续对话
+    对话中 --> 活跃: 切换会话 /switch
+    活跃 --> 已删除: /delete <id>
+    活跃 --> 重命名: /rename <name>
+    重命名 --> 活跃
+    已删除 --> [*]
+```
+
+会话数据存储在 `data/sessions/` 目录下，每个会话独立保存为 JSON 文件，支持跨启动持久化。
 
 ***
 
@@ -173,7 +395,7 @@ CogitoAgent/
 │   ├── preload.cjs                   # IPC 安全桥接
 │   ├── agent-bridge.js               # WebSocket 客户端（连接终端 Agent）
 │   ├── assets/                       # 视频素材目录
-│   │   └── *.mp4                     # 人物视频（idle/thinking/speaking）
+│   │   └── *.mp4                     # 人物视频
 │   └── desktop/                      # 桌面 UI
 │       ├── index.html                # 布局（人物 + 对话框）
 │       ├── style.css                 # 毛玻璃样式 + Markdown 渲染
@@ -445,19 +667,19 @@ Cron 风格定时任务调度。
 
 ### 核心组件说明
 
-| 组件                     | 职责      | 说明                                                                    |
-| ---------------------- | ------- | --------------------------------------------------------------------- |
-| **StateMachine**       | 状态管理    | 独立 state.js 模块，管理 THINKING / AWAITING\_INPUT / AWAITING\_CONFIRMATION |
-| **ThinkLoop**          | 思考循环    | 每3秒自动触发一次思考                                                           |
-| **PromptMgr**          | 上下文管理   | 管理对话历史，自动压缩超过150轮的对话                                                  |
-| **SessionManager**     | 会话管理    | 支持多会话切换、创建、删除、重命名                                                     |
-| **Multi-Model Client** | API 客户端 | 支持多提供商切换，统一接口                                                         |
-| **ToolRegistry**       | 动态工具注册  | 独立 registry.js 模块，100+ 工具集中管理                                         |
-| **CommandHandler**     | 命令处理    | 独立 commands.js 模块，处理 /help、/status 等特殊命令                              |
-| **Sandbox**            | 代码沙箱    | Node.js 原生 vm 模块，Object.create(null) + Object.freeze 防护               |
-| **Logger**             | 日志管理    | 独立 logger.js 模块，DEBUG/INFO/WARN/ERROR 分级输出                            |
-| **EnvManager**         | 环境变量管理  | 通过 .env 文件管理敏感配置                                                      |
-| **ConfirmGate**        | 危险操作确认  | git push、代码执行等高风险操作需用户确认                                              |
+| 组件 | 职责 | 说明 |
+| --- | --- | --- |
+| **StateMachine** | 状态管理 | 独立 state.js，管理 THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
+| **ThinkLoop** | 思考循环 | 每3秒自动触发一次思考 |
+| **PromptMgr** | 上下文管理 | 管理对话历史，自动压缩超过150轮的对话 |
+| **SessionManager** | 会话管理 | 支持多会话切换、创建、删除、重命名 |
+| **Multi-Model Client** | API 客户端 | 支持多提供商切换，统一接口 |
+| **ToolRegistry** | 动态工具注册 | 独立 registry.js，100+ 工具集中管理 |
+| **CommandHandler** | 命令处理 | 独立 commands.js，处理 /help、/status 等特殊命令 |
+| **Sandbox** | 代码沙箱 | isolated-vm 进程级隔离，支持优雅降级 |
+| **Logger** | 日志管理 | 独立 logger.js，DEBUG/INFO/WARN/ERROR 分级输出 |
+| **EnvManager** | 环境变量管理 | 通过 .env 文件管理敏感配置 |
+| **ConfirmGate** | 危险操作确认 | git push、代码执行等高风险操作需用户确认 |
 
 ***
 
@@ -467,36 +689,32 @@ Cron 风格定时任务调度。
 
 ```
 用户：帮我写一个 Python 脚本，计算斐波那契数列前20项
-AI：好的，我来帮你编写并执行这个脚本。
-[TOOL] runPython("def fibonacci(n):...") [/TOOL]
-执行结果：[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181]
+AI：  [TOOL] runPython("def fibonacci(n):...") [/TOOL]
+     → 执行结果：[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, ...]
 ```
 
 ### 2. 项目管理
 
 ```
 用户：帮我初始化一个 Git 仓库并提交代码
-AI：好的，我来帮你完成。
-[TOOL] gitInit("./my-project") [/TOOL]
-[TOOL] gitAdd(".") [/TOOL]
-[TOOL] gitCommit("Initial commit") [/TOOL]
+AI：  [TOOL] gitInit("./my-project") [/TOOL]
+     [TOOL] gitAdd(".") [/TOOL]
+     [TOOL] gitCommit("Initial commit") [/TOOL]
 ```
 
 ### 3. 任务追踪
 
 ```
 用户：创建一个任务，完成项目文档编写
-AI：好的，已创建任务。
-[TOOL] createTask("编写项目文档", "完成 README 和技术文档", "high") [/TOOL]
-任务创建成功，ID: task_123
+AI：  [TOOL] createTask("编写项目文档", "完成 README 和技术文档", "high") [/TOOL]
+     → 任务创建成功，ID: task_123
 ```
 
 ### 4. 知识管理
 
 ```
 用户：记住这个重要的会议时间：下周一上午9点
-AI：好的，已添加到记忆中。
-[TOOL] addMemory("会议时间：下周一上午9点", ["会议", "时间"], {"date": "2024-01-15"}) [/TOOL]
+AI：  [TOOL] addMemory("会议时间：下周一上午9点", ["会议", "时间"], {"date": "2024-01-15"}) [/TOOL]
 ```
 
 ***
@@ -563,21 +781,21 @@ CogitoAgent 支持按需加载工具分类，减少 Token 消耗：
 
 **可用分类：**
 
-| 分类          | 说明                                          |
-| ----------- | ------------------------------------------- |
-| `file`      | 文件操作（ls, read, copy, mkdir, create）         |
-| `web`       | 网络工具（search, browse, fetchPage）             |
-| `browser`   | 浏览器自动化（initBrowser, clickElement 等）         |
-| `system`    | 系统操作（listApps, openApp, closeApp）           |
-| `code`      | 代码执行（executeCode, runJavaScript, runPython） |
-| `git`       | Git 版本控制（gitStatus, gitCommit, gitPush 等）   |
-| `task`      | 任务管理（createTask, getTasks, completeTask 等）  |
-| `memory`    | 记忆系统（addMemory, searchMemory 等）             |
-| `data`      | 数据处理（readCSV, writeJSON 等）                  |
-| `db`        | 数据库操作（executeSQL, query 等）                  |
-| `email`     | 邮件功能（sendEmail, sendTextEmail 等）            |
-| `monitor`   | 系统监控（getCPUInfo, monitorSystem 等）           |
-| `scheduler` | 定时任务（addScheduleTask 等）                     |
+| 分类 | 说明 |
+| --- | --- |
+| `file` | 文件操作（ls, read, copy, mkdir, create） |
+| `web` | 网络工具（search, browse, fetchPage） |
+| `browser` | 浏览器自动化（initBrowser, clickElement 等） |
+| `system` | 系统操作（listApps, openApp, closeApp） |
+| `code` | 代码执行（executeCode, runJavaScript, runPython） |
+| `git` | Git 版本控制（gitStatus, gitCommit, gitPush 等） |
+| `task` | 任务管理（createTask, getTasks, completeTask 等） |
+| `memory` | 记忆系统（addMemory, searchMemory 等） |
+| `data` | 数据处理（readCSV, writeJSON 等） |
+| `db` | 数据库操作（executeSQL, query 等） |
+| `email` | 邮件功能（sendEmail, sendTextEmail 等） |
+| `monitor` | 系统监控（getCPUInfo, monitorSystem 等） |
+| `scheduler` | 定时任务（addScheduleTask 等） |
 
 如果不配置 `enabledCategories`，默认启用所有分类。
 
@@ -587,21 +805,21 @@ CogitoAgent 支持按需加载工具分类，减少 Token 消耗：
 
 CogitoAgent 提供 13 种预设人设，可根据不同场景选择：
 
-| 人设            | 描述  | 适用场景      |
-| ------------- | --- | --------- |
-| **explorer**  | 探索者 | 文件探索、项目理解 |
-| **scholar**   | 学者  | 知识研究、深度分析 |
-| **assistant** | 助手  | 日常任务、生活助手 |
-| **creative**  | 创意家 | 写作、创意生成   |
-| **critic**    | 评论家 | 代码审查、建议改进 |
-| **teacher**   | 教师  | 教学、知识讲解   |
-| **wenchen**   | 文人  | 文学创作、诗词歌赋 |
-| **wujiang**   | 武将  | 决策果断、执行力强 |
-| **yingwei**   | 英伟  | 领导者、战略规划  |
-| **zhanshi**   | 战士  | 解决问题、克服困难 |
-| **moushi**    | 谋士  | 略分析、规划    |
-| **jianguan**  | 监管  | 质量把控、流程管理 |
-| **xiake**     | 侠客  | 自由探索、不拘一格 |
+| 人设 | 描述 | 适用场景 |
+| --- | --- | --- |
+| **explorer** | 探索者 | 文件探索、项目理解 |
+| **scholar** | 学者 | 知识研究、深度分析 |
+| **assistant** | 助手 | 日常任务、生活助手 |
+| **creative** | 创意家 | 写作、创意生成 |
+| **critic** | 评论家 | 代码审查、建议改进 |
+| **teacher** | 教师 | 教学、知识讲解 |
+| **wenchen** | 文人 | 文学创作、诗词歌赋 |
+| **wujiang** | 武将 | 决策果断、执行力强 |
+| **yingwei** | 英伟 | 领导者、战略规划 |
+| **zhanshi** | 战士 | 解决问题、克服困难 |
+| **moushi** | 谋士 | 策略分析、规划 |
+| **jianguan** | 监管 | 质量把控、流程管理 |
+| **xiake** | 侠客 | 自由探索、不拘一格 |
 
 ***
 
@@ -624,17 +842,17 @@ npm test -- --coverage
 
 ### 测试覆盖范围
 
-| 测试模块        | 测试用例数 | 覆盖内容              |
-| ----------- | ----- | ----------------- |
-| **Agent**   | 27    | 参数解析、工具调用、状态管理    |
-| **配置管理**    | 12    | 环境变量解析、配置合并、默认值处理 |
-| **参数解析**    | 10    | JSON 解析、参数验证、错误处理 |
-| **Git 操作**  | 20    | 仓库操作、文件操作、安全参数传递  |
-| **文件存储**    | 10    | 读写操作、目录管理、错误处理    |
-| **代码执行**    | 8     | 沙箱安全、原型链隔离、危险代码拒绝 |
-| **数据库**     | 10    | SQL 执行、CRUD、事务、回滚 |
-| **Web 模块**  | 3     | browse、fetchPage  |
-| **Browser** | 2     | Playwright 生命周期   |
+| 测试模块 | 测试用例数 | 覆盖内容 |
+| --- | :-: | --- |
+| **Agent** | 27 | 参数解析、工具调用、状态管理 |
+| **配置管理** | 12 | 环境变量解析、配置合并、默认值处理 |
+| **参数解析** | 10 | JSON 解析、参数验证、错误处理 |
+| **Git 操作** | 20 | 仓库操作、文件操作、安全参数传递 |
+| **文件存储** | 10 | 读写操作、目录管理、错误处理 |
+| **代码执行** | 8 | 沙箱安全、原型链隔离、危险代码拒绝 |
+| **数据库** | 10 | SQL 执行、CRUD、事务、回滚 |
+| **Web 模块** | 3 | browse、fetchPage |
+| **Browser** | 2 | Playwright 生命周期 |
 
 ### 测试特性
 
