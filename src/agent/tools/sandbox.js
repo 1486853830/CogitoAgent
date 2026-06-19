@@ -1,10 +1,10 @@
 /**
  * 代码执行沙箱模块
- * 使用 Node.js 原生 vm 模块提供安全的代码执行环境
- * 增强版本：更多安全特性、更严格的隔离
+ * 使用 isolated-vm 提供强隔离的代码执行环境
+ * 支持 JavaScript 和 Python 代码执行
  */
 
-import vm from 'vm';
+import ivm from 'isolated-vm';
 import { execFile } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
@@ -14,77 +14,45 @@ import { loadConfig } from '../../config.js';
 
 const MAX_EXECUTION_TIME = 30000;
 const MAX_OUTPUT_SIZE = 100000;
-const MAX_MEMORY_MB = 128;  // 最大内存限制
+const MAX_MEMORY_MB = 128;
 
 /**
  * 检查是否启用沙箱模式
  */
 function isSandboxEnabled() {
-  // 环境变量优先
   if (process.env.COGITO_SANDBOX_MODE === 'false') {
     return false;
   }
   if (process.env.COGITO_SANDBOX_MODE === 'true') {
     return true;
   }
-  // 默认启用沙箱
   return true;
 }
 
 /**
- * 创建冻结的安全对象（深度冻结，防止原型链攻击）
+ * 在 isolated-vm 沙箱中执行 JavaScript 代码
+ * 使用 ivm.Callback 安全包装，避免原型链逃逸风险
  */
-function createFrozenObject(obj) {
-  if (obj === null || typeof obj !== 'object') {
-    return obj;
-  }
+async function runJavaScriptIsolated(code, timeout = 10000) {
+  let isolate = null;
+  let consoleLogCallback = null;
+  let consoleErrorCallback = null;
+  let consoleWarnCallback = null;
+  let consoleInfoCallback = null;
   
-  // 获取所有自有属性和 Symbol 属性
-  const propNames = Object.getOwnPropertyNames(obj);
-  const symbolProps = Object.getOwnPropertySymbols(obj);
-  
-  for (const name of propNames) {
-    const descriptor = Object.getOwnPropertyDescriptor(obj, name);
-    if (descriptor && (descriptor.value !== undefined)) {
-      if (typeof descriptor.value === 'object' && descriptor.value !== null) {
-        createFrozenObject(descriptor.value);
-      }
-      Object.defineProperty(obj, name, { ...descriptor, writable: false });
-    }
-  }
-  
-  for (const sym of symbolProps) {
-    const descriptor = Object.getOwnPropertyDescriptor(obj, sym);
-    if (descriptor && (descriptor.value !== undefined)) {
-      if (typeof descriptor.value === 'object' && descriptor.value !== null) {
-        createFrozenObject(descriptor.value);
-      }
-      Object.defineProperty(obj, sym, { ...descriptor, writable: false });
-    }
-  }
-  
-  return Object.freeze(obj);
-}
+  try {
+    isolate = new ivm.Isolate({
+      memoryLimit: MAX_MEMORY_MB,
+      inspector: false,
+      cpuTimeout: Math.min(timeout, MAX_EXECUTION_TIME)
+    });
 
-/**
- * 创建 JavaScript 沙箱
- * 使用增强的安全配置：
- * 1. Object.create(null) 防止原型链逃逸
- * 2. 深度冻结内置对象
- * 3. 内存使用监控
- */
-function createJavaScriptSandbox(timeout = 10000) {
-  // 使用 Object.create(null) 创建没有原型的对象
-  const sandbox = Object.create(null);
+    const context = await isolate.createContext();
+    const jail = context.global;
+    await jail.set('global', jail.derefInto());
 
-  // 安全输出捕获
-  let outputBuffer = '';
-  const captureOutput = () => {
-    const originalLog = console.log;
-    const originalError = console.error;
-    const originalWarn = console.warn;
-    const originalInfo = console.info;
-    
+    let outputBuffer = '';
+
     const formatArg = (a) => {
       if (a === undefined) return 'undefined';
       if (a === null) return 'null';
@@ -98,33 +66,202 @@ function createJavaScriptSandbox(timeout = 10000) {
       }
       return String(a);
     };
-    
-    console.log = (...args) => {
+
+    consoleLogCallback = new ivm.Callback((...args) => {
       const line = args.map(formatArg).join(' ');
       outputBuffer += line + '\n';
       if (outputBuffer.length > MAX_OUTPUT_SIZE) {
         outputBuffer = outputBuffer.slice(0, MAX_OUTPUT_SIZE) + '\n[输出过长已截断]';
       }
-    };
-    console.error = (...args) => {
-      outputBuffer += '[Error] ' + args.map(formatArg).join(' ') + '\n';
-    };
-    console.warn = (...args) => {
-      outputBuffer += '[Warn] ' + args.map(formatArg).join(' ') + '\n';
-    };
-    console.info = (...args) => {
-      outputBuffer += '[Info] ' + args.map(formatArg).join(' ') + '\n';
-    };
-    
-    return () => {
-      console.log = originalLog;
-      console.error = originalError;
-      console.warn = originalWarn;
-      console.info = originalInfo;
-    };
-  };
+    }, { arguments: { copy: true, maxDepth: 2 } });
 
-  // 只允许安全的基础对象和函数
+    consoleErrorCallback = new ivm.Callback((...args) => {
+      outputBuffer += '[Error] ' + args.map(formatArg).join(' ') + '\n';
+    }, { arguments: { copy: true, maxDepth: 2 } });
+
+    consoleWarnCallback = new ivm.Callback((...args) => {
+      outputBuffer += '[Warn] ' + args.map(formatArg).join(' ') + '\n';
+    }, { arguments: { copy: true, maxDepth: 2 } });
+
+    consoleInfoCallback = new ivm.Callback((...args) => {
+      outputBuffer += '[Info] ' + args.map(formatArg).join(' ') + '\n';
+    }, { arguments: { copy: true, maxDepth: 2 } });
+
+    await jail.set('console', new ivm.Reference({
+      log: consoleLogCallback,
+      error: consoleErrorCallback,
+      warn: consoleWarnCallback,
+      info: consoleInfoCallback
+    }));
+
+    await jail.set('JSON', context.evalSync('({})'));
+    await jail.set('Math', context.evalSync('({})'));
+    await jail.set('Date', context.evalSync('({})'));
+
+    const jsonMethods = ['parse', 'stringify'];
+    const mathMethods = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh', 'atan2', 'cbrt', 'ceil', 'clz32', 'cos', 'cosh', 'exp', 'floor', 'fround', 'hypot', 'imul', 'log', 'log1p', 'log2', 'log10', 'max', 'min', 'pow', 'random', 'round', 'sign', 'sin', 'sinh', 'sqrt', 'tan', 'tanh', 'trunc', 'E', 'PI', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'SQRT1_2', 'SQRT2'];
+    const dateMethods = ['now', 'parse', 'UTC'];
+
+    for (const method of jsonMethods) {
+      await jail.set(`JSON.${method}`, new ivm.Callback((...args) => JSON[method](...args), { arguments: { copy: true }, result: { copy: true } }));
+    }
+
+    for (const method of mathMethods) {
+      if (typeof Math[method] === 'function') {
+        await jail.set(`Math.${method}`, new ivm.Callback((...args) => Math[method](...args), { arguments: { copy: true }, result: { copy: true } }));
+      } else {
+        await jail.set(`Math.${method}`, Math[method]);
+      }
+    }
+
+    for (const method of dateMethods) {
+      await jail.set(`Date.${method}`, new ivm.Callback((...args) => Date[method](...args), { arguments: { copy: true }, result: { copy: true } }));
+    }
+
+    await jail.set('parseInt', new ivm.Callback((str, radix) => parseInt(str, radix), { arguments: { copy: true }, result: { copy: true } }));
+    await jail.set('parseFloat', new ivm.Callback((str) => parseFloat(str), { arguments: { copy: true }, result: { copy: true } }));
+    await jail.set('isNaN', new ivm.Callback((val) => isNaN(val), { arguments: { copy: true }, result: { copy: true } }));
+    await jail.set('isFinite', new ivm.Callback((val) => isFinite(val), { arguments: { copy: true }, result: { copy: true } }));
+    await jail.set('encodeURIComponent', new ivm.Callback((str) => encodeURIComponent(str), { arguments: { copy: true }, result: { copy: true } }));
+    await jail.set('decodeURIComponent', new ivm.Callback((str) => decodeURIComponent(str), { arguments: { copy: true }, result: { copy: true } }));
+    await jail.set('encodeURI', new ivm.Callback((str) => encodeURI(str), { arguments: { copy: true }, result: { copy: true } }));
+    await jail.set('decodeURI', new ivm.Callback((str) => decodeURI(str), { arguments: { copy: true }, result: { copy: true } }));
+
+    await jail.set('globalThis', null);
+    await jail.set('process', null);
+    await jail.set('require', null);
+    await jail.set('module', null);
+    await jail.set('exports', null);
+    await jail.set('Buffer', null);
+    await jail.set('setTimeout', null);
+    await jail.set('setInterval', null);
+    await jail.set('setImmediate', null);
+    await jail.set('clearTimeout', null);
+    await jail.set('clearInterval', null);
+    await jail.set('clearImmediate', null);
+    await jail.set('fetch', null);
+    await jail.set('eval', null);
+    await jail.set('Function', null);
+    await jail.set('Proxy', null);
+
+    const wrappedCode = `
+      (function() {
+        try {
+          const result = (function() { ${code} })();
+          return { success: true, result: result };
+        } catch (e) {
+          return { success: false, error: e.message };
+        }
+      })()
+    `;
+
+    const result = await context.eval(wrappedCode, {
+      timeout: Math.min(timeout, MAX_EXECUTION_TIME),
+      breakOnSigint: true
+    });
+
+    const resultObj = await result.copy();
+
+    let output;
+    if (resultObj.success) {
+      if (resultObj.result === undefined) {
+        output = outputBuffer || '执行完成，无返回值';
+      } else if (typeof resultObj.result === 'object') {
+        output = (outputBuffer || '') + JSON.stringify(resultObj.result, null, 2);
+      } else {
+        output = (outputBuffer || '') + String(resultObj.result);
+      }
+    } else {
+      output = '[执行错误]: ' + resultObj.error;
+    }
+
+    if (output.length > MAX_OUTPUT_SIZE) {
+      output = output.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
+    }
+
+    return {
+      success: true,
+      data: output
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      error: `沙箱执行失败: ${error.message}`
+    };
+  } finally {
+    if (consoleLogCallback) {
+      try {
+        consoleLogCallback.release();
+      } catch {
+      }
+    }
+    if (consoleErrorCallback) {
+      try {
+        consoleErrorCallback.release();
+      } catch {
+      }
+    }
+    if (consoleWarnCallback) {
+      try {
+        consoleWarnCallback.release();
+      } catch {
+      }
+    }
+    if (consoleInfoCallback) {
+      try {
+        consoleInfoCallback.release();
+      } catch {
+      }
+    }
+    if (isolate) {
+      try {
+        isolate.dispose();
+      } catch {
+      }
+    }
+  }
+}
+
+/**
+ * 使用 Node.js 原生 vm 模块执行（降级方案）
+ */
+import vm from 'vm';
+
+function createFrozenObject(obj) {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  const propNames = Object.getOwnPropertyNames(obj);
+  const symbolProps = Object.getOwnPropertySymbols(obj);
+
+  for (const name of propNames) {
+    const descriptor = Object.getOwnPropertyDescriptor(obj, name);
+    if (descriptor && (descriptor.value !== undefined)) {
+      if (typeof descriptor.value === 'object' && descriptor.value !== null) {
+        createFrozenObject(descriptor.value);
+      }
+      Object.defineProperty(obj, name, { ...descriptor, writable: false });
+    }
+  }
+
+  for (const sym of symbolProps) {
+    const descriptor = Object.getOwnPropertyDescriptor(obj, sym);
+    if (descriptor && (descriptor.value !== undefined)) {
+      if (typeof descriptor.value === 'object' && descriptor.value !== null) {
+        createFrozenObject(descriptor.value);
+      }
+      Object.defineProperty(obj, sym, { ...descriptor, writable: false });
+    }
+  }
+
+  return Object.freeze(obj);
+}
+
+function createJavaScriptSandbox() {
+  const sandbox = Object.create(null);
+
   sandbox.console = Object.seal(Object.assign(Object.create(null), {
     log: () => {},
     error: () => {},
@@ -132,19 +269,12 @@ function createJavaScriptSandbox(timeout = 10000) {
     info: () => {}
   }));
 
-  // 禁止危险对象（设置为 null 而不是 undefined，防止绕过）
   sandbox.global = null;
   sandbox.globalThis = null;
-  sandbox.window = null;
-  sandbox.document = null;
-  sandbox.navigator = null;
-  sandbox.location = null;
   sandbox.process = null;
   sandbox.require = null;
   sandbox.module = null;
   sandbox.exports = null;
-  sandbox.__dirname = null;
-  sandbox.__filename = null;
   sandbox.Buffer = null;
   sandbox.setTimeout = null;
   sandbox.setInterval = null;
@@ -153,42 +283,14 @@ function createJavaScriptSandbox(timeout = 10000) {
   sandbox.clearInterval = null;
   sandbox.clearImmediate = null;
   sandbox.fetch = null;
-  sandbox.XMLHttpRequest = null;
-  sandbox.ActiveXObject = null;
-  sandbox.WebSocket = null;
-  sandbox.Worker = null;
-  sandbox.SharedWorker = null;
-  sandbox.ServiceWorker = null;
-  sandbox.EventSource = null;
-  sandbox.DOMException = null;
+  sandbox.eval = null;
+  sandbox.Function = null;
+  sandbox.Proxy = null;
 
-  // 深度冻结的内置对象（防止通过原型链访问危险属性）
   sandbox.JSON = createFrozenObject(JSON);
   sandbox.Math = createFrozenObject(Math);
   sandbox.Date = createFrozenObject(Date);
-  sandbox.Array = createFrozenObject(Array);
-  sandbox.ArrayBuffer = createFrozenObject(ArrayBuffer);
-  sandbox.Object = createFrozenObject(Object);
-  sandbox.String = createFrozenObject(String);
-  sandbox.Number = createFrozenObject(Number);
-  sandbox.BigInt = createFrozenObject(BigInt);
-  sandbox.Boolean = createFrozenObject(Boolean);
-  sandbox.Symbol = createFrozenObject(Symbol);
-  sandbox.RegExp = createFrozenObject(RegExp);
-  sandbox.Error = createFrozenObject(Error);
-  sandbox.TypeError = createFrozenObject(TypeError);
-  sandbox.RangeError = createFrozenObject(RangeError);
-  sandbox.SyntaxError = createFrozenObject(SyntaxError);
-  sandbox.ReferenceError = createFrozenObject(ReferenceError);
-  sandbox.Map = createFrozenObject(Map);
-  sandbox.Set = createFrozenObject(Set);
-  sandbox.WeakMap = createFrozenObject(WeakMap);
-  sandbox.WeakSet = createFrozenObject(WeakSet);
-  sandbox.Promise = createFrozenObject(Promise);
-  sandbox.Proxy = null;
-  sandbox.Reflect = createFrozenObject(Reflect);
 
-  // 安全函数
   sandbox.parseInt = parseInt;
   sandbox.parseFloat = parseFloat;
   sandbox.isNaN = isNaN;
@@ -197,36 +299,12 @@ function createJavaScriptSandbox(timeout = 10000) {
   sandbox.decodeURIComponent = decodeURIComponent;
   sandbox.encodeURI = encodeURI;
   sandbox.decodeURI = decodeURI;
-  sandbox.escape = escape;
-  sandbox.unescape = unescape;
-  sandbox.eval = null;  // 禁止 eval
-
-  // TypedArray 工厂（安全的）
-  sandbox.Uint8Array = createFrozenObject(Uint8Array);
-  sandbox.Int8Array = createFrozenObject(Int8Array);
-  sandbox.Uint16Array = createFrozenObject(Uint16Array);
-  sandbox.Int16Array = createFrozenObject(Int16Array);
-  sandbox.Uint32Array = createFrozenObject(Uint32Array);
-  sandbox.Int32Array = createFrozenObject(Int32Array);
-  sandbox.Float32Array = createFrozenObject(Float32Array);
-  sandbox.Float64Array = createFrozenObject(Float64Array);
-  sandbox.BigUint64Array = createFrozenObject(BigUint64Array);
-  sandbox.BigInt64Array = createFrozenObject(BigInt64Array);
-  sandbox.DataView = createFrozenObject(DataView);
 
   const context = vm.createContext(sandbox);
-  return { sandbox, context, captureOutput };
+  return { sandbox, context };
 }
 
-/**
- * 在沙箱中执行 JavaScript 代码
- */
-async function runJavaScriptSandbox(code, timeout = 10000) {
-  if (!isSandboxEnabled()) {
-    // 未启用沙箱，直接执行
-    return runJavaScriptDirect(code);
-  }
-
+async function runJavaScriptFallback(code, timeout = 10000) {
   return new Promise((resolve) => {
     const timeoutId = setTimeout(() => {
       resolve({
@@ -236,7 +314,7 @@ async function runJavaScriptSandbox(code, timeout = 10000) {
     }, Math.min(timeout, MAX_EXECUTION_TIME));
 
     try {
-      const { context } = createJavaScriptSandbox(timeout);
+      const { context } = createJavaScriptSandbox();
 
       const wrappedCode = `
         (function() {
@@ -287,12 +365,25 @@ async function runJavaScriptSandbox(code, timeout = 10000) {
 }
 
 /**
+ * 执行 JavaScript 代码（优先使用 isolated-vm）
+ */
+async function runJavaScriptSandbox(code, timeout = 10000) {
+  if (!isSandboxEnabled()) {
+    return runJavaScriptDirect(code);
+  }
+
+  try {
+    return await runJavaScriptIsolated(code, timeout);
+  } catch (error) {
+    console.warn(`isolated-vm 执行失败，降级到原生 vm: ${error.message}`);
+    return await runJavaScriptFallback(code, timeout);
+  }
+}
+
+/**
  * 直接执行 JavaScript 代码（非沙箱模式）
- * 警告：此模式不安全，可以访问 process、require 等危险对象
- * 仅在 COGITO_SANDBOX_MODE=false 时使用
  */
 async function runJavaScriptDirect(code) {
-  // 安全警告
   console.warn('[安全警告] 非沙箱模式执行 JavaScript 代码，可能存在安全风险');
 
   return new Promise((resolve) => {
@@ -304,7 +395,6 @@ async function runJavaScriptDirect(code) {
     }, MAX_EXECUTION_TIME);
 
     try {
-      // 使用 Function 构造器执行，并限制对全局对象的访问
       const safeGlobals = {
         console: {
           log: (...args) => {
@@ -353,7 +443,6 @@ async function runJavaScriptDirect(code) {
         decodeURIComponent: decodeURIComponent
       };
 
-      // 创建隔离的全局作用域
       const fn = new Function(
         'global',
         `
@@ -444,18 +533,12 @@ async function cleanupTmpFile(tmpPath) {
     try {
       await fs.unlink(tmpPath);
     } catch {
-      // 忽略删除失败
     }
   }
 }
 
 /**
  * 执行 Python 代码（使用沙箱隔离的临时文件）
- * 安全改进：
- * 1. 禁止网络访问
- * 2. 禁止用户站点包加载
- * 3. 只读工作目录
- * 4. 限制 PYTHONPATH
  */
 async function runPythonSandbox(code) {
   return new Promise(async (resolve) => {
@@ -464,7 +547,7 @@ async function runPythonSandbox(code) {
 
     const timeoutId = setTimeout(async () => {
       timedOut = true;
-      await cleanupTmpFile(tmpPath);  // 超时时也清理临时文件
+      await cleanupTmpFile(tmpPath);
       resolve({
         success: false,
         error: '执行超时（超过30秒）'
@@ -475,35 +558,29 @@ async function runPythonSandbox(code) {
       tmpPath = generateSecureTmpPath('py');
       await writeSecureTmpFile(tmpPath, code);
 
-      // 安全环境配置
       const secureEnv = {
         ...process.env,
-        PYTHONUNBUFFERED: '1',           // 无缓冲输出
-        PYTHONNOUSERSITE: '1',          // 禁止加载用户站点包
-        PYTHONHASHSEED: '0',            // 固定哈希种子
-        PYTHONDONTWRITEBYTECODE: '1',  // 不生成 .pyc 文件
-        // 限制 PATH，防止访问其他程序
+        PYTHONUNBUFFERED: '1',
+        PYTHONNOUSERSITE: '1',
+        PYTHONHASHSEED: '0',
+        PYTHONDONTWRITEBYTECODE: '1',
         PATH: process.env.PATH?.split(path.delimiter).slice(0, 3).join(path.delimiter) || '',
       };
 
-      // 删除可能危险的环境变量
       delete secureEnv.PYTHONPATH;
       delete secureEnv.PYTHONHOME;
       delete secureEnv.PYTHONSTARTUP;
       delete secureEnv.PYTHONRC;
       delete secureEnv.VIRTUAL_ENV;
 
-      execFile('python', [
-        tmpPath  // 直接传文件路径，不使用 -c exec()
-      ], {
+      execFile('python', [tmpPath], {
         timeout: MAX_EXECUTION_TIME,
         encoding: 'utf8',
-        cwd: os.tmpdir(),  // 在临时目录执行
-        env: secureEnv,    // 使用安全的环境变量
-        // 限制子进程的权限（Windows 不支持 uid/gid）
-        maxBuffer: MAX_OUTPUT_SIZE * 2,  // 限制输出大小
+        cwd: os.tmpdir(),
+        env: secureEnv,
+        maxBuffer: MAX_OUTPUT_SIZE * 2,
       }, async (error, stdout, stderr) => {
-        if (timedOut) return;  // 如果已经超时，忽略回调
+        if (timedOut) return;
 
         clearTimeout(timeoutId);
         await cleanupTmpFile(tmpPath);
@@ -564,7 +641,7 @@ async function executeCodeSandbox(code, language = 'javascript') {
 
 export {
   isSandboxEnabled,
-  createJavaScriptSandbox,
+  runJavaScriptIsolated,
   runJavaScriptSandbox,
   runPythonSandbox,
   executeCodeSandbox,
