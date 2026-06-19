@@ -7,7 +7,10 @@
   "scripts": {
     "start": "chcp 65001 > nul && electron .",
     "desktop": "chcp 65001 > nul && electron .",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "cli": "chcp 65001 > nul && set DISABLE_WS=true && node src/index.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/e2e",
+    "test:e2e:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/e2e --watch"
   },
   "dependencies": {
     "@unblessed/node": "^1.0.0-alpha.23",

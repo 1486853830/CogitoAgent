@@ -500,8 +500,10 @@ function handleUserInput(input) {
   if (state.current === STATE.THINKING) {
     shouldStop = true;
     clearTimeout(thinkingTimer);
+    isProcessing = false;  // 重置处理标志，允许后续思考循环
     println('\n[中断] 思考已停止，请输入消息...', 'yellow');
     state.current = STATE.AWAITING_INPUT;
+    broadcast('agent-state', { state: 'idle' });  // 通知前端状态变化
     return;
   }
 
@@ -510,10 +512,12 @@ function handleUserInput(input) {
       println(`[消息] ${input}`, 'yellow');
       addUserMessage(input);
       state.current = STATE.THINKING;
+      broadcast('agent-state', { state: 'thinking' });  // 通知前端开始思考
       scheduleNextCycle();
     } else {
       println('[取消] 没有消息，继续思考', 'gray');
       state.current = STATE.THINKING;
+      broadcast('agent-state', { state: 'thinking' });
       scheduleNextCycle();
     }
     return;
@@ -650,17 +654,21 @@ async function start() {
   // 初始化会话
   initializeSession();
 
-  // 启动 WebSocket 服务（供 Electron 桌面端连接）
-  try {
-    await startWsServer(9527);
-    // 处理来自桌面端的消息
-    onMessage((msg) => {
-      if (msg.type === 'user-message' && msg.text) {
-        handleUserInput(msg.text);
-      }
-    });
-  } catch (e) {
-    console.log('[WS] WebSocket 启动失败，跳过（桌面端不可用）');
+  // 启动 WebSocket 服务（供 Electron 桌面端连接，可通过 DISABLE_WS 环境变量禁用）
+  if (process.env.DISABLE_WS !== 'true') {
+    try {
+      await startWsServer(9527);
+      // 处理来自桌面端的消息
+      onMessage((msg) => {
+        if (msg.type === 'user-message' && msg.text) {
+          handleUserInput(msg.text);
+        }
+      });
+    } catch (e) {
+      console.log('[WS] WebSocket 启动失败，跳过（桌面端不可用）');
+    }
+  } else {
+    console.log('[WS] WebSocket 服务已禁用（CLI 模式）');
   }
 
   printBanner();

@@ -4,7 +4,7 @@
 FROM node:18-alpine
 
 # 安装 Python（用于 Python 代码执行）
-RUN apk add --no-cache python3 py3-pip
+RUN apk add --no-cache python3 py3-pip wget
 
 # 设置工作目录
 WORKDIR /app
