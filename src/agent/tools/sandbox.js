@@ -647,5 +647,6 @@ export {
   executeCodeSandbox,
   generateSecureTmpPath,
   writeSecureTmpFile,
-  cleanupTmpFile
+  cleanupTmpFile,
+  createJavaScriptSandbox,
 };
