@@ -152,13 +152,8 @@ function loadConfig() {
       console.error('[配置] 已加载配置文件');
     } else {
       config = { ...DEFAULT_CONFIG };
-      // 即使没有配置文件，也加载环境变量
       const envConfig = loadEnvConfig();
       config = deepMerge(config, envConfig);
-      // 在测试环境下跳过日志
-  if (process.env.NODE_ENV !== 'test') {
-    console.error('[配置] 未找到配置文件，使用环境变量');
-  }
     }
   } catch (e) {
     console.error(`[配置] 加载失败: ${e.message}`);
