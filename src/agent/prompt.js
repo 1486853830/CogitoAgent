@@ -8,23 +8,25 @@ import { getBasePath } from './tools/index.js';
 
 const HISTORY_FILE = path.resolve(process.cwd(), 'data', 'conversation.json');
 
-let personaContent = '';
-try {
-  personaContent = readFileSync(path.resolve(process.cwd(), 'persona.md'), 'utf-8');
-} catch {
-  personaContent = '';
+/**
+ * 动态读取 persona.md（每次调用都重新读取，支持热切换）
+ */
+function getPersonaHeader() {
+  try {
+    const content = readFileSync(path.resolve(process.cwd(), 'persona.md'), 'utf-8');
+    return content ? `${content}\n\n---\n\n` : '';
+  } catch {
+    return '';
+  }
 }
 
-const SYSTEM_PROMPT_HEADER = personaContent
-  ? `${personaContent}\n\n---\n\n`
-  : '';
-
 /**
- * 构建系统提示词（每次调用时动态获取工作区路径）
+ * 构建系统提示词（每次调用时动态获取工作区路径和 persona）
  */
 function buildSystemPrompt() {
   const workspace = getBasePath();
-  return `${SYSTEM_PROMPT_HEADER}你是 CogitoAgent，一个持续思考的智能体。
+  const personaHeader = getPersonaHeader();
+  return `${personaHeader}你是 CogitoAgent，一个持续思考的智能体。
 
 ## 活动范围
 你在 ${workspace} 目录下活动，可以自由探索。
@@ -172,9 +174,11 @@ function buildSystemPrompt() {
 
 就在你的发言结尾加上 [WAIT]，这会让我停下来等你回复。
 
-## 输出格式
-当你想使用工具时，输出：
+## 输出格式（极其重要！必须严格遵守！）
+当你想使用工具时，**必须**使用以下格式：
 [TOOL] toolName("参数") [/TOOL]
+
+**严禁使用任何其他格式！** 禁止使用 &lt;tool&gt;参数&lt;/tool&gt;、&lt;toolName&gt;参数&lt;/toolName&gt; 等 XML 标签格式。只有 [TOOL] ... [/TOOL] 格式会被识别。
 
 当你想输出想法/对话时，直接输出文字。如果你想让我停下来等你，就在结尾加 [WAIT]。
 
@@ -380,11 +384,26 @@ function getHistoryLength() {
   return conversationHistory.reduce((sum, msg) => sum + msg.content.length, 0);
 }
 
+/**
+ * 重置对话历史（切换 persona 时调用）
+ */
+function resetConversation() {
+  conversationHistory = [
+    { role: 'system', content: buildSystemPrompt() }
+  ];
+  turnCount = 0;
+  // 清除历史文件
+  try {
+    writeFileSync(HISTORY_FILE, JSON.stringify([], null, 2), 'utf-8');
+  } catch {}
+}
+
 export {
   getMessages,
   addUserMessage,
   addAssistantMessage,
   shouldCompress,
   compressHistory,
-  getHistoryLength
+  getHistoryLength,
+  resetConversation
 };

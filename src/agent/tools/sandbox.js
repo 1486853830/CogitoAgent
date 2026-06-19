@@ -4,13 +4,32 @@
  * 支持 JavaScript 和 Python 代码执行
  */
 
-import ivm from 'isolated-vm';
 import { execFile } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 import { loadConfig } from '../../config.js';
+
+/**
+ * 动态加载 isolated-vm（原生模块可能在 Electron 等环境中不可用）
+ */
+let _ivm = null;
+let _ivmLoadAttempted = false;
+
+async function getIvm() {
+  if (_ivm) return _ivm;
+  if (_ivmLoadAttempted) return null;
+  _ivmLoadAttempted = true;
+  try {
+    const mod = await import('isolated-vm');
+    _ivm = mod.default || mod;
+    return _ivm;
+  } catch {
+    console.warn('[sandbox] isolated-vm 不可用，将使用原生 vm 模块');
+    return null;
+  }
+}
 
 const MAX_EXECUTION_TIME = 30000;
 const MAX_OUTPUT_SIZE = 100000;
@@ -34,6 +53,11 @@ function isSandboxEnabled() {
  * 使用 ivm.Callback 安全包装，避免原型链逃逸风险
  */
 async function runJavaScriptIsolated(code, timeout = 10000) {
+  const ivm = await getIvm();
+  if (!ivm) {
+    throw new Error('isolated-vm 不可用，请降级到原生 vm');
+  }
+
   let isolate = null;
   let consoleLogCallback = null;
   let consoleErrorCallback = null;

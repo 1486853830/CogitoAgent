@@ -8,6 +8,8 @@ CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管�
 
 ![](introduction/main.png)
 
+![](introduction/desktop.png)
+
 ***
 
 ## 🎯 核心特性
@@ -29,6 +31,7 @@ CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管�
 | **环境变量管理** | 支持 .env 配置敏感信息                   | ✅  |
 | **多会话管理**  | 支持多个独立对话会话                       | ✅  |
 | **完整测试覆盖** | 103+ 单元测试和集成测试                   | ✅  |
+| **桌面模式**   | Electron 半透明桌面覆盖层，虚拟人物视频    | ✅  |
 
 ***
 
@@ -66,6 +69,8 @@ npm start
 
 ### 日常使用
 
+**终端模式**（原有方式）：
+
 ```bash
 npm start
 ```
@@ -75,6 +80,34 @@ npm start
 - **ENTER** — 打断当前思考，输入指令
 - **指令 + ENTER** — 发送消息给 AI
 - **exit** — 退出程序
+
+**桌面模式**（Electron 半透明窗口）：
+
+```bash
+npm run desktop
+```
+
+桌面模式特性：
+
+- 半透明毛玻璃对话框，嵌入桌面背景
+- 虚拟人物视频（待机/思考/说话三种状态）
+- Markdown 渲染支持
+- 工具调用内容自动过滤，只显示纯文本回复
+- 发送按钮可打断 AI 思考
+
+> ⚠️ 桌面模式需要先启动终端模式（`npm start`），再启动 Electron（`npm run desktop`），两者通过 WebSocket 通信同步。
+
+### 视频素材
+
+将以下视频文件放入 `electron/assets/` 目录：
+
+| 文件名 | 状态 | 说明 |
+|--------|------|------|
+| `idle.mp4` | 待机 | AI 等待用户输入时播放 |
+| `thinking.mp4` | 思考 | AI 正在处理请求时播放 |
+| `speaking.mp4` | 说话 | AI 正在输出回复时播放 |
+
+> 💡 目前支持单视频模式，只需放入一个视频文件即可。
 
 ### 会话管理命令
 
@@ -135,6 +168,16 @@ CogitoAgent/
 │   ├── config.js                     # 配置管理（环境变量、配置合并）
 │   ├── setup.js                      # 首次运行引导（API配置、工作区设置）
 │   └── index.js                      # 应用入口
+├── electron/                         # Electron 桌面模式
+│   ├── main.js                       # Electron 主进程（透明窗口）
+│   ├── preload.cjs                   # IPC 安全桥接
+│   ├── agent-bridge.js               # WebSocket 客户端（连接终端 Agent）
+│   ├── assets/                       # 视频素材目录
+│   │   └── *.mp4                     # 人物视频（idle/thinking/speaking）
+│   └── desktop/                      # 桌面 UI
+│       ├── index.html                # 布局（人物 + 对话框）
+│       ├── style.css                 # 毛玻璃样式 + Markdown 渲染
+│       └── renderer.js               # 前端交互逻辑
 ├── personas/                         # 预设人设包（13种）
 │   ├── explorer.md                   # 探索者 - 文件探索、项目理解
 │   ├── scholar.md                    # 学者 - 知识研究、深度分析

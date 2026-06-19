@@ -14,6 +14,7 @@ import * as tools from './tools/index.js';
 import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory, initializeSession } from './session.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
 import { loadConfig } from '../config.js';
+import { startWsServer, broadcast, onMessage } from '../io/ws-server.js';
 
 // 导入拆分出去的模块
 import { STATE, getState, setState, isThinking, isAwaitingInput, isAwaitingConfirmation, getPendingConfirmation, setPendingConfirmation, requestConfirmation, resolveConfirmation, state } from './state.js';
@@ -531,6 +532,9 @@ async function thinkCycle() {
   // 设置处理标志
   isProcessing = true;
 
+  // WebSocket 广播思考状态
+  broadcast('agent-state', { state: 'thinking' });
+
   try {
     const messages = getMessages();
     let fullResponse = '';
@@ -551,6 +555,8 @@ async function thinkCycle() {
       }
       if (chunk.content) {
         fullResponse += chunk.content;
+        // WebSocket 广播流式内容
+        broadcast('agent-reply', { type: 'chunk', content: chunk.content, full: fullResponse });
       }
     }
 
@@ -579,15 +585,22 @@ async function thinkCycle() {
 
     if (toolCalls.length > 0) {
       for (const toolCall of toolCalls) {
+        // WebSocket 广播工具调用开始
+        broadcast('agent-reply', { type: 'tool-start', tool: toolCall.tool, args: toolCall.args });
+
         const result = await executeTool(toolCall.tool, toolCall.args);
         if (result.success) {
           // 把工具结果也显示成灰色小框
           const resultText = formatToolResult(toolCall.tool, result.data);
           printToolBlock(resultText, '工具结果');
           addAssistantMessage(fullResponse + `\n\n[工具结果]: ${JSON.stringify(result.data)}`);
+          // WebSocket 广播工具结果
+          broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: resultText });
         } else {
           println(`[失败] ${result.error}`, 'red');
           addAssistantMessage(fullResponse + `\n\n[工具错误]: ${result.error}`);
+          // WebSocket 广播工具错误
+          broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: false, data: result.error });
         }
       }
     } else {
@@ -602,6 +615,9 @@ async function thinkCycle() {
 
     if (wantsToWait || (toolCalls.length === 0 && state.current === STATE.THINKING)) {
       state.current = STATE.AWAITING_INPUT;
+      // WebSocket 广播完成信号
+      broadcast('agent-reply', { type: 'done' });
+      broadcast('agent-state', { state: 'idle' });
     }
 
   } catch (error) {
@@ -633,6 +649,19 @@ async function start() {
 
   // 初始化会话
   initializeSession();
+
+  // 启动 WebSocket 服务（供 Electron 桌面端连接）
+  try {
+    await startWsServer(9527);
+    // 处理来自桌面端的消息
+    onMessage((msg) => {
+      if (msg.type === 'user-message' && msg.text) {
+        handleUserInput(msg.text);
+      }
+    });
+  } catch (e) {
+    console.log('[WS] WebSocket 启动失败，跳过（桌面端不可用）');
+  }
 
   printBanner();
   printDivider('─', 'cyan');

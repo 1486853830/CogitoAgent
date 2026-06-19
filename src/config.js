@@ -140,8 +140,6 @@ function loadEnvConfig() {
  * 加载配置
  */
 function loadConfig() {
-  if (config) return config;
-
   try {
     if (existsSync(CONFIG_FILE)) {
       const data = readFileSync(CONFIG_FILE, 'utf-8');

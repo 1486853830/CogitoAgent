@@ -395,30 +395,5 @@ const TOOL_METADATA = {
   createStorage: { argCount: 2 },
 };
 
-/**
- * 自动生成工具注册表
- * 基于 TOOL_METADATA 和实际的工具函数
- */
-function generateToolRegistry() {
-  const registry = {};
-
-  for (const [toolName, metadata] of Object.entries(TOOL_METADATA)) {
-    // 跳过非工具导出（如 FileStorage 类）
-    if (toolName === 'FileStorage') {
-      continue;
-    }
-
-    const fn = toolExport[toolName];
-    if (typeof fn === 'function') {
-      registry[toolName] = {
-        fn,
-        ...metadata
-      };
-    }
-  }
-
-  return registry;
-}
-
-// 导出工具元数据和注册表生成器
-export { TOOL_METADATA, generateToolRegistry };
+// 导出工具元数据（供 registry.js 参考）
+export { TOOL_METADATA };

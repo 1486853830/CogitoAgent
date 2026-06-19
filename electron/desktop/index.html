@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CogitoAgent Desktop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 人物视频区域 -->
+  <div class="character">
+    <video id="charVideo" autoplay loop muted>
+      <source src="../assets/zhanshi.mp4" type="video/mp4">
+      视频加载失败
+    </video>
+  </div>
+
+  <!-- 对话面板 -->
+  <div class="panel" id="panel">
+    <!-- 顶部拖拽区域 -->
+    <div class="drag-bar">
+      <span class="title">CogitoAgent</span>
+      <div class="controls">
+        <button class="btn-icon" id="btnMinimize" title="最小化">─</button>
+        <button class="btn-icon" id="btnClose" title="关闭">✕</button>
+      </div>
+    </div>
+
+    <!-- 消息列表 -->
+    <div class="messages" id="messages">
+      <div class="empty-hint">
+        <div class="hint-icon">🌙</div>
+        <div class="hint-text">有什么可以帮你的？</div>
+      </div>
+    </div>
+
+    <!-- 输入区域 -->
+    <div class="input-area">
+      <div class="input-wrapper">
+        <input
+          type="text"
+          id="userInput"
+          placeholder="输入你想说的..."
+          autocomplete="off"
+        />
+        <button class="btn-send" id="btnSend" title="发送">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../node_modules/marked/lib/marked.umd.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

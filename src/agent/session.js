@@ -254,7 +254,16 @@ function buildSystemPrompt() {
   const enabledCount = enabledCategories.length;
   const totalCount = Object.keys(TOOL_CATEGORIES).length;
   
-  const basePrompt = `你是 CogitoAgent，一个持续思考的智能体。
+  // 读取 persona（支持热切换）
+  let personaHeader = '';
+  try {
+    const personaContent = readFileSync(path.resolve(process.cwd(), 'persona.md'), 'utf-8');
+    if (personaContent.trim()) {
+      personaHeader = personaContent + '\n\n---\n\n';
+    }
+  } catch {}
+
+  const basePrompt = `${personaHeader}你是 CogitoAgent，一个持续思考的智能体。
 
 ## 活动范围
 你在 ${workspace} 目录下活动，可以自由探索。
