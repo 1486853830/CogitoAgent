@@ -503,6 +503,113 @@ COGITO_EMAIL_PASSWORD=your-email-password
 
 ---
 
+## Docker 部署
+
+### 环境要求
+
+- Docker 20.10+
+- Docker Compose 2.0+
+
+### 快速启动
+
+```bash
+# 克隆项目
+git clone https://gitee.com/cnt-code/cogito-agent.git
+cd cogito-agent
+
+# 创建配置文件
+cp config.example.json config.json
+# 编辑 config.json 填入 API Key
+
+# 启动容器
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+```
+
+### 配置说明
+
+通过环境变量覆盖配置：
+
+| 环境变量 | 说明 | 默认值 |
+|----------|------|--------|
+| `COGITO_API_KEY` | API 密钥 | - |
+| `COGITO_API_BASE_URL` | API 地址 | `https://api.openai.com/v1` |
+| `COGITO_MODEL` | 模型名称 | `gpt-4o` |
+| `COGITO_WORKSPACE` | 工作区目录 | `./workspace` |
+| `THINKING_INTERVAL` | 思考间隔(ms) | `3000` |
+
+### 手动构建
+
+```bash
+# 构建镜像
+docker build -t cogito-agent .
+
+# 运行容器
+docker run -d \
+  --name cogito-agent \
+  -p 9527:9527 \
+  -v ./config.json:/app/config.json:ro \
+  -e COGITO_API_KEY=your-key \
+  cogito-agent
+```
+
+### Docker Compose 生产配置
+
+```yaml
+version: '3.8'
+services:
+  cogito-agent:
+    image: cogito-agent:latest
+    container_name: cogito-agent
+    restart: always
+    ports:
+      - "9527:9527"
+    environment:
+      - COGITO_API_KEY=${COGITO_API_KEY}
+      - COGITO_API_BASE_URL=${COGITO_API_BASE_URL}
+      - COGITO_MODEL=${COGITO_MODEL:-gpt-4o}
+      - THINKING_INTERVAL=3000
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./data:/app/data
+      - ${COGITO_WORKSPACE:-./workspace}:/app/workspace
+```
+
+---
+
+## CI/CD 集成
+
+项目已配置 Gitee Go 流水线：
+
+| 工作流 | 触发条件 | 功能 |
+|--------|----------|------|
+| `ci.yml` | push/PR | 自动化测试、Docker 构建 |
+| `release.yml` | tag v* | 构建镜像、创建 Gitee 发行版 |
+
+**使用步骤：**
+
+1. 在 Gitee 仓库 -> 服务 -> Gitee Go 中启用流水线功能
+2. 配置 Docker 镜像仓库凭证（可选，用于推送镜像）
+3. 推送代码触发 CI：
+   ```bash
+   git push origin develop
+   ```
+4. 发布版本时打标签：
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+**Gitee Go 流水线说明：**
+
+- CI 流水线在 push 和 PR 时自动运行，包括测试和 Docker 镜像构建
+- Release 流水线在打 tag 时触发，需手动确认执行
+- 镜像构建完成后可手动推送到 Docker 仓库
+
+---
+
 ## 应用场景示例
 
 ### 文件探索
