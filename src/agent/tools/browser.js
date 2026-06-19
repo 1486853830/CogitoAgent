@@ -469,7 +469,9 @@ async function takeScreenshot(name = 'screenshot') {
   }
   
   try {
-    const screenshotPath = `${name}-${Date.now()}.png`;
+    // 安全验证：防止路径注入
+    const safeName = name.replace(/[\/\\:*?"<>|]/g, '_').replace(/\.\./g, '');
+    const screenshotPath = `${safeName}-${Date.now()}.png`;
     await page.screenshot({ path: screenshotPath, fullPage: true });
     return { 
       success: true, 

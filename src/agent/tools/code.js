@@ -293,14 +293,7 @@ async function runPython(code) {
         PATH: process.env.PATH?.split(path.delimiter).slice(0, 3).join(path.delimiter) || '',
       };
 
-      // 删除可能危险的环境变量
-      delete process.env.PYTHONPATH;
-      delete process.env.PYTHONHOME;
-      delete process.env.PYTHONSTARTUP;
-      delete process.env.PYTHONRC;
-      delete process.env.VIRTUAL_ENV;
-      
-      // 删除 secureEnv 中的危险变量（如果存在）
+      // 只在 secureEnv 副本中删除危险变量，不影响全局 process.env
       delete secureEnv.PYTHONPATH;
       delete secureEnv.PYTHONHOME;
       delete secureEnv.PYTHONSTARTUP;
@@ -353,7 +346,7 @@ async function runPython(code) {
         });
       });
     } catch (e) {
-      clearTimeout(timeout);
+      clearTimeout(timeoutId);
       await cleanupTmpFile(tmpPath);
       resolve({
         success: false,

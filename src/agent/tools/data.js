@@ -292,12 +292,22 @@ async function analyzeData(filePath) {
     
     if (stats.columnTypes[header] === 'number') {
       const nums = values.filter(v => !isNaN(parseFloat(v))).map(v => parseFloat(v));
-      stats.summary[header] = {
-        min: Math.min(...nums),
-        max: Math.max(...nums),
-        avg: nums.reduce((a, b) => a + b, 0) / nums.length,
-        count: nums.length
-      };
+      // 检查数组是否为空，避免 Math.min/max 返回 Infinity
+      if (nums.length > 0) {
+        stats.summary[header] = {
+          min: Math.min(...nums),
+          max: Math.max(...nums),
+          avg: nums.reduce((a, b) => a + b, 0) / nums.length,
+          count: nums.length
+        };
+      } else {
+        stats.summary[header] = {
+          min: null,
+          max: null,
+          avg: null,
+          count: 0
+        };
+      }
     } else {
       const counts = {};
       values.forEach(v => {

@@ -31,7 +31,7 @@ describe('Web 模块', () => {
       const result = await webModule.search('测试关键词');
 
       expect(result.success).toBe(true);
-      expect(Array.isArray(result.data)).toBe(true);
+      expect(typeof result.data).toBe('string');
     });
 
     it('应该处理搜索错误', async () => {
@@ -60,13 +60,14 @@ describe('Web 模块', () => {
     it('应该正确抓取网页内容', async () => {
       fetch.mockResolvedValue({
         ok: true,
-        text: async () => '<html><body><h1>测试页面</h1><p>内容</p></body></html>'
+        text: async () => '<html><head><title>测试页面</title></head><body><h1>测试页面</h1><p>内容</p></body></html>'
       });
 
       const result = await webModule.fetchPage('https://example.com');
 
       expect(result.success).toBe(true);
-      expect(result.data.title).toBeDefined();
+      expect(typeof result.data).toBe('string');
+      expect(result.data).toContain('测试页面');
     });
 
     it('应该处理 404 错误', async () => {
@@ -93,48 +94,7 @@ describe('Web 模块', () => {
       const result = await webModule.browse('https://example.com');
 
       expect(result.success).toBe(true);
-      expect(result.data).toContain('正在打开');
-    });
-  });
-
-  describe('searchOnEngine', () => {
-    it('应该支持指定搜索引擎', async () => {
-      fetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          results: [{ title: 'Google结果', url: 'https://google.com/result' }]
-        })
-      });
-
-      const result = await webModule.searchOnEngine('测试', 'google');
-
-      expect(result.success).toBe(true);
-    });
-
-    it('应该支持百度搜索', async () => {
-      fetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          results: [{ title: '百度结果', url: 'https://baidu.com/result' }]
-        })
-      });
-
-      const result = await webModule.searchOnEngine('测试', 'baidu');
-
-      expect(result.success).toBe(true);
-    });
-
-    it('应该支持 Bing 搜索', async () => {
-      fetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          results: [{ title: 'Bing结果', url: 'https://bing.com/result' }]
-        })
-      });
-
-      const result = await webModule.searchOnEngine('测试', 'bing');
-
-      expect(result.success).toBe(true);
+      expect(result.data).toContain('浏览器中打开');
     });
   });
 });

@@ -218,7 +218,10 @@ function loadHistory() {
           ...loaded
         ];
         turnCount = loaded.filter(m => m.role !== 'system').length;
-        console.error(`[历史] 已加载 ${turnCount} 条历史记录`);
+        // 在测试环境下跳过日志
+        if (process.env.NODE_ENV !== 'test') {
+          console.error(`[历史] 已加载 ${turnCount} 条历史记录`);
+        }
       }
     }
   } catch (e) {

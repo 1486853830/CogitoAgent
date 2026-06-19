@@ -7,6 +7,14 @@ let tasks = [];
 let nextId = 1;
 
 /**
+ * 安全解析 ID，返回数字或 null（无效时）
+ */
+function safeParseId(id) {
+  const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+  return typeof numId === 'number' && !isNaN(numId) ? numId : null;
+}
+
+/**
  * 加载任务列表
  */
 async function loadTasks() {
@@ -110,7 +118,15 @@ async function getTasks(filter = {}) {
 async function getTask(id) {
   await loadTasks();
   
-  const task = tasks.find(t => t.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const task = tasks.find(t => t.id === numId);
   if (!task) {
     return {
       success: false,
@@ -130,7 +146,15 @@ async function getTask(id) {
 async function updateTask(id, updates) {
   await loadTasks();
   
-  const task = tasks.find(t => t.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const task = tasks.find(t => t.id === numId);
   if (!task) {
     return {
       success: false,
@@ -158,7 +182,15 @@ async function updateTask(id, updates) {
 async function deleteTask(id) {
   await loadTasks();
   
-  const index = tasks.findIndex(t => t.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const index = tasks.findIndex(t => t.id === numId);
   if (index === -1) {
     return {
       success: false,
@@ -168,10 +200,10 @@ async function deleteTask(id) {
   
   const task = tasks[index];
   
-  tasks = tasks.filter(t => t.id !== parseInt(id) && t.parentId !== parseInt(id));
+  tasks = tasks.filter(t => t.id !== numId && t.parentId !== numId);
   
   tasks.forEach(t => {
-    t.children = t.children.filter(c => c !== parseInt(id));
+    t.children = t.children.filter(c => c !== numId);
   });
   
   await saveTasks();
@@ -195,7 +227,15 @@ async function completeTask(id) {
 async function splitTask(id, subtasks) {
   await loadTasks();
   
-  const task = tasks.find(t => t.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const task = tasks.find(t => t.id === numId);
   if (!task) {
     return {
       success: false,
@@ -210,7 +250,7 @@ async function splitTask(id, subtasks) {
       subtask.title,
       subtask.description || '',
       subtask.priority || 'medium',
-      parseInt(id)
+      numId
     );
     if (result.success) {
       created.push(result.data);
