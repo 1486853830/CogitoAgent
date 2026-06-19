@@ -38,6 +38,11 @@ function killPortProcess(port = 9527) {
           console.log(`[主进程] 已清理端口 ${port} 占用进程 (PID: ${pid})`);
         } catch {}
       }
+    } else {
+      try {
+        execSync(`lsof -t -i :${port} | xargs kill -9`, { windowsHide: true });
+        console.log(`[主进程] 已清理端口 ${port} 占用进程`);
+      } catch {}
     }
   } catch {}
 }
