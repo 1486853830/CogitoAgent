@@ -198,9 +198,9 @@ function getNetworkInfo() {
 }
 
 /**
- * 获取系统进程列表（简化版）
+ * 获取系统进程列表（Windows）
  */
-async function getProcesses() {
+async function getProcessesWindows() {
   return new Promise((resolve) => {
     exec('tasklist /fo csv /nh', { encoding: 'utf8' }, (error, stdout) => {
       if (error) {
@@ -233,6 +233,56 @@ async function getProcesses() {
       });
     });
   });
+}
+
+/**
+ * 获取系统进程列表（Linux/macOS）
+ */
+async function getProcessesUnix() {
+  return new Promise((resolve) => {
+    exec('ps aux --no-headers', { encoding: 'utf8' }, (error, stdout) => {
+      if (error) {
+        resolve({
+          success: false,
+          error: `获取进程列表失败: ${error.message}`
+        });
+        return;
+      }
+      
+      const lines = stdout.split('\n').filter(line => line.trim());
+      const processes = [];
+      
+      for (const line of lines.slice(0, 20)) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 11) {
+          processes.push({
+            name: parts[10] || '',
+            pid: parts[1] || '',
+            user: parts[0] || '',
+            cpu: parts[2] || '',
+            mem: parts[3] || '',
+            command: parts.slice(10).join(' ')
+          });
+        }
+      }
+      
+      resolve({
+        success: true,
+        data: processes
+      });
+    });
+  });
+}
+
+/**
+ * 获取系统进程列表（跨平台）
+ */
+async function getProcesses() {
+  if (os.platform() === 'win32') {
+    return await getProcessesWindows();
+  } else {
+    return await getProcessesUnix();
+  }
 }
 
 /**

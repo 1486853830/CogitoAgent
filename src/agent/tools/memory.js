@@ -6,6 +6,14 @@ const MEMORY_FILE = path.resolve(process.cwd(), 'data', 'memory.json');
 let memories = [];
 
 /**
+ * 安全解析 ID，返回数字或 null（无效时）
+ */
+function safeParseId(id) {
+  const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+  return typeof numId === 'number' && !isNaN(numId) ? numId : null;
+}
+
+/**
  * 加载记忆数据
  */
 async function loadMemory() {
@@ -140,7 +148,15 @@ async function getAllMemories(category = null) {
 async function getMemory(id) {
   await loadMemory();
   
-  const memory = memories.find(m => m.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const memory = memories.find(m => m.id === numId);
   if (!memory) {
     return {
       success: false,
@@ -164,7 +180,15 @@ async function getMemory(id) {
 async function updateMemory(id, updates) {
   await loadMemory();
   
-  const memory = memories.find(m => m.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const memory = memories.find(m => m.id === numId);
   if (!memory) {
     return {
       success: false,
@@ -191,7 +215,15 @@ async function updateMemory(id, updates) {
 async function deleteMemory(id) {
   await loadMemory();
   
-  const index = memories.findIndex(m => m.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const index = memories.findIndex(m => m.id === numId);
   if (index === -1) {
     return {
       success: false,
@@ -249,7 +281,15 @@ async function getMemoryStats() {
 async function getRelatedMemories(id, limit = 5) {
   await loadMemory();
   
-  const memory = memories.find(m => m.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const memory = memories.find(m => m.id === numId);
   if (!memory) {
     return {
       success: false,
@@ -258,7 +298,7 @@ async function getRelatedMemories(id, limit = 5) {
   }
   
   const related = memories
-    .filter(m => m.id !== parseInt(id))
+    .filter(m => m.id !== numId)
     .map(m => {
       let score = 0;
       memory.tags.forEach(tag => {

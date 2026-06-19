@@ -1,4 +1,8 @@
 import { execFile } from 'child_process';
+import path from 'path';
+import { execFileSync } from 'child_process';
+
+const PROJECT_ROOT = process.cwd();
 
 /**
  * Git 命令白名单 - 仅允许安全的 Git 子命令和选项
@@ -67,11 +71,71 @@ function validateGitArgs(args) {
 }
 
 /**
+ * 验证工作目录路径是否安全
+ * @param {string} cwd - 要验证的路径
+ * @param {boolean} allowOutsideProject - 是否允许在项目目录外操作
+ * @returns {{ valid: boolean, error?: string, resolvedPath?: string }}
+ */
+function validateCwd(cwd, allowOutsideProject = false) {
+  // 如果是默认的 process.cwd()，直接允许
+  if (!cwd || cwd === process.cwd()) {
+    return { valid: true, resolvedPath: process.cwd() };
+  }
+
+  // 检查是否包含危险字符
+  const dangerousPattern = /[;&|`$<>!(){}[\]\\*\?\n\r'""]/;
+  if (dangerousPattern.test(cwd)) {
+    return {
+      valid: false,
+      error: `工作目录路径包含危险字符: ${cwd}`
+    };
+  }
+
+  // 解析为绝对路径
+  let absolutePath;
+  try {
+    absolutePath = path.isAbsolute(cwd)
+      ? path.normalize(cwd)
+      : path.resolve(PROJECT_ROOT, cwd);
+  } catch (e) {
+    return {
+      valid: false,
+      error: `无效的路径: ${cwd}`
+    };
+  }
+
+  // 规范化路径
+  absolutePath = path.normalize(absolutePath);
+
+  // 检查路径遍历攻击
+  if (absolutePath.includes('..')) {
+    return {
+      valid: false,
+      error: `不允许路径遍历: ${cwd}`
+    };
+  }
+
+  // 如果不允许在项目目录外，检查是否在项目目录下
+  if (!allowOutsideProject) {
+    const normalizedRoot = path.normalize(PROJECT_ROOT);
+    if (!absolutePath.startsWith(normalizedRoot)) {
+      return {
+        valid: false,
+        error: `工作目录必须在项目目录下: ${PROJECT_ROOT}`
+      };
+    }
+  }
+
+  return { valid: true, resolvedPath: absolutePath };
+}
+
+/**
  * 执行 Git 命令
  * 使用 --no-pager 防止命令注入
  */
 function gitCommand(args, cwd = process.cwd()) {
   return new Promise((resolve) => {
+    // 验证参数
     if (!validateGitArgs(args)) {
       resolve({
         success: false,
@@ -80,11 +144,21 @@ function gitCommand(args, cwd = process.cwd()) {
       return;
     }
 
+    // 验证工作目录
+    const cwdValidation = validateCwd(cwd);
+    if (!cwdValidation.valid) {
+      resolve({
+        success: false,
+        error: `工作目录验证失败: ${cwdValidation.error}`
+      });
+      return;
+    }
+
     // 使用 --no-pager 防止通过 git 命令注入
     const safeArgs = ['--no-pager', ...args];
 
     execFile('git', safeArgs, {
-      cwd: cwd,
+      cwd: cwdValidation.resolvedPath,
       timeout: 30000,
       encoding: 'utf8'
     }, (error, stdout, stderr) => {
@@ -242,10 +316,18 @@ async function gitConfigUser(name, email, cwd = process.cwd()) {
  * 撤销未提交的更改
  */
 async function gitReset(options = '--hard', cwd = process.cwd()) {
-  const args = ['reset'];
-  if (options) {
-    args.push(...options.split(' '));
+  // 白名单验证：只允许安全的 reset 选项
+  const ALLOWED_RESET_OPTIONS = ['--hard', '--soft', '--mixed', '--keep', '--merge'];
+  const safeOptions = options.split(' ').filter(opt => ALLOWED_RESET_OPTIONS.includes(opt));
+  
+  if (safeOptions.length === 0) {
+    return {
+      success: false,
+      error: `无效的 git reset 选项: ${options}，只允许: ${ALLOWED_RESET_OPTIONS.join(', ')}`
+    };
   }
+  
+  const args = ['reset', ...safeOptions];
   return await gitCommand(args, cwd);
 }
 

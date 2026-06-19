@@ -7,6 +7,14 @@ let tasks = [];
 let intervals = {};
 
 /**
+ * 安全解析 ID，返回数字或 null（无效时）
+ */
+function safeParseId(id) {
+  const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+  return typeof numId === 'number' && !isNaN(numId) ? numId : null;
+}
+
+/**
  * 加载定时任务
  */
 async function loadTasks() {
@@ -78,7 +86,15 @@ async function addScheduleTask(name, cronExpr, action, params = {}) {
 async function removeScheduleTask(id) {
   await loadTasks();
   
-  const index = tasks.findIndex(t => t.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const index = tasks.findIndex(t => t.id === numId);
   if (index === -1) {
     return {
       success: false,
@@ -90,9 +106,9 @@ async function removeScheduleTask(id) {
   tasks.splice(index, 1);
   await saveTasks();
   
-  if (intervals[id]) {
-    clearInterval(intervals[id]);
-    delete intervals[id];
+  if (intervals[numId]) {
+    clearInterval(intervals[numId]);
+    delete intervals[numId];
   }
   
   return {
@@ -119,7 +135,15 @@ async function getScheduleTasks() {
 async function getScheduleTask(id) {
   await loadTasks();
   
-  const task = tasks.find(t => t.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const task = tasks.find(t => t.id === numId);
   if (!task) {
     return {
       success: false,
@@ -139,7 +163,15 @@ async function getScheduleTask(id) {
 async function updateScheduleTask(id, updates) {
   await loadTasks();
   
-  const task = tasks.find(t => t.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const task = tasks.find(t => t.id === numId);
   if (!task) {
     return {
       success: false,
@@ -177,7 +209,15 @@ async function updateScheduleTask(id, updates) {
 async function toggleScheduleTask(id) {
   await loadTasks();
   
-  const task = tasks.find(t => t.id === parseInt(id));
+  const numId = safeParseId(id);
+  if (numId === null) {
+    return {
+      success: false,
+      error: `无效的 ID: ${id}`
+    };
+  }
+  
+  const task = tasks.find(t => t.id === numId);
   if (!task) {
     return {
       success: false,
@@ -264,10 +304,13 @@ function rescheduleTask(task) {
 
 /**
  * 解析 cron 表达式为毫秒
+ * 支持简单关键字和标准5字段cron表达式
+ * 注意：复杂cron表达式（如范围、步进）将返回估算的最小间隔
  */
 function parseCronToMs(cronExpr) {
   const parts = cronExpr.trim().split(' ');
   
+  // 简单关键字格式
   if (parts.length === 1) {
     const simple = parts[0].toLowerCase();
     const simpleMap = {
@@ -281,28 +324,71 @@ function parseCronToMs(cronExpr) {
     return simpleMap[simple] || 0;
   }
   
+  // 标准5字段cron表达式: minute hour day month weekday
   if (parts.length === 5) {
     const [minute, hour, day, month, weekday] = parts;
     
+    // 全通配符：每分钟
     if (minute === '*' && hour === '*' && day === '*' && month === '*' && weekday === '*') {
       return 60000;
     }
     
+    // 解析分钟字段
     if (minute !== '*') {
+      // 处理范围表达式 (如 1-5)
+      if (minute.includes('-')) {
+        const [start, end] = minute.split('-').map(n => parseInt(n));
+        if (!isNaN(start) && !isNaN(end)) {
+          // 范围表达式返回最小间隔（分钟）
+          return 60000;
+        }
+      }
+      // 处理步进表达式 (如 */5)
+      if (minute.startsWith('*/')) {
+        const step = parseInt(minute.slice(2));
+        if (!isNaN(step) && step > 0) {
+          return step * 60000;
+        }
+      }
+      // 处理列表表达式 (如 0,15,30)
+      if (minute.includes(',')) {
+        const values = minute.split(',').map(n => parseInt(n)).filter(n => !isNaN(n));
+        if (values.length > 0) {
+          // 返回最小间隔（分钟）
+          return 60000;
+        }
+      }
+      // 简单数字
       const mins = parseInt(minute);
       if (!isNaN(mins)) {
         return mins * 60000;
       }
     }
     
+    // 解析小时字段
     if (hour !== '*' && minute === '*') {
+      // 处理范围表达式 (如 9-17)
+      if (hour.includes('-')) {
+        return 3600000; // 返回最小间隔（小时）
+      }
+      // 处理步进表达式 (如 */2)
+      if (hour.startsWith('*/')) {
+        const step = parseInt(hour.slice(2));
+        if (!isNaN(step) && step > 0) {
+          return step * 3600000;
+        }
+      }
       const hrs = parseInt(hour);
       if (!isNaN(hrs)) {
         return hrs * 3600000;
       }
     }
+    
+    // 复杂表达式：返回默认最小间隔（分钟）
+    return 60000;
   }
   
+  // 自然语言格式：如 "5 minutes"
   const match = cronExpr.match(/(\d+)\s*(seconds?|minutes?|hours?|days?)/i);
   if (match) {
     const num = parseInt(match[1]);
@@ -319,9 +405,10 @@ function parseCronToMs(cronExpr) {
       'days': 86400000
     };
     
-    return num * (unitMap[unit] || 1000);
+    return (unitMap[unit] || 0) * num;
   }
   
+  // 无法解析，返回0表示无效
   return 0;
 }
 

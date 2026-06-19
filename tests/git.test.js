@@ -56,6 +56,63 @@ function validateGitArgs(args) {
   return true;
 }
 
+// 模拟 validateCwd 函数
+const PROJECT_ROOT = process.cwd();
+
+function validateCwd(cwd, allowOutsideProject = false) {
+  // 如果是默认的 process.cwd()，直接允许
+  if (!cwd || cwd === process.cwd()) {
+    return { valid: true, resolvedPath: process.cwd() };
+  }
+
+  // 检查是否包含危险字符
+  const dangerousPattern = /[;&|`$<>!(){}[\]\\*\?\n\r'""]/;
+  if (dangerousPattern.test(cwd)) {
+    return {
+      valid: false,
+      error: `工作目录路径包含危险字符: ${cwd}`
+    };
+  }
+
+  // 解析为绝对路径（简化版模拟）
+  let absolutePath;
+  try {
+    // 简化处理：直接使用传入的路径
+    absolutePath = cwd;
+  } catch (e) {
+    return {
+      valid: false,
+      error: `无效的路径: ${cwd}`
+    };
+  }
+
+  // 规范化路径
+  absolutePath = absolutePath.replace(/\/+/g, '/');
+
+  // 检查路径遍历攻击
+  if (absolutePath.includes('..')) {
+    return {
+      valid: false,
+      error: `不允许路径遍历: ${cwd}`
+    };
+  }
+
+  // 如果不允许在项目目录外，检查是否在项目目录下
+  // 简化：使用 startsWith 检查
+  if (!allowOutsideProject) {
+    const normalizedRoot = PROJECT_ROOT.replace(/\\/g, '/');
+    const normalizedPath = absolutePath.replace(/\\/g, '/');
+    if (!normalizedPath.startsWith(normalizedRoot)) {
+      return {
+        valid: false,
+        error: `工作目录必须在项目目录下: ${PROJECT_ROOT}`
+      };
+    }
+  }
+
+  return { valid: true, resolvedPath: absolutePath };
+}
+
 describe('Git 安全验证', () => {
   describe('允许的命令', () => {
     test('应该允许 git status', () => {
@@ -136,6 +193,84 @@ describe('Git 安全验证', () => {
 
     test('应该允许 --no-pager 选项', () => {
       expect(validateGitArgs(['status', '--no-pager'])).toBe(true);
+    });
+  });
+
+  describe('cwd 路径验证', () => {
+    test('应该允许默认工作目录', () => {
+      const result = validateCwd(process.cwd());
+      expect(result.valid).toBe(true);
+    });
+
+    test('应该允许空路径（使用默认）', () => {
+      const result = validateCwd('');
+      expect(result.valid).toBe(true);
+    });
+
+    test('应该拒绝包含危险字符的路径', () => {
+      const result = validateCwd('/path/with;command');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('危险字符');
+    });
+
+    test('应该拒绝路径遍历攻击', () => {
+      const result = validateCwd('../../../etc/passwd');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('路径遍历');
+    });
+
+    test('应该拒绝命令注入字符', () => {
+      const result = validateCwd('/path/with|command');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('危险字符');
+    });
+
+    test('应该拒绝反引号注入', () => {
+      const result = validateCwd('/path/with`command`');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('危险字符');
+    });
+
+    test('应该拒绝美元符注入', () => {
+      const result = validateCwd('/path/$(whoami)');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('危险字符');
+    });
+
+    test('应该拒绝换行符注入', () => {
+      const result = validateCwd('/path/\ncommand');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('危险字符');
+    });
+
+    test('应该拒绝分号分隔的多命令', () => {
+      const result = validateCwd('/path; rm -rf /');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('危险字符');
+    });
+
+    test('应该允许子目录路径（allowOutsideProject=true）', () => {
+      // 相对路径需要 allowOutsideProject=true
+      const result = validateCwd('./src', true);
+      expect(result.valid).toBe(true);
+    });
+
+    test('应该允许项目内的绝对路径', () => {
+      // 使用与 PROJECT_ROOT 相同格式的路径
+      const projectPath = PROJECT_ROOT;
+      const result = validateCwd(projectPath);
+      expect(result.valid).toBe(true);
+    });
+
+    test('应该拒绝项目外的路径（默认）', () => {
+      const result = validateCwd('/tmp/some-other-project');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('项目目录下');
+    });
+
+    test('应该允许项目外的路径（allowOutsideProject=true）', () => {
+      const result = validateCwd('/tmp/some-other-project', true);
+      expect(result.valid).toBe(true);
     });
   });
 });

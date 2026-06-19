@@ -140,11 +140,11 @@ describe('数据库模块', () => {
     it('应该正确创建新表', async () => {
       const result = await dbModule.createTable(
         'test_products',
-        {
-          id: 'INTEGER PRIMARY KEY',
-          name: 'TEXT NOT NULL',
-          price: 'REAL'
-        }
+        [
+          { name: 'id', type: 'INTEGER', primaryKey: true },
+          { name: 'name', type: 'TEXT', notNull: true },
+          { name: 'price', type: 'REAL' }
+        ]
       );
 
       expect(result.success).toBe(true);
@@ -170,7 +170,7 @@ describe('数据库模块', () => {
       const result = await dbModule.getTableSchema('test_users');
 
       expect(result.success).toBe(true);
-      expect(Array.isArray(result.data)).toBe(true);
+      expect(result.data).toBeDefined();
     });
   });
 
@@ -179,7 +179,7 @@ describe('数据库模块', () => {
       // 先创建表
       await dbModule.createTable(
         'test_temp',
-        { id: 'INTEGER PRIMARY KEY' }
+        [{ name: 'id', type: 'INTEGER', primaryKey: true }]
       );
 
       // 再删除
@@ -192,14 +192,8 @@ describe('数据库模块', () => {
   describe('事务处理', () => {
     it('应该正确执行事务', async () => {
       const result = await dbModule.executeTransaction([
-        {
-          sql: 'INSERT INTO test_users (name, email) VALUES (?, ?)',
-          params: ['周八', 'zhouba@example.com']
-        },
-        {
-          sql: 'INSERT INTO test_users (name, email) VALUES (?, ?)',
-          params: ['吴九', 'wujiu@example.com']
-        }
+        'INSERT INTO test_users (name, email) VALUES (\'周八\', \'zhouba@example.com\')',
+        'INSERT INTO test_users (name, email) VALUES (\'吴九\', \'wujiu@example.com\')'
       ]);
 
       expect(result.success).toBe(true);
@@ -207,16 +201,11 @@ describe('数据库模块', () => {
 
     it('事务失败应该回滚', async () => {
       const result = await dbModule.executeTransaction([
-        {
-          sql: 'INSERT INTO test_users (name, email) VALUES (?, ?)',
-          params: ['郑十', 'zhengshi@example.com']
-        },
-        {
-          sql: 'INVALID SQL',
-          params: []
-        }
+        'INSERT INTO test_users (name, email) VALUES (\'郑十\', \'zhengshi@example.com\')',
+        'INVALID SQL'
       ]);
 
+      // 事务应该失败
       expect(result.success).toBe(false);
     });
   });

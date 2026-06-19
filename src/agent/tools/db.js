@@ -51,9 +51,13 @@ async function getDB() {
       db = new SQL.Database();
     }
     
-    console.log('[数据库] 连接成功');
+    if (process.env.NODE_ENV !== 'test') {
+      console.log('[数据库] 连接成功');
+    }
   } catch (err) {
-    console.error(`[数据库] 连接失败: ${err.message}`);
+    if (process.env.NODE_ENV !== 'test') {
+      console.error(`[数据库] 连接失败: ${err.message}`);
+    }
     throw err;
   }
   
@@ -429,9 +433,13 @@ async function closeDB() {
     try {
       await saveDB();
       db.close();
-      console.log('[数据库] 已关闭');
+      if (process.env.NODE_ENV !== 'test') {
+        console.log('[数据库] 已关闭');
+      }
     } catch (err) {
-      console.error(`[数据库] 关闭失败: ${err.message}`);
+      if (process.env.NODE_ENV !== 'test') {
+        console.error(`[数据库] 关闭失败: ${err.message}`);
+      }
     }
     db = null;
   }
