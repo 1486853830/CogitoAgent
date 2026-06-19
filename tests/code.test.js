@@ -86,7 +86,7 @@ describe('代码执行模块', () => {
         error: 'Python 语法错误: invalid syntax'
       });
 
-      const result = await codeModule.runPython('print("hello'");  // 缺少闭合引号
+      const result = await codeModule.runPython('print("hello")');  // 测试Python语法
       
       expect(result.success).toBe(false);
     });

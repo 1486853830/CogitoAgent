@@ -12,10 +12,10 @@ describe('数据库模块', () => {
     dbModule = await import('../src/agent/tools/db.js');
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     // 清理数据库连接
     if (dbModule.closeDB) {
-      dbModule.closeDB();
+      await dbModule.closeDB();
     }
   });
 
