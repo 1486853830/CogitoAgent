@@ -319,18 +319,21 @@ data/sessions/
 
 ### 架构
 
-```
-┌─────────────────┐     WebSocket      ┌─────────────────┐
-│  Electron       │ ←──────────────→  │  Agent 进程     │
-│  main.js        │    ws://:9527     │  ws-server.js   │
-└────────┬────────┘                   └────────┬────────┘
-         │                                     │
-         │ IPC                                 │
-         ↓                                     ↓
-┌─────────────────┐                   ┌─────────────────┐
-│  preload.cjs    │                   │  终端 UI        │
-│  (上下文桥接)    │                   │  (readline)     │
-└─────────────────┘                   └─────────────────┘
+```mermaid
+flowchart TB
+    subgraph ElectronApp["Electron 桌面应用"]
+        Main["main.js<br/>(主进程)"]
+        Preload["preload.cjs<br/>(上下文桥接)"]
+        Main -- "IPC" --> Preload
+    end
+
+    subgraph AgentProcess["Agent 独立进程"]
+        WSServer["ws-server.js<br/>(WebSocket服务端)"]
+        TerminalUI["终端 UI<br/>(readline)"]
+        WSServer --> TerminalUI
+    end
+
+    Main <==>|"WebSocket<br/>ws://:9527"| WSServer
 ```
 
 ### 主要进程
