@@ -247,10 +247,13 @@ CogitoAgent/
 
 - 代码执行超时限制（30秒）
 - 输出大小限制（100KB）
-- JavaScript 代码通过 Node.js 原生 vm 模块沙箱执行，资源访问受限
+- **JavaScript 代码通过 `isolated-vm` 库提供进程级隔离**，比原生 `vm` 模块更安全
+- 内存使用限制（128MB），防止内存耗尽攻击
+- 禁止 `eval`、`Function`、`Proxy`、`process`、`require` 等危险对象
 - Python 代码通过临时文件执行，防止命令注入
 - 沙箱环境禁止访问文件系统、网络等危险操作
 - 临时文件超时自动清理
+- 支持优雅降级到原生 `vm` 模块（当 `isolated-vm` 不可用时）
 
 ### 6. Git 版本控制
 
