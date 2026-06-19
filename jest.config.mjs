@@ -5,5 +5,8 @@ export default {
   testMatch: ['**/tests/**/*.test.js'],
   collectCoverageFrom: ['src/**/*.js'],
   coverageDirectory: 'coverage',
-  verbose: true
+  verbose: true,
+  testTimeout: 60000,
+  forceExit: true,
+  detectOpenHandles: true
 };

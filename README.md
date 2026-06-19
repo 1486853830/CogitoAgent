@@ -57,11 +57,20 @@ npm start
 
 ### 日常使用
 
+程序支持两种运行模式：
+
+| 命令 | 模式 | 说明 |
+|------|------|------|
+| `npm start` 或 `npm run desktop` | 桌面模式 | Electron 桌面窗口 + 终端 Agent，通过 WebSocket 通信 |
+| `npm run cli` | CLI 模式 | 仅终端 Agent，不启动 Electron（适合纯命令行环境） |
+
+#### 桌面模式
+
 ```bash
 npm start
 ```
 
-一键启动，Electron 主进程会自动拉起终端 Agent，创建桌面窗口并连接。
+Electron 主进程会自动拉起终端 Agent，创建桌面窗口并连接。
 
 **交互方式：**
 
@@ -69,6 +78,19 @@ npm start
 - **终端输入** — 在启动终端中直接输入指令，按 ENTER 发送
 - **ENTER** — 打断当前 AI 思考，进入输入状态
 - **exit** — 退出程序（或直接关闭桌面窗口）
+
+#### CLI 模式
+
+```bash
+npm run cli
+```
+
+纯命令行模式，不启动 Electron 和 WebSocket 服务，直接在终端交互。
+
+适合：
+- 服务器环境
+- 无图形界面的远程连接
+- 资源受限环境
 
 ---
 
@@ -824,9 +846,13 @@ stateDiagram-v2
 ### 运行测试
 
 ```bash
-npm test
-npm test -- --verbose  # 详细输出
+npm test              # 运行所有测试
+npm test -- --verbose # 详细输出
 npm test -- --coverage # 覆盖率报告
+
+# E2E 测试
+npm run test:e2e           # 运行 E2E 测试
+npm run test:e2e -- --watch # 监听模式
 ```
 
 ### 测试覆盖
@@ -840,6 +866,23 @@ npm test -- --coverage # 覆盖率报告
 | 数据库 | 10 | SQL 执行、CRUD、事务 |
 | Web 模块 | 3 | browse、fetchPage |
 | Browser | 2 | Playwright 生命周期 |
+| E2E WebSocket | 6 | 连接、心跳、消息收发、并发 |
+| E2E Agent 流程 | 15 | 初始化、思考循环、工具执行、状态机、会话管理 |
+
+### E2E 测试说明
+
+E2E 测试位于 `tests/e2e/` 目录：
+
+| 测试文件 | 说明 |
+|----------|------|
+| `websocket.test.js` | WebSocket 通信测试 |
+| `agent-flow.test.js` | Agent 完整流程测试 |
+
+E2E 测试覆盖：
+- WebSocket 连接建立、消息发送接收、心跳机制
+- Agent 初始化、思考循环、工具调用
+- 状态机转换、会话管理、记忆系统
+- 任务管理、API 集成、命令处理
 
 ---
 

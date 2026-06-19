@@ -142,13 +142,13 @@ function setButtonState(state) {
     btnSend.style.opacity = '1';
     btnSend.style.background = 'rgba(255, 80, 80, 0.3)';
     btnSend.style.color = '#ff8888';
-    btnSend.title = '打断';
+    btnSend.title = '点击终止';
     svg.innerHTML = '<rect x="4" y="4" width="16" height="16" rx="2"/>';
   } else {
     btnSend.style.opacity = '1';
     btnSend.style.background = 'rgba(99, 140, 255, 0.3)';
     btnSend.style.color = '#a0c0ff';
-    btnSend.title = '发送';
+    btnSend.title = '等待发送';
     svg.innerHTML = '<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
   }
 }
@@ -250,6 +250,17 @@ window.electronAPI.onReply(handleReply);
 window.electronAPI.onStateChange((state) => {
   changeVideoState(state);
   updateStatusIndicator(state);
+
+  // 根据 Agent 状态更新按钮
+  // thinking = 正在回复，按钮显示"终止"
+  // idle = 等待输入，按钮显示"发送"
+  if (state === 'thinking') {
+    setButtonState('stop');
+    isProcessing = true;
+  } else if (state === 'idle') {
+    setButtonState('send');
+    isProcessing = false;
+  }
 });
 
 // 历史消息
