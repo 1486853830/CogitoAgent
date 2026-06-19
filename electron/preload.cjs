@@ -9,6 +9,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 发送用户消息给 agent
   sendMessage: (text) => ipcRenderer.send('user-message', text),
 
+  // 窗口操作
+  minimizeWindow: () => ipcRenderer.send('window-minimize'),
+  closeWindow: () => ipcRenderer.send('window-close'),
+
   // 监听 agent 的回复
   onReply: (callback) => {
     ipcRenderer.on('agent-reply', (_event, data) => callback(data));

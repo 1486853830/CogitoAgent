@@ -5,7 +5,7 @@
   "main": "electron/main.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "chcp 65001 > nul && electron .",
     "desktop": "chcp 65001 > nul && electron .",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },

@@ -12,30 +12,38 @@ let messageHandler = null;
  * 启动 WebSocket 服务
  */
 function startWsServer(port = 9527) {
-  return new Promise((resolve) => {
-    wss = new WebSocketServer({ port }, () => {
-      console.log(`[WS] WebSocket 服务已启动: ws://localhost:${port}`);
-      resolve(wss);
-    });
+  return new Promise((resolve, reject) => {
+    try {
+      wss = new WebSocketServer({ port }, () => {
+        console.log(`[WS] WebSocket 服务已启动: ws://localhost:${port}`);
+        resolve(wss);
+      });
 
-    wss.on('connection', (ws) => {
-      console.log('[WS] 客户端已连接');
+      wss.on('error', (err) => {
+        reject(err);
+      });
 
-      ws.on('message', (raw) => {
-        try {
-          const msg = JSON.parse(raw.toString());
-          if (messageHandler) {
-            messageHandler(msg, ws);
+      wss.on('connection', (ws) => {
+        console.log('[WS] 客户端已连接');
+
+        ws.on('message', (raw) => {
+          try {
+            const msg = JSON.parse(raw.toString());
+            if (messageHandler) {
+              messageHandler(msg, ws);
+            }
+          } catch {
+            // 忽略解析失败的消息
           }
-        } catch {
-          // 忽略解析失败的消息
-        }
-      });
+        });
 
-      ws.on('close', () => {
-        console.log('[WS] 客户端已断开');
+        ws.on('close', () => {
+          console.log('[WS] 客户端已断开');
+        });
       });
-    });
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 

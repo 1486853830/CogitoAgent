@@ -235,14 +235,12 @@ inputEl.addEventListener('keydown', (e) => {
 
 // 最小化
 btnMinimize.addEventListener('click', () => {
-  // 通过 IPC 告知主进程最小化
-  window.electronAPI?.sendMessage?.('') || null;
-  // 实际最小化需要在 preload 中暴露
+  window.electronAPI?.minimizeWindow();
 });
 
 // 关闭
 btnClose.addEventListener('click', () => {
-  window.close();
+  window.electronAPI?.closeWindow();
 });
 
 // Agent 回复
