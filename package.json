@@ -2,21 +2,25 @@
   "name": "cogitoagent",
   "version": "2.3.0",
   "description": "CogitoAgent - 持续思考的智能体",
-  "main": "src/index.js",
+  "main": "electron/main.js",
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
+    "desktop": "chcp 65001 > nul && electron .",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
     "@unblessed/node": "^1.0.0-alpha.23",
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.5",
+    "electron": "^33.4.11",
     "isolated-vm": "^6.1.2",
     "jest": "^29.7.0",
+    "marked": "^18.0.5",
     "nodemailer": "^6.9.13",
     "openai": "^4.0.0",
     "playwright": "^1.61.0",
-    "sql.js": "^1.10.0"
+    "sql.js": "^1.10.0",
+    "ws": "^8.21.0"
   }
 }

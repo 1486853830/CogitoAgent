@@ -3,11 +3,14 @@
  * 处理 /help、/status、/config 等特殊命令
  */
 
+import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
+import path from 'path';
 import { println, printDivider, printTag } from '../io/terminal.js';
 import { loadConfig } from '../config.js';
 import { getToolNames, getToolsByCategory } from './registry.js';
 import * as tools from './tools/index.js';
 import { listSessions, getCurrentSession, createNewSession, switchSession, deleteSession, renameSession } from './session.js';
+import { resetConversation } from './prompt.js';
 
 // 命令帮助文本
 const HELP_TEXT = `
@@ -227,17 +230,62 @@ function printClearConfirm() {
 }
 
 /**
- * 切换 Persona
+ * 切换 Persona（将 persona 文件复制为 persona.md 并重置对话）
  */
 function switchPersona(personaName) {
-  println(`[提示] Persona 切换功能正在开发中: ${personaName}`, 'yellow');
+  const personaPath = path.resolve(process.cwd(), 'personas', `${personaName}.md`);
+  const targetPath = path.resolve(process.cwd(), 'persona.md');
+
+  if (!existsSync(personaPath)) {
+    println(`[错误] Persona "${personaName}" 不存在`, 'red');
+    println(`  可用 Persona 列表:`, 'gray');
+    const files = readdirSync(path.resolve(process.cwd(), 'personas')).filter(f => f.endsWith('.md'));
+    files.forEach(f => println(`    ${path.basename(f, '.md')}`, 'gray'));
+    return;
+  }
+
+  let content;
+  try {
+    content = readFileSync(personaPath, 'utf-8');
+  } catch (err) {
+    println(`[错误] 无法读取 Persona 文件: ${err.message}`, 'red');
+    return;
+  }
+
+  try {
+    writeFileSync(targetPath, content, 'utf-8');
+  } catch (err) {
+    println(`[错误] 无法写入 persona.md: ${err.message}`, 'red');
+    return;
+  }
+
+  // 重置对话历史，让新 persona 生效
+  resetConversation();
+  println(`[成功] Persona 已切换为: ${printTag(personaName, 'bgGreen')}`, 'green');
+  println(`[提示] 对话历史已重置，新 Persona 已生效`, 'yellow');
 }
 
 /**
  * 列出所有可用 Persona
  */
 function listPersonas() {
-  println('[提示] Persona 列表功能正在开发中', 'yellow');
+  const personasDir = path.resolve(process.cwd(), 'personas');
+  const files = readdirSync(personasDir).filter(f => f.endsWith('.md'));
+
+  println('');
+  printDivider('─', 'cyan');
+  println(`  可用 Persona (${files.length} 个)`, 'cyan');
+  printDivider('─', 'cyan');
+
+  for (const file of files) {
+    const name = path.basename(file, '.md');
+    const content = readFileSync(path.join(personasDir, file), 'utf-8');
+    const firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim() || '(无描述)';
+    println(`  ${printTag(name, 'bgBlue')} ${firstLine}`, 'gray');
+  }
+  println('');
+  println(`  使用 ${printTag('/persona <name>', 'bgBlue')} 切换`, 'gray');
+  println('');
 }
 
 /**
