@@ -430,6 +430,9 @@ AI：好的，已添加到记忆中。
   "code": {
     "maxExecutionTime": 30000,
     "maxOutputSize": 100000
+  },
+  "tools": {
+    "enabledCategories": ["file", "web", "code", "git", "task", "memory", "data"]
   }
 }
 ```
@@ -451,6 +454,36 @@ COGITO_EMAIL_PASSWORD=your-email-password
 - 敏感信息与代码分离，提高安全性
 - 避免配置文件中的明文密码
 - 支持多环境配置切换
+
+### 工具分类配置
+
+CogitoAgent 支持按需加载工具分类，减少 Token 消耗：
+
+```json
+"tools": {
+  "enabledCategories": ["file", "web", "code", "git", "task", "memory", "data"]
+}
+```
+
+**可用分类：**
+
+| 分类 | 说明 |
+|------|------|
+| `file` | 文件操作（ls, read, copy, mkdir, create） |
+| `web` | 网络工具（search, browse, fetchPage） |
+| `browser` | 浏览器自动化（initBrowser, clickElement 等） |
+| `system` | 系统操作（listApps, openApp, closeApp） |
+| `code` | 代码执行（executeCode, runJavaScript, runPython） |
+| `git` | Git 版本控制（gitStatus, gitCommit, gitPush 等） |
+| `task` | 任务管理（createTask, getTasks, completeTask 等） |
+| `memory` | 记忆系统（addMemory, searchMemory 等） |
+| `data` | 数据处理（readCSV, writeJSON 等） |
+| `db` | 数据库操作（executeSQL, query 等） |
+| `email` | 邮件功能（sendEmail, sendTextEmail 等） |
+| `monitor` | 系统监控（getCPUInfo, monitorSystem 等） |
+| `scheduler` | 定时任务（addScheduleTask 等） |
+
+如果不配置 `enabledCategories`，默认启用所有分类。
 
 ---
 
@@ -546,11 +579,31 @@ npm test -- --coverage
 
 ### v2.3.0 (2026-06)
 
-**新功能：**
+**Phase 1: 核心架构优化**
 - ✅ 新增多会话管理功能
 - ✅ 支持创建、切换、删除、重命名会话
 - ✅ 会话数据独立存储，互不干扰
 - ✅ 自动保存会话状态，重启后恢复
+
+**Phase 1.1: 工具分类 + 按需加载**
+- ✅ 13 个工具分类（file, web, browser, system, code, git, task, memory, data, db, email, monitor, scheduler）
+- ✅ 动态按需加载工具，减少 Token 消耗
+- ✅ 支持配置 `tools.enabledCategories` 选择启用的分类
+
+**Phase 1.2: 上下文压缩优化**
+- ✅ Token 数量估算（中文字符约 1.5 字符 ≈ 1 token）
+- ✅ 自动压缩超过 150 轮或 100K token 的上下文
+- ✅ 80% 使用率时发出警告
+- ✅ 归档历史到文件，保留最近对话
+
+**Phase 2: 安全与可观测性**
+- ✅ 沙箱升级 - 深度冻结内置对象，禁止 eval/Proxy
+- ✅ 新增 tracing.js - 轻量追踪模块，记录工具执行、LLM 调用
+- ✅ 新增 retry.js - 熔断器与重试机制
+
+**Phase 3: 生态与扩展性**
+- ✅ MCP 协议兼容 - 可作为 MCP Server 供其他 AI 客户端调用
+- ✅ 插件系统 (Plugin SDK) - 支持动态加载自定义工具
 
 **界面优化：**
 - ✅ 工具调用显示简洁标签样式（如 `调用：ls`）

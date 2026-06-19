@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import path from 'path';
 import { getBasePath } from './tools/index.js';
+import { getEnabledCategories, getAllCategories, getToolsByCategory, TOOL_CATEGORIES } from './registry.js';
 
 const SESSIONS_DIR = path.resolve(process.cwd(), 'data', 'sessions');
 const META_FILE = path.join(SESSIONS_DIR, 'meta.json');
@@ -86,52 +87,181 @@ const COMPRESS_TURNS = 150;
 const KEEP_RECENT_TURNS = 10;
 const ARCHIVE_SUFFIX = '_archive';
 
+// 上下文长度限制（Token 估算，约 128K 上下文）
+const MAX_TOKEN_ESTIMATE = 100000;
+const WARN_TOKEN_THRESHOLD = 80000;  // 80% 时发出警告
+
 /**
- * 获取系统提示词
+ * 动态生成工具列表
  */
-function buildSystemPrompt() {
-  const workspace = getBasePath();
-  const basePrompt = `你是 CogitoAgent，一个持续思考的智能体。
-
-## 活动范围
-你在 ${workspace} 目录下活动，可以自由探索。
-
-## 可用工具
-
-### 文件操作工具
+function buildToolList() {
+  const enabledCategories = getEnabledCategories();
+  const categories = getToolsByCategory();
+  const categoryNames = getAllCategories();
+  
+  let toolList = '';
+  
+  for (const cat of enabledCategories) {
+    const catName = categoryNames[cat] || cat;
+    const tools = categories[cat] || [];
+    
+    // 根据分类生成工具列表
+    switch (cat) {
+      case 'file':
+        toolList += `### 文件操作工具
 - ls(path) - 列出目录内容
 - read(path) - 读取文件内容
 - copy(src, dest) - 复制文件
 - mkdir(path) - 创建文件夹
 - create(path, content) - 创建文件
 
-### 网络工具
+`;
+        break;
+      case 'web':
+        toolList += `### 网络工具
 - search(query) - 联网搜索
 - browse(url) - 在默认浏览器中打开网址
 - fetchPage(url) - 抓取网页正文内容
 
-### 系统工具
+`;
+        break;
+      case 'browser':
+        toolList += `### 浏览器自动化工具
+- initBrowser(url) - 初始化浏览器
+- clickElement(selector, description) - 点击网页元素
+- fillField(selector, value, description) - 填写表单
+- getPageContent() - 获取页面内容
+- takeScreenshot(name) - 截图
+- closeBrowser() - 关闭浏览器
+
+`;
+        break;
+      case 'system':
+        toolList += `### 系统工具
 - listApps() - 列出已安装软件
 - openApp(name) - 打开软件
 - closeApp(name) - 关闭软件
 
-### 代码执行工具
+`;
+        break;
+      case 'code':
+        toolList += `### 代码执行工具
 - executeCode(code, language) - 执行代码（JavaScript/Python）
 - runJavaScript(code) - 执行 JavaScript
 - runPython(code) - 执行 Python
 
-### Git 工具
-- gitStatus, gitLog, gitDiff, gitAdd, gitCommit, gitPush, gitPull 等
+`;
+        break;
+      case 'git':
+        toolList += `### Git 工具
+- gitInit(cwd) - 初始化仓库
+- gitClone(url, dest, cwd) - 克隆仓库
+- gitStatus(cwd) - 查看状态
+- gitLog(options, cwd) - 查看日志
+- gitDiff(options, cwd) - 查看差异
+- gitAdd(files, cwd) - 添加文件
+- gitCommit(message, cwd) - 提交
+- gitPush(remote, branch, cwd) - 推送
+- gitPull(remote, branch, cwd) - 拉取
+- gitBranchList(cwd) - 列出分支
+- gitCheckout(branch, cwd) - 切换分支
 
-### 任务管理工具
-- createTask, getTasks, updateTask, completeTask, splitTask 等
+`;
+        break;
+      case 'task':
+        toolList += `### 任务管理工具
+- createTask(title, description, priority, parentId) - 创建任务
+- getTasks(filter) - 获取任务列表
+- updateTask(id, updates) - 更新任务
+- completeTask(id) - 完成任务
+- splitTask(id, subtasks) - 分解任务
+- getTaskStats() - 任务统计
 
-### 记忆系统工具
-- addMemory, searchMemory, getAllMemories 等
+`;
+        break;
+      case 'memory':
+        toolList += `### 记忆系统工具
+- addMemory(content, tags, category) - 添加记忆
+- searchMemory(query, limit) - 搜索记忆
+- getAllMemories(category) - 获取所有记忆
+- updateMemory(id, updates) - 更新记忆
+- deleteMemory(id) - 删除记忆
+- getMemoryStats() - 记忆统计
 
-### 其他工具
-- readCSV, writeCSV, readJSON, writeJSON, executeSQL, sendEmail, monitorSystem 等
+`;
+        break;
+      case 'data':
+        toolList += `### 数据处理工具
+- readCSV(filePath) - 读取 CSV
+- writeCSV(filePath, headers, rows) - 写入 CSV
+- readJSON(filePath) - 读取 JSON
+- writeJSON(filePath, data) - 写入 JSON
+- csvToJSON(csvPath, jsonPath) - CSV 转 JSON
+- jsonToCSV(jsonPath, csvPath) - JSON 转 CSV
 
+`;
+        break;
+      case 'db':
+        toolList += `### 数据库工具
+- executeSQL(sql, params) - 执行 SQL
+- query(table, conditions, options) - 查询数据
+- insert(table, data) - 插入数据
+- update(table, data, conditions) - 更新数据
+- deleteData(table, conditions) - 删除数据
+- getTables() - 获取表列表
+
+`;
+        break;
+      case 'email':
+        toolList += `### 邮件工具
+- sendEmail(to, subject, body, options) - 发送邮件
+- sendTextEmail(to, subject, body) - 发送文本邮件
+- checkEmailConfig() - 检查邮件配置
+
+`;
+        break;
+      case 'monitor':
+        toolList += `### 系统监控工具
+- getCPUInfo() - 获取 CPU 信息
+- getMemoryInfo() - 获取内存信息
+- getDiskInfo() - 获取磁盘信息
+- getProcesses() - 获取进程列表
+- monitorSystem() - 监控系统资源
+
+`;
+        break;
+      case 'scheduler':
+        toolList += `### 定时任务工具
+- addScheduleTask(name, cronExpr, action, params) - 添加定时任务
+- getScheduleTasks() - 获取定时任务列表
+- toggleScheduleTask(id) - 启用/禁用任务
+- removeScheduleTask(id) - 删除任务
+
+`;
+        break;
+    }
+  }
+  
+  return toolList;
+}
+
+/**
+ * 获取系统提示词
+ */
+function buildSystemPrompt() {
+  const workspace = getBasePath();
+  const enabledCategories = getEnabledCategories();
+  const enabledCount = enabledCategories.length;
+  const totalCount = Object.keys(TOOL_CATEGORIES).length;
+  
+  const basePrompt = `你是 CogitoAgent，一个持续思考的智能体。
+
+## 活动范围
+你在 ${workspace} 目录下活动，可以自由探索。
+
+## 可用工具（共 ${enabledCount}/${totalCount} 个分类已启用）
+
+${buildToolList()}
 ## 行为规则
 1. 可以直接执行 copy 或 create 操作，不需要等待确认
 2. 用户可以通过输入文字打断你的思考
@@ -404,10 +534,69 @@ function addAssistantMessage(content) {
 }
 
 /**
- * 检查是否需要压缩
+ * 估算 Token 数量（简单估算）
+ * 中文字符约 1 token ≈ 1.5 字符
+ * 英文字符约 1 token ≈ 4 字符
+ */
+function estimateTokens(text) {
+  if (!text) return 0;
+  const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+  const otherChars = text.length - chineseChars;
+  return Math.ceil(chineseChars / 1.5) + Math.ceil(otherChars / 4);
+}
+
+/**
+ * 获取当前上下文 Token 估算
+ */
+function getContextTokenEstimate() {
+  let totalTokens = 0;
+  for (const msg of conversationHistory) {
+    totalTokens += estimateTokens(msg.content);
+  }
+  return totalTokens;
+}
+
+/**
+ * 检查是否需要压缩（基于轮数和 Token 数量）
  */
 function shouldCompress() {
-  return turnCount >= COMPRESS_TURNS;
+  // 超过轮数限制
+  if (turnCount >= COMPRESS_TURNS) {
+    return true;
+  }
+  
+  // 超过 Token 限制
+  const tokenEstimate = getContextTokenEstimate();
+  if (tokenEstimate >= MAX_TOKEN_ESTIMATE) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * 检查是否接近限制（用于警告）
+ */
+function isApproachingLimit() {
+  const tokenEstimate = getContextTokenEstimate();
+  return tokenEstimate >= WARN_TOKEN_THRESHOLD && tokenEstimate < MAX_TOKEN_ESTIMATE;
+}
+
+/**
+ * 获取压缩建议
+ */
+function getCompressionAdvice() {
+  const tokenEstimate = getContextTokenEstimate();
+  const usage = Math.round((tokenEstimate / MAX_TOKEN_ESTIMATE) * 100);
+  
+  if (usage >= 100) {
+    return { level: 'critical', usage, message: '上下文即将爆满，建议压缩' };
+  } else if (usage >= 80) {
+    return { level: 'warning', usage, message: '上下文使用率较高，建议适时压缩' };
+  } else if (usage >= 50) {
+    return { level: 'info', usage, message: '上下文使用适中' };
+  }
+  return { level: 'ok', usage, message: '上下文充足' };
 }
 
 /**
@@ -490,5 +679,9 @@ export {
   addAssistantMessage,
   shouldCompress,
   compressHistory,
-  getHistoryLength
+  getHistoryLength,
+  estimateTokens,
+  getContextTokenEstimate,
+  isApproachingLimit,
+  getCompressionAdvice
 };
