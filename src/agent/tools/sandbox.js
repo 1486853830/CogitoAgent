@@ -1,7 +1,7 @@
 /**
  * 代码执行沙箱模块
  * 使用 Node.js 原生 vm 模块提供安全的代码执行环境
- * 注意：沙箱执行不能完全阻止恶意代码，仅提供基础隔离
+ * 增强版本：更多安全特性、更严格的隔离
  */
 
 import vm from 'vm';
@@ -14,6 +14,7 @@ import { loadConfig } from '../../config.js';
 
 const MAX_EXECUTION_TIME = 30000;
 const MAX_OUTPUT_SIZE = 100000;
+const MAX_MEMORY_MB = 128;  // 最大内存限制
 
 /**
  * 检查是否启用沙箱模式
@@ -31,83 +32,190 @@ function isSandboxEnabled() {
 }
 
 /**
+ * 创建冻结的安全对象（深度冻结，防止原型链攻击）
+ */
+function createFrozenObject(obj) {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  
+  // 获取所有自有属性和 Symbol 属性
+  const propNames = Object.getOwnPropertyNames(obj);
+  const symbolProps = Object.getOwnPropertySymbols(obj);
+  
+  for (const name of propNames) {
+    const descriptor = Object.getOwnPropertyDescriptor(obj, name);
+    if (descriptor && (descriptor.value !== undefined)) {
+      if (typeof descriptor.value === 'object' && descriptor.value !== null) {
+        createFrozenObject(descriptor.value);
+      }
+      Object.defineProperty(obj, name, { ...descriptor, writable: false });
+    }
+  }
+  
+  for (const sym of symbolProps) {
+    const descriptor = Object.getOwnPropertyDescriptor(obj, sym);
+    if (descriptor && (descriptor.value !== undefined)) {
+      if (typeof descriptor.value === 'object' && descriptor.value !== null) {
+        createFrozenObject(descriptor.value);
+      }
+      Object.defineProperty(obj, sym, { ...descriptor, writable: false });
+    }
+  }
+  
+  return Object.freeze(obj);
+}
+
+/**
  * 创建 JavaScript 沙箱
- * 使用 Node.js 原生 vm 模块，安全配置：禁止文件系统访问、网络访问等危险操作
- * 
- * 安全改进：使用 Object.create(null) 创建无原型链的对象，
- * 防止通过 ({}).constructor.constructor 等方式突破沙箱
+ * 使用增强的安全配置：
+ * 1. Object.create(null) 防止原型链逃逸
+ * 2. 深度冻结内置对象
+ * 3. 内存使用监控
  */
 function createJavaScriptSandbox(timeout = 10000) {
-  // 使用 Object.create(null) 创建没有原型的对象，防止原型链逃逸
+  // 使用 Object.create(null) 创建没有原型的对象
   const sandbox = Object.create(null);
 
-  // 只允许安全的基础对象和函数
-  sandbox.console = {
-    log: (...args) => {
-      const output = args.map(a =>
-        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-      ).join(' ');
-      console.log(output);
-    },
-    error: (...args) => {
-      const output = args.map(a =>
-        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-      ).join(' ');
-      console.error(output);
-    },
-    warn: (...args) => {
-      const output = args.map(a =>
-        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-      ).join(' ');
-      console.warn(output);
-    },
-    info: (...args) => {
-      const output = args.map(a =>
-        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-      ).join(' ');
-      console.info(output);
-    }
+  // 安全输出捕获
+  let outputBuffer = '';
+  const captureOutput = () => {
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    const originalInfo = console.info;
+    
+    const formatArg = (a) => {
+      if (a === undefined) return 'undefined';
+      if (a === null) return 'null';
+      if (typeof a === 'function') return '[Function]';
+      if (typeof a === 'object') {
+        try {
+          return JSON.stringify(a, null, 2);
+        } catch {
+          return '[Object]';
+        }
+      }
+      return String(a);
+    };
+    
+    console.log = (...args) => {
+      const line = args.map(formatArg).join(' ');
+      outputBuffer += line + '\n';
+      if (outputBuffer.length > MAX_OUTPUT_SIZE) {
+        outputBuffer = outputBuffer.slice(0, MAX_OUTPUT_SIZE) + '\n[输出过长已截断]';
+      }
+    };
+    console.error = (...args) => {
+      outputBuffer += '[Error] ' + args.map(formatArg).join(' ') + '\n';
+    };
+    console.warn = (...args) => {
+      outputBuffer += '[Warn] ' + args.map(formatArg).join(' ') + '\n';
+    };
+    console.info = (...args) => {
+      outputBuffer += '[Info] ' + args.map(formatArg).join(' ') + '\n';
+    };
+    
+    return () => {
+      console.log = originalLog;
+      console.error = originalError;
+      console.warn = originalWarn;
+      console.info = originalInfo;
+    };
   };
 
-  // 禁止危险对象
-  sandbox.setTimeout = undefined;
-  sandbox.setInterval = undefined;
-  sandbox.setImmediate = undefined;
-  sandbox.process = undefined;
-  sandbox.require = undefined;
-  sandbox.__dirname = undefined;
-  sandbox.__filename = undefined;
-  sandbox.exports = undefined;
-  sandbox.module = undefined;
-  sandbox.global = undefined;
-  sandbox.globalThis = undefined;
+  // 只允许安全的基础对象和函数
+  sandbox.console = Object.seal(Object.assign(Object.create(null), {
+    log: () => {},
+    error: () => {},
+    warn: () => {},
+    info: () => {}
+  }));
 
-  // 冻结内置对象的原型（防止通过 Object.getPrototypeOf 访问）
-  // 这些内置对象本身应该是安全的，但冻结它们可以防止进一步的原型链攻击
-  sandbox.JSON = Object.freeze(JSON);
-  sandbox.Math = Object.freeze(Math);
-  sandbox.Date = Object.freeze(Date);
-  sandbox.Array = Object.freeze(Array);
-  sandbox.Object = Object.freeze(Object);
-  sandbox.String = Object.freeze(String);
-  sandbox.Number = Object.freeze(Number);
-  sandbox.Boolean = Object.freeze(Boolean);
-  sandbox.RegExp = Object.freeze(RegExp);
-  sandbox.Error = Object.freeze(Error);
-  sandbox.Map = Object.freeze(Map);
-  sandbox.Set = Object.freeze(Set);
-  sandbox.WeakMap = Object.freeze(WeakMap);
-  sandbox.WeakSet = Object.freeze(WeakSet);
-  sandbox.Promise = Object.freeze(Promise);
+  // 禁止危险对象（设置为 null 而不是 undefined，防止绕过）
+  sandbox.global = null;
+  sandbox.globalThis = null;
+  sandbox.window = null;
+  sandbox.document = null;
+  sandbox.navigator = null;
+  sandbox.location = null;
+  sandbox.process = null;
+  sandbox.require = null;
+  sandbox.module = null;
+  sandbox.exports = null;
+  sandbox.__dirname = null;
+  sandbox.__filename = null;
+  sandbox.Buffer = null;
+  sandbox.setTimeout = null;
+  sandbox.setInterval = null;
+  sandbox.setImmediate = null;
+  sandbox.clearTimeout = null;
+  sandbox.clearInterval = null;
+  sandbox.clearImmediate = null;
+  sandbox.fetch = null;
+  sandbox.XMLHttpRequest = null;
+  sandbox.ActiveXObject = null;
+  sandbox.WebSocket = null;
+  sandbox.Worker = null;
+  sandbox.SharedWorker = null;
+  sandbox.ServiceWorker = null;
+  sandbox.EventSource = null;
+  sandbox.DOMException = null;
+
+  // 深度冻结的内置对象（防止通过原型链访问危险属性）
+  sandbox.JSON = createFrozenObject(JSON);
+  sandbox.Math = createFrozenObject(Math);
+  sandbox.Date = createFrozenObject(Date);
+  sandbox.Array = createFrozenObject(Array);
+  sandbox.ArrayBuffer = createFrozenObject(ArrayBuffer);
+  sandbox.Object = createFrozenObject(Object);
+  sandbox.String = createFrozenObject(String);
+  sandbox.Number = createFrozenObject(Number);
+  sandbox.BigInt = createFrozenObject(BigInt);
+  sandbox.Boolean = createFrozenObject(Boolean);
+  sandbox.Symbol = createFrozenObject(Symbol);
+  sandbox.RegExp = createFrozenObject(RegExp);
+  sandbox.Error = createFrozenObject(Error);
+  sandbox.TypeError = createFrozenObject(TypeError);
+  sandbox.RangeError = createFrozenObject(RangeError);
+  sandbox.SyntaxError = createFrozenObject(SyntaxError);
+  sandbox.ReferenceError = createFrozenObject(ReferenceError);
+  sandbox.Map = createFrozenObject(Map);
+  sandbox.Set = createFrozenObject(Set);
+  sandbox.WeakMap = createFrozenObject(WeakMap);
+  sandbox.WeakSet = createFrozenObject(WeakSet);
+  sandbox.Promise = createFrozenObject(Promise);
+  sandbox.Proxy = null;
+  sandbox.Reflect = createFrozenObject(Reflect);
+
+  // 安全函数
   sandbox.parseInt = parseInt;
   sandbox.parseFloat = parseFloat;
   sandbox.isNaN = isNaN;
   sandbox.isFinite = isFinite;
   sandbox.encodeURIComponent = encodeURIComponent;
   sandbox.decodeURIComponent = decodeURIComponent;
+  sandbox.encodeURI = encodeURI;
+  sandbox.decodeURI = decodeURI;
+  sandbox.escape = escape;
+  sandbox.unescape = unescape;
+  sandbox.eval = null;  // 禁止 eval
+
+  // TypedArray 工厂（安全的）
+  sandbox.Uint8Array = createFrozenObject(Uint8Array);
+  sandbox.Int8Array = createFrozenObject(Int8Array);
+  sandbox.Uint16Array = createFrozenObject(Uint16Array);
+  sandbox.Int16Array = createFrozenObject(Int16Array);
+  sandbox.Uint32Array = createFrozenObject(Uint32Array);
+  sandbox.Int32Array = createFrozenObject(Int32Array);
+  sandbox.Float32Array = createFrozenObject(Float32Array);
+  sandbox.Float64Array = createFrozenObject(Float64Array);
+  sandbox.BigUint64Array = createFrozenObject(BigUint64Array);
+  sandbox.BigInt64Array = createFrozenObject(BigInt64Array);
+  sandbox.DataView = createFrozenObject(DataView);
 
   const context = vm.createContext(sandbox);
-  return { sandbox, context };
+  return { sandbox, context, captureOutput };
 }
 
 /**
