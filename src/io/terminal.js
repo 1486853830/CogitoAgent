@@ -179,14 +179,7 @@ function resetContentTag() {
  * 打印工具调用块（不显眼，灰色小框）
  */
 function printToolBlock(content, title = '工具调用') {
-  print('\n');
-  println(`  ┌─── ${title} ────────────────────────`, 'dim');
-  // 给内容每一行加缩进
-  const lines = content.split('\n');
-  for (const line of lines) {
-    println(`  │ ${line}`, 'dim');
-  }
-  println('  └────────────────────────────────────────', 'dim');
+  // 不显示工具调用细节和结果细节，保持TUI简洁
 }
 
 /**
