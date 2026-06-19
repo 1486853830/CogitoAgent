@@ -7,6 +7,7 @@ import { println, printDivider, printTag } from '../io/terminal.js';
 import { loadConfig } from '../config.js';
 import { getToolNames, getToolsByCategory } from './registry.js';
 import * as tools from './tools/index.js';
+import { listSessions, getCurrentSession, createNewSession, switchSession, deleteSession, renameSession } from './session.js';
 
 // 命令帮助文本
 const HELP_TEXT = `
@@ -21,6 +22,11 @@ const HELP_TEXT = `
     /tools         - 列出所有可用工具
     /config        - 显示当前配置
     /debug         - 切换调试模式
+    /sessions      - 显示会话列表
+    /new           - 创建新会话
+    /switch <id>   - 切换会话
+    /delete <id>   - 删除会话
+    /rename <name> - 重命名当前会话
   
   基本操作:
     ENTER          - 打断当前思考，输入消息
@@ -88,6 +94,72 @@ function handleCommand(input) {
   if (trimmed === '/debug') {
     toggleDebug();
     return true;
+  }
+  
+  // 会话管理命令
+  if (trimmed === '/sessions') {
+    printSessions();
+    return true;
+  }
+  
+  if (trimmed === '/new') {
+    createNewSession();
+    println('[提示] 已创建新会话，可以开始新的对话', 'green');
+    return true;
+  }
+  
+  if (trimmed.startsWith('/switch ')) {
+    const sessionId = trimmed.slice(8).trim();
+    if (sessionId) {
+      const result = switchSession(sessionId);
+      if (result.success) {
+        println(`[提示] 已切换到会话: ${result.session.name}`, 'green');
+      } else {
+        println(`[错误] ${result.error}`, 'red');
+      }
+      return true;
+    } else {
+      println('[错误] 请提供会话 ID', 'red');
+      println('用法: /switch <session_id>', 'gray');
+      return true;
+    }
+  }
+  
+  if (trimmed.startsWith('/delete ')) {
+    const sessionId = trimmed.slice(8).trim();
+    if (sessionId) {
+      const result = deleteSession(sessionId);
+      if (result.success) {
+        println('[提示] 会话已删除', 'green');
+      } else {
+        println(`[错误] ${result.error}`, 'red');
+      }
+      return true;
+    } else {
+      println('[错误] 请提供会话 ID', 'red');
+      println('用法: /delete <session_id>', 'gray');
+      return true;
+    }
+  }
+  
+  if (trimmed.startsWith('/rename ')) {
+    const newName = trimmed.slice(8).trim();
+    if (newName) {
+      const current = getCurrentSession();
+      if (current) {
+        const result = renameSession(current.id, newName);
+        if (result.success) {
+          println(`[提示] 会话已重命名为: ${newName}`, 'green');
+        } else {
+          println(`[错误] ${result.error}`, 'red');
+        }
+      }
+      return true;
+    } else {
+      println('[错误] 请提供新名称', 'red');
+      println('用法: /rename <新名称>', 'gray');
+      return true;
+    }
   }
   
   return false;
@@ -229,6 +301,45 @@ function toggleDebug() {
   }
 }
 
+/**
+ * 打印会话列表
+ */
+function printSessions() {
+  const sessions = listSessions();
+  const current = getCurrentSession();
+  
+  println('');
+  printDivider('=', 'cyan');
+  println('  会话列表', 'cyan');
+  printDivider('=', 'cyan');
+  println('');
+  
+  if (sessions.length === 0) {
+    println('  暂无会话', 'gray');
+  } else {
+    for (const s of sessions) {
+      const marker = s.isActive ? printTag('当前', 'bgGreen') : '     ';
+      const date = new Date(s.lastActiveAt).toLocaleString('zh-CN', { 
+        month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
+      });
+      println(`  ${marker}  ${s.name}`, 'white');
+      println(`         ID: ${s.id}`, 'gray');
+      println(`         最后活跃: ${date}`, 'gray');
+      println('');
+    }
+  }
+  
+  println('  会话命令:', 'yellow');
+  println('    /sessions       - 显示会话列表', 'gray');
+  println('    /new            - 创建新会话', 'gray');
+  println('    /switch <id>    - 切换到指定会话', 'gray');
+  println('    /delete <id>    - 删除指定会话', 'gray');
+  println('    /rename <name>  - 重命名当前会话', 'gray');
+  println('');
+  printDivider('=', 'cyan');
+  println('');
+}
+
 export {
   handleCommand,
   printHelp,
@@ -239,5 +350,6 @@ export {
   listTools,
   printConfig,
   toggleDebug,
+  printSessions,
   HELP_TEXT
 };

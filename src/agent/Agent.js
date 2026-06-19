@@ -6,11 +6,12 @@
  * - 工具注册拆分到 registry.js
  * - 命令处理拆分到 commands.js
  * - 日志使用 logger.js
+ * - 会话管理拆分到 session.js
  */
 
 import { streamChat } from '../api/client.js';
 import * as tools from './tools/index.js';
-import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory } from './prompt.js';
+import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory, initializeSession } from './session.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
 import { loadConfig } from '../config.js';
 
@@ -465,15 +466,16 @@ function handleUserInput(input) {
     const response = input.toLowerCase().trim();
     
     // 处理清空历史确认
-    if (pendingConfirmation?.type === 'clearHistory') {
+    const pendingConf = getPendingConfirmation();
+    if (pendingConf?.type === 'clearHistory') {
       if (response === 'y' || response === 'yes' || response === '确认') {
         // TODO: 实现清空历史逻辑
         println('[成功] 对话历史已清空', 'green');
-        pendingConfirmation = null;
+        setPendingConfirmation(null);
         state.current = STATE.THINKING;
       } else if (response === 'n' || response === 'no' || response === '拒绝') {
         println('[取消] 操作已取消', 'gray');
-        pendingConfirmation = null;
+        setPendingConfirmation(null);
         state.current = STATE.THINKING;
       } else {
         println(`[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 取消`, 'yellow');
@@ -629,9 +631,13 @@ async function start() {
   const cfg = loadConfig();
   thoughtInterval = cfg.chat?.thinkingInterval || 3000;
 
+  // 初始化会话
+  initializeSession();
+
   printBanner();
   printDivider('─', 'cyan');
   println('  活动范围: ' + printTag(tools.getBasePath(), 'bgBlue') + '  思考间隔: ' + printTag(`${thoughtInterval / 1000}秒`, 'bgCyan'));
+  println('  输入 ' + printTag('/sessions', 'bgBlue') + ' 管理多会话，输入 ' + printTag('/help', 'bgBlue') + ' 查看所有命令\n', 'gray');
   printDivider('─', 'cyan');
   println('  按 ' + printTag('Enter', 'bgBlue') + ' 打断思考，输入 ' + printTag('exit', 'bgBlue') + ' 退出\n', 'gray');
 
