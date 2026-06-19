@@ -27,6 +27,7 @@ CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管�
 | **动态工具注册** | 灵活的插件式工具系统 | ✅ |
 | **危险操作确认** | 关键操作需要用户确认 | ✅ |
 | **环境变量管理** | 支持 .env 配置敏感信息 | ✅ |
+| **多会话管理** | 支持多个独立对话会话 | ✅ |
 | **完整测试覆盖** | 103+ 单元测试和集成测试 | ✅ |
 
 ---
@@ -74,6 +75,18 @@ npm start
 - **指令 + ENTER** — 发送消息给 AI
 - **exit** — 退出程序
 
+### 会话管理命令
+
+CogitoAgent 支持多会话管理，可以同时进行多个独立的对话：
+
+```bash
+/sessions       # 查看所有会话列表
+/new            # 创建新会话
+/switch <id>    # 切换到指定会话
+/delete <id>    # 删除指定会话
+/rename <name>  # 重命名当前会话
+```
+
 ---
 
 ## 📁 项目结构
@@ -86,7 +99,8 @@ CogitoAgent/
 │   │   ├── state.js                  # 状态机模块（THINKING/AWAITING_INPUT/AWAITING_CONFIRMATION）
 │   │   ├── registry.js               # 工具注册表（100+ 工具管理）
 │   │   ├── commands.js               # 命令处理（/help、/status 等特殊命令）
-│   │   ├── prompt.js                 # 对话历史与上下文管理
+│   │   ├── session.js                # 多会话管理模块
+│   │   ├── prompt.js                 # 对话历史与上下文管理（备份）
 │   │   └── tools/                    # 工具集（12个模块）
 │   │       ├── index.js              # 工具统一导出入口
 │   │       ├── path.js               # 工作区路径工具
@@ -116,7 +130,10 @@ CogitoAgent/
 ├── personas/                         # 预设人设包（13种）
 ├── tests/                            # 测试文件目录
 ├── data/                             # 数据存储目录
-│   ├── conversation.json             # 对话历史持久化
+│   ├── sessions/                     # 会话存储目录
+│   │   ├── meta.json                 # 会话元数据索引
+│   │   ├── sess_xxx.json             # 各会话历史数据
+│   │   └── sess_xxx_archive.json     # 会话归档文件
 │   └── store/                        # 记忆/任务/定时任务存储
 ├── persona.md                        # 当前人设配置
 ├── config.json                       # 用户配置
@@ -342,6 +359,7 @@ Cron 风格定时任务调度。
 | **StateMachine** | 状态管理 | 独立 state.js 模块，管理 THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
 | **ThinkLoop** | 思考循环 | 每3秒自动触发一次思考 |
 | **PromptMgr** | 上下文管理 | 管理对话历史，自动压缩超过150轮的对话 |
+| **SessionManager** | 会话管理 | 支持多会话切换、创建、删除、重命名 |
 | **Multi-Model Client** | API 客户端 | 支持多提供商切换，统一接口 |
 | **ToolRegistry** | 动态工具注册 | 独立 registry.js 模块，100+ 工具集中管理 |
 | **CommandHandler** | 命令处理 | 独立 commands.js 模块，处理 /help、/status 等特殊命令 |
@@ -525,6 +543,18 @@ npm test -- --coverage
 ---
 
 ## 📝 更新日志
+
+### v2.3.0 (2026-06)
+
+**新功能：**
+- ✅ 新增多会话管理功能
+- ✅ 支持创建、切换、删除、重命名会话
+- ✅ 会话数据独立存储，互不干扰
+- ✅ 自动保存会话状态，重启后恢复
+
+**界面优化：**
+- ✅ 工具调用显示简洁标签样式（如 `调用：ls`）
+- ✅ 隐藏工具调用细节和结果细节，保持 TUI 简洁
 
 ### v2.2.0 (2025-06)
 
