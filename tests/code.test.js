@@ -80,13 +80,13 @@ describe('代码执行模块', () => {
       expect(result.success).toBe(true);
     });
 
-    it('应该处理 Python 语法错误', async () => {
+    it('应该正确处理 runPython 返回的错误', async () => {
       codeModule.runPython.mockResolvedValue({
         success: false,
-        error: 'Python 语法错误: invalid syntax'
+        error: 'Python 执行失败'
       });
 
-      const result = await codeModule.runPython('print("hello")');  // 测试Python语法
+      const result = await codeModule.runPython('print("hello")');
       
       expect(result.success).toBe(false);
     });
