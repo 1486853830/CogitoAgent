@@ -8,144 +8,20 @@ CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管�
 
 ![](introduction/main.png)
 
-***
+---
 
-## 📑 目录
+## 核心特性
 
-- [🎯 核心特性](#-核心特性)
-- [🧠 核心原理](#-核心原理)
-- [🚀 快速开始](#-快速开始)
-- [🖥️ 桌面模式详解](#️-桌面模式详解)
-- [📁 项目结构](#-项目结构)
-- [🛠️ 工具列表详解](#️-工具列表详解)
-- [🏗️ 架构设计](#️-架构设计)
-- [💡 应用场景](#-应用场景)
-- [⚙️ 配置说明](#️-配置说明)
-- [🎭 预设人设](#-预设人设)
+| 特性 | 说明 |
+|------|------|
+| **隐私优先** | 所有数据本地存储，不上传任何文件到第三方服务器 |
+| **持续思考** | 每3秒自动触发思考循环，主动分析当前任务状态 |
+| **工具执行** | 内置 100+ 工具函数，支持文件操作、代码执行、Git、数据库等 |
+| **安全沙箱** | JavaScript 代码执行采用 `isolated-vm` 进程级隔离 |
+| **多会话管理** | 支持多个独立对话会话，会话数据持久化存储 |
+| **桌面模式** | Electron 桌面窗口，与终端 Agent 通过 WebSocket 通信 |
 
-***
-
-## 🎯 核心特性
-
-| 特性 | 描述 | 状态 |
-| --- | --- | :-: |
-| **持续思考** | 每3秒自动触发思考，无需用户干预 | ✅ |
-| **本地运行** | 所有数据存储在本地，保护隐私 | ✅ |
-| **跨平台支持** | 支持 Windows、Linux、macOS | ✅ |
-| **多模型支持** | 支持 OpenAI、Moark、Anthropic、Google | ✅ |
-| **丰富工具集** | 12+ 工具模块，235+ 工具函数 | ✅ |
-| **记忆系统** | 长期记忆存储与智能检索 | ✅ |
-| **任务管理** | 任务创建、分解、追踪与统计 | ✅ |
-| **代码执行** | 支持 JavaScript 和 Python（沙箱安全执行） | ✅ |
-| **Git 集成** | 完整的版本控制操作 | ✅ |
-| **定时任务** | Cron 风格定时任务调度 | ✅ |
-| **动态工具注册** | 灵活的插件式工具系统 | ✅ |
-| **危险操作确认** | 关键操作需要用户确认 | ✅ |
-| **环境变量管理** | 支持 .env 配置敏感信息 | ✅ |
-| **多会话管理** | 支持多个独立对话会话 | ✅ |
-| **完整测试覆盖** | 103+ 单元测试和集成测试 | ✅ |
-| **桌面模式** | Electron 半透明桌面覆盖层，虚拟人物视频 | ✅ |
-
-***
-
-## 🧠 核心原理
-
-### 思考循环 (Think Cycle)
-
-Agent 的核心是一个持续运行的思考循环，每隔固定间隔自动触发一轮思考，直到用户打断。
-
-```mermaid
-flowchart TD
-    START([启动]) --> INIT[初始化会话<br/>加载 persona + 工具注册表]
-    INIT --> LOOP{思考循环}
-    
-    LOOP -->|定时触发| BUILD[构建消息上下文<br/>系统提示词 + 历史 + 当前输入]
-    BUILD --> CALL[调用 AI API<br/>流式返回]
-    CALL --> PARSE{解析输出}
-    
-    PARSE -->|普通文本| APPEND[追加到回复]
-    PARSE -->|工具调用| EXEC[执行工具]
-    PARSE -->|WAIT 标记| WAIT[等待用户输入]
-    
-    APPEND --> LOOP
-    EXEC --> RESULT[获取工具结果]
-    RESULT -->|成功| APPEND_RESULT[结果追加到上下文]
-    RESULT -->|失败| APPEND_ERROR[错误追加到上下文]
-    APPEND_RESULT --> LOOP
-    APPEND_ERROR --> LOOP
-    
-    WAIT -->|用户输入| HANDLE[处理用户消息]
-    HANDLE -->|普通消息| BUILD
-    HANDLE -->|命令 /xxx| CMD[执行命令]
-    CMD --> LOOP
-    
-    LOOP -->|退出| DONE([结束])
-```
-
-### 工具调用流程
-
-AI 输出的工具调用被解析为结构化指令，然后通过注册表查找并执行。
-
-```mermaid
-sequenceDiagram
-    participant AI as AI 模型
-    participant Parser as 解析器
-    participant Registry as 工具注册表
-    participant Tool as 工具函数
-    participant Sandbox as 沙箱
-    
-    AI->>Parser: 输出 "[TOOL] ls("C:/") [/TOOL]"
-    Parser->>Parser: 正则匹配提取 toolName + args
-    Parser->>Registry: 查找 "ls"
-    Registry-->>Parser: { fn, argCount, category }
-    
-    alt 危险操作
-        Parser->>Parser: 请求用户确认
-    end
-    
-    Parser->>Tool: 调用 fn(args)
-    
-    alt 代码执行工具
-        Tool->>Sandbox: isolated-vm 隔离执行
-        Sandbox-->>Tool: 执行结果
-    else 普通工具
-        Tool-->>Parser: 返回结果
-    end
-    
-    Parser->>AI: 结果追加到上下文
-```
-
-### 桌面模式消息流
-
-Electron 桌面窗口与终端 Agent 之间通过 WebSocket 双向通信。
-
-```mermaid
-sequenceDiagram
-    participant User as 用户
-    participant UI as 桌面 UI<br/>(renderer.js)
-    participant Bridge as agent-bridge.js<br/>(WS 客户端)
-    participant WS as ws-server.js<br/>(9527 端口)
-    participant Agent as Agent.js<br/>(思考循环)
-    participant AI as AI API
-
-    User->>UI: 输入消息
-    UI->>Bridge: IPC sendMessage(text)
-    Bridge->>WS: JSON { type: "user-message", text }
-    WS->>Agent: handleUserInput(text)
-    Agent->>AI: 流式 API 调用
-    
-    loop 流式输出
-        AI-->>Agent: chunk
-        Agent->>WS: broadcast('agent-reply', { type: 'chunk', content })
-        WS->>Bridge: 转发
-        Bridge->>UI: IPC agent-reply
-        UI->>UI: 渲染 Markdown + 过滤工具块
-    end
-    
-    Agent->>WS: broadcast('agent-reply', { type: 'done' })
-    WS->>Bridge: 转发
-    Bridge->>UI: 更新按钮状态
-```
+---
 
 ## 🚀 快速开始
 
@@ -194,534 +70,378 @@ npm start
 - **ENTER** — 打断当前 AI 思考，进入输入状态
 - **exit** — 退出程序（或直接关闭桌面窗口）
 
-***
+---
 
-## 🖥️ 桌面模式详解
+## 持续思考循环
 
-`npm start` 会同时启动终端 Agent 和 Electron 桌面窗口，两者通过 WebSocket 实时同步。
+Agent 的核心是一个持续运行的思考循环。启动后，Agent 每隔 3 秒（可通过 `thinkingInterval` 配置）自动触发一轮思考流程：
 
-### 视觉效果
+1. 构建当前消息上下文（包括系统 prompt、工具注册表、历史对话）
+2. 调用 AI API（流式返回）
+3. 解析 AI 输出：
+   - 普通文本 → 直接追加到回复
+   - 工具调用 → 执行工具函数，结果追加到上下文
+   - WAIT 标记 → 暂停，等待用户输入
 
-![](introduction/desktop.png)
+用户可随时通过 `ENTER` 打断当前思考，直接输入指令。
 
-### 核心特性
+## 工具系统
 
-| 特性 | 说明 |
+工具系统由 `registry.js` 统一管理，所有工具函数通过 `[TOOL] functionName(args) [/TOOL]` 格式调用。
+
+### 工具分类
+
+| 分类 | 文件 | 主要功能 |
+|------|------|----------|
+| 文件操作 | `file.js` | `ls`, `read`, `create`, `copy`, `mkdir`, `delete`, `move` |
+| 网页工具 | `web.js` | `search`, `browse`, `fetchPage`, `searchOnEngine` |
+| 浏览器自动化 | `browser.js` | `initBrowser`, `clickElement`, `fillField`, `takeScreenshot` |
+| 系统操作 | `system.js` | `listApps`, `openApp`, `closeApp` |
+| 代码执行 | `code.js` | `executeCode`, `runJavaScript`, `runPython` |
+| Git | `git.js` | `gitStatus`, `gitCommit`, `gitPush`, `gitPull`, `gitDiff`, `gitLog` |
+| 任务管理 | `task.js` | `createTask`, `getTasks`, `completeTask`, `splitTask` |
+| 记忆系统 | `memory.js` | `addMemory`, `searchMemory`, `getRelatedMemories`, `deleteMemory` |
+| 数据处理 | `data.js` | `readCSV`, `writeJSON`, `csvToJSON`, `queryData` |
+| 数据库 | `db.js` | `executeSQL`, `query`, `insert`, `executeTransaction` |
+| 邮件 | `email.js` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail` |
+| 系统监控 | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `monitorSystem` |
+| 定时任务 | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `toggleScheduleTask` |
+
+### 工具注册机制
+
+工具函数统一注册到注册表，包含以下元数据：
+
+```javascript
+{
+  name: '函数名',
+  description: '函数描述',
+  parameters: { /* JSON Schema */ },
+  category: '分类',
+  dangerLevel: 'none | low | medium | high',  // 危险操作需用户确认
+  fn: async (args) => { /* 实现 */ }
+}
+```
+
+### 工具调用示例
+
+```
+AI: [TOOL] ls("/project/src") [/TOOL]
+→ 返回目录文件列表
+
+AI: [TOOL] runPython("print('hello')") [/TOOL]
+→ 执行 Python 代码，返回输出
+```
+
+> 详细工具开发文档参见 [src/agent/tools/TOOL_DEVELOPMENT.md](src/agent/tools/TOOL_DEVELOPMENT.md)
+
+## 记忆系统
+
+记忆系统基于 SQLite 实现，提供长期信息存储和语义检索能力。
+
+### 核心操作
+
+| 操作 | 函数 | 说明 |
+|------|------|------|
+| 添加记忆 | `addMemory(content, tags, metadata)` | 存储信息及标签 |
+| 搜索记忆 | `searchMemory(keyword)` | 关键词模糊搜索 |
+| 语义搜索 | `getRelatedMemories(text)` | 基于嵌入向量的语义搜索 |
+| 删除记忆 | `deleteMemory(id)` | 按 ID 删除 |
+
+### 数据结构
+
+```sql
+CREATE TABLE memories (
+  id TEXT PRIMARY KEY,
+  content TEXT NOT NULL,
+  tags TEXT,           -- JSON 数组
+  embedding BLOB,      -- 嵌入向量
+  metadata TEXT,       -- JSON 对象
+  created_at INTEGER
+);
+```
+
+### 检索机制
+
+- **关键词搜索**：LIKE 模糊匹配
+- **语义搜索**：计算余弦相似度，返回相关记忆
+
+## 任务管理系统
+
+任务管理系统基于 SQLite 存储，支持任务的创建、分解、状态追踪。
+
+### 数据结构
+
+```sql
+CREATE TABLE tasks (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  status TEXT DEFAULT 'pending',  -- pending | in_progress | completed
+  priority TEXT DEFAULT 'middle', -- low | middle | high
+  parent_id TEXT,
+  created_at INTEGER,
+  completed_at INTEGER
+);
+```
+
+### 核心操作
+
+| 操作 | 函数 | 说明 |
+|------|------|------|
+| 创建任务 | `createTask(title, description, priority)` | 新建任务 |
+| 获取任务 | `getTasks(filter)` | 按状态/优先级筛选 |
+| 更新状态 | `completeTask(id)` | 标记为已完成 |
+| 分解任务 | `splitTask(parentId, subtasks)` | 拆分为子任务 |
+
+### 任务状态流转
+
+```
+pending → in_progress → completed
+```
+
+子任务完成会自动更新父任务状态。
+
+## 代码执行沙箱
+
+代码执行模块使用 `isolated-vm` 实现进程级隔离，保障系统安全。
+
+### JavaScript 执行
+
+| 安全措施 | 说明 |
+|----------|------|
+| 进程隔离 | 在独立 v8 isolate 中执行 |
+| 对象冻结 | 深度冻结 JSON、Math、Array 等内置对象 |
+| 危险对象禁用 | 禁止 `eval`、`Function`、`Proxy`、`process`、`require` |
+| 内存限制 | 128MB |
+| 超时控制 | 30秒自动终止 |
+
+### Python 执行
+
+| 安全措施 | 说明 |
+|----------|------|
+| 临时文件 | 代码写入临时 .py 文件执行 |
+| 命令注入防护 | 禁止 `subprocess`、`os.system` 等 |
+| 超时控制 | 执行完成后自动删除临时文件 |
+
+### 执行流程
+
+```
+runJavaScript(code)
+  → 创建 isolate
+  → 注入冻结的内置对象
+  → 执行代码
+  → 返回结果或错误
+  → 销毁 isolate
+```
+
+## 预设人设
+
+人设配置存储在 `personas/` 目录，每个文件定义一个角色的人格特征。
+
+### 人设文件格式
+
+```javascript
+// personas/explorer.js
+module.exports = {
+  name: 'explorer',
+  description: '探索者',
+  prompt: '你是一个细心的探索者，擅长发现文件结构和代码逻辑...',
+  temperature: 0.7,
+  maxTokens: 2000
+};
+```
+
+### 可用人设
+
+| 人设 | 说明 |
 |------|------|
-| **半透明窗口** | `backdrop-filter: blur()` 毛玻璃效果，融合桌面背景 |
-| **无边框设计** | `frame: false`，无标题栏，极简风格 |
-| **虚拟人物** | 右下角视频循环播放 |
-| **Markdown 渲染** | 标题、代码块、列表、表格、引用等完整支持 |
-| **工具调用过滤** | 自动隐藏 `[TOOL]...[/TOOL]` 块，只显示纯文本回复 |
-| **打断按钮** | 发送按钮在 AI 思考时变为红色停止按钮，点击即可打断 |
-| **任务栏可见** | 最小化后在任务栏可见，点击恢复 |
-| **一键启动** | `npm start` 自动拉起后端 + 前端，关闭窗口即退出 |
+| explorer | 文件探索、项目理解 |
+| scholar | 知识研究、深度分析 |
+| assistant | 日常任务、简单问答 |
+| creative | 写作、创意生成 |
+| critic | 代码审查、建议改进 |
+| teacher | 教学、知识讲解 |
+| wenchen | 文学创作 |
+| wujiang | 决策执行、紧急处理 |
+| yingwei | 战略规划、项目管理 |
+| zhanshi | 技术攻关、问题解决 |
+| moushi | 策略分析、风险评估 |
+| jianguan | 质量把控、流程管理 |
+| xiake | 自由探索 |
+
+切换命令：`/persona <name>`
+
+## 多会话管理
+
+`sessions/` 模块支持多个独立对话会话，每个会话维护独立的上下文。
+
+### 会话存储
+
+```
+data/sessions/
+├── session_abc123.json   # 会话元数据
+├── session_def456.json
+└── ...
+```
+
+### 会话元数据结构
+
+```javascript
+{
+  id: "abc123",
+  name: "项目A讨论",
+  createdAt: 1718000000000,
+  updatedAt: 1718001000000,
+  messageCount: 45,
+  contextTokens: 8500,
+  persona: "explorer"
+}
+```
+
+### 会话命令
+
+| 命令 | 说明 |
+|------|------|
+| `/sessions` | 列出所有会话 |
+| `/new` | 创建新会话 |
+| `/switch <id>` | 切换会话 |
+| `/delete <id>` | 删除会话 |
+| `/rename <name>` | 重命名当前会话 |
+
+### 上下文管理
+
+- **上下文窗口**：自动压缩（150轮 或 100K token）
+- **会话隔离**：切换会话时清空当前上下文
+
+## 桌面模式
+
+桌面模式基于 Electron 实现，提供 GUI 交互界面。
 
 ### 架构
 
-#### 模块关系
-
-```mermaid
-flowchart TB
-    subgraph Electron["Electron 主进程"]
-        Main[main.js]
-        Spawn[spawn 子进程]
-        IPC[IPC 处理]
-        Kill[端口清理]
-    end
-
-    subgraph AgentNode["Agent 子进程 (node src/index.js)"]
-        Agent[Agent.js<br/>思考循环]
-        Session[session.js<br/>会话管理]
-        Registry[registry.js<br/>工具注册表]
-        WSServer[ws-server.js<br/>WebSocket 服务]
-        API[AI API 客户端]
-    end
-
-    subgraph Desktop["桌面 UI (desktop/)"]
-        HTML[index.html<br/>布局]
-        CSS[style.css<br/>毛玻璃样式]
-        Renderer[renderer.js<br/>交互逻辑]
-        Video[人物视频]
-    end
-
-    subgraph Bridge["IPC 桥接"]
-        Preload[preload.cjs<br/>安全暴露 API]
-        BridgeWS[agent-bridge.js<br/>WS 客户端]
-    end
-
-    Main --> Spawn
-    Spawn --> Agent
-    Main --> Kill
-    Main --> IPC
-    
-    Agent --> Session
-    Agent --> Registry
-    Agent --> WSServer
-    Agent --> API
-    
-    IPC --> Preload
-    Preload --> Renderer
-    Renderer --> HTML
-    Renderer --> CSS
-    Renderer --> Video
-    
-    WSServer <==>|"WebSocket<br/>ws://9527"| BridgeWS
-    BridgeWS --> IPC
+```
+┌─────────────────┐     WebSocket      ┌─────────────────┐
+│  Electron       │ ←──────────────→  │  Agent 进程     │
+│  main.js        │    ws://:9527     │  ws-server.js   │
+└────────┬────────┘                   └────────┬────────┘
+         │                                     │
+         │ IPC                                 │
+         ↓                                     ↓
+┌─────────────────┐                   ┌─────────────────┐
+│  preload.cjs    │                   │  终端 UI        │
+│  (上下文桥接)    │                   │  (readline)     │
+└─────────────────┘                   └─────────────────┘
 ```
 
-#### 启动与退出时序
+### 主要进程
 
-```mermaid
-sequenceDiagram
-    participant User as 用户
-    participant Main as main.js
-    participant Agent as Agent 子进程
-    participant WS as ws-server
-    participant Window as 桌面窗口
-    participant Bridge as agent-bridge
+| 进程 | 文件 | 职责 |
+|------|------|------|
+| 主进程 | `electron/main.js` | 窗口管理、系统托盘 |
+| 预加载 | `electron/preload.cjs` | 安全上下文桥接 |
+| 桥接器 | `electron/agent-bridge.js` | WebSocket ↔ IPC 转换 |
+| WebSocket | `src/io/ws-server.js` | 实时通信（端口9527） |
 
-    User->>Main: npm start
-    Main->>Main: killPortProcess(9527)
-    Main->>Agent: spawn('node', ['src/index.js'])
-    
-    Agent->>Agent: 加载配置 + 初始化会话
-    Agent->>WS: startWsServer(9527)
-    WS-->>Agent: 服务已启动
-    Agent-->>Main: stdout: "WebSocket 服务已启动"
-    
-    Main->>Window: createWindow()
-    Main->>Bridge: initAgentBridge()
-    Bridge->>WS: 连接 ws://localhost:9527
-    WS-->>Bridge: 连接成功
-    
-    User->>Window: 发送消息
-    Window->>Bridge: IPC
-    Bridge->>WS: JSON 消息
-    
-    User->>Window: 关闭窗口
-    Window->>Main: window-all-closed
-    Main->>Agent: stdin.write('exit\n')
-    Agent->>Agent: 优雅退出
-    Main->>Agent: 3s 后 kill()
-    Main->>Main: app.quit()
-```
+### 窗口特性
 
-### 视频素材
+| 特性 | 实现 |
+|------|------|
+| 无边框窗口 | `frame: false` |
+| 半透明背景 | `transparent: true` + CSS `backdrop-filter` |
+| 始终置顶 | `alwaysOnTop: true` |
+| 点击穿透 | `enableMouseEvents: false`（可配置） |
 
-将人物视频放入 `electron/assets/` 目录，命名为 `zhanshi.mp4`（或其他名称，在 `renderer.js` 的 `videoStates` 中修改）。
+---
 
-> 💡 单视频模式，视频循环播放。如需状态切换，可在 `videoStates` 中配置多个视频。
-
-### 会话管理命令
-
-CogitoAgent 支持多会话管理，可以同时进行多个独立的对话：
-
-```bash
-/sessions       # 查看所有会话列表
-/new            # 创建新会话
-/switch <id>    # 切换到指定会话
-/delete <id>    # 删除指定会话
-/rename <name>  # 重命名当前会话
-```
-
-#### 会话生命周期
-
-```mermaid
-stateDiagram-v2
-    [*] --> 创建会话: npm start / /new
-    创建会话 --> 活跃: 加载 meta.json
-    活跃 --> 对话中: 用户发送消息
-    对话中 --> 存档: 消息数 > 阈值
-    存档 --> 对话中: 用户继续对话
-    对话中 --> 活跃: 切换会话 /switch
-    活跃 --> 已删除: /delete <id>
-    活跃 --> 重命名: /rename <name>
-    重命名 --> 活跃
-    已删除 --> [*]
-```
-
-会话数据存储在 `data/sessions/` 目录下，每个会话独立保存为 JSON 文件，支持跨启动持久化。
-
-***
-
-## 📁 项目结构
+## 项目结构
 
 ```
-CogitoAgent/
+cogito-agent/
 ├── src/                              # 源代码目录
 │   ├── agent/                        # 智能体核心模块
-│   │   ├── Agent.js                  # 核心智能体（状态机委托给 state.js）
-│   │   ├── state.js                  # 状态机模块（THINKING/AWAITING_INPUT/AWAITING_CONFIRMATION）
-│   │   ├── registry.js               # 工具注册表（100+ 工具管理）
-│   │   ├── commands.js               # 命令处理（/help、/status 等特殊命令）
-│   │   ├── session.js                # 多会话管理模块
-│   │   ├── prompt.js                 # 对话历史与上下文管理（备份）
-│   │   ├── mcp.js                    # MCP 协议服务器（供其他 AI 客户端调用）
-│   │   ├── plugin.js                 # 插件管理器（动态加载自定义工具）
-│   │   ├── retry.js                  # 熔断器与重试机制
-│   │   ├── tracing.js                # 轻量追踪模块（工具执行、LLM 调用记录）
-│   │   └── tools/                    # 工具集（13个模块）
-│   │       ├── index.js              # 工具统一导出入口
-│   │       ├── path.js               # 工作区路径工具
-│   │       ├── file.js               # 文件操作工具
-│   │       ├── web.js                # 网页相关工具
-│   │       ├── browser.js            # 浏览器自动化（Playwright）
-│   │       ├── system.js             # 系统操作工具
-│   │       ├── code.js               # 代码执行引擎（JS/Python）
-│   │       ├── sandbox.js            # 沙箱安全执行（Object.freeze 保护）
-│   │       ├── git.js                # Git 版本控制
-│   │       ├── task.js               # 任务管理系统
-│   │       ├── memory.js             # 记忆系统
-│   │       ├── data.js               # 数据处理工具（CSV/JSON）
-│   │       ├── db.js                 # SQLite 数据库操作
-│   │       ├── email.js              # 邮件功能
-│   │       ├── monitor.js            # 系统监控
-│   │       ├── scheduler.js          # 定时任务调度
-│   │       ├── storage.js            # 持久化存储工具
-│   │       └── TOOL_DEVELOPMENT.md   # 工具开发文档
+│   │   ├── Agent.js                  # 核心智能体
+│   │   ├── state.js                  # 状态机
+│   │   ├── registry.js               # 工具注册表
+│   │   ├── commands.js               # 命令处理
+│   │   ├── session.js                # 多会话管理
+│   │   ├── tools/                    # 工具集（13个模块）
+│   │   │   ├── index.js              # 工具统一导出
+│   │   │   ├── file.js               # 文件操作
+│   │   │   ├── web.js                # 网页工具
+│   │   │   ├── browser.js            # 浏览器自动化
+│   │   │   ├── system.js             # 系统操作
+│   │   │   ├── code.js               # 代码执行
+│   │   │   ├── sandbox.js            # 沙箱安全
+│   │   │   ├── git.js                # Git 版本控制
+│   │   │   ├── task.js               # 任务管理
+│   │   │   ├── memory.js             # 记忆系统
+│   │   │   ├── data.js               # 数据处理
+│   │   │   ├── db.js                 # 数据库
+│   │   │   ├── email.js              # 邮件功能
+│   │   │   ├── monitor.js            # 系统监控
+│   │   │   ├── scheduler.js          # 定时任务
+│   │   │   └── TOOL_DEVELOPMENT.md   # 工具开发文档
+│   │   └── ...
 │   ├── api/                          # API 层
 │   │   ├── client.js                 # OpenAI 兼容 API 客户端
 │   │   ├── webSearch.js              # 联网搜索模块
 │   │   └── models.js                 # 多模型支持
-│   ├── io/                           # 输入输出模块
-│   │   ├── terminal.js               # 终端 UI 与彩色输出
-│   │   └── logger.js                 # 日志管理（DEBUG/INFO/WARN/ERROR 分级）
-│   ├── config.js                     # 配置管理（环境变量、配置合并）
-│   ├── setup.js                      # 首次运行引导（API配置、工作区设置）
+│   ├── io/                           # 输入输出
+│   │   ├── terminal.js               # 终端 UI
+│   │   ├── logger.js                 # 日志管理
+│   │   └── ws-server.js              # WebSocket 服务
+│   ├── config.js                     # 配置管理
 │   └── index.js                      # 应用入口
 ├── electron/                         # Electron 桌面模式
-│   ├── main.js                       # Electron 主进程（透明窗口）
-│   ├── preload.cjs                   # IPC 安全桥接
-│   ├── agent-bridge.js               # WebSocket 客户端（连接终端 Agent）
-│   ├── assets/                       # 视频素材目录
-│   │   └── *.mp4                     # 人物视频
-│   └── desktop/                      # 桌面 UI
-│       ├── index.html                # 布局（人物 + 对话框）
-│       ├── style.css                 # 毛玻璃样式 + Markdown 渲染
-│       └── renderer.js               # 前端交互逻辑
-├── personas/                         # 预设人设包（13种）
-│   ├── explorer.md                   # 探索者 - 文件探索、项目理解
-│   ├── scholar.md                    # 学者 - 知识研究、深度分析
-│   ├── assistant.md                  # 助手 - 日常任务、生活助手
-│   ├── creative.md                   # 创意家 - 写作、创意生成
-│   ├── critic.md                     # 评论家 - 代码审查、建议改进
-│   ├── teacher.md                    # 教师 - 教学、知识讲解
-│   ├── wenchen.md                    # 文人 - 文学创作、诗词歌赋
-│   ├── wujiang.md                    # 武将 - 决策果断、执行力强
-│   ├── yingwei.md                    # 英伟 - 领导者、战略规划
-│   ├── zhanshi.md                    # 战士 - 解决问题、克服困难
-│   ├── moushi.md                     # 谋士 - 策略分析、规划
-│   ├── jianguan.md                   # 监管 - 质量把控、流程管理
-│   └── xiake.md                      # 侠客 - 自由探索、不拘一格
-├── tests/                            # 测试文件目录
+│   ├── main.js                       # 主进程
+│   ├── agent-bridge.js               # WS 桥接
+│   └── desktop/                       # 桌面 UI
+├── personas/                         # 13种预设人设
+├── tests/                            # 测试文件
 │   ├── Agent.test.js                 # 智能体核心测试
 │   ├── config.test.js                # 配置管理测试
-│   ├── parseArgs.test.js             # 参数解析测试
-│   ├── git.test.js                   # Git 操作测试
 │   ├── code.test.js                  # 代码执行沙箱测试
-│   ├── db.test.js                    # 数据库操作测试
-│   ├── web.test.js                   # Web 模块测试
-│   ├── browser.test.js               # Playwright 生命周期测试
-│   └── storage.test.js               # 存储工具测试
-├── data/                             # 运行时数据存储目录（自动创建）
-│   ├── sessions/                     # 会话存储目录
-│   │   ├── meta.json                 # 会话元数据索引
-│   │   ├── sess_xxx.json             # 各会话历史数据
-│   │   └── sess_xxx_archive.json     # 会话归档文件
-│   └── store/                        # 记忆/任务/定时任务存储
-├── introduction/                     # 项目介绍资源
-│   ├── main.png                      # 主界面截图
-│   ├── file.png                      # 文件操作演示
-│   ├── web.png                       # 网页工具演示
-│   ├── system.png                    # 系统操作演示
-│   └── index.html                    # 介绍页面
-├── .env.example                      # 环境变量示例
-├── .gitignore                        # Git 忽略配置
-├── LICENSE                           # Apache 2.0 许可证
-├── jest.config.mjs                   # Jest 测试配置
-├── package.json                      # 项目依赖配置
-├── config.json                       # 用户配置（运行时生成）
-├── persona.md                        # 当前人设配置（运行时生成）
-└── README.md                         # 项目说明文档
+│   └── ...
+└── data/                             # 运行时数据（自动创建）
 ```
 
-***
+---
 
-## 🛠️ 工具列表详解
+## 常用命令速查
 
-### 1. 文件操作工具
+### 会话管理
 
-提供基础的文件系统操作能力。
+| 命令 | 说明 |
+|------|------|
+| `/sessions` | 查看所有会话列表 |
+| `/new` | 创建新会话 |
+| `/switch <id>` | 切换到指定会话 |
+| `/delete <id>` | 删除指定会话 |
+| `/rename <name>` | 重命名当前会话 |
 
-| 工具                      | 参数                        | 功能描述              |
-| ----------------------- | ------------------------- | ----------------- |
-| `ls(path)`              | path: 目录路径（可选）            | 列出目录内容            |
-| `read(path)`            | path: 文件路径                | 读取文件内容（自动检测二进制文件） |
-| `copy(src, dest)`       | src: 源路径, dest: 目标路径      | 复制文件或目录           |
-| `mkdir(path)`           | path: 目录路径                | 创建文件夹（支持递归创建）     |
-| `create(path, content)` | path: 文件路径, content: 文件内容 | 创建新文件             |
+### 系统命令
 
-### 2. 网页工具
+| 命令 | 说明 |
+|------|------|
+| `/help` | 显示帮助信息 |
+| `/status` | 显示当前状态 |
+| `/config` | 显示配置信息 |
+| `/clear` | 清屏 |
+| `/persona <name>` | 切换人设 |
+| `/debug` | 切换调试模式 |
 
-提供联网搜索和网页抓取能力。
+### 交互快捷键
 
-| 工具                              | 参数                       | 功能描述                        |
-| ------------------------------- | ------------------------ | --------------------------- |
-| `search(query)`                 | query: 搜索关键词             | 联网搜索，获取最新信息摘要               |
-| `browse(url)`                   | url: 网址                  | 在默认浏览器中打开指定网址               |
-| `fetchPage(url)`                | url: 网页地址                | 抓取静态网页正文，提取标题、段落和链接         |
-| `searchOnEngine(query, engine)` | query: 搜索词, engine: 搜索引擎 | 指定搜索引擎搜索（baidu/google/bing） |
+| 按键 | 说明 |
+|------|------|
+| `ENTER` | 打断当前思考，进入输入状态 |
+| `exit` | 退出程序 |
 
-### 3. 浏览器自动化
+---
 
-基于 Playwright 的浏览器自动化能力。
+## 配置说明
 
-| 工具                              | 参数                            | 功能描述        |
-| ------------------------------- | ----------------------------- | ----------- |
-| `initBrowser(url)`              | url: 初始网址                     | 初始化浏览器并打开网页 |
-| `clickElement(selector, index)` | selector: CSS选择器, index: 元素索引 | 点击网页元素      |
-| `fillField(selector, value)`    | selector: CSS选择器, value: 输入值  | 填写表单字段      |
-| `selectOption(selector, value)` | selector: CSS选择器, value: 选项值  | 选择下拉框选项     |
-| `getPageContent()`              | 无                             | 获取当前页面内容    |
-| `takeScreenshot(path)`          | path: 保存路径                    | 截图当前页面      |
-| `closeBrowser()`                | 无                             | 关闭浏览器       |
-
-### 4. 系统操作
-
-提供系统级别的操作能力。
-
-| 工具               | 参数         | 功能描述           |
-| ---------------- | ---------- | -------------- |
-| `listApps()`     | 无          | 列出当前电脑已安装的所有软件 |
-| `openApp(name)`  | name: 软件名称 | 通过名称打开指定软件     |
-| `closeApp(name)` | name: 软件名称 | 关闭正在运行的指定软件    |
-
-### 5. 代码执行引擎
-
-支持 JavaScript 和 Python 代码执行，带超时保护和沙箱隔离。
-
-| 工具                                | 参数                                  | 功能描述                      |
-| --------------------------------- | ----------------------------------- | ------------------------- |
-| `executeCode(code, language)`     | code: 代码内容, language: 语言（js/python） | 执行代码（自动识别语言）              |
-| `executeFile(filepath, language)` | filepath: 文件路径, language: 语言（可选）    | 执行代码文件                    |
-| `runJavaScript(code)`             | code: JavaScript 代码                 | 执行 JavaScript 代码          |
-| `runPython(code)`                 | code: Python 代码                     | 执行 Python 代码（通过临时文件方式，安全） |
-
-**安全特性：**
-
-- 代码执行超时限制（30秒）
-- 输出大小限制（100KB）
-- **JavaScript 代码通过 `isolated-vm` 库提供进程级隔离**，比原生 `vm` 模块更安全
-- 内存使用限制（128MB），防止内存耗尽攻击
-- 禁止 `eval`、`Function`、`Proxy`、`process`、`require` 等危险对象
-- Python 代码通过临时文件执行，防止命令注入
-- 沙箱环境禁止访问文件系统、网络等危险操作
-- 临时文件超时自动清理
-- 支持优雅降级到原生 `vm` 模块（当 `isolated-vm` 不可用时）
-
-### 6. Git 版本控制
-
-完整的 Git 操作支持。
-
-| 工具                              | 参数                                   | 功能描述         |
-| ------------------------------- | ------------------------------------ | ------------ |
-| `gitInit(path)`                 | path: 目录路径                           | 初始化 Git 仓库   |
-| `gitClone(url, dest, branch)`   | url: 仓库地址, dest: 目标目录, branch: 分支    | 克隆仓库         |
-| `gitAdd(files, path)`           | files: 文件列表, path: 工作目录              | 添加文件到暂存区     |
-| `gitCommit(message, path)`      | message: 提交信息, path: 工作目录            | 提交变更（安全参数传递） |
-| `gitPush(remote, branch, path)` | remote: 远程名称, branch: 分支, path: 工作目录 | 推送变更到远程      |
-| `gitPull(remote, branch, path)` | remote: 远程名称, branch: 分支, path: 工作目录 | 拉取远程变更       |
-| `gitStatus(path)`               | path: 工作目录                           | 查看仓库状态       |
-| `gitLog(path, options)`         | path: 工作目录, options: 日志选项            | 查看提交日志       |
-| `gitCheckout(branch, path)`     | branch: 分支名, path: 工作目录              | 切换分支         |
-| `gitBranchCreate(name, path)`   | name: 分支名, path: 工作目录                | 创建新分支        |
-| `gitBranchDelete(name, path)`   | name: 分支名, path: 工作目录                | 删除分支         |
-| `gitBranchList(path)`           | path: 工作目录                           | 列出所有分支       |
-| `gitMerge(branch, path)`        | branch: 分支名, path: 工作目录              | 合并分支         |
-| `gitDiff(options, path)`        | options: 选项, path: 工作目录              | 查看差异         |
-| `gitStash(path)`                | path: 工作目录                           | 暂存当前修改       |
-| `gitStashPop(path)`             | path: 工作目录                           | 恢复暂存的修改      |
-
-**安全特性：**
-
-- 使用 `execFile` 替代 `exec`，参数通过数组传递
-- 防止命令注入攻击
-- **危险操作确认机制**：push、代码执行等高风险操作需要用户手动确认
-
-### 7. 任务管理系统
-
-任务创建、分解、追踪和统计。
-
-| 工具                                                   | 参数                                                           | 功能描述     |
-| ---------------------------------------------------- | ------------------------------------------------------------ | -------- |
-| `createTask(title, description, priority, parentId)` | title: 任务标题, description: 描述, priority: 优先级, parentId: 父任务ID | 创建任务     |
-| `getTasks()`                                         | 无                                                            | 获取所有任务列表 |
-| `getTask(id)`                                        | id: 任务ID                                                     | 获取单个任务详情 |
-| `updateTask(id, updates)`                            | id: 任务ID, updates: 更新内容                                      | 更新任务信息   |
-| `deleteTask(id)`                                     | id: 任务ID                                                     | 删除任务     |
-| `completeTask(id)`                                   | id: 任务ID                                                     | 标记任务完成   |
-| `splitTask(id, subtasks)`                            | id: 任务ID, subtasks: 子任务数组                                    | 分解任务为子任务 |
-| `getTaskStats()`                                     | 无                                                            | 获取任务统计信息 |
-
-**数据持久化：**
-
-- 任务存储在 `data/tasks.json`
-- 支持子任务层级关系
-- 支持优先级排序（high/middle/low）
-
-### 8. 记忆系统
-
-长期记忆存储，支持标签和智能搜索。
-
-| 工具                                   | 参数                                       | 功能描述       |
-| ------------------------------------ | ---------------------------------------- | ---------- |
-| `addMemory(content, tags, metadata)` | content: 记忆内容, tags: 标签数组, metadata: 元数据 | 添加记忆       |
-| `searchMemory(query, limit)`         | query: 搜索关键词, limit: 返回数量                | 搜索记忆（模糊匹配） |
-| `getAllMemories(limit)`              | limit: 返回数量                              | 获取所有记忆     |
-| `getMemory(id)`                      | id: 记忆ID                                 | 获取记忆详情     |
-| `updateMemory(id, updates)`          | id: 记忆ID, updates: 更新内容                  | 更新记忆       |
-| `deleteMemory(id)`                   | id: 记忆ID                                 | 删除记忆       |
-| `getMemoryStats()`                   | 无                                        | 获取记忆统计信息   |
-
-**特性：**
-
-- 记忆评分机制，自动计算相关性
-- 支持标签分类
-- 数据持久化存储
-
-### 9. 数据处理工具
-
-CSV/JSON 文件读写、转换和分析。
-
-| 工具                                  | 参数                                      | 功能描述       |
-| ----------------------------------- | --------------------------------------- | ---------- |
-| `readCSV(filepath)`                 | filepath: 文件路径                          | 读取 CSV 文件  |
-| `writeCSV(filepath, data, headers)` | filepath: 文件路径, data: 数据数组, headers: 表头 | 写入 CSV 文件  |
-| `readJSON(filepath)`                | filepath: 文件路径                          | 读取 JSON 文件 |
-| `writeJSON(filepath, data)`         | filepath: 文件路径, data: JSON数据            | 写入 JSON 文件 |
-| `csvToJSON(csvPath, jsonPath)`      | csvPath: 源CSV, jsonPath: 目标JSON         | CSV 转 JSON |
-| `jsonToCSV(jsonPath, csvPath)`      | jsonPath: 源JSON, csvPath: 目标CSV         | JSON 转 CSV |
-| `queryData(data, conditions)`       | data: 数据数组, conditions: 查询条件            | 查询数据       |
-| `analyzeData(data)`                 | data: 数据数组                              | 数据分析（统计信息） |
-| `sortData(data, field, order)`      | data: 数据数组, field: 字段名, order: 排序方式     | 数据排序       |
-
-### 10. 数据库操作
-
-SQLite 数据库操作，支持 SQL 和 ORM 风格。
-
-| 工具                             | 参数                                  | 功能描述      |
-| ------------------------------ | ----------------------------------- | --------- |
-| `executeSQL(sql, params)`      | sql: SQL语句, params: 参数数组            | 执行 SQL 语句 |
-| `query(table, where, options)` | table: 表名, where: 查询条件, options: 选项 | 查询数据      |
-| `insert(table, data)`          | table: 表名, data: 数据对象               | 插入数据      |
-| `update(table, data, where)`   | table: 表名, data: 更新数据, where: 条件    | 更新数据      |
-| `deleteData(table, where)`     | table: 表名, where: 删除条件              | 删除数据      |
-| `createTable(table, schema)`   | table: 表名, schema: 表结构              | 创建表       |
-| `dropTable(table)`             | table: 表名                           | 删除表       |
-| `getTables()`                  | 无                                   | 获取所有表列表   |
-| `getTableSchema(table)`        | table: 表名                           | 获取表结构信息   |
-
-### 11. 邮件功能
-
-SMTP 邮件发送，支持多种格式。
-
-| 工具                                               | 参数                                           | 功能描述       |
-| ------------------------------------------------ | -------------------------------------------- | ---------- |
-| `sendEmail(to, subject, body, options)`          | to: 收件人, subject: 主题, body: 内容, options: 选项  | 发送邮件       |
-| `sendTextEmail(to, subject, text)`               | to: 收件人, subject: 主题, text: 文本内容             | 发送文本邮件     |
-| `sendHtmlEmail(to, subject, html)`               | to: 收件人, subject: 主题, html: HTML内容           | 发送 HTML 邮件 |
-| `sendTemplateEmail(to, subject, template, data)` | to: 收件人, subject: 主题, template: 模板, data: 数据 | 发送模板邮件     |
-| `checkEmailConfig()`                             | 无                                            | 检查邮件配置是否有效 |
-
-### 12. 系统监控
-
-系统资源监控能力。
-
-| 工具                 | 参数 | 功能描述                 |
-| ------------------ | -- | -------------------- |
-| `getCPUInfo()`     | 无  | 获取 CPU 信息（核心数、型号等）   |
-| `getMemoryInfo()`  | 无  | 获取内存信息（总量、已用、可用）     |
-| `getDiskInfo()`    | 无  | 获取磁盘信息（分区、容量、使用率）    |
-| `getNetworkInfo()` | 无  | 获取网络接口信息             |
-| `getProcesses()`   | 无  | 获取当前运行进程列表           |
-| `getSystemInfo()`  | 无  | 获取系统基本信息（OS、版本、架构）   |
-| `getSystemLoad()`  | 无  | 获取系统负载（CPU使用率、内存使用率） |
-| `monitorSystem()`  | 无  | 综合监控系统资源             |
-
-### 13. 定时任务调度
-
-Cron 风格定时任务调度。
-
-| 工具                                              | 参数                                                   | 功能描述      |
-| ----------------------------------------------- | ---------------------------------------------------- | --------- |
-| `addScheduleTask(name, cron, command, options)` | name: 任务名, cron: cron表达式, command: 执行命令, options: 选项 | 添加定时任务    |
-| `getScheduleTasks()`                            | 无                                                    | 获取所有定时任务  |
-| `updateScheduleTask(id, updates)`               | id: 任务ID, updates: 更新内容                              | 更新定时任务    |
-| `toggleScheduleTask(id)`                        | id: 任务ID                                             | 启用/禁用定时任务 |
-| `removeScheduleTask(id)`                        | id: 任务ID                                             | 删除定时任务    |
-
-***
-
-## 🏗️ 架构设计
-
-### 核心组件说明
-
-| 组件 | 职责 | 说明 |
-| --- | --- | --- |
-| **StateMachine** | 状态管理 | 独立 state.js，管理 THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
-| **ThinkLoop** | 思考循环 | 每3秒自动触发一次思考 |
-| **PromptMgr** | 上下文管理 | 管理对话历史，自动压缩超过150轮的对话 |
-| **SessionManager** | 会话管理 | 支持多会话切换、创建、删除、重命名 |
-| **Multi-Model Client** | API 客户端 | 支持多提供商切换，统一接口 |
-| **ToolRegistry** | 动态工具注册 | 独立 registry.js，100+ 工具集中管理 |
-| **CommandHandler** | 命令处理 | 独立 commands.js，处理 /help、/status 等特殊命令 |
-| **Sandbox** | 代码沙箱 | isolated-vm 进程级隔离，支持优雅降级 |
-| **Logger** | 日志管理 | 独立 logger.js，DEBUG/INFO/WARN/ERROR 分级输出 |
-| **EnvManager** | 环境变量管理 | 通过 .env 文件管理敏感配置 |
-| **ConfirmGate** | 危险操作确认 | git push、代码执行等高风险操作需用户确认 |
-
-***
-
-## 💡 应用场景
-
-### 1. 代码助手
-
-```
-用户：帮我写一个 Python 脚本，计算斐波那契数列前20项
-AI：  [TOOL] runPython("def fibonacci(n):...") [/TOOL]
-     → 执行结果：[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, ...]
-```
-
-### 2. 项目管理
-
-```
-用户：帮我初始化一个 Git 仓库并提交代码
-AI：  [TOOL] gitInit("./my-project") [/TOOL]
-     [TOOL] gitAdd(".") [/TOOL]
-     [TOOL] gitCommit("Initial commit") [/TOOL]
-```
-
-### 3. 任务追踪
-
-```
-用户：创建一个任务，完成项目文档编写
-AI：  [TOOL] createTask("编写项目文档", "完成 README 和技术文档", "high") [/TOOL]
-     → 任务创建成功，ID: task_123
-```
-
-### 4. 知识管理
-
-```
-用户：记住这个重要的会议时间：下周一上午9点
-AI：  [TOOL] addMemory("会议时间：下周一上午9点", ["会议", "时间"], {"date": "2024-01-15"}) [/TOOL]
-```
-
-***
-
-## ⚙️ 配置说明
-
-配置文件 `config.json` 支持以下选项：
+### 配置文件 (config.json)
 
 ```json
 {
@@ -736,10 +456,6 @@ AI：  [TOOL] addMemory("会议时间：下周一上午9点", ["会议", "时间
   "database": {
     "path": "./data/example.db"
   },
-  "email": {
-    "smtpHost": "smtp.example.com",
-    "smtpPort": 587
-  },
   "code": {
     "maxExecutionTime": 30000,
     "maxOutputSize": 100000
@@ -750,12 +466,11 @@ AI：  [TOOL] addMemory("会议时间：下周一上午9点", ["会议", "时间
 }
 ```
 
-### 环境变量支持
+### 环境变量 (.env)
 
-除了 `config.json`，CogitoAgent 还支持通过 `.env` 文件管理敏感配置：
+敏感配置建议使用环境变量：
 
 ```bash
-# .env 文件示例
 COGITO_API_KEY=your-api-key-here
 COGITO_API_BASE_URL=https://api.openai.com/v1
 COGITO_MODEL=gpt-4o
@@ -763,256 +478,330 @@ COGITO_WORKSPACE=/home/user/projects
 COGITO_EMAIL_PASSWORD=your-email-password
 ```
 
-**优势：**
-
-- 敏感信息与代码分离，提高安全性
-- 避免配置文件中的明文密码
-- 支持多环境配置切换
-
 ### 工具分类配置
 
-CogitoAgent 支持按需加载工具分类，减少 Token 消耗：
-
-```json
-"tools": {
-  "enabledCategories": ["file", "web", "code", "git", "task", "memory", "data"]
-}
-```
-
-**可用分类：**
+按需加载工具分类，减少 Token 消耗：
 
 | 分类 | 说明 |
-| --- | --- |
-| `file` | 文件操作（ls, read, copy, mkdir, create） |
-| `web` | 网络工具（search, browse, fetchPage） |
-| `browser` | 浏览器自动化（initBrowser, clickElement 等） |
-| `system` | 系统操作（listApps, openApp, closeApp） |
-| `code` | 代码执行（executeCode, runJavaScript, runPython） |
-| `git` | Git 版本控制（gitStatus, gitCommit, gitPush 等） |
-| `task` | 任务管理（createTask, getTasks, completeTask 等） |
-| `memory` | 记忆系统（addMemory, searchMemory 等） |
-| `data` | 数据处理（readCSV, writeJSON 等） |
-| `db` | 数据库操作（executeSQL, query 等） |
-| `email` | 邮件功能（sendEmail, sendTextEmail 等） |
-| `monitor` | 系统监控（getCPUInfo, monitorSystem 等） |
-| `scheduler` | 定时任务（addScheduleTask 等） |
+|------|------|
+| `file` | 文件操作 |
+| `web` | 网络工具 |
+| `browser` | 浏览器自动化 |
+| `system` | 系统操作 |
+| `code` | 代码执行 |
+| `git` | Git 版本控制 |
+| `task` | 任务管理 |
+| `memory` | 记忆系统 |
+| `data` | 数据处理 |
+| `db` | 数据库 |
+| `email` | 邮件功能 |
+| `monitor` | 系统监控 |
+| `scheduler` | 定时任务 |
 
-如果不配置 `enabledCategories`，默认启用所有分类。
+---
 
-***
+## 应用场景示例
 
-## 🎭 预设人设
+### 文件探索
 
-CogitoAgent 提供 13 种预设人设，可根据不同场景选择：
+```javascript
+// 分析项目结构
+[TOOL] ls("./src") [/TOOL]
+// → ["agent", "api", "io", "config.js", "index.js"]
 
-| 人设 | 描述 | 适用场景 |
-| --- | --- | --- |
-| **explorer** | 探索者 | 文件探索、项目理解 |
-| **scholar** | 学者 | 知识研究、深度分析 |
-| **assistant** | 助手 | 日常任务、生活助手 |
-| **creative** | 创意家 | 写作、创意生成 |
-| **critic** | 评论家 | 代码审查、建议改进 |
-| **teacher** | 教师 | 教学、知识讲解 |
-| **wenchen** | 文人 | 文学创作、诗词歌赋 |
-| **wujiang** | 武将 | 决策果断、执行力强 |
-| **yingwei** | 英伟 | 领导者、战略规划 |
-| **zhanshi** | 战士 | 解决问题、克服困难 |
-| **moushi** | 谋士 | 策略分析、规划 |
-| **jianguan** | 监管 | 质量把控、流程管理 |
-| **xiake** | 侠客 | 自由探索、不拘一格 |
+// 读取关键文件
+[TOOL] read("./src/agent/Agent.js") [/TOOL]
+// → 返回文件内容
+```
 
-***
+### 代码执行
 
-## 🧪 测试
+```javascript
+// Python 脚本执行
+[TOOL] runPython(`
+import json
+data = {"fibonacci": [0, 1, 1, 2, 3, 5, 8]}
+print(json.dumps(data))
+`) [/TOOL]
+// → {"fibonacci": [0, 1, 1, 2, 3, 5, 8]}
 
-CogitoAgent 使用 Jest 测试框架，确保代码质量和稳定性。
+// JavaScript 沙箱执行
+[TOOL] runJavaScript(`
+const arr = [1, 2, 3, 4, 5];
+const sum = arr.reduce((a, b) => a + b, 0);
+console.log(sum);
+`) [/TOOL]
+// → 15
+```
+
+### Git 版本控制
+
+```javascript
+// 查看仓库状态
+[TOOL] gitStatus() [/TOOL]
+// → { files: ["src/index.js", "README.md"], branch: "main" }
+
+// 提交更改
+[TOOL] gitCommit("feat: 添加新工具") [/TOOL]
+// → committed (a1b2c3d)
+
+// 推送远程
+[TOOL] gitPush("origin", "main") [/TOOL]
+// → done
+```
+
+### 数据库操作
+
+```javascript
+// 执行 SQL
+[TOOL] executeSQL("SELECT * FROM tasks WHERE status = 'pending'") [/TOOL]
+// → [{ id: "1", title: "任务A", status: "pending" }]
+
+// 插入数据
+[TOOL] insert("tasks", { title: "新任务", priority: "high" }) [/TOOL]
+// → { id: "2", title: "新任务", priority: "high" }
+```
+
+### 联网搜索
+
+```javascript
+// 搜索信息
+[TOOL] search("Node.js 20 new features") [/TOOL]
+// → [{ title: "...", url: "...", snippet: "..." }]
+
+// 获取页面内容
+[TOOL] fetchPage("https://nodejs.org/") [/TOOL]
+// → { title: "Node.js", content: "..." }
+```
+
+---
+
+## 架构设计
+
+### 核心组件
+
+| 组件 | 职责 | 说明 |
+|------|------|------|
+| **Agent.js** | 思考循环 | 每3秒自动触发一次思考 |
+| **state.js** | 状态机 | THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
+| **registry.js** | 工具注册表 | 100+ 工具集中管理 |
+| **session.js** | 会话管理 | 多会话切换、上下文压缩 |
+| **commands.js** | 命令处理 | /help、/status 等特殊命令 |
+| **sandbox.js** | 代码沙箱 | isolated-vm 进程级隔离 |
+| **ws-server.js** | WebSocket | 桌面模式通信 |
+
+### 模块关系
+
+```mermaid
+flowchart TB
+    subgraph Agent["Agent 子进程"]
+        A[Agent.js] --> S[session.js]
+        A --> R[registry.js]
+        A --> W[ws-server.js]
+        A --> API[api/client.js]
+    end
+    
+    subgraph Desktop["Electron"]
+        M[main.js] --> P[preload.cjs]
+        P --> BR[agent-bridge.js]
+        BR <--> W
+    end
+```
+
+---
+
+## 核心原理
+
+<details>
+<summary>点击展开 / 收起</summary>
+
+### 思考循环 (Think Cycle)
+
+Agent 的核心是一个持续运行的思考循环，每隔固定间隔自动触发一轮思考，直到用户打断。
+
+```mermaid
+flowchart TD
+    START([启动]) --> INIT[初始化会话<br/>加载 persona + 工具注册表]
+    INIT --> LOOP{思考循环}
+    
+    LOOP -->|定时触发| BUILD[构建消息上下文]
+    BUILD --> CALL[调用 AI API<br/>流式返回]
+    CALL --> PARSE{解析输出}
+    
+    PARSE -->|普通文本| APPEND[追加到回复]
+    PARSE -->|工具调用| EXEC[执行工具]
+    PARSE -->|WAIT 标记| WAIT[等待用户输入]
+    
+    APPEND --> LOOP
+    EXEC --> RESULT[获取工具结果]
+    RESULT -->|成功| APPEND_RESULT[结果追加到上下文]
+    APPEND_RESULT --> LOOP
+    
+    WAIT -->|用户输入| HANDLE[处理用户消息]
+    HANDLE -->|普通消息| BUILD
+    HANDLE -->|命令 /xxx| CMD[执行命令]
+    CMD --> LOOP
+```
+
+### 工具调用流程
+
+```mermaid
+sequenceDiagram
+    participant AI as AI 模型
+    participant Parser as 解析器
+    participant Registry as 工具注册表
+    participant Tool as 工具函数
+    participant Sandbox as 沙箱
+    
+    AI->>Parser: 输出 "[TOOL] ls("C:/") [/TOOL]"
+    Parser->>Registry: 查找 "ls"
+    Registry-->>Parser: { fn, argCount, category }
+    
+    alt 危险操作
+        Parser->>Parser: 请求用户确认
+    end
+    
+    Parser->>Tool: 调用 fn(args)
+    
+    alt 代码执行工具
+        Tool->>Sandbox: isolated-vm 隔离执行
+    end
+    
+    Parser->>AI: 结果追加到上下文
+```
+
+### 桌面模式消息流
+
+```mermaid
+sequenceDiagram
+    participant User as 用户
+    participant UI as 桌面 UI
+    participant Bridge as agent-bridge.js
+    participant WS as ws-server.js
+    participant Agent as Agent.js
+
+    User->>UI: 输入消息
+    UI->>Bridge: IPC
+    Bridge->>WS: JSON
+    WS->>Agent: handleUserInput()
+    Agent->>AI: 流式 API 调用
+    
+    loop 流式输出
+        AI-->>Agent: chunk
+        Agent->>WS: broadcast
+        WS->>Bridge: 转发
+        Bridge->>UI: 渲染
+    end
+```
+
+### 状态机
+
+```mermaid
+stateDiagram-v2
+    [*] --> THINKING: 启动
+    THINKING --> AWAITING_INPUT: 用户打断 / 命令
+    AWAITING_INPUT --> THINKING: 发送消息
+    THINKING --> AWAITING_CONFIRMATION: 危险操作
+    AWAITING_CONFIRMATION --> THINKING: 用户确认/拒绝
+```
+
+</details>
+
+---
+
+## 测试
 
 ### 运行测试
 
 ```bash
-# 运行所有测试
 npm test
-
-# 运行测试并显示详细输出
-npm test -- --verbose
-
-# 运行测试并生成覆盖率报告
-npm test -- --coverage
+npm test -- --verbose  # 详细输出
+npm test -- --coverage # 覆盖率报告
 ```
 
-### 测试覆盖范围
+### 测试覆盖
 
-| 测试模块 | 测试用例数 | 覆盖内容 |
-| --- | :-: | --- |
-| **Agent** | 27 | 参数解析、工具调用、状态管理 |
-| **配置管理** | 12 | 环境变量解析、配置合并、默认值处理 |
-| **参数解析** | 10 | JSON 解析、参数验证、错误处理 |
-| **Git 操作** | 20 | 仓库操作、文件操作、安全参数传递 |
-| **文件存储** | 10 | 读写操作、目录管理、错误处理 |
-| **代码执行** | 8 | 沙箱安全、原型链隔离、危险代码拒绝 |
-| **数据库** | 10 | SQL 执行、CRUD、事务、回滚 |
-| **Web 模块** | 3 | browse、fetchPage |
-| **Browser** | 2 | Playwright 生命周期 |
+| 模块 | 用例数 | 覆盖内容 |
+|------|:------:|---------|
+| Agent | 27 | 参数解析、工具调用、状态管理 |
+| 配置管理 | 12 | 环境变量解析、配置合并 |
+| Git 操作 | 20 | 仓库操作、安全参数传递 |
+| 代码执行 | 8 | 沙箱安全、危险代码拒绝 |
+| 数据库 | 10 | SQL 执行、CRUD、事务 |
+| Web 模块 | 3 | browse、fetchPage |
+| Browser | 2 | Playwright 生命周期 |
 
-### 测试特性
+---
 
-- ✅ **异步测试支持** - 完整支持 async/await
-- ✅ **ES Module 支持** - 原生 ESM 测试环境
-- ✅ **Mock 支持** - 完整的函数和模块模拟能力
-- ✅ **覆盖率报告** - 详细的代码覆盖率分析
+## 贡献指南
 
-***
+欢迎贡献代码：
 
-## 🤝 贡献指南
-
-欢迎贡献代码！请遵循以下步骤：
-
-1. **Fork 项目** - 在 Gitee 上 Fork 本项目
-2. **创建分支** - `git checkout -b feature/your-feature`
-3. **编写代码** - 实现功能或修复 bug
-4. **测试验证** - 确保代码可以正常运行
-5. **提交 PR** - 创建 Pull Request
+1. Fork 项目
+2. 创建分支：`git checkout -b feature/your-feature`
+3. 编写代码并测试
+4. 确保 `npm test` 通过
+5. 提交 Pull Request
 
 ### 代码规范
 
 - 使用 ES6+ 语法
 - 使用 `async/await` 处理异步操作
 - 工具函数返回格式：`{ success: boolean, data?: any, error?: string }`
-- 代码注释清晰，便于理解
 
-### 测试要求
+---
 
-- 新功能必须包含对应的测试用例
-- 测试用例应覆盖正常流程和异常情况
-- 所有测试必须通过：`npm test`
-- 参考现有测试文件的编写风格
-
-***
-
-## 📝 更新日志
+## 更新日志
 
 ### v2.3.0 (2026-06)
 
-**Phase 1: 核心架构优化**
-
-- ✅ 新增多会话管理功能
-- ✅ 支持创建、切换、删除、重命名会话
-- ✅ 会话数据独立存储，互不干扰
-- ✅ 自动保存会话状态，重启后恢复
-
-**Phase 1.1: 工具分类 + 按需加载**
-
-- ✅ 13 个工具分类（file, web, browser, system, code, git, task, memory, data, db, email, monitor, scheduler）
-- ✅ 动态按需加载工具，减少 Token 消耗
-- ✅ 支持配置 `tools.enabledCategories` 选择启用的分类
-
-**Phase 1.2: 上下文压缩优化**
-
-- ✅ Token 数量估算（中文字符约 1.5 字符 ≈ 1 token）
-- ✅ 自动压缩超过 150 轮或 100K token 的上下文
-- ✅ 80% 使用率时发出警告
-- ✅ 归档历史到文件，保留最近对话
-
-**Phase 2: 安全与可观测性**
-
-- ✅ 沙箱升级 - 深度冻结内置对象，禁止 eval/Proxy
-- ✅ 新增 tracing.js - 轻量追踪模块，记录工具执行、LLM 调用
-- ✅ 新增 retry.js - 熔断器与重试机制
-
-**Phase 3: 生态与扩展性**
-
-- ✅ MCP 协议兼容 - 可作为 MCP Server 供其他 AI 客户端调用
-- ✅ 插件系统 (Plugin SDK) - 支持动态加载自定义工具
-
-**界面优化：**
-
-- ✅ 工具调用显示简洁标签样式（如 `调用：ls`）
-- ✅ 隐藏工具调用细节和结果细节，保持 TUI 简洁
+- 多会话管理（创建、切换、删除、重命名）
+- 工具分类按需加载
+- 上下文自动压缩（150轮 / 100K token）
+- 沙箱升级 - 深度冻结内置对象
+- 新增 tracing.js - 追踪模块
+- 新增 retry.js - 熔断器与重试机制
+- MCP 协议兼容
+- 插件系统 (Plugin SDK)
 
 ### v2.2.0 (2025-06)
 
-**架构重构：**
-
-- ✅ Agent.js 拆分为独立模块：state.js、registry.js、commands.js
-- ✅ 新增 logger.js 日志框架，支持 DEBUG/INFO/WARN/ERROR 分级
-- ✅ 状态管理委托给 state.js，消除冗余状态变量
-
-**安全增强：**
-
-- ✅ 沙箱使用 `Object.create(null)` 创建无原型链对象
-- ✅ 内置对象（JSON、Math、Array 等）使用 `Object.freeze()` 冻结
-- ✅ 修复 config.js thinkingInterval 覆盖 chat 配置问题
-- ✅ 修复 logger.js const currentLevel 无法修改的问题
-
-**测试覆盖：**
-
-- ✅ 新增 code.test.js（沙箱安全测试）
-- ✅ 新增 db.test.js（数据库操作测试）
-- ✅ 新增 web.test.js（Web 模块测试）
-- ✅ 新增 browser.test.js（Playwright 生命周期测试）
-- ✅ 测试用例从 79 增至 103+
+- Agent.js 拆分为独立模块
+- logger.js 支持 DEBUG/INFO/WARN/ERROR 分级
+- 测试用例增至 103+
 
 ### v2.1.0 (2025-06)
 
-**安全增强：**
-
-- ✅ 移除 vm2 依赖（存在已知沙箱逃逸漏洞）
-- ✅ 改用 Node.js 原生 vm 模块执行 JavaScript
-- ✅ 修复 config.js loadEnvConfig 属性覆盖 bug
-- ✅ 临时文件超时自动清理
-- ✅ 错误处理不再静默吞掉，保存失败时抛出错误
-
-**跨平台支持：**
-
-- ✅ 工作区路径默认使用用户主目录（`os.homedir()`）
-- ✅ 移除硬编码 Windows 路径
-
-**稳定性改进：**
-
-- ✅ 添加退出清理回调机制
-- ✅ 修正依赖版本号
-
-**测试覆盖：**
-
-- ✅ 测试用例增至 79+
+- 移除 vm2 依赖（安全漏洞）
+- 改用 Node.js 原生 vm 模块
+- 跨平台支持改进
 
 ### v2.0.0 (2024-01)
 
-**新增功能：**
+- 代码执行引擎（JS/Python）
+- Git 版本控制集成
+- 任务管理系统
+- 记忆系统
+- 数据处理工具
+- SQLite 数据库
+- 邮件功能
+- 系统监控
+- 定时任务调度
+- 多模型支持
 
-- ✅ 代码执行引擎（JavaScript/Python）
-- ✅ Git 版本控制集成
-- ✅ 任务管理系统
-- ✅ 记忆系统
-- ✅ 数据处理工具（CSV/JSON）
-- ✅ SQLite 数据库操作
-- ✅ 邮件功能
-- ✅ 系统监控
-- ✅ 定时任务调度
-- ✅ 多模型支持
+---
 
-***
-
-## 🐛 已知问题
+## 已知问题
 
 - [ ] 工具 `downloadFile` 会把目标文件下载到临时目录
 - [ ] AI 回复会早于工具调用提示
 
-***
+---
 
-## 📄 许可证
+## 许可证
 
-本项目采用 **Apache 2.0** 许可证开源。
+Apache 2.0
 
-***
+---
 
-## 📞 联系方式
-
-如有任何问题、需求或 Bug 反馈，请通过以下方式联系我们：
-
-- **Gitee**: <https://gitee.com/cnt-code/cogito-agent>
-- **Issues**: <https://gitee.com/cnt-code/cogito-agent/issues>
-
-***
-
-*Built with ❤️ by CogitoAgent Team*
+Built with CogitoAgent Team
