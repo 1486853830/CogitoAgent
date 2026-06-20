@@ -5,9 +5,6 @@
 import OpenAI from 'openai';
 import { loadConfig } from '../config.js';
 
-let client = null;
-let model = null;
-
 // 重试配置
 const MAX_RETRIES = 3;  // 最大重试次数
 const RETRY_DELAY_BASE = 1000;  // 基础重试延迟（毫秒）
@@ -34,16 +31,19 @@ function isNetworkError(error) {
   );
 }
 
+/**
+ * 获取客户端（每次都重新读取配置，确保使用最新配置）
+ */
 function getClient() {
-  if (!client) {
-    const cfg = loadConfig();
-    client = new OpenAI({
-      baseURL: cfg.api.baseURL,
-      apiKey: cfg.api.apiKey,
-    });
-    model = cfg.api.model;
-  }
-  return { client, model };
+  const cfg = loadConfig();
+  
+  // 每次都创建新客户端，确保使用最新配置
+  const client = new OpenAI({
+    baseURL: cfg.api.baseURL,
+    apiKey: cfg.api.apiKey,
+  });
+  
+  return { client, model: cfg.api.model };
 }
 
 /**

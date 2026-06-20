@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CogitoAgent - 首次配置</title>
+  <link rel="stylesheet" href="setup-style.css">
+</head>
+<body>
+  <div class="setup-container">
+    <!-- 顶部 Banner -->
+    <div class="setup-banner">
+      <h1>CogitoAgent</h1>
+      <p>首次配置向导</p>
+    </div>
+
+    <!-- 进度指示器 -->
+    <div class="progress-bar">
+      <div class="progress-track" id="progressTrack">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-steps">
+        <span class="step active" data-step="1">API</span>
+        <span class="step" data-step="2">密钥</span>
+        <span class="step" data-step="3">模型</span>
+        <span class="step" data-step="4">工作区</span>
+        <span class="step" data-step="5">人设</span>
+      </div>
+    </div>
+
+    <!-- 表单区域 -->
+    <div class="setup-form" id="setupForm">
+      <!-- Step 1: API Base URL -->
+      <div class="form-step active" data-step="1">
+        <h2>设置 API Base URL</h2>
+        <p class="step-desc">请输入 AI 服务提供商的 API 地址</p>
+        <div class="input-group">
+          <input type="text" id="baseURL" placeholder="https://api.openai.com/v1" autocomplete="off">
+          <span class="hint">支持 OpenAI 兼容的 API</span>
+        </div>
+        <div class="preset-btns">
+          <button class="preset-btn" data-preset="https://api.openai.com/v1">OpenAI</button>
+          <button class="preset-btn" data-preset="https://api.moark.com/v1">Moark</button>
+          <button class="preset-btn" data-preset="https://api.deepseek.com/v1">DeepSeek</button>
+          <button class="preset-btn" data-preset="https://openrouter.ai/api/v1">OpenRouter</button>
+        </div>
+      </div>
+
+      <!-- Step 2: API Key -->
+      <div class="form-step" data-step="2">
+        <h2>输入 API 密钥</h2>
+        <p class="step-desc">您的 API Key，用于访问 AI 服务</p>
+        <div class="input-group">
+          <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+          <span class="hint">密钥不会保存到任何第三方服务器</span>
+        </div>
+      </div>
+
+      <!-- Step 3: Model -->
+      <div class="form-step" data-step="3">
+        <h2>选择模型</h2>
+        <p class="step-desc">请输入要使用的模型名称</p>
+        <div class="input-group">
+          <input type="text" id="model" placeholder="gpt-4o" autocomplete="off">
+          <span class="hint">如: gpt-4o, claude-3-sonnet, DeepSeek-V4-Flash</span>
+        </div>
+        <div class="preset-btns">
+          <button class="preset-btn" data-preset="gpt-4o">GPT-4o</button>
+          <button class="preset-btn" data-preset="claude-3-sonnet-20240229">Claude 3</button>
+          <button class="preset-btn" data-preset="DeepSeek-V4-Flash">DeepSeek</button>
+          <button class="preset-btn" data-preset="Qwen/Qwen2.5-72B-Instruct">Qwen</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Workspace -->
+      <div class="form-step" data-step="4">
+        <h2>设置工作区</h2>
+        <p class="step-desc">AI 可以访问和操作的目录范围</p>
+        <div class="input-group">
+          <input type="text" id="workspace" placeholder="C:\Users\YourName" autocomplete="off">
+          <span class="hint">默认为用户主目录</span>
+        </div>
+        <button class="browse-btn" id="browseBtn">浏览...</button>
+      </div>
+
+      <!-- Step 5: Persona -->
+      <div class="form-step" data-step="5">
+        <h2>选择人设（可选）</h2>
+        <p class="step-desc">为 AI 分配一个性格角色</p>
+        <div class="persona-grid" id="personaGrid">
+          <!-- 默认 -->
+          <div class="persona-card" data-persona="">
+            <div class="persona-name">默认</div>
+            <div class="persona-desc">无特定性格</div>
+          </div>
+          <!-- 现代角色 -->
+          <div class="persona-card" data-persona="assistant">
+            <div class="persona-name">私人助理</div>
+            <div class="persona-desc">高效简洁直接</div>
+          </div>
+          <div class="persona-card" data-persona="creative">
+            <div class="persona-name">创作者</div>
+            <div class="persona-desc">充满想象力</div>
+          </div>
+          <div class="persona-card" data-persona="critic">
+            <div class="persona-name">评审</div>
+            <div class="persona-desc">挑剔但有建设性</div>
+          </div>
+          <div class="persona-card" data-persona="explorer">
+            <div class="persona-name">探索者</div>
+            <div class="persona-desc">充满好奇心</div>
+          </div>
+          <div class="persona-card" data-persona="scholar">
+            <div class="persona-name">学者</div>
+            <div class="persona-desc">严谨细致</div>
+          </div>
+          <div class="persona-card" data-persona="teacher">
+            <div class="persona-name">老师</div>
+            <div class="persona-desc">耐心会引导</div>
+          </div>
+          <!-- 古代角色 -->
+          <div class="persona-card" data-persona="wenchen">
+            <div class="persona-name">文臣</div>
+            <div class="persona-desc">饱读诗书沉稳睿智</div>
+          </div>
+          <div class="persona-card" data-persona="wujiang">
+            <div class="persona-name">武将</div>
+            <div class="persona-desc">叱咤风云豪迈果敢</div>
+          </div>
+          <div class="persona-card" data-persona="moushi">
+            <div class="persona-name">谋士</div>
+            <div class="persona-desc">运筹帷幄决胜千里</div>
+          </div>
+          <div class="persona-card" data-persona="xiake">
+            <div class="persona-name">侠客</div>
+            <div class="persona-desc">快意恩仇洒脱不羁</div>
+          </div>
+          <div class="persona-card" data-persona="zhanshi">
+            <div class="persona-name">战士</div>
+            <div class="persona-desc">坚韧不拔永不言退</div>
+          </div>
+          <div class="persona-card" data-persona="yingwei">
+            <div class="persona-name">影卫</div>
+            <div class="persona-desc">隐于暗处神出鬼没</div>
+          </div>
+          <div class="persona-card" data-persona="jianguan">
+            <div class="persona-name">谏官</div>
+            <div class="persona-desc">直言不讳忠心耿耿</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 完成页面 -->
+    <div class="setup-complete" id="setupComplete" style="display: none;">
+      <div class="complete-icon">✓</div>
+      <h2>配置完成！</h2>
+      <p>正在启动 CogitoAgent...</p>
+      <div class="loading-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <!-- 底部按钮 -->
+    <div class="setup-footer">
+      <button class="btn-secondary" id="btnBack" style="display: none;">上一步</button>
+      <button class="btn-primary" id="btnNext">下一步</button>
+    </div>
+
+    <!-- 错误提示 -->
+    <div class="error-toast" id="errorToast"></div>
+  </div>
+
+  <script src="setup-renderer.js"></script>
+</body>
+</html>

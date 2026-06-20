@@ -5,10 +5,9 @@
   "main": "electron/main.js",
   "type": "module",
   "scripts": {
-    "start": "chcp 65001 > nul && node src/index.js",
+    "start": "chcp 65001 > nul && electron .",
     "electron": "chcp 65001 > nul && electron .",
-    "desktop": "chcp 65001 > nul && electron .",
-    "cli": "chcp 65001 > nul && set CLI_MODE=true && set DISABLE_WS=true && node src/index.js",
+    "cli": "chcp 65001 > nul && cross-env CLI_MODE=true DISABLE_WS=true node src/index.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/e2e",
     "test:e2e:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/e2e --watch"
@@ -26,5 +25,8 @@
     "playwright": "^1.61.0",
     "sql.js": "^1.10.0",
     "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
   }
 }
