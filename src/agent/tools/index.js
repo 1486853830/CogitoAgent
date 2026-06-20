@@ -118,6 +118,7 @@ import {
   stopScheduler
 } from './scheduler.js';
 import { FileStorage, createStorage } from './storage.js';
+import { ocr, ocrBatch } from './ocr.js';
 import {
   isSandboxEnabled,
   createJavaScriptSandbox,
@@ -246,7 +247,9 @@ export {
   createJavaScriptSandbox,
   runJavaScriptSandbox,
   runPythonSandbox,
-  executeCodeSandbox
+  executeCodeSandbox,
+  ocr,
+  ocrBatch
 };
 
 // ============================================
@@ -393,6 +396,10 @@ const TOOL_METADATA = {
 
   // 存储
   createStorage: { argCount: 2 },
+
+  // OCR 图像文字识别
+  ocr: { argCount: 1 },
+  ocrBatch: { argCount: 1 },
 };
 
 // 导出工具元数据（供 registry.js 参考）

@@ -21,7 +21,8 @@ const TOOL_CATEGORIES = {
   db: '数据库',
   email: '邮件功能',
   monitor: '系统监控',
-  scheduler: '定时任务'
+  scheduler: '定时任务',
+  ocr: '图像文字识别'
 };
 
 // 工具注册表
@@ -162,6 +163,10 @@ const TOOL_REGISTRY = {
   removeScheduleTask: { fn: tools.removeScheduleTask, argCount: 1, category: 'scheduler' },
   startScheduler: { fn: tools.startScheduler, argCount: 0, category: 'scheduler' },
   stopScheduler: { fn: tools.stopScheduler, argCount: 0, category: 'scheduler' },
+
+  // OCR 图像文字识别
+  ocr: { fn: tools.ocr, argCount: 1, category: 'ocr' },
+  ocrBatch: { fn: tools.ocrBatch, argCount: 1, category: 'ocr' },
 };
 
 // 危险操作列表
@@ -235,7 +240,8 @@ function getToolsByCategory() {
     db: ['executeSQL', 'query', 'insert', 'update', 'deleteData', 'createTable', 'dropTable', 'getTables', 'getTableSchema', 'executeTransaction', 'closeDB'],
     email: ['sendEmail', 'sendTextEmail', 'sendHtmlEmail', 'sendTemplateEmail', 'sendEmailWithAttachments', 'checkEmailConfig'],
     monitor: ['getCPUInfo', 'getMemoryInfo', 'getDiskInfo', 'getNetworkInfo', 'getProcesses', 'getSystemInfo', 'getCurrentProcess', 'getSystemLoad', 'monitorSystem'],
-    scheduler: ['addScheduleTask', 'getScheduleTasks', 'getScheduleTask', 'updateScheduleTask', 'toggleScheduleTask', 'removeScheduleTask', 'startScheduler', 'stopScheduler']
+    scheduler: ['addScheduleTask', 'getScheduleTasks', 'getScheduleTask', 'updateScheduleTask', 'toggleScheduleTask', 'removeScheduleTask', 'startScheduler', 'stopScheduler'],
+    ocr: ['ocr', 'ocrBatch']
   };
 }
 

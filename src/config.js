@@ -33,6 +33,12 @@ const DEFAULT_CONFIG = {
     recencyFilter: '',
     siteFilter: ''
   },
+  ocr: {
+    provider: '',         // OCR 服务提供商，如 "qwen-vl"
+    baseURL: '',          // OCR API base URL
+    apiKey: '',           // OCR API 密钥
+    model: 'Qwen2.5-VL-32B-Instruct'  // OCR/VL 模型名称
+  },
   workspace: os.homedir(),      // 工作区根路径（跨平台）
   database: {
     path: './data/example.db'  // SQLite 数据库路径
@@ -138,6 +144,24 @@ function loadEnvConfig() {
     envConfig.models = modelsConfig;
   }
 
+  // OCR 配置
+  const ocrConfig = {};
+  if (process.env.OCR_API_KEY) {
+    ocrConfig.apiKey = process.env.OCR_API_KEY;
+  }
+  if (process.env.OCR_API_BASE_URL) {
+    ocrConfig.baseURL = process.env.OCR_API_BASE_URL;
+  }
+  if (process.env.OCR_MODEL) {
+    ocrConfig.model = process.env.OCR_MODEL;
+  }
+  if (process.env.OCR_PROVIDER) {
+    ocrConfig.provider = process.env.OCR_PROVIDER;
+  }
+  if (Object.keys(ocrConfig).length > 0) {
+    envConfig.ocr = ocrConfig;
+  }
+
   return envConfig;
 }
 
@@ -215,6 +239,11 @@ function sanitizeConfig(config) {
         delete sanitized.models[provider].apiKey;
       }
     }
+  }
+
+  // 过滤 OCR API 密钥
+  if (sanitized.ocr && sanitized.ocr.apiKey) {
+    delete sanitized.ocr.apiKey;
   }
   
   return sanitized;
