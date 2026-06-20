@@ -156,6 +156,10 @@ function buildSystemPrompt() {
 - searchOnEngine(query, engine) - 在搜索引擎中自动搜索，支持百度、Google、Bing 等（如 searchOnEngine("React 教程", "baidu") 或 searchOnEngine("AI news", "google")）
 - downloadFile(urlOrSelector, description, options) - 自动查找并下载文件，支持 exe、zip、msi 等格式。options 可包含：savePath（保存目录，默认 ./downloads）、fullPath（直接指定完整保存路径，包括文件名）、timeout（超时时间）。例如：downloadFile("https://example.com/download") 或 downloadFile("#download-btn", "下载按钮") 或 downloadFile("https://example.com/download", "", {"fullPath": "C:/Downloads/file.exe"})
 
+### 图像文字识别工具（OCR）
+- ocr(imagePath) - 识别图片中的所有文字内容。支持 jpg、jpeg、png、webp、bmp、gif 等格式。需要在 config.json 中配置 ocr.apiKey 和 ocr.model（如 Qwen2.5-VL-32B-Instruct）。例如：ocr("screenshot.png") 或 ocr("C:/images/photo.jpg")
+- ocrBatch(images) - 批量识别多张图片的文字，多个路径用英文逗号分隔。例如：ocrBatch("img1.jpg, img2.png, img3.webp")
+
 ## 行为规则
 1. 可以直接执行 copy 或 create 操作，不需要等待确认
 2. 用户可以通过输入文字打断你的思考
