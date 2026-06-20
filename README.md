@@ -164,6 +164,7 @@ Agent 的核心是一个持续运行的思考循环。启动后，Agent 每隔 3
 | 系统监控 | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `monitorSystem` |
 | 定时任务 | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `toggleScheduleTask` |
 | 图像识别 | `ocr.js` | `ocr`, `ocrBatch` |
+| 图像文字识别 | `ocr.js` | `ocr`, `ocrBatch` |
 
 ### 工具注册机制
 
@@ -509,6 +510,149 @@ OCR_MODEL=gpt-4o
 3. **索引优化** - 为常用查询字段创建索引
 4. **定期备份** - 导出重要数据
 5. **错误处理** - 检查 SQL 执行结果
+
+### 图像文字识别（OCR）详解
+
+OCR 工具基于视觉大模型（如 Qwen2.5-VL-32B-Instruct）实现图像文字识别能力，支持常见图片格式的文字提取。
+
+#### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `ocr` | 识别单张图片中的文字 | `imagePath`（图片路径，支持相对/绝对路径） |
+| `ocrBatch` | 批量识别多张图片文字 | `images`（多个图片路径，用英文逗号分隔） |
+
+#### 支持格式
+
+| 格式 | 扩展名 | 说明 |
+|------|--------|------|
+| JPEG | `.jpg` `.jpeg` | 最常用的压缩图片格式 |
+| PNG | `.png` | 无损压缩，支持透明背景 |
+| WebP | `.webp` | 现代高效压缩格式 |
+| BMP | `.bmp` | 位图，无压缩 |
+| GIF | `.gif` | 动图（取第一帧） |
+
+#### 使用示例
+
+**单张图片识别：**
+
+```javascript
+// 识别本地图片中的文字
+[TOOL] ocr("/path/to/screenshot.png") [/TOOL]
+// → 返回识别出的文本内容
+
+// 识别工作区内的图片
+[TOOL] ocr("documents/invoice.jpg") [/TOOL]
+// → 识别发票图片中的文字信息
+```
+
+**批量识别多张图片：**
+
+```javascript
+// 批量识别多张截图
+[TOOL] ocrBatch("img1.jpg, img2.png, img3.webp") [/TOOL]
+// → 依次返回每张图片的识别结果
+```
+
+**配合其他工具使用：**
+
+```javascript
+// 先获取目录下的图片文件，再识别
+[TOOL] ls("./screenshots") [/TOOL]
+// → ["page1.png", "page2.png", "page3.png"]
+
+// 识别其中一张图片
+[TOOL] ocr("./screenshots/page1.png") [/TOOL]
+// → 返回图片中的文字内容
+```
+
+#### OCR 配置
+
+在 `config.json` 中配置 OCR 相关参数：
+
+```json
+{
+  "ocr": {
+    "provider": "",              // OCR 服务提供商（可选）
+    "baseURL": "",              // OCR API 基础地址，不填则使用 api.baseURL
+    "apiKey": "",               // OCR API 密钥（必需）
+    "model": "Qwen2.5-VL-32B-Instruct"  // 视觉模型名称
+  }
+}
+```
+
+**配置说明：**
+
+| 字段 | 必需 | 说明 | 默认值 |
+|------|------|------|--------|
+| `apiKey` | ✅ | OCR 服务的 API 密钥 | - |
+| `baseURL` | ⚠️ | API 服务地址，不填则使用主 API 地址 | `api.baseURL` |
+| `model` | ✅ | 视觉大模型名称，需支持图像输入 | `Qwen2.5-VL-32B-Instruct` |
+| `provider` | ⚠️ | 服务商标识，用于区分不同提供商 | - |
+
+#### 支持的视觉模型
+
+| 模型名称 | 说明 |
+|----------|------|
+| `Qwen2.5-VL-32B-Instruct` | 阿里通义千问视觉模型，推荐使用 |
+| `gpt-4o` / `gpt-4o-mini` | OpenAI 视觉模型，需配置对应 API |
+| `claude-3-opus` / `claude-3-sonnet` | Anthropic 视觉模型 |
+| `gemini-1.5-pro` / `gemini-1.5-flash` | Google 视觉模型 |
+
+#### 图片要求
+
+| 项目 | 限制 | 说明 |
+|------|------|------|
+| 文件大小 | ≤ 10 MB | 过大的图片会导致 API 请求失败 |
+| 格式支持 | 5 种 | JPEG、PNG、WebP、BMP、GIF |
+| 文字清晰度 | 建议 ≥ 12pt | 过小或模糊的文字可能识别不准确 |
+| 路径编码 | UTF-8 | 中文路径需确保文件系统支持 |
+
+#### 使用流程
+
+```
+1. 在 config.json 中配置 ocr.apiKey 和 ocr.model
+2. 在对话中让 Agent 调用 ocr(imagePath)
+3. Agent 将图片编码为 base64，通过多模态 API 发送
+4. AI 模型识别图片中的文字并返回结果
+5. 结果以文本形式追加到对话上下文中
+```
+
+#### 最佳实践
+
+1. **确保图片清晰度** - 文字越大越清晰，识别效果越好
+2. **控制图片大小** - 建议压缩到 5MB 以内，加快处理速度
+3. **合理使用批量** - `ocrBatch` 会依次调用 API，注意 API 频率限制
+4. **路径正确** - 相对路径相对于配置的 workspace，或使用绝对路径
+5. **API 密钥保护** - 不要将 `config.json` 提交到公开仓库
+
+#### 常见问题
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| 提示「API 密钥未配置」 | `ocr.apiKey` 为空 | 在 config.json 中填入正确的 API 密钥 |
+| 「文件不存在」 | 图片路径错误 | 检查路径是否正确，相对路径是否相对于 workspace |
+| 「格式不支持」 | 文件扩展名不在支持列表 | 将图片转换为 JPEG/PNG/WebP 等格式 |
+| 「文件过大」 | 图片超过 10MB | 使用图片压缩工具减小文件大小 |
+| API 请求超时/失败 | 网络问题或 API 服务不可用 | 检查网络连接，确认 API 服务正常 |
+
+#### 环境变量配置
+
+也可以通过环境变量配置 OCR（优先级高于 config.json）：
+
+```bash
+# OCR API 密钥（必需）
+OCR_API_KEY=your-ocr-api-key-here
+
+# OCR API 基础地址（可选，不填则使用主 API 地址）
+OCR_API_BASE_URL=https://api.example.com/v1
+
+# OCR 视觉模型名称（可选，默认为 Qwen2.5-VL-32B-Instruct）
+OCR_MODEL=Qwen2.5-VL-32B-Instruct
+
+# OCR 服务提供商（可选）
+OCR_PROVIDER=qwen
+```
 
 ## 记忆系统
 
@@ -925,7 +1069,7 @@ cogito-agent/
 │   │   ├── registry.js               # 工具注册表
 │   │   ├── commands.js               # 命令处理
 │   │   ├── session.js                # 多会话管理
-│   │   ├── tools/                    # 工具集（13个模块）
+│   │   ├── tools/                    # 工具集（14个模块）
 │   │   │   ├── index.js              # 工具统一导出
 │   │   │   ├── file.js               # 文件操作
 │   │   │   ├── web.js                # 网页工具
@@ -941,6 +1085,7 @@ cogito-agent/
 │   │   │   ├── email.js              # 邮件功能
 │   │   │   ├── monitor.js            # 系统监控
 │   │   │   ├── scheduler.js          # 定时任务
+│   │   │   ├── ocr.js                # 图像文字识别（OCR）
 │   │   │   └── TOOL_DEVELOPMENT.md   # 工具开发文档
 │   │   └── ...
 │   ├── api/                          # API 层
@@ -1021,6 +1166,12 @@ cogito-agent/
     "maxExecutionTime": 30000,
     "maxOutputSize": 100000
   },
+  "ocr": {
+    "provider": "",
+    "baseURL": "",
+    "apiKey": "",
+    "model": "Qwen2.5-VL-32B-Instruct"
+  },
   "tools": {
     "enabledCategories": ["file", "web", "code", "git", "task", "memory", "data"]
   }
@@ -1058,6 +1209,7 @@ COGITO_EMAIL_PASSWORD=your-email-password
 | `email` | 邮件功能 |
 | `monitor` | 系统监控 |
 | `scheduler` | 定时任务 |
+| `ocr` | 图像文字识别 |
 
 ### 环境变量完整列表
 
@@ -1080,14 +1232,6 @@ COGITO_EMAIL_PASSWORD=your-email-password
 | `MOARK_API_KEY` | Moark API 密钥 |
 | `ANTHROPIC_API_KEY` | Anthropic API 密钥 |
 | `GOOGLE_API_KEY` | Google API 密钥 |
-
-#### OCR 配置
-
-| 环境变量 | 说明 | 默认值 |
-|----------|------|--------|
-| `OCR_API_KEY` | OCR API 密钥（可与主 API 相同） | 主 API Key |
-| `OCR_BASE_URL` | OCR API 服务地址 | 主 API Base URL |
-| `OCR_MODEL` | OCR 使用的视觉模型 | `gpt-4o` |
 
 #### 思考与执行配置
 
@@ -1409,6 +1553,24 @@ console.log(sum);
 // 获取页面内容
 [TOOL] fetchPage("https://nodejs.org/") [/TOOL]
 // → { title: "Node.js", content: "..." }
+```
+
+### 图像文字识别（OCR）
+
+```javascript
+// 识别单张图片中的文字
+[TOOL] ocr("screenshots/invoice.png") [/TOOL]
+// → 返回图片中的文本内容
+
+// 批量识别多张图片
+[TOOL] ocrBatch("page1.jpg, page2.jpg, page3.jpg") [/TOOL]
+// → 依次返回每张图片的识别结果
+
+// 配合文件操作工具使用
+[TOOL] ls("./photos") [/TOOL]
+// → ["meeting_notes.jpg", "whiteboard.png"]
+[TOOL] ocr("./photos/whiteboard.png") [/TOOL]
+// → 识别白板照片中的文字内容
 ```
 
 ---
