@@ -22,6 +22,17 @@ src/agent/tools/
 ├── file.js           # 文件系统操作工具
 ├── web.js            # 网页相关工具
 ├── system.js         # 系统操作工具
+├── browser.js        # 浏览器自动化工具
+├── code.js           # 代码执行工具
+├── git.js            # Git 版本控制工具
+├── task.js           # 任务管理工具
+├── memory.js         # 记忆系统工具
+├── data.js           # 数据处理工具
+├── db.js             # 数据库工具
+├── email.js          # 邮件工具
+├── monitor.js        # 系统监控工具
+├── scheduler.js      # 定时任务工具
+├── ocr.js            # OCR 图像识别工具
 └── TOOL_DEVELOPMENT.md  # 本文档
 ```
 
@@ -37,6 +48,17 @@ src/agent/tools/
 | file.js    | 文件/目录的读写、修改操作                      |
 | web.js     | 网页搜索、抓取、打开操作                      |
 | system.js  | 系统/软件操作相关                             |
+| browser.js | 浏览器自动化（Playwright）                    |
+| code.js    | JavaScript/Python 代码执行                    |
+| git.js     | Git 版本控制操作                              |
+| task.js    | 任务创建、管理、分解                          |
+| memory.js  | 记忆存储、搜索、管理                          |
+| data.js    | CSV/JSON 数据处理                             |
+| db.js      | SQLite 数据库操作                             |
+| email.js   | 邮件发送                                      |
+| monitor.js | 系统资源监控                                  |
+| scheduler.js | 定时任务管理                                 |
+| ocr.js     | 图像文字识别                                  |
 
 为你的新工具选择最合适的分类文件，如果没有合适的，可以创建新的分类文件。
 
@@ -111,53 +133,77 @@ export {
 };
 ```
 
-### 第四步：更新 `Agent.js`
+### 第四步：在 `registry.js` 中注册工具
 
-在 `Agent.js` 的 `executeTool` 函数中添加你的工具：
+**这是关键步骤！** 在 `src/agent/registry.js` 的 `TOOL_REGISTRY` 对象中添加注册：
 
 ```javascript
-async function executeTool(toolName, args) {
-  switch (toolName) {
-    // ... 现有工具
-    case 'myNewTool':
-      return await myNewTool(args[0], args[1]);
-    default:
-      return { success: false, error: `未知工具: ${toolName}` };
-  }
+const TOOL_REGISTRY = {
+  // ... 现有工具
+  
+  // 你的新工具
+  myNewTool: { fn: tools.myNewTool, argCount: 2, category: 'file' },
+};
+```
+
+**参数说明：**
+- `fn`: 工具函数引用（从 `tools/index.js` 导入）
+- `argCount`: 工具接受的参数数量
+- `category`: 工具分类（用于分组显示和权限控制）
+- `customArgs`: （可选）如果参数需要特殊解析，设为 `true`
+
+### 第五步：在 `session.js` 中添加分类描述
+
+**这一步让 AI 知道工具的存在！** 在 `src/agent/session.js` 的 `buildToolList()` 函数的 `switch/case` 中添加：
+
+```javascript
+switch (category) {
+  // ... 现有分类
+  
+  case 'myCategory':
+    toolList += `### 我的分类工具
+- myNewTool(param1, param2) - 简短描述这个工具的功能
+
+`;
+    break;
 }
 ```
 
-同时更新顶部的 import 语句：
+**如果使用现有分类**（如 `file`），只需在该分类的工具列表中添加一行：
 
 ```javascript
-import {
-  ls,
-  read,
-  copy,
-  mkdir,
-  create,
-  search,
-  browse,
-  fetchPage,
-  listApps,
-  openApp,
-  closeApp,
-  myNewTool,  // 在这里添加
-  getBasePath
-} from './tools/index.js';
+case 'file':
+  toolList += `### 文件操作工具
+- ls(path) - 列出目录内容
+- read(path) - 读取文件内容
+- myNewTool(param1, param2) - 简短描述这个工具的功能  // 添加这行
+
+`;
+  break;
 ```
 
-### 第五步：更新 `prompt.js` 中的系统提示词
+### 第六步（可选）：更新 `config.js`
 
-将你的工具描述添加到系统提示词中，这样智能体就知道它的存在了：
+如果新工具需要额外配置（如 API Key、服务地址），在 `src/config.js` 中添加：
 
 ```javascript
-## 可用工具
-你可以调用以下工具来操作文件：
-- ls(path) - 列出目录内容（只列出一级内容）
-- read(path) - 读取文件内容
-// ... 现有工具
-- myNewTool(param1, param2) - 简短描述这个工具的功能
+const defaultConfig = {
+  // ... 现有配置
+  
+  myTool: {
+    enabled: true,
+    apiKey: '',
+    baseURL: ''
+  }
+};
+```
+
+并在环境变量解析部分添加：
+
+```javascript
+if (process.env.MY_TOOL_API_KEY) {
+  config.myTool.apiKey = process.env.MY_TOOL_API_KEY;
+}
 ```
 
 ---
@@ -188,7 +234,7 @@ import {
 ## 5. 测试指南
 
 ### 测试步骤
-1. **启动 CogitoAgent**: 运行 `npm start`
+1. **启动 CogitoAgent**: 运行 `npm run electron` 或 `npm run cli`
 2. **触发工具**: 让智能体使用你的新工具
 3. **检查输出**: 验证：
    - 工具执行完成，没有报错
@@ -199,9 +245,10 @@ import {
 ### 常见问题
 | 问题                           | 原因                                  | 修复方法                            |
 |--------------------------------|---------------------------------------|-------------------------------------|
-| "Unknown tool" 错误            | 工具未添加到 `executeTool`            | 在 `executeTool` switch 中添加 case |
-| 智能体不调用工具               | 工具未在系统提示词中列出              | 在 `prompt.js` 中添加工具描述       |
+| "Unknown tool" 错误            | 工具未在 `registry.js` 注册           | 在 `TOOL_REGISTRY` 中添加注册       |
+| 智能体不调用工具               | 工具未在 `session.js` 分类描述中列出  | 在 `buildToolList()` switch 中添加  |
 | 导入时工具崩溃                 | 缺少或损坏的导入                      | 检查导入和依赖项                    |
+| 参数解析错误                   | `argCount` 与实际参数数量不匹配       | 检查并修正 `argCount` 值            |
 
 ---
 
@@ -247,24 +294,29 @@ export {
 };
 ```
 
-### 3. 更新 `Agent.js`
+### 3. 更新 `registry.js`
 ```javascript
-// 导入
-import {
-  // ... 其他工具
-  rename,
-  getBasePath
-} from './tools/index.js';
-
-// 执行
-case 'rename':
-  return await rename(args[0], args[1]);
+const TOOL_REGISTRY = {
+  // ... 现有工具
+  
+  rename: { fn: tools.rename, argCount: 2, category: 'file' },
+};
 ```
 
-### 4. 更新 `prompt.js`
-在工具列表中添加：
-```
+### 4. 更新 `session.js`
+在 `file` 分类中添加：
+```javascript
+case 'file':
+  toolList += `### 文件操作工具
+- ls(path) - 列出目录内容
+- read(path) - 读取文件内容
+- copy(src, dest) - 复制文件
+- mkdir(path) - 创建目录
+- create(path, content) - 创建文件
 - rename(oldPath, newPath) - 重命名文件或目录
+
+`;
+  break;
 ```
 
 ---

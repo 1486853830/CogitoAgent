@@ -165,7 +165,7 @@ const TOOL_REGISTRY = {
   stopScheduler: { fn: tools.stopScheduler, argCount: 0, category: 'scheduler' },
 
   // OCR 图像文字识别
-  ocr: { fn: tools.ocr, argCount: 1, category: 'ocr' },
+  ocr: { fn: tools.ocr, argCount: 2, category: 'ocr' },
   ocrBatch: { fn: tools.ocrBatch, argCount: 1, category: 'ocr' },
 };
 
