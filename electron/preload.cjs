@@ -33,4 +33,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 请求历史消息
   requestHistory: () => ipcRenderer.send('request-history'),
+
+  // ===== 配置向导相关 IPC =====
+
+  // 提交配置
+  submitConfig: (config) => ipcRenderer.send('setup-submit-config', config),
+
+  // 监听配置结果
+  onConfigResult: (callback) => {
+    ipcRenderer.on('setup-config-result', (_event, data) => callback(data));
+  },
+
+  // 请求选择目录
+  selectDirectory: () => ipcRenderer.send('setup-select-directory'),
+
+  // 监听目录选择结果
+  onDirectorySelected: (callback) => {
+    ipcRenderer.on('setup-directory-selected', (_event, path) => callback(path));
+  },
+
+  // 启动主应用
+  launchMainApp: () => ipcRenderer.send('setup-launch-main-app'),
 });

@@ -9,6 +9,7 @@ import os from 'os';
 
 const CONFIG_DIR = process.cwd();
 const CONFIG_FILE = path.resolve(CONFIG_DIR, 'config.json');
+const ENV_FILE = path.resolve(CONFIG_DIR, '.env');
 
 // 默认配置
 const DEFAULT_CONFIG = {
@@ -75,8 +76,12 @@ let config = null;
 /**
  * 从环境变量加载敏感配置
  * 环境变量优先级高于配置文件
+ * 注意：会主动读取 .env 文件以获取最新配置
  */
 function loadEnvConfig() {
+  // 主动读取 .env 文件，确保获取最新配置
+  loadEnvFile();
+
   const envConfig = {};
 
   // API 配置 - 统一在最后合并，避免覆盖
@@ -134,6 +139,30 @@ function loadEnvConfig() {
   }
 
   return envConfig;
+}
+
+/**
+ * 从 .env 文件读取环境变量并更新 process.env
+ */
+function loadEnvFile() {
+  if (existsSync(ENV_FILE)) {
+    try {
+      const content = readFileSync(ENV_FILE, 'utf-8');
+      const lines = content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('#')) {
+          const [key, value] = trimmed.split('=', 2);
+          if (key && value !== undefined) {
+            // 更新 process.env
+            process.env[key] = value;
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`[配置] 读取 .env 文件失败: ${e.message}`);
+    }
+  }
 }
 
 /**

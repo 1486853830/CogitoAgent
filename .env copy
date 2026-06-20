@@ -1,0 +1,13 @@
+# CogitoAgent 配置文件
+# 由设置向导自动生成
+
+# API 配置
+COGITO_API_KEY=MSTG0NIXLEXSR0EBIBTG3KUUWFT67SFIYF8EIZ1W
+COGITO_API_BASE_URL=https://api.moark.com/v1
+COGITO_API_PROVIDER=custom
+COGITO_MODEL=DeepSeek-V4-Flash
+
+# 工作区配置
+COGITO_WORKSPACE=C:\Users\HUAWEI
+
+# 其他配置可在 .env.example 中查看

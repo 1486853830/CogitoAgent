@@ -92,6 +92,11 @@ function init(onUserInput) {
     output: process.stdout
   });
 
+  // 在 Pipe 模式（Electron 子进程）下保持 stdin 流动，防止事件循环退出
+  if (typeof process.stdin.isTTY === 'undefined' || !process.stdin.isTTY) {
+    process.stdin.resume();
+  }
+
   rl.on('line', (input) => {
     if (userInputCallback) {
       userInputCallback(input.trim());
