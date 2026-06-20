@@ -239,6 +239,18 @@ function buildToolList() {
 
 `;
         break;
+      case 'ocr':
+        toolList += `### 图像文字识别工具（OCR）
+- ocr(imagePath, prompt) - 识别图片中的文字，支持 jpg/png/webp/bmp/gif 格式，可自定义提示词
+- ocrBatch(images) - 批量识别多张图片的文字，路径用英文逗号分隔
+
+【重要】使用 OCR 工具时必须：
+1. 严格忠实于识别结果，不得编造、添加或美化内容
+2. 如果识别结果为空或失败，必须如实告知用户"未能识别出文字"
+3. 不要根据图片内容进行猜测或推断，只报告 OCR 实际返回的文字
+
+`;
+        break;
     }
   }
   

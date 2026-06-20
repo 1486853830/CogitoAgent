@@ -103,6 +103,30 @@ npm run cli
 - 无图形界面的远程连接
 - 资源受限环境
 
+#### 会话选择器
+
+启动时（CLI 和 Electron 模式）会显示会话选择界面，用户可以选择进入已有会话或创建新会话。
+
+**CLI 模式会话选择：**
+
+```
+  ────────────────────────────────────────────
+  📋 选择会话：
+    0 - 创建新会话
+    1 - 默认会话 ◀ 当前
+        最后活跃: 06/20 15:30
+    2 - 工作讨论
+        最后活跃: 06/19 10:22
+  ────────────────────────────────────────────
+  请输入编号: _
+```
+
+输入编号直接进入对应会话，输入 `0` 创建新会话。
+
+**Electron 模式会话选择：**
+
+桌面窗口启动后显示会话列表，点击会话卡片进入对应会话，点击"新建会话"按钮创建新会话。
+
 ---
 
 ## 持续思考循环
@@ -139,6 +163,7 @@ Agent 的核心是一个持续运行的思考循环。启动后，Agent 每隔 3
 | 邮件 | `email.js` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail` |
 | 系统监控 | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `monitorSystem` |
 | 定时任务 | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `toggleScheduleTask` |
+| 图像识别 | `ocr.js` | `ocr`, `ocrBatch` |
 
 ### 工具注册机制
 
@@ -266,6 +291,87 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 3. **合理设置超时** - 防止页面加载卡死
 4. **选择器优先级** - ID > Class > XPath
 5. **错误处理** - 检查元素是否存在再操作
+
+### OCR 图像文字识别详解
+
+OCR 工具基于视觉语言模型（VLM）实现图片文字识别，支持多种图片格式。
+
+#### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `ocr` | 识别单张图片中的文字 | `imagePath`, `prompt`（可选） |
+| `ocrBatch` | 批量识别多张图片 | `images`（逗号分隔的路径列表） |
+
+#### 支持的图片格式
+
+- JPEG (`.jpg`, `.jpeg`)
+- PNG (`.png`)
+- WebP (`.webp`)
+- BMP (`.bmp`)
+- GIF (`.gif`)
+
+#### 使用示例
+
+**基本文字识别：**
+
+```javascript
+[TOOL] ocr("/path/to/image.png") [/TOOL]
+// → 返回图片中识别到的所有文字
+```
+
+**自定义提示词识别：**
+
+```javascript
+[TOOL] ocr("/path/to/document.png", "只识别表格中的数字，忽略其他文字") [/TOOL]
+// → 根据提示词定向识别内容
+```
+
+**批量识别：**
+
+```javascript
+[TOOL] ocrBatch("/path/img1.png, /path/img2.jpg, /path/img3.png") [/TOOL]
+// → 依次识别多张图片，返回汇总结果
+```
+
+#### OCR 配置
+
+OCR 使用独立的 API 配置，支持与主 API 不同的视觉模型：
+
+```json
+{
+  "ocr": {
+    "apiKey": "your-ocr-api-key",
+    "baseURL": "https://api.example.com/v1",
+    "model": "gpt-4o",
+    "maxTokens": 2048,
+    "temperature": 0.1
+  }
+}
+```
+
+**环境变量配置：**
+
+```bash
+OCR_API_KEY=your-api-key
+OCR_BASE_URL=https://api.example.com/v1
+OCR_MODEL=gpt-4o
+```
+
+#### 最佳实践
+
+1. **图片清晰度** - 确保图片清晰，文字可读
+2. **合理提示词** - 使用 prompt 参数定向识别特定内容
+3. **批量处理** - 多张图片使用 `ocrBatch` 提高效率
+4. **结果验证** - OCR 结果可能存在误差，重要信息需人工确认
+5. **文件大小** - 大图片会自动压缩，建议控制在 10MB 以内
+
+#### 注意事项
+
+- OCR 结果依赖视觉语言模型，可能存在识别错误
+- 手写文字识别准确率较低
+- 复杂排版可能影响识别效果
+- 建议对重要识别结果进行人工复核
 
 ### 数据库操作详解
 
@@ -974,6 +1080,14 @@ COGITO_EMAIL_PASSWORD=your-email-password
 | `MOARK_API_KEY` | Moark API 密钥 |
 | `ANTHROPIC_API_KEY` | Anthropic API 密钥 |
 | `GOOGLE_API_KEY` | Google API 密钥 |
+
+#### OCR 配置
+
+| 环境变量 | 说明 | 默认值 |
+|----------|------|--------|
+| `OCR_API_KEY` | OCR API 密钥（可与主 API 相同） | 主 API Key |
+| `OCR_BASE_URL` | OCR API 服务地址 | 主 API Base URL |
+| `OCR_MODEL` | OCR 使用的视觉模型 | `gpt-4o` |
 
 #### 思考与执行配置
 
