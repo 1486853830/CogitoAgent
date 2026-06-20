@@ -62,7 +62,7 @@ npm start
 | 命令 | 模式 | 说明 |
 |------|------|------|
 | `npm start` | 设置向导 | 首次配置或修改配置，不启动 Agent |
-| `npm run electron` 或 `npm run desktop` | 桌面模式 | Electron 桌面窗口 + 终端 Agent，通过 WebSocket 通信 |
+| `npm run electron` | 桌面模式 | Electron 桌面窗口 + 终端 Agent，通过 WebSocket 通信 |
 | `npm run cli` | CLI 模式 | 仅终端 Agent，不启动 Electron（适合纯命令行环境） |
 
 #### 设置向导
