@@ -278,3 +278,76 @@ inputEl.focus();
 document.addEventListener('click', () => {
   inputEl.focus();
 });
+
+// ---- 视频交互功能 ----
+
+// 面板显示状态
+let isPanelVisible = true;
+
+// 拖拽状态
+let isDragging = false;
+let hasDragged = false;  // 是否发生了实际拖动（移动距离超过阈值）
+let dragStartX = 0;
+let dragStartY = 0;
+const DRAG_THRESHOLD = 5;  // 拖动阈值（像素）
+
+/**
+ * 点击视频切换面板显示/隐藏
+ * 注意：如果发生了拖动，则不触发切换
+ */
+charVideo.addEventListener('click', (e) => {
+  // 如果发生了拖动，不触发展开/收起
+  if (hasDragged) {
+    hasDragged = false;
+    return;
+  }
+  
+  e.stopPropagation();
+  isPanelVisible = !isPanelVisible;
+  
+  if (isPanelVisible) {
+    panel.classList.remove('panel-hidden');
+    panel.classList.add('panel-visible');
+  } else {
+    panel.classList.remove('panel-visible');
+    panel.classList.add('panel-hidden');
+  }
+});
+
+/**
+ * 拖拽视频移动窗口位置
+ */
+charVideo.addEventListener('mousedown', (e) => {
+  // 只响应左键
+  if (e.button !== 0) return;
+  
+  isDragging = true;
+  hasDragged = false;  // 重置拖动标记
+  dragStartX = e.screenX;
+  dragStartY = e.screenY;
+  
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  
+  const deltaX = e.screenX - dragStartX;
+  const deltaY = e.screenY - dragStartY;
+  
+  // 检查是否超过拖动阈值
+  if (Math.abs(deltaX) > DRAG_THRESHOLD || Math.abs(deltaY) > DRAG_THRESHOLD) {
+    hasDragged = true;  // 标记为发生了拖动
+  }
+  
+  // 只有发生实际拖动后才移动窗口
+  if (hasDragged) {
+    window.electronAPI.moveWindow(deltaX, deltaY);
+    dragStartX = e.screenX;
+    dragStartY = e.screenY;
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  isDragging = false;
+});

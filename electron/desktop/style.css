@@ -28,6 +28,16 @@ html, body {
   overflow: hidden;
   z-index: 1;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+  cursor: grab;  /* 提示可拖拽 */
+  transition: transform 0.2s ease;
+}
+
+.character:hover {
+  transform: scale(1.05);  /* 鼠标悬停时轻微放大 */
+}
+
+.character:active {
+  cursor: grabbing;  /* 拖拽时的鼠标样式 */
 }
 
 .character video {
@@ -52,7 +62,23 @@ html, body {
   display: flex;
   flex-direction: column;
   z-index: 2;
-  transition: max-height 0.3s ease;
+  transition: all 0.3s ease;
+}
+
+/* 面板可见状态 */
+.panel-visible {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+}
+
+/* 面板隐藏状态 */
+.panel-hidden {
+  opacity: 0;
+  transform: translateX(50px) scale(0.95);
+  pointer-events: none;
+  max-height: 0;
+  border: none;
 }
 
 /* ---- 拖拽栏 ---- */
@@ -138,8 +164,11 @@ html, body {
 }
 
 .hint-icon {
-  font-size: 36px;
+  font-size: 18px;
+  font-weight: 600;
   margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 1px;
 }
 
 .hint-text {

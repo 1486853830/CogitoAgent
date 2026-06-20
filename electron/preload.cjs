@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 窗口操作
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
   closeWindow: () => ipcRenderer.send('window-close'),
+  
+  // 窗口移动（用于拖拽视频）
+  moveWindow: (x, y) => ipcRenderer.send('window-move', { x, y }),
 
   // 监听 agent 的回复
   onReply: (callback) => {
