@@ -16,7 +16,7 @@ CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管�
 |------|------|
 | **隐私优先** | 所有数据本地存储，不上传任何文件到第三方服务器 |
 | **持续思考** | 每3秒自动触发思考循环，主动分析当前任务状态 |
-| **工具执行** | 内置 100+ 工具函数，支持文件操作、代码执行、Git、数据库等 |
+| **工具执行** | 内置 18 个工具模块，支持文件操作、代码执行、Git、数据库、OCR 等 |
 | **安全沙箱** | JavaScript 代码执行采用 `isolated-vm` 进程级隔离 |
 | **多会话管理** | 支持多个独立对话会话，会话数据持久化存储 |
 | **桌面模式** | Electron 桌面窗口，与终端 Agent 通过 WebSocket 通信 |
@@ -159,12 +159,11 @@ Agent 的核心是一个持续运行的思考循环。启动后，Agent 每隔 3
 | 任务管理 | `task.js` | `createTask`, `getTasks`, `completeTask`, `splitTask` |
 | 记忆系统 | `memory.js` | `addMemory`, `searchMemory`, `getRelatedMemories`, `deleteMemory` |
 | 数据处理 | `data.js` | `readCSV`, `writeJSON`, `csvToJSON`, `queryData` |
-| 数据库 | `db.js` | `executeSQL`, `query`, `insert`, `executeTransaction` |
+| 数据库 | `db.js` | `executeSQL`, `query`, `insert`, `update`, `createTable`, `getTables` |
 | 邮件 | `email.js` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail` |
 | 系统监控 | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `monitorSystem` |
 | 定时任务 | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `toggleScheduleTask` |
 | 图像识别 | `ocr.js` | `ocr`, `ocrBatch` |
-| 图像文字识别 | `ocr.js` | `ocr`, `ocrBatch` |
 
 ### 工具注册机制
 
@@ -292,87 +291,6 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 3. **合理设置超时** - 防止页面加载卡死
 4. **选择器优先级** - ID > Class > XPath
 5. **错误处理** - 检查元素是否存在再操作
-
-### OCR 图像文字识别详解
-
-OCR 工具基于视觉语言模型（VLM）实现图片文字识别，支持多种图片格式。
-
-#### 核心工具
-
-| 工具 | 说明 | 参数 |
-|------|------|------|
-| `ocr` | 识别单张图片中的文字 | `imagePath`, `prompt`（可选） |
-| `ocrBatch` | 批量识别多张图片 | `images`（逗号分隔的路径列表） |
-
-#### 支持的图片格式
-
-- JPEG (`.jpg`, `.jpeg`)
-- PNG (`.png`)
-- WebP (`.webp`)
-- BMP (`.bmp`)
-- GIF (`.gif`)
-
-#### 使用示例
-
-**基本文字识别：**
-
-```javascript
-[TOOL] ocr("/path/to/image.png") [/TOOL]
-// → 返回图片中识别到的所有文字
-```
-
-**自定义提示词识别：**
-
-```javascript
-[TOOL] ocr("/path/to/document.png", "只识别表格中的数字，忽略其他文字") [/TOOL]
-// → 根据提示词定向识别内容
-```
-
-**批量识别：**
-
-```javascript
-[TOOL] ocrBatch("/path/img1.png, /path/img2.jpg, /path/img3.png") [/TOOL]
-// → 依次识别多张图片，返回汇总结果
-```
-
-#### OCR 配置
-
-OCR 使用独立的 API 配置，支持与主 API 不同的视觉模型：
-
-```json
-{
-  "ocr": {
-    "apiKey": "your-ocr-api-key",
-    "baseURL": "https://api.example.com/v1",
-    "model": "gpt-4o",
-    "maxTokens": 2048,
-    "temperature": 0.1
-  }
-}
-```
-
-**环境变量配置：**
-
-```bash
-OCR_API_KEY=your-api-key
-OCR_BASE_URL=https://api.example.com/v1
-OCR_MODEL=gpt-4o
-```
-
-#### 最佳实践
-
-1. **图片清晰度** - 确保图片清晰，文字可读
-2. **合理提示词** - 使用 prompt 参数定向识别特定内容
-3. **批量处理** - 多张图片使用 `ocrBatch` 提高效率
-4. **结果验证** - OCR 结果可能存在误差，重要信息需人工确认
-5. **文件大小** - 大图片会自动压缩，建议控制在 10MB 以内
-
-#### 注意事项
-
-- OCR 结果依赖视觉语言模型，可能存在识别错误
-- 手写文字识别准确率较低
-- 复杂排版可能影响识别效果
-- 建议对重要识别结果进行人工复核
 
 ### 数据库操作详解
 
@@ -1069,8 +987,14 @@ cogito-agent/
 │   │   ├── registry.js               # 工具注册表
 │   │   ├── commands.js               # 命令处理
 │   │   ├── session.js                # 多会话管理
-│   │   ├── tools/                    # 工具集（14个模块）
+│   │   ├── prompt.js                 # 系统提示词构建
+│   │   ├── mcp.js                    # MCP 协议服务器
+│   │   ├── plugin.js                 # 插件系统
+│   │   ├── tracing.js                # 轻量可观测性
+│   │   ├── retry.js                  # 重试与熔断机制
+│   │   ├── tools/                    # 工具集（19个模块）
 │   │   │   ├── index.js              # 工具统一导出
+│   │   │   ├── path.js               # 路径安全工具
 │   │   │   ├── file.js               # 文件操作
 │   │   │   ├── web.js                # 网页工具
 │   │   │   ├── browser.js            # 浏览器自动化
@@ -1086,12 +1010,13 @@ cogito-agent/
 │   │   │   ├── monitor.js            # 系统监控
 │   │   │   ├── scheduler.js          # 定时任务
 │   │   │   ├── ocr.js                # 图像文字识别（OCR）
+│   │   │   ├── storage.js            # 文件存储
 │   │   │   └── TOOL_DEVELOPMENT.md   # 工具开发文档
 │   │   └── ...
 │   ├── api/                          # API 层
 │   │   ├── client.js                 # OpenAI 兼容 API 客户端
 │   │   ├── webSearch.js              # 联网搜索模块
-│   │   └── models.js                 # 多模型支持
+│   │   └── models.js                 # 多模型管理
 │   ├── io/                           # 输入输出
 │   │   ├── terminal.js               # 终端 UI
 │   │   ├── logger.js                 # 日志管理
@@ -1100,14 +1025,21 @@ cogito-agent/
 │   └── index.js                      # 应用入口
 ├── electron/                         # Electron 桌面模式
 │   ├── main.js                       # 主进程
-│   ├── agent-bridge.js               # WS 桥接
-│   └── desktop/                       # 桌面 UI
+│   ├── preload.cjs                   # 安全上下文桥接
+│   ├── agent-bridge.js               # WebSocket ↔ IPC 桥接
+│   ├── desktop/                      # 主窗口 UI
+│   │   ├── index.html
+│   │   ├── renderer.js
+│   │   └── style.css
+│   ├── setup/                       # 配置向导 UI
+│   │   ├── setup.html
+│   │   ├── setup-renderer.js
+│   │   └── setup-style.css
+│   └── assets/                       # 桌面资源
+│       ├── zhanshi.mp4              # 虚拟人物视频
+│       └── README.md
 ├── personas/                         # 13种预设人设
 ├── tests/                            # 测试文件
-│   ├── Agent.test.js                 # 智能体核心测试
-│   ├── config.test.js                # 配置管理测试
-│   ├── code.test.js                  # 代码执行沙箱测试
-│   └── ...
 └── data/                             # 运行时数据（自动创建）
 ```
 
@@ -1583,7 +1515,7 @@ console.log(sum);
 |------|------|------|
 | **Agent.js** | 思考循环 | 每3秒自动触发一次思考 |
 | **state.js** | 状态机 | THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
-| **registry.js** | 工具注册表 | 100+ 工具集中管理 |
+| **registry.js** | 工具注册表 | 18 个工具模块集中管理 |
 | **session.js** | 会话管理 | 多会话切换、上下文压缩 |
 | **commands.js** | 命令处理 | /help、/status 等特殊命令 |
 | **sandbox.js** | 代码沙箱 | isolated-vm 进程级隔离 |
@@ -2610,6 +2542,7 @@ E2E 测试覆盖：
 - 新增 retry.js - 熔断器与重试机制
 - MCP 协议兼容
 - 插件系统 (Plugin SDK)
+- 新增 OCR 图像文字识别工具
 
 ### v2.2.0
 
