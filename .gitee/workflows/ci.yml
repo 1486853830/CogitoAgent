@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master, develop]
+    branches: [project, develop]
   pull_request:
-    branches: [master, develop]
+    branches: [project, develop]
 
 cache:
   npm:
@@ -34,6 +34,6 @@ docker-build:
     - docker logs cogito-test
     - docker stop cogito-test
   only:
-    - master
+    - project
     - develop
     - tags
