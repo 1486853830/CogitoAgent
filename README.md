@@ -167,6 +167,243 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 
 > 详细工具开发文档参见 [src/agent/tools/TOOL_DEVELOPMENT.md](src/agent/tools/TOOL_DEVELOPMENT.md)
 
+### 浏览器自动化详解
+
+浏览器自动化工具基于 Playwright 实现，支持网页交互、截图、表单填写等操作。
+
+#### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `initBrowser` | 初始化浏览器实例 | 无 |
+| `navigateTo` | 导航到指定 URL | `url` |
+| `clickElement` | 点击页面元素 | `selector` |
+| `fillField` | 填写表单字段 | `selector`, `value` |
+| `takeScreenshot` | 截取页面截图 | `selector`（可选） |
+| `getText` | 获取元素文本 | `selector` |
+| `waitForElement` | 等待元素出现 | `selector`, `timeout` |
+| `closeBrowser` | 关闭浏览器实例 | 无 |
+
+#### 使用示例
+
+**基本网页浏览：**
+
+```javascript
+// 初始化浏览器
+[TOOL] initBrowser() [/TOOL]
+
+// 导航到网页
+[TOOL] navigateTo("https://example.com") [/TOOL]
+
+// 截取整页截图
+[TOOL] takeScreenshot() [/TOOL]
+
+// 关闭浏览器
+[TOOL] closeBrowser() [/TOOL]
+```
+
+**表单填写与提交：**
+
+```javascript
+// 初始化并导航
+[TOOL] initBrowser() [/TOOL]
+[TOOL] navigateTo("https://login.example.com") [/TOOL]
+
+// 填写登录表单
+[TOOL] fillField("#username", "myuser") [/TOOL]
+[TOOL] fillField("#password", "mypassword") [/TOOL]
+
+// 点击登录按钮
+[TOOL] clickElement("#login-button") [/TOOL]
+
+// 等待登录成功
+[TOOL] waitForElement(".dashboard", 5000) [/TOOL]
+
+// 截取登录后页面
+[TOOL] takeScreenshot() [/TOOL]
+```
+
+**数据抓取：**
+
+```javascript
+// 导航到目标页面
+[TOOL] navigateTo("https://news.example.com") [/TOOL]
+
+// 获取标题列表
+[TOOL] getText(".article-title") [/TOOL]
+
+// 截取特定区域
+[TOOL] takeScreenshot(".main-content") [/TOOL]
+```
+
+#### 浏览器配置
+
+**浏览器类型：**
+
+默认使用 Chromium，可通过配置切换：
+
+```json
+{
+  "browser": {
+    "type": "chromium",  // chromium | firefox | webkit
+    "headless": true,    // 无头模式
+    "timeout": 30000     // 默认超时（ms）
+  }
+}
+```
+
+**安全限制：**
+
+- 浏览器实例最多存活 5 分钟
+- 自动关闭长时间未操作的浏览器
+- 禁止访问本地文件系统 URL（file://）
+- 截图自动保存到临时目录，定期清理
+
+#### 最佳实践
+
+1. **及时关闭浏览器** - 避免资源浪费
+2. **使用无头模式** - 提高执行效率
+3. **合理设置超时** - 防止页面加载卡死
+4. **选择器优先级** - ID > Class > XPath
+5. **错误处理** - 检查元素是否存在再操作
+
+### 数据库操作详解
+
+数据库工具支持 SQLite 数据库的创建、查询、插入、更新等操作。
+
+#### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `executeSQL` | 执行任意 SQL 语句 | `sql` |
+| `query` | 执行查询语句 | `sql`, `params`（可选） |
+| `insert` | 插入数据 | `table`, `data` |
+| `update` | 更新数据 | `table`, `data`, `where` |
+| `delete` | 删除数据 | `table`, `where` |
+| `executeTransaction` | 执行事务 | `statements` |
+| `createTable` | 创建表 | `tableName`, `schema` |
+| `listTables` | 列出所有表 | 无 |
+
+#### 使用示例
+
+**创建表：**
+
+```javascript
+[TOOL] createTable("users", {
+  id: "INTEGER PRIMARY KEY AUTOINCREMENT",
+  name: "TEXT NOT NULL",
+  email: "TEXT UNIQUE",
+  created_at: "INTEGER"
+}) [/TOOL]
+```
+
+**插入数据：**
+
+```javascript
+// 单条插入
+[TOOL] insert("users", {
+  name: "张三",
+  email: "zhangsan@example.com",
+  created_at: Date.now()
+}) [/TOOL]
+
+// 批量插入
+[TOOL] executeTransaction([
+  { sql: "INSERT INTO users (name, email) VALUES (?, ?)", params: ["张三", "zhang@example.com"] },
+  { sql: "INSERT INTO users (name, email) VALUES (?, ?)", params: ["李四", "li@example.com"] }
+]) [/TOOL]
+```
+
+**查询数据：**
+
+```javascript
+// 简单查询
+[TOOL] query("SELECT * FROM users") [/TOOL]
+
+// 条件查询
+[TOOL] query("SELECT * FROM users WHERE name = ?", ["张三"]) [/TOOL]
+
+// 排序查询
+[TOOL] query("SELECT * FROM users ORDER BY created_at DESC LIMIT 10") [/TOOL]
+```
+
+**更新数据：**
+
+```javascript
+[TOOL] update("users", 
+  { email: "newemail@example.com" },
+  { name: "张三" }
+) [/TOOL]
+```
+
+**删除数据：**
+
+```javascript
+[TOOL] delete("users", { name: "张三" }) [/TOOL]
+```
+
+**事务操作：**
+
+```javascript
+[TOOL] executeTransaction([
+  { sql: "UPDATE accounts SET balance = balance - 100 WHERE id = 1" },
+  { sql: "UPDATE accounts SET balance = balance + 100 WHERE id = 2" },
+  { sql: "INSERT INTO transactions (from_id, to_id, amount) VALUES (1, 2, 100)" }
+]) [/TOOL]
+```
+
+#### 数据库配置
+
+**数据库路径：**
+
+```json
+{
+  "database": {
+    "path": "./data/mydb.db",
+    "timeout": 5000
+  }
+}
+```
+
+**安全限制：**
+
+- 只能访问工作区内的数据库文件
+- 禁止执行 DROP DATABASE 等危险操作
+- 事务失败自动回滚
+- 查询结果最多返回 1000 行
+
+#### 数据库管理
+
+**列出所有表：**
+
+```javascript
+[TOOL] listTables() [/TOOL]
+// → ["users", "tasks", "memories"]
+```
+
+**获取表结构：**
+
+```javascript
+[TOOL] query("PRAGMA table_info(users)") [/TOOL]
+```
+
+**数据库备份：**
+
+```javascript
+// 导出数据库
+[TOOL] executeSQL("SELECT * FROM users") [/TOOL]
+// 将结果保存为 JSON 文件
+[TOOL] create("./backup/users.json", JSON.stringify(result)) [/TOOL]
+```
+
+#### 最佳实践
+
+1. **使用事务** - 批量操作时使用事务提高性能
+2. **参数化查询** - 防止 SQL 注入
+3. **索引优化** - 为常用查询字段创建索引
+4. **定期备份** - 导出重要数据
+5. **错误处理** - 检查 SQL 执行结果
+
 ## 记忆系统
 
 记忆系统基于 SQLite 实现，提供长期信息存储和语义检索能力。
@@ -304,6 +541,81 @@ module.exports = {
 
 切换命令：`/persona <name>`
 
+### 人设系统详解
+
+#### 人设文件结构
+
+每个人设文件包含以下内容：
+
+```markdown
+# 人设名称
+
+你是一个[角色描述]。
+
+## 性格特点
+- 特点1
+- 特点2
+- 特点3
+
+## 说话风格
+- 风格描述
+- 常用表达方式
+
+## 行为模式
+- 主要行为特征
+- 交互偏好
+```
+
+#### 人设切换机制
+
+切换人设时会触发以下操作：
+
+1. **加载新人设文件** - 从 `personas/` 目录读取对应的 `.md` 文件
+2. **重建系统提示词** - 将新人设内容注入到系统提示词头部
+3. **清空当前上下文** - 防止旧人设的对话历史影响新行为
+4. **保存历史记录** - 归档当前会话对话
+
+#### 自定义人设
+
+创建自定义人设的步骤：
+
+1. 在 `personas/` 目录创建新的 `.md` 文件
+2. 按照上述结构编写人设内容
+3. 使用 `/persona <filename>` 命令切换
+
+**示例：创建"程序员"人设**
+
+```markdown
+# 程序员 (Programmer)
+
+你是一个经验丰富的程序员，专注于代码质量和最佳实践。
+
+## 性格特点
+- 注重代码规范和可读性
+- 喜欢使用现代编程技术
+- 强调测试和文档的重要性
+- 对性能优化有深入研究
+
+## 说话风格
+- 使用技术术语准确
+- 提供代码示例和最佳实践建议
+- 常用："让我看看代码"、"这个可以优化"
+
+## 行为模式
+- 主动分析代码结构
+- 提供重构建议
+- 推荐合适的工具和库
+- 关注错误处理和边界情况
+```
+
+#### 人设热切换
+
+CogitoAgent 支持人设热切换，无需重启程序：
+
+- 使用 `/persona <name>` 命令即可立即切换
+- 系统提示词会动态重新构建
+- 当前工作区路径会自动注入到新人设中
+
 ## 多会话管理
 
 `sessions/` 模块支持多个独立对话会话，每个会话维护独立的上下文。
@@ -345,6 +657,113 @@ data/sessions/
 
 - **上下文窗口**：自动压缩（150轮 或 100K token）
 - **会话隔离**：切换会话时清空当前上下文
+
+### WebSocket 通信详解
+
+#### WebSocket 服务端
+
+WebSocket 服务端运行在 Agent 进程中，默认端口 `9527`。
+
+**核心功能：**
+
+| 功能 | 说明 |
+|------|------|
+| 连接管理 | 支持多个客户端同时连接 |
+| 消息广播 | 向所有客户端广播消息 |
+| 心跳机制 | 自动检测连接状态 |
+| 错误处理 | 连接断开自动清理 |
+
+**消息格式：**
+
+```javascript
+{
+  type: "message_type",
+  data: { /* 消息内容 */ }
+}
+```
+
+**消息类型：**
+
+| 类型 | 说明 |
+|------|------|
+| `user_input` | 用户输入消息 |
+| `assistant_response` | AI 回复消息 |
+| `tool_call` | 工具调用通知 |
+| `tool_result` | 工具执行结果 |
+| `state_change` | 状态变化通知 |
+| `error` | 错误消息 |
+
+#### Electron 客户端
+
+Electron 主进程通过 WebSocket 连接到 Agent：
+
+**连接流程：**
+
+1. Electron 主进程启动 Agent 子进程
+2. Agent 启动 WebSocket 服务端（端口 9527）
+3. Electron 通过 `agent-bridge.js` 建立 WebSocket 连接
+4. 双向通信：用户输入 → Agent → AI → 流式回复 → Electron 界面
+
+**IPC 桥接：**
+
+```javascript
+// Electron 主进程 → WebSocket
+ipcMain.on('user-input', (event, message) => {
+  ws.send(JSON.stringify({ type: 'user_input', data: message }));
+});
+
+// WebSocket → Electron 主进程
+ws.on('message', (raw) => {
+  const msg = JSON.parse(raw);
+  mainWindow.webContents.send('ws-message', msg);
+});
+```
+
+#### 自定义 WebSocket 客户端
+
+可以开发自定义客户端连接到 Agent：
+
+```javascript
+const WebSocket = require('ws');
+const ws = new WebSocket('ws://localhost:9527');
+
+ws.on('open', () => {
+  console.log('已连接到 Agent');
+  
+  // 发送用户消息
+  ws.send(JSON.stringify({
+    type: 'user_input',
+    data: '你好，请帮我分析这个项目'
+  }));
+});
+
+ws.on('message', (raw) => {
+  const msg = JSON.parse(raw);
+  console.log('收到消息:', msg.type);
+  
+  if (msg.type === 'assistant_response') {
+    console.log('AI 回复:', msg.data);
+  }
+});
+```
+
+#### WebSocket 配置
+
+**端口配置：**
+
+可通过环境变量修改 WebSocket 端口：
+
+```bash
+WS_PORT=9527  # 默认端口
+```
+
+**连接参数：**
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| 端口 | 9527 | WebSocket 服务端口 |
+| 重连间隔 | 3000ms | 断开后自动重连间隔 |
+| 心跳间隔 | 30000ms | 心跳检测间隔 |
 
 ## 桌面模式
 
@@ -533,6 +952,167 @@ COGITO_EMAIL_PASSWORD=your-email-password
 | `email` | 邮件功能 |
 | `monitor` | 系统监控 |
 | `scheduler` | 定时任务 |
+
+### 环境变量完整列表
+
+所有可用的环境变量配置：
+
+#### API 配置
+
+| 环境变量 | 说明 | 默认值 |
+|----------|------|--------|
+| `COGITO_API_KEY` | API 密钥（必需） | - |
+| `COGITO_API_BASE_URL` | API 服务地址 | `https://api.openai.com/v1` |
+| `COGITO_API_PROVIDER` | API 服务商名称 | `openai` |
+| `COGITO_MODEL` | 模型名称 | `gpt-4o` |
+
+#### 多模型 API 密钥
+
+| 环境变量 | 说明 |
+|----------|------|
+| `OPENAI_API_KEY` | OpenAI API 密钥 |
+| `MOARK_API_KEY` | Moark API 密钥 |
+| `ANTHROPIC_API_KEY` | Anthropic API 密钥 |
+| `GOOGLE_API_KEY` | Google API 密钥 |
+
+#### 思考与执行配置
+
+| 环境变量 | 说明 | 默认值 |
+|----------|------|--------|
+| `COGITO_THINKING_INTERVAL` | 思考间隔（毫秒） | `3000` |
+| `COGITO_CODE_TIMEOUT` | 代码执行超时（毫秒） | `30000` |
+| `COGITO_CODE_MAX_OUTPUT` | 代码输出最大大小（字符） | `100000` |
+
+#### 数据库配置
+
+| 环境变量 | 说明 | 默认值 |
+|----------|------|--------|
+| `COGITO_DATABASE_PATH` | SQLite 数据库文件路径 | `./data/example.db` |
+
+#### 邮件配置
+
+| 环境变量 | 说明 | 默认值 |
+|----------|------|--------|
+| `COGITO_EMAIL_HOST` | SMTP 服务器地址 | - |
+| `COGITO_EMAIL_PORT` | SMTP 端口 | `587` |
+| `COGITO_EMAIL_USER` | 邮箱用户名 | - |
+| `COGITO_EMAIL_PASSWORD` | 邮箱密码 | - |
+| `COGITO_EMAIL_FROM` | 发件人邮箱地址 | - |
+
+#### 工作区配置
+
+| 环境变量 | 说明 | 默认值 |
+|----------|------|--------|
+| `COGITO_WORKSPACE` | 工作区根路径 | 用户主目录 |
+
+#### WebSocket 配置
+
+| 环境变量 | 说明 | 默认值 |
+|----------|------|--------|
+| `WS_PORT` | WebSocket 端口 | `9527` |
+| `DISABLE_WS` | 禁用 WebSocket 服务 | `false` |
+
+#### 调试配置
+
+| 环境变量 | 说明 | 默认值 |
+|----------|------|--------|
+| `DEBUG` | 启用调试模式 | `false` |
+| `NODE_ENV` | 运行环境 | `development` |
+
+### 高级配置选项
+
+#### 上下文压缩策略
+
+**压缩触发条件：**
+
+- 对话轮数超过 150 轮
+- Token 数量超过 100K（估算）
+
+**压缩策略：**
+
+```javascript
+{
+  COMPRESS_TURNS: 150,           // 触发压缩的轮数阈值
+  KEEP_RECENT_TURNS: 10,         // 压缩时保留的最近轮数
+  MAX_TOKEN_ESTIMATE: 100000,    // Token 上限（估算）
+  WARN_TOKEN_THRESHOLD: 80000    // Token 警告阈值（80%）
+}
+```
+
+**压缩流程：**
+
+1. 提取最近 10 轮对话
+2. 归档之前的对话到文件
+3. 生成上下文摘要
+4. 重建对话历史
+
+**Token 估算方法：**
+
+- 中文字符：约 1 token ≈ 1.5 字符
+- 英文字符：约 1 token ≈ 4 字符
+
+#### 工具输出截断配置
+
+不同工具的输出截断限制：
+
+| 工具 | 截断限制 | 说明 |
+|------|----------|------|
+| `ls` | 5000字符 | 目录列表较短 |
+| `gitLog` | 10000字符 | Git 日志中等 |
+| `gitDiff` | 10000字符 | Git 差异中等 |
+| `executeCode` | 50000字符 | 代码执行结果较长 |
+| `runJavaScript` | 50000字符 | JS 执行结果 |
+| `runPython` | 50000字符 | Python 执行结果 |
+| `read` | 20000字符 | 文件内容中等 |
+| `executeSQL` | 20000字符 | 数据库查询结果 |
+| `searchMemory` | 10000字符 | 搜索结果 |
+| `default` | 10000字符 | 默认限制 |
+
+#### 会话归档策略
+
+**归档触发：**
+
+- 切换会话时自动归档当前会话
+- 压缩历史时归档旧对话
+
+**归档文件：**
+
+```
+data/sessions/
+├── session_abc123.json           # 当前会话
+├── session_abc123_archive.json   # 归档文件（最多保留3个）
+└── meta.json                     # 会话元数据
+```
+
+**归档保留策略：**
+
+- 每个会话最多保留 3 个归档文件
+- 归档文件包含时间戳和对话内容
+
+#### 思考间隔优化
+
+**调整思考间隔：**
+
+```javascript
+// config.json
+{
+  "chat": {
+    "thinkingInterval": 3000  // 默认 3 秒
+  }
+}
+
+// 或通过环境变量
+COGITO_THINKING_INTERVAL=5000  // 5 秒
+```
+
+**建议值：**
+
+| 场景 | 建议间隔 | 说明 |
+|------|----------|------|
+| 快速响应 | 1000-2000ms | 适合频繁交互 |
+| 正常使用 | 3000ms | 默认值，平衡性能 |
+| 资源受限 | 5000-10000ms | 减少API调用频率 |
+| 后台运行 | 10000ms+ | 最小化资源占用 |
 
 ---
 
@@ -755,9 +1335,6 @@ flowchart TB
 
 ## 核心原理
 
-<details>
-<summary>点击展开 / 收起</summary>
-
 ### 思考循环 (Think Cycle)
 
 Agent 的核心是一个持续运行的思考循环，每隔固定间隔自动触发一轮思考，直到用户打断。
@@ -848,7 +1425,837 @@ stateDiagram-v2
     AWAITING_CONFIRMATION --> THINKING: 用户确认/拒绝
 ```
 
-</details>
+---
+
+## 插件系统
+
+CogitoAgent 支持动态加载自定义工具插件，扩展 Agent 能力。
+
+### 插件目录结构
+
+```
+plugins/
+└── my-plugin/
+    ├── index.js      # 插件入口（必需）
+    ├── package.json  # 插件配置（可选）
+    └── utils.js      # 辅助模块（可选）
+```
+
+### 插件开发
+
+#### 插件入口文件
+
+```javascript
+// plugins/my-plugin/index.js
+
+/**
+ * 插件必须导出工具数组
+ */
+export default [
+  {
+    name: 'myCustomTool',
+    description: '我的自定义工具',
+    category: 'custom',
+    fn: async (arg1, arg2) => {
+      try {
+        // 工具逻辑
+        const result = await someOperation(arg1, arg2);
+        
+        return {
+          success: true,
+          data: result
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+    }
+  },
+  {
+    name: 'anotherTool',
+    description: '另一个工具',
+    category: 'custom',
+    fn: async (input) => {
+      // 工具实现
+      return { success: true, data: `处理: ${input}` };
+    }
+  }
+];
+
+/**
+ * 插件元数据（可选）
+ */
+export const metadata = {
+  name: 'my-plugin',
+  version: '1.0.0',
+  author: 'Your Name',
+  description: '自定义插件描述'
+};
+```
+
+#### 插件配置文件
+
+```json
+// plugins/my-plugin/package.json
+{
+  "name": "cogito-plugin-my-plugin",
+  "version": "1.0.0",
+  "description": "A CogitoAgent plugin",
+  "main": "index.js",
+  "type": "module"
+}
+```
+
+### 插件加载
+
+#### 自动加载
+
+启动时自动加载 `plugins/` 目录下的所有插件：
+
+```javascript
+// Agent 启动时会自动调用
+const { loaded, errors } = await loadPlugins();
+
+console.log(`已加载 ${loaded} 个插件`);
+if (errors.length > 0) {
+  console.error('插件加载错误:', errors);
+}
+```
+
+#### 手动加载
+
+```javascript
+import { getPluginManager } from './agent/plugin.js';
+
+const pm = getPluginManager();
+
+// 加载单个插件
+await pm.loadPlugin('my-plugin', '/path/to/plugin');
+
+// 列出已加载插件
+const plugins = pm.listPlugins();
+
+// 列出所有自定义工具
+const tools = pm.listCustomTools();
+```
+
+### 插件管理
+
+| 操作 | 方法 | 说明 |
+|------|------|------|
+| 加载所有插件 | `loadPlugins()` | 自动加载 plugins 目录 |
+| 加载单个插件 | `pm.loadPlugin(name, path)` | 手动加载指定插件 |
+| 卸载插件 | `unloadPlugin(name)` | 移除插件及其工具 |
+| 列出插件 | `listPlugins()` | 获取已加载插件列表 |
+| 列出工具 | `listCustomTools()` | 获取所有自定义工具 |
+
+### 工具注册
+
+插件工具会自动注册到全局工具注册表：
+
+```javascript
+// 注册后可直接调用
+[TOOL] myCustomTool("参数1", "参数2") [/TOOL]
+```
+
+### 插件最佳实践
+
+1. **模块化设计** - 每个工具专注于单一功能
+2. **错误处理** - 所有工具必须返回 `{ success, data/error }` 格式
+3. **文档完善** - 提供清晰的工具描述和参数说明
+4. **版本管理** - 使用 package.json 管理版本信息
+5. **测试覆盖** - 为插件编写测试用例
+
+---
+
+## MCP 协议兼容
+
+CogitoAgent 支持 MCP (Model Context Protocol) 协议，可将工具暴露为 MCP Server，供其他 AI 客户端调用。
+
+### MCP 协议概述
+
+MCP 是一个标准化的协议，用于 AI 模型与外部工具之间的通信：
+
+- 基于 JSON-RPC 2.0
+- 支持工具调用、资源访问、提示词管理
+- 提供统一的工具描述格式
+
+### 启动 MCP 服务器
+
+#### 默认启动
+
+```javascript
+import { startMCPServer } from './agent/mcp.js';
+
+// 默认端口 3001
+const port = await startMCPServer();
+console.log(`MCP 服务器已启动: http://localhost:${port}`);
+```
+
+#### 自定义端口
+
+```javascript
+const port = await startMCPServer(4001);
+```
+
+### MCP 工具列表
+
+MCP 服务器会自动暴露所有已注册的工具：
+
+```javascript
+// MCP 客户端请求工具列表
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/list"
+}
+
+// 响应
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "ls",
+        "description": "file: ls",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "args": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["args"]
+        }
+      },
+      // ... 更多工具
+    ]
+  }
+}
+```
+
+### MCP 工具调用
+
+```javascript
+// MCP 客户端调用工具
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "ls",
+    "arguments": ["./src"]
+  }
+}
+
+// 响应
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[\"agent\", \"api\", \"io\", \"config.js\"]"
+      }
+    ],
+    "isError": false
+  }
+}
+```
+
+### MCP 资源访问
+
+MCP 服务器提供资源访问接口：
+
+| 资源 URI | 说明 |
+|----------|------|
+| `file://workspace` | 当前工作区目录 |
+| `session://current` | 当前会话信息 |
+
+### MCP 提示词
+
+MCP 服务器提供预设提示词：
+
+```javascript
+// 获取提示词列表
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "prompts/list"
+}
+
+// 响应
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "prompts": [
+      {
+        "name": "explore",
+        "description": "开始探索工作区",
+        "arguments": [
+          {
+            "name": "path",
+            "description": "要探索的目录路径",
+            "required": false
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### MCP 客户端示例
+
+```javascript
+// 使用 MCP 客户端连接
+const client = new MCPClient('http://localhost:3001');
+
+// 初始化连接
+await client.initialize();
+
+// 获取工具列表
+const tools = await client.listTools();
+
+// 调用工具
+const result = await client.callTool('ls', ['./src']);
+console.log(result.content[0].text);
+```
+
+### MCP 配置
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| 端口 | 3001 | MCP 服务端口 |
+| 协议版本 | 2.0 | JSON-RPC 版本 |
+| CORS | 启用 | 允许跨域访问 |
+
+---
+
+## 追踪模块
+
+CogitoAgent 内置轻量级追踪系统，记录工具执行、LLM 调用、状态转换等事件。
+
+### 追踪功能
+
+| 功能 | 说明 |
+|------|------|
+| 事件记录 | 记录关键操作和状态变化 |
+| 性能监控 | 统计执行时间和频率 |
+| 错误追踪 | 记录错误信息和上下文 |
+| 数据持久化 | 保存追踪记录到文件 |
+
+### 追踪事件类型
+
+| 事件 | 说明 |
+|------|------|
+| `llm_call` | LLM API 调用 |
+| `tool_exec` | 工具执行 |
+| `state_change` | 状态转换 |
+| `session_start` | 会话开始 |
+| `session_end` | 会话结束 |
+| `error` | 错误事件 |
+
+### 启用追踪
+
+追踪默认启用，可通过以下方式控制：
+
+```javascript
+import { setTracingEnabled } from './agent/tracing.js';
+
+// 启用追踪
+setTracingEnabled(true);
+
+// 禁用追踪
+setTracingEnabled(false);
+```
+
+### 追踪记录
+
+#### LLM 调用追踪
+
+```javascript
+traceLLMCall(
+  'gpt-4o',           // 模型名称
+  1500,               // 输入长度
+  800,                // 输出长度
+  2500,               // 执行时间（ms）
+  { total: 2300 }     // Token 使用统计
+);
+```
+
+#### 工具执行追踪
+
+```javascript
+traceToolExec(
+  'ls',               // 工具名称
+  ['./src'],          // 参数
+  { success: true },  // 结果
+  150,                // 执行时间（ms）
+  true                // 是否成功
+);
+```
+
+#### 状态转换追踪
+
+```javascript
+traceStateChange(
+  'THINKING',         // 原状态
+  'AWAITING_INPUT',   // 新状态
+  '用户打断'          // 原因
+);
+```
+
+### 追踪统计
+
+```javascript
+import { getStats } from './agent/tracing.js';
+
+const stats = getStats();
+
+console.log(stats);
+// {
+//   sessionId: 'sess_abc123',
+//   totalTraces: 150,
+//   events: {
+//     llm_call: 45,
+//     tool_exec: 80,
+//     state_change: 20,
+//     error: 5
+//   },
+//   totalToolDuration: 12500,
+//   avgToolDuration: 156,
+//   totalInputTokens: 67500,
+//   totalOutputTokens: 36000
+// }
+```
+
+### 追踪日志
+
+追踪记录自动保存到文件：
+
+```
+data/logs/
+└── trace_sess_abc123_2024-01-15.json
+```
+
+**日志内容：**
+
+```json
+{
+  "sessionId": "sess_abc123",
+  "savedAt": "2024-01-15T10:30:00Z",
+  "stats": { /* 统计信息 */ },
+  "traces": [
+    {
+      "id": "trace_x7y8z9",
+      "timestamp": "2024-01-15T10:25:30Z",
+      "event": "tool_exec",
+      "data": {
+        "tool": "ls",
+        "args": ["./src"],
+        "success": true,
+        "resultSize": 150,
+        "duration": 120
+      }
+    },
+    // ... 更多追踪记录
+  ]
+}
+```
+
+### 追踪最佳实践
+
+1. **定期检查统计** - 监控性能和错误率
+2. **分析工具耗时** - 识别性能瓶颈
+3. **追踪错误模式** - 发现常见问题
+4. **优化高频工具** - 提升整体性能
+
+---
+
+## 熔断器与重试机制
+
+CogitoAgent 内置熔断器和重试机制，保障网络请求等不稳定操作的可靠性。
+
+### 熔断器机制
+
+熔断器防止系统在故障时持续请求，保护系统稳定性。
+
+#### 熔断器状态
+
+| 状态 | 说明 | 行为 |
+|------|------|------|
+| `closed` | 正常状态 | 允许所有请求 |
+| `open` | 熔断状态 | 拒绝所有请求 |
+| `half_open` | 半开状态 | 允许少量请求测试 |
+
+#### 状态转换
+
+```
+closed → open: 失败次数达到阈值（默认5次）
+open → half_open: 超时后（默认60秒）
+half_open → closed: 测试请求成功
+half_open → open: 测试请求失败
+```
+
+#### 熔断器配置
+
+```javascript
+import { getCircuitBreaker } from './agent/retry.js';
+
+const breaker = getCircuitBreaker('api-calls', {
+  failureThreshold: 5,    // 失败阈值
+  resetTimeout: 60000,    // 重置超时（ms）
+  halfOpenRequests: 1     // 半开状态允许的请求数
+});
+```
+
+#### 熔断器使用
+
+```javascript
+import { withCircuitBreaker } from './agent/retry.js';
+
+const result = await withCircuitBreaker(
+  async () => {
+    // 执行不稳定操作
+    return await fetchAPI();
+  },
+  'api-calls',           // 熔断器名称
+  { failureThreshold: 5 }
+);
+
+if (!result.success) {
+  console.error('熔断器拦截:', result.error);
+}
+```
+
+### 重试机制
+
+重试机制自动重试失败的网络请求，提高成功率。
+
+#### 重试配置
+
+```javascript
+const retryConfig = {
+  maxRetries: 3,              // 最大重试次数
+  initialDelay: 1000,         // 初始延迟（ms）
+  maxDelay: 10000,            // 最大延迟（ms）
+  backoffMultiplier: 2,       // 退避倍数
+  retryableErrors: [
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'ENOTFOUND',
+    'socket hang up'
+  ]
+};
+```
+
+#### 重试使用
+
+```javascript
+import { withRetry } from './agent/retry.js';
+
+const result = await withRetry(
+  async (attempt) => {
+    // 执行可能失败的操作
+    console.log(`尝试 ${attempt + 1}`);
+    return await fetchData();
+  },
+  {
+    maxRetries: 3,
+    initialDelay: 1000,
+    onRetry: (info) => {
+      console.log(`重试 ${info.attempt}/${info.maxRetries}`);
+    }
+  }
+);
+```
+
+#### 退避策略
+
+重试延迟采用指数退避：
+
+```
+第1次重试: 1000ms + 随机抖动（0-25%）
+第2次重试: 2000ms + 随机抖动
+第3次重试: 4000ms + 随机抖动
+最大延迟: 10000ms
+```
+
+### 组合使用
+
+熔断器和重试可以组合使用：
+
+```javascript
+import { withCircuitAndRetry } from './agent/retry.js';
+
+const result = await withCircuitAndRetry(
+  async () => await fetchAPI(),
+  {
+    name: 'api-calls',
+    enableBreaker: true,
+    enableRetry: true,
+    breakerConfig: { failureThreshold: 5 },
+    retryConfig: { maxRetries: 3 }
+  }
+);
+```
+
+### 状态监控
+
+```javascript
+import { getAllBreakerStatus } from './agent/retry.js';
+
+const status = getAllBreakerStatus();
+
+console.log(status);
+// {
+//   'api-calls': {
+//     name: 'api-calls',
+//     state: 'closed',
+//     failureCount: 0,
+//     successCount: 150,
+//     lastFailureTime: null,
+//     timeUntilRetry: 0
+//   }
+// }
+```
+
+### 最佳实践
+
+1. **合理设置阈值** - 根据服务稳定性调整
+2. **监控熔断状态** - 及时发现问题
+3. **避免过度重试** - 设置合理的重试次数
+4. **记录失败原因** - 分析根本问题
+
+---
+
+## 多模型支持
+
+CogitoAgent 支持多个 AI 模型提供商，可灵活切换和配置。
+
+### 支持的提供商
+
+| 提供商 | Base URL | 支持模型 |
+|--------|----------|----------|
+| OpenAI | `https://api.openai.com/v1` | gpt-4, gpt-4-turbo, gpt-3.5-turbo |
+| Moark | `https://api.moark.com/v1` | DeepSeek-V4-Flash, DeepSeek-V4 |
+| Anthropic | `https://api.anthropic.com/v1` | claude-3-opus, claude-3-sonnet, claude-3-haiku |
+| Google | `https://generativelanguage.googleapis.com/v1beta` | gemini-pro, gemini-1.5-pro |
+
+### 配置多模型
+
+#### 环境变量配置
+
+```bash
+# OpenAI
+OPENAI_API_KEY=sk-xxxxx
+
+# Moark
+MOARK_API_KEY=mk-xxxxx
+
+# Anthropic
+ANTHROPIC_API_KEY=ant-xxxxx
+
+# Google
+GOOGLE_API_KEY=goo-xxxxx
+```
+
+#### 配置文件配置
+
+```json
+{
+  "models": {
+    "openai": {
+      "apiKey": "sk-xxxxx",
+      "baseURL": "https://api.openai.com/v1"
+    },
+    "moark": {
+      "apiKey": "mk-xxxxx",
+      "baseURL": "https://api.moark.com/v1"
+    },
+    "anthropic": {
+      "apiKey": "ant-xxxxx",
+      "baseURL": "https://api.anthropic.com/v1"
+    },
+    "google": {
+      "apiKey": "goo-xxxxx",
+      "baseURL": "https://generativelanguage.googleapis.com/v1beta"
+    }
+  }
+}
+```
+
+### 切换模型
+
+#### 使用命令切换
+
+```javascript
+import { switchProvider } from './api/models.js';
+
+const result = switchProvider('anthropic', 'claude-3-opus');
+
+if (result.success) {
+  console.log('已切换到:', result.data.model);
+}
+```
+
+#### 使用环境变量切换
+
+```bash
+COGITO_API_PROVIDER=anthropic
+COGITO_MODEL=claude-3-opus
+```
+
+### 模型参数配置
+
+不同模型可配置不同的参数：
+
+```json
+{
+  "chat": {
+    "maxTokens": 384000,
+    "temperature": 0.7,
+    "topP": 0.7,
+    "topK": 50,
+    "frequencyPenalty": 1
+  }
+}
+```
+
+### 获取模型信息
+
+```javascript
+import { getCurrentModel, listProviders, getModels } from './api/models.js';
+
+// 当前模型
+const current = getCurrentModel();
+console.log(current);
+// { provider: 'openai', model: 'gpt-4o', baseURL: '...' }
+
+// 所有提供商
+const providers = listProviders();
+
+// 指定提供商的模型列表
+const models = getModels('openai');
+```
+
+### 模型选择建议
+
+| 场景 | 推荐模型 | 说明 |
+|------|----------|------|
+| 代码生成 | gpt-4o, DeepSeek-V4 | 强大的代码理解能力 |
+| 文本创作 | claude-3-opus | 优秀的创意写作 |
+| 快速响应 | gpt-3.5-turbo, DeepSeek-V4-Flash | 低延迟，低成本 |
+| 长文本处理 | gemini-1.5-pro | 支持超长上下文 |
+| 日常对话 | claude-3-sonnet | 平衡性能和成本 |
+
+---
+
+## 联网搜索配置
+
+CogitoAgent 内置联网搜索功能，可获取实时信息。
+
+### 搜索配置
+
+#### 基本配置
+
+```json
+{
+  "search": {
+    "enabled": true,
+    "baseURL": "",              // 搜索 API URL（空则使用默认）
+    "recencyFilter": "",        // 时间过滤器
+    "siteFilter": ""            // 站点过滤器
+  }
+}
+```
+
+#### 搜索 URL 配置
+
+搜索 URL 的构建规则：
+
+1. 优先使用 `search.baseURL`
+2. 否则使用 `api.baseURL` + `/web-search-v2`
+3. 默认使用 Moark 搜索 API
+
+```bash
+# 自定义搜索 URL
+COGITO_SEARCH_BASE_URL=https://custom-search-api.com/v1
+```
+
+### 搜索参数
+
+#### 时间过滤器
+
+限制搜索结果的时间范围：
+
+```json
+{
+  "search": {
+    "recencyFilter": "day"      // 最近一天
+  }
+}
+```
+
+| 值 | 说明 |
+|---|------|
+| `day` | 最近一天 |
+| `week` | 最近一周 |
+| `month` | 最近一个月 |
+| `year` | 最近一年 |
+
+#### 站点过滤器
+
+限制搜索结果的站点：
+
+```json
+{
+  "search": {
+    "siteFilter": "github.com"  // 只搜索 GitHub
+  }
+}
+```
+
+### 搜索使用
+
+```javascript
+import { search } from './api/webSearch.js';
+
+const result = await search('Node.js 20 new features');
+
+if (result.success) {
+  console.log('搜索结果:', result.data);
+}
+```
+
+### 搜索结果格式
+
+```javascript
+{
+  success: true,
+  data: [
+    {
+      title: "Node.js 20 Released",
+      url: "https://nodejs.org/blog",
+      snippet: "Node.js 20 brings new features...",
+      publishedDate: "2024-01-15"
+    },
+    // ... 更多结果
+  ]
+}
+```
+
+### 搜索最佳实践
+
+1. **使用时间过滤器** - 获取最新信息
+2. **使用站点过滤器** - 提高搜索精度
+3. **优化关键词** - 使用具体、明确的搜索词
+4. **结合工具使用** - 搜索后用 `fetchPage` 获取详细内容
 
 ---
 
