@@ -57,8 +57,23 @@ async function main() {
       console.log('配置未完成，程序退出。');
       process.exit(1);
     }
-    // 配置完成后直接启动，不需要重新运行
-    console.log('配置完成，正在启动 CogitoAgent...\n');
+    console.log('配置完成！');
+    
+    // 如果不是 electron 或 cli 模式，配置完成后退出
+    if (!process.env.ELECTRON_MODE && !process.env.CLI_MODE) {
+      console.log('\n请使用以下命令启动：');
+      console.log('  npm run electron  - 桌面模式（Electron + Agent）');
+      console.log('  npm run cli       - 命令行模式');
+      process.exit(0);
+    }
+  }
+
+  // 如果已配置但不是 electron/cli 模式，提示用户
+  if (!process.env.ELECTRON_MODE && !process.env.CLI_MODE) {
+    console.log('配置已完成！请使用以下命令启动：');
+    console.log('  npm run electron  - 桌面模式（Electron + Agent）');
+    console.log('  npm run cli       - 命令行模式');
+    process.exit(0);
   }
 
   // 启动智能体

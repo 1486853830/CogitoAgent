@@ -61,13 +61,22 @@ npm start
 
 | 命令 | 模式 | 说明 |
 |------|------|------|
-| `npm start` 或 `npm run desktop` | 桌面模式 | Electron 桌面窗口 + 终端 Agent，通过 WebSocket 通信 |
+| `npm start` | 设置向导 | 首次配置或修改配置，不启动 Agent |
+| `npm run electron` 或 `npm run desktop` | 桌面模式 | Electron 桌面窗口 + 终端 Agent，通过 WebSocket 通信 |
 | `npm run cli` | CLI 模式 | 仅终端 Agent，不启动 Electron（适合纯命令行环境） |
+
+#### 设置向导
+
+```bash
+npm start
+```
+
+首次运行会自动打开欢迎页面并引导完成配置。如果已配置，会提示使用正确的启动命令。
 
 #### 桌面模式
 
 ```bash
-npm start
+npm run electron
 ```
 
 Electron 主进程会自动拉起终端 Agent，创建桌面窗口并连接。
