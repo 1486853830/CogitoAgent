@@ -88,6 +88,8 @@ Electron 主进程会自动拉起终端 Agent，创建桌面窗口并连接。
 - **ENTER** — 打断当前 AI 思考，进入输入状态
 - **exit** — 退出程序（或直接关闭桌面窗口）
 
+![](introduction/desktop.png)
+
 #### CLI 模式
 
 ```bash
