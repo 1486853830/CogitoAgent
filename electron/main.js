@@ -52,7 +52,11 @@ function killPortProcess(port = 9527) {
  */
 function startAgentProcess() {
   // 清理环境变量中可能干扰子进程的 Electron 变量
-  const env = { ...process.env, ELECTRON_RUN_AS_NODE: undefined };
+  const env = { 
+    ...process.env, 
+    ELECTRON_RUN_AS_NODE: undefined,
+    ELECTRON_MODE: 'true'  // 标记为 Electron 模式
+  };
 
   agentProcess = spawn('node', ['src/index.js'], {
     cwd: path.resolve(__dirname, '..'),
