@@ -166,6 +166,14 @@ app.whenReady().then(async () => {
   // 窗口操作 IPC
   ipcMain.on('window-minimize', () => mainWindow?.minimize());
   ipcMain.on('window-close', () => mainWindow?.close());
+  
+  // 窗口移动 IPC（用于拖拽视频）
+  ipcMain.on('window-move', (_event, { x, y }) => {
+    if (mainWindow) {
+      const [currentX, currentY] = mainWindow.getPosition();
+      mainWindow.setPosition(currentX + x, currentY + y);
+    }
+  });
 
   killPortProcess(9527);
   console.log('[主进程] 正在启动终端 Agent...');

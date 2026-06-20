@@ -682,9 +682,10 @@ async function start() {
 
   await tools.startScheduler();
 
-  addUserMessage('你好，我启动了');
-  await thinkCycle();
-  scheduleNextCycle();
+  // 启动后等待用户输入，不立即开始自主探索
+  println('\n  准备就绪，等待您的指令...', 'green');
+  state.current = STATE.AWAITING_INPUT;
+  broadcast('agent-state', { state: 'idle' });
 }
 
 export { 
