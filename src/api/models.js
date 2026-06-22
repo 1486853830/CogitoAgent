@@ -1,4 +1,7 @@
-import OpenAI from 'openai';
+// 注意：此文件已废弃，作为历史参考保留
+// 当前使用 src/api/client.js 中的原生 fetch 实现
+// 如需恢复，请先 npm install openai
+// import OpenAI from 'openai';
 import { loadConfig } from '../config.js';
 
 const providers = {
