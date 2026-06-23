@@ -9,9 +9,9 @@
  *     package.json  # 插件配置（可选）
  */
 
-import { readdirSync, statSync, readFileSync, existsSync } from 'fs';
+import { readdirSync, statSync, existsSync } from 'fs';
 import path from 'path';
-import { getToolRegistry, TOOL_REGISTRY } from './registry.js';
+import { TOOL_REGISTRY } from './registry.js';
 
 const PLUGINS_DIR = path.resolve(process.cwd(), 'plugins');
 

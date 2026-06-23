@@ -1,6 +1,5 @@
 import { execFile } from 'child_process';
 import path from 'path';
-import { execFileSync } from 'child_process';
 
 const PROJECT_ROOT = process.cwd();
 

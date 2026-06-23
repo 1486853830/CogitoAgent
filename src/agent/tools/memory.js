@@ -231,7 +231,6 @@ async function deleteMemory(id) {
     };
   }
   
-  const memory = memories[index];
   memories.splice(index, 1);
   await saveMemory();
   

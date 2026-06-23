@@ -162,13 +162,8 @@ async function ocrBatch(images) {
     });
   }
 
-  const output = results.map(r => {
-    if (r.success) {
-      return `--- ${r.image} ---\n${r.content}`;
-    } else {
-      return `--- ${r.image} ---\n${r.content}`;
-    }
-  }).join('\n\n');
+  const output = results.map(r => `--- ${r.image} ---
+${r.content}`).join('\n\n');
 
   return {
     success: true,
