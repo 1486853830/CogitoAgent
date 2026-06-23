@@ -3,7 +3,7 @@
  * 支持环境变量覆盖配置，敏感信息建议使用环境变量
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import path from 'path';
 import os from 'os';
 
