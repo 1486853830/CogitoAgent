@@ -15,6 +15,9 @@ const btnClose = document.getElementById('btnClose');
 let currentAssistantBubble = null;
 let isProcessing = false;
 let lastToolKey = '';  // 工具调用去重
+let pendingContent = '';  // 待显示的流式内容缓冲区
+let flushTimer = null;  // 防抖定时器
+let isInToolCall = false;  // 是否正在处理工具调用
 
 // 视频状态映射（可根据实际视频文件修改）
 const videoStates = { default: '../assets/zhanshi.mp4' };
@@ -28,12 +31,30 @@ function renderMarkdown(text) {
 
 /**
  * 过滤工具调用内容，仅保留正文
+ * 移除整个工具结果/错误块，不只是标签
  */
 function filterToolBlocks(text) {
-  return text
-    .replace(/\[TOOL\][\s\S]*?\[\/TOOL\]/g, '')
-    .replace(/\n```\n/g, '\n')
-    .trim();
+  let result = text;
+  
+  // 移除 [TOOL]...[/TOOL] 块（多行）
+  result = result.replace(/\[TOOL\][\s\S]*?\[\/TOOL\]/g, '');
+  
+  // 移除 [工具结果]: 及其后面的内容块（多行，直到下一个段落或消息结束）
+  result = result.replace(/\[工具结果\]:?\s*((?:\n|.)*?)(?=\n\n|\n\[|$)/g, '');
+  
+  // 移除 [工具错误]: 及其后面的内容块（多行）
+  result = result.replace(/\[工具错误\]:?\s*((?:\n|.)*?)(?=\n\n|\n\[|$)/g, '');
+  
+  // 移除 [工具调用]: 及其后面的内容块（多行）
+  result = result.replace(/\[工具调用\]:?\s*((?:\n|.)*?)(?=\n\n|\n\[|$)/g, '');
+  
+  // 移除多余的代码块标记
+  result = result.replace(/\n```\n/g, '\n');
+  
+  // 移除多余的空行
+  result = result.replace(/\n{3,}/g, '\n\n');
+  
+  return result.trim();
 }
 
 /**
@@ -218,6 +239,26 @@ function setButtonState(state) {
 }
 
 /**
+ * 刷新缓存的内容
+ */
+function flushPendingContent() {
+  if (!pendingContent.trim()) return;
+  
+  const filtered = filterToolBlocks(pendingContent);
+  if (filtered.trim()) {
+    if (!currentAssistantBubble) {
+      currentAssistantBubble = addMessage('assistant', renderMarkdown(filtered), { isHtml: true });
+    } else {
+      const bubble = currentAssistantBubble.querySelector('.bubble');
+      bubble.innerHTML = renderMarkdown(filtered);
+    }
+    currentAssistantBubble.querySelector('.bubble').classList.add('typing-cursor');
+    scrollToBottom();
+  }
+  pendingContent = '';
+}
+
+/**
  * 处理 Agent 回复
  */
 function handleReply(data) {
@@ -228,19 +269,38 @@ function handleReply(data) {
       break;
 
     case 'chunk':
-      // 流式输出，过滤工具调用后渲染 Markdown
-      const filtered = filterToolBlocks(data.full || data.content);
-      if (!currentAssistantBubble) {
-        currentAssistantBubble = addMessage('assistant', renderMarkdown(filtered), { isHtml: true });
-      } else {
-        const bubble = currentAssistantBubble.querySelector('.bubble');
-        bubble.innerHTML = renderMarkdown(filtered);
+      // 如果正在处理工具调用，先缓存内容
+      if (isInToolCall) {
+        pendingContent = data.full || data.content;
+        return;
       }
-      currentAssistantBubble.querySelector('.bubble').classList.add('typing-cursor');
-      scrollToBottom();
+      
+      // 否则先缓存，等待一小段时间看是否有工具调用
+      pendingContent = data.full || data.content;
+      
+      // 清除之前的定时器
+      if (flushTimer) {
+        clearTimeout(flushTimer);
+      }
+      
+      // 300ms 后如果没有工具调用，就显示内容
+      flushTimer = setTimeout(() => {
+        if (!isInToolCall) {
+          flushPendingContent();
+        }
+      }, 300);
       break;
 
     case 'tool-start':
+      // 标记进入工具调用状态
+      isInToolCall = true;
+      
+      // 清除防抖定时器
+      if (flushTimer) {
+        clearTimeout(flushTimer);
+        flushTimer = null;
+      }
+      
       // 去重：同一工具调用跳过重复
       const toolKey = `${data.tool}:${JSON.stringify(data.args)}`;
       if (toolKey === lastToolKey) break;
@@ -248,7 +308,7 @@ function handleReply(data) {
       // 500ms 后清除去重标记（允许后续合法的重复调用）
       setTimeout(() => { if (lastToolKey === toolKey) lastToolKey = ''; }, 500);
 
-      // 移除过滤后为空的助理气泡（流式输出的工具调用内容被过滤掉了）
+      // 移除空的助理气泡
       if (currentAssistantBubble) {
         const bubble = currentAssistantBubble.querySelector('.bubble');
         if (bubble && !bubble.textContent.trim()) {
@@ -256,6 +316,8 @@ function handleReply(data) {
         }
       }
       currentAssistantBubble = null;
+      
+      // 显示工具调用提示
       addMessage('tool-start', `🔧 ${data.tool}(${Array.isArray(data.args) ? data.args.join(', ') : data.args})`, {
         className: 'tool-start',
       });
@@ -268,9 +330,25 @@ function handleReply(data) {
         className: 'tool-result',
         isHtml: true,
       });
+      
+      // 如果缓存了内容，在工具结果之后显示
+      if (pendingContent.trim()) {
+        const filtered = filterToolBlocks(pendingContent);
+        if (filtered.trim()) {
+          currentAssistantBubble = addMessage('assistant', renderMarkdown(filtered), { isHtml: true });
+          currentAssistantBubble.querySelector('.bubble').classList.add('typing-cursor');
+        }
+        pendingContent = '';
+      }
       break;
 
     case 'done':
+      // 标记工具调用结束
+      isInToolCall = false;
+      
+      // 刷新缓存的内容（如果有的话）
+      flushPendingContent();
+      
       if (currentAssistantBubble) {
         currentAssistantBubble.querySelector('.bubble').classList.remove('typing-cursor');
       }
