@@ -617,11 +617,12 @@ async function thinkCycle() {
       println('[系统] 压缩完成', 'gray');
     }
 
-    if (wantsToWait || (toolCalls.length === 0 && state.current === STATE.THINKING)) {
+    if (wantsToWait || state.current !== STATE.THINKING) {
       state.current = STATE.AWAITING_INPUT;
-      // WebSocket 广播完成信号
       broadcast('agent-reply', { type: 'done' });
       broadcast('agent-state', { state: 'idle' });
+    } else if (toolCalls.length > 0) {
+      scheduleNextCycle();
     }
 
   } catch (error) {
