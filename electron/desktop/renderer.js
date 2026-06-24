@@ -37,6 +37,70 @@ function filterToolBlocks(text) {
 }
 
 /**
+ * 格式化工具结果为卡片样式（默认收起，点击展开）
+ */
+function formatToolResult(data) {
+  const { tool, success, data: resultData, error } = data;
+  
+  if (!success || error) {
+    const errorMsg = error || resultData || '未知错误';
+    const resultStr = String(errorMsg);
+    
+    return `
+      <div class="tool-result-card tool-error tool-result-collapsed" onclick="toggleResultExpand(this)">
+        <div class="tool-result-header">
+          <span class="tool-icon">✗</span>
+          <span class="tool-name">${escapeHtml(tool || '未知工具')}</span>
+          <span class="tool-status error">失败</span>
+          <span class="tool-expand-icon">›</span>
+        </div>
+        <div class="tool-result-content">
+          <pre>${escapeHtml(resultStr)}</pre>
+        </div>
+      </div>
+    `;
+  }
+  
+  const result = resultData;
+  const resultStr = typeof result === 'object' && result !== null 
+    ? JSON.stringify(result, null, 2) 
+    : String(result);
+  
+  return `
+    <div class="tool-result-card tool-result-collapsed" onclick="toggleResultExpand(this)">
+      <div class="tool-result-header">
+        <span class="tool-icon">✓</span>
+        <span class="tool-name">${escapeHtml(tool || '未知工具')}</span>
+        <span class="tool-status success">完成</span>
+        <span class="tool-expand-icon">›</span>
+      </div>
+      <div class="tool-result-content">
+        <pre>${escapeHtml(resultStr)}</pre>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * 截断文本并添加省略号
+ */
+function truncateText(text, maxLength = 150) {
+  if (!text) return '';
+  const str = String(text);
+  if (str.length <= maxLength) return str;
+  return str.substring(0, maxLength) + '...';
+}
+
+/**
+ * HTML 转义
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
  * 切换视频状态（单视频模式，始终播放同一个视频）
  */
 function changeVideoState(_state) {
@@ -198,7 +262,12 @@ function handleReply(data) {
       break;
 
     case 'tool-result':
-      // 工具结果已隐藏，仅显示工具调用
+      // 工具结果卡片展示
+      const resultContent = formatToolResult(data);
+      addMessage('tool-result', resultContent, {
+        className: 'tool-result',
+        isHtml: true,
+      });
       break;
 
     case 'done':
@@ -278,6 +347,22 @@ inputEl.focus();
 document.addEventListener('click', () => {
   inputEl.focus();
 });
+
+/**
+ * 切换工具结果展开/收起（点击卡片触发）
+ */
+function toggleResultExpand(card) {
+  if (card.classList.contains('tool-result-collapsed')) {
+    card.classList.remove('tool-result-collapsed');
+    card.classList.add('tool-result-expanded');
+  } else {
+    card.classList.remove('tool-result-expanded');
+    card.classList.add('tool-result-collapsed');
+  }
+}
+
+// 暴露全局函数供内联 onclick 使用
+window.toggleResultExpand = toggleResultExpand;
 
 // ---- 视频交互功能 ----
 
