@@ -184,14 +184,21 @@ function resetContentTag() {
  * 打印工具调用块（简洁标签样式）
  */
 function printToolBlock(content, title = '工具调用') {
-  // 从内容中提取工具名称，格式: [TOOL] toolName("参数") [/TOOL]
-  const match = content.match(/\[TOOL\]\s*(\w+)/);
-  const toolName = match ? match[1] : '未知工具';
-  
-  // 使用类似 Enter 标签的样式显示
-  print('  ');
-  print(`${COLORS.bgCyan}${COLORS.white} 调用：${toolName} ${COLORS.reset}`, 'cyan');
-  print('\n');
+  if (title === '工具结果') {
+    // 工具结果显示
+    print('\n');
+    println('┌─ 工具结果 ─────────────────────────────', 'green');
+    print(content, 'green');
+    println('\n└──────────────────────────────────────────', 'green');
+  } else {
+    // 工具调用显示
+    const match = content.match(/\[TOOL\]\s*(\w+)/);
+    const toolName = match ? match[1] : '未知工具';
+    
+    print('  ');
+    print(`${COLORS.bgCyan}${COLORS.white} 调用：${toolName} ${COLORS.reset}`, 'cyan');
+    print('\n');
+  }
 }
 
 /**
