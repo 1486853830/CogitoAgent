@@ -32,13 +32,75 @@ let selectedPersona = '';
 // 默认工作区路径
 let defaultWorkspace = '';
 
-function init() {
+async function init() {
   // 获取默认工作区（留空，让用户选择或使用默认值）
   // 工作区输入框保持空，用户可以手动输入或浏览选择
   defaultWorkspace = '';
 
   setupEventListeners();
+  await loadPersonas();
   updateUI();
+}
+
+/**
+ * 动态加载 personas 列表
+ */
+async function loadPersonas() {
+  try {
+    const personas = await window.electronAPI.getPersonas();
+    
+    personaGrid.innerHTML = '';
+    
+    // 默认选项
+    const defaultCard = createPersonaCard('', '默认', '无特定性格');
+    personaGrid.appendChild(defaultCard);
+    
+    // 动态加载的 personas
+    for (const p of personas) {
+      const card = createPersonaCard(p.id, p.name, p.id);
+      personaGrid.appendChild(card);
+    }
+    
+    // 绑定点击事件
+    setupPersonaClickListeners();
+  } catch (e) {
+    console.error('加载 personas 失败:', e);
+  }
+}
+
+/**
+ * 创建角色卡片元素
+ */
+function createPersonaCard(id, name, desc) {
+  const card = document.createElement('div');
+  card.className = 'persona-card';
+  card.dataset.persona = id;
+  
+  const nameDiv = document.createElement('div');
+  nameDiv.className = 'persona-name';
+  nameDiv.textContent = name;
+  
+  const descDiv = document.createElement('div');
+  descDiv.className = 'persona-desc';
+  descDiv.textContent = desc;
+  
+  card.appendChild(nameDiv);
+  card.appendChild(descDiv);
+  
+  return card;
+}
+
+/**
+ * 设置人设卡片点击事件
+ */
+function setupPersonaClickListeners() {
+  personaGrid.querySelectorAll('.persona-card').forEach(card => {
+    card.addEventListener('click', () => {
+      personaGrid.querySelectorAll('.persona-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedPersona = card.dataset.persona;
+    });
+  });
 }
 
 /**
@@ -57,15 +119,6 @@ function setupEventListeners() {
         targetInput.value = preset;
         targetInput.focus();
       }
-    });
-  });
-
-  // 人设选择
-  personaGrid.querySelectorAll('.persona-card').forEach(card => {
-    card.addEventListener('click', () => {
-      personaGrid.querySelectorAll('.persona-card').forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      selectedPersona = card.dataset.persona;
     });
   });
 

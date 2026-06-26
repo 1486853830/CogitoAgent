@@ -107,7 +107,7 @@ function saveConfig(config) {
 
     // 复制 persona 文件
     if (config.persona) {
-      const srcPath = path.join(PROJECT_ROOT, 'personas', `${config.persona}.md`);
+      const srcPath = path.join(PROJECT_ROOT, 'personas', config.persona, 'persona.md');
       if (fs.existsSync(srcPath)) {
         fs.copyFileSync(srcPath, PERSONA_FILE);
         console.log('[主进程] 人设已应用:', config.persona);
@@ -404,6 +404,33 @@ app.whenReady().then(async () => {
   // 获取默认工作区路径
   ipcMain.handle('get-default-workspace', () => {
     return os.homedir();
+  });
+
+  // 获取可用的 personas 列表
+  ipcMain.handle('get-personas', () => {
+    const personasDir = path.join(PROJECT_ROOT, 'personas');
+    const personas = [];
+    
+    try {
+      const dirs = fs.readdirSync(personasDir, { withFileTypes: true })
+        .filter(dir => dir.isDirectory())
+        .map(dir => dir.name);
+      
+      for (const dir of dirs) {
+        const personaPath = path.join(personasDir, dir, 'persona.md');
+        if (fs.existsSync(personaPath)) {
+          const content = fs.readFileSync(personaPath, 'utf-8');
+          const firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim();
+          const match = firstLine.match(/^(.*?)\s*\(([^)]+)\)$/);
+          const name = match ? match[1].trim() : firstLine;
+          personas.push({ id: dir, name });
+        }
+      }
+    } catch (e) {
+      console.error('[主进程] 读取 personas 目录失败:', e.message);
+    }
+    
+    return personas;
   });
 
   // ===== 启动逻辑 =====

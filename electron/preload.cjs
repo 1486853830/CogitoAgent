@@ -54,4 +54,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 启动主应用
   launchMainApp: () => ipcRenderer.send('setup-launch-main-app'),
+
+  // 获取 personas 列表
+  getPersonas: () => ipcRenderer.invoke('get-personas'),
 });
