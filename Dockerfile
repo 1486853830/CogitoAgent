@@ -1,5 +1,5 @@
 # CogitoAgent Docker Image
-# https://github.com/cnt-code/cogito-agent
+# https://github.com/SnowLeopard-io/CogitoAgent
 
 FROM node:18-alpine
 
