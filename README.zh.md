@@ -1,23 +1,25 @@
+# CogitoAgent
+
+> **Think Continuously · Act Autonomously · Stay Private**
+
+Cogito, ergo sum — CogitoAgent 不仅仅是一个工具，它是你本地环境中的自主思维伙伴。
+
+**CogitoAgent** 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作、代码执行与联网能力。它直接在用户配置的工作目录下运行，**无需上传任何文件至第三方服务器**，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
+
+![CogitoAgent 控制面板模式](introduction/dashboard.png)
+
+
+
+不同于传统的聊天机器人，CogitoAgent 具备 **持续思考**、**自主探索** 和 **工具执行** 的能力，能够在后台主动发现和整理用户的本地文件资产，并可通过扩展工具集获得更多能力。
+
 <p align="center">
-  <strong style="font-size: 2.5em; color: #f0f0f0;">CogitoAgent</strong>
-  <br>
-  <span style="font-size: 1.15em; color: #667eea;">Think Continuously · Act Autonomously · Stay Private</span>
+  <a href="#"><img src="https://img.shields.io/badge/版本-2.3.0-764ba2?style=flat-square" alt="版本"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D18.0-339933?style=flat-square&logo=node.js" alt="Node"></a>
+  <a href="#"><img src="https://img.shields.io/badge/许可证-Apache_2.0-blue?style=flat-square" alt="许可证"></a>
+  <a href="#"><img src="https://img.shields.io/badge/状态-稳定-success?style=flat-square" alt="状态"></a>
 </p>
 
-<p align="center" style="max-width: 700px; margin: 0 auto;">
-Cogito, ergo sum — CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作、代码执行与联网能力。它直接在用户配置的工作目录下运行，<strong>无需上传任何文件至第三方服务器</strong>，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
-</p>
-
-![Dashboard](introduction/dashboard.png)
-
-<p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/版本-2.3.0-764ba2?style=for-the-badge" alt="版本"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D18.0-339933?style=for-the-badge&logo=node.js" alt="Node"></a>
-  <a href="#"><img src="https://img.shields.io/badge/许可证-Apache_2.0-blue?style=for-the-badge" alt="许可证"></a>
-  <a href="#"><img src="https://img.shields.io/badge/状态-稳定-success?style=for-the-badge" alt="状态"></a>
-</p>
-
-<br>
+---
 
 ## 核心特性
 
