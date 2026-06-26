@@ -14,7 +14,7 @@ Cogito, ergo sum — CogitoAgent 不仅仅是一个工具，它是你本地环�
 
 <p align="center">
   <a href="#"><img src="https://img.shields.io/badge/版本-2.3.0-764ba2?style=flat-square" alt="版本"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D18.0-339933?style=flat-square&logo=node.js" alt="Node"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js" alt="Node"></a>
   <a href="#"><img src="https://img.shields.io/badge/许可证-Apache_2.0-blue?style=flat-square" alt="许可证"></a>
   <a href="#"><img src="https://img.shields.io/badge/状态-稳定-success?style=flat-square" alt="状态"></a>
 </p>
@@ -38,9 +38,15 @@ Cogito, ergo sum — CogitoAgent 不仅仅是一个工具，它是你本地环�
 
 ### 环境要求
 
-- **Node.js** 18.0 或更高版本
+- **Node.js** 22.12 或更高版本
 - **npm** 或 **yarn** 包管理器
 - **Python** 3.x（可选，用于 Python 代码执行）
+
+> **国内用户注意**：若 `npm install` 下载 Electron 二进制文件失败，请先设置镜像源再安装：
+> ```bash
+> $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
+> npm install
+> ```
 
 ### 安装步骤
 

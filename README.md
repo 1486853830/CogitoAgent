@@ -13,7 +13,7 @@ Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Contin
 
 <p align="center">
   <a href="#"><img src="https://img.shields.io/badge/Version-2.3.0-764ba2?style=flat-square" alt="Version"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D18.0-339933?style=flat-square&logo=node.js" alt="Node"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js" alt="Node"></a>
   <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=flat-square" alt="Status"></a>
 </p>
@@ -37,9 +37,15 @@ Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Contin
 
 ### Requirements
 
-- **Node.js** 18.0 or higher
+- **Node.js** 22.12 or higher
 - **npm** or **yarn** package manager
 - **Python** 3.x (optional, for Python code execution)
+
+> **Note for users in China**: If `npm install` fails to download the Electron binary, set the mirror before installing:
+> ```bash
+> $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
+> npm install
+> ```
 
 ### Installation
 
