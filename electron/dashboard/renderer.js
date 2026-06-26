@@ -14,23 +14,14 @@ const Utils = {
     return text.replace(/\n/g, '<br>');
   },
 
-  /** 过滤危险 HTML，防止 XSS */
+  /** 过滤危险 HTML，防止 XSS（纯字符串模式，不涉及 HTML 解析） */
   sanitizeHtml(html) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(`<body>${html}</body>`, 'text/html');
-    // 移除所有 script 元素
-    doc.querySelectorAll('script').forEach(el => el.remove());
-    // 移除所有元素上的事件处理器和危险 URL 协议
-    const dangerousSchemes = /^(javascript|data|vbscript|file):$/i;
-    doc.querySelectorAll('*').forEach(el => {
-      for (const attr of Array.from(el.attributes)) {
-        const val = attr.value.replace(/[\s]/g, '').toLowerCase();
-        if (attr.name.startsWith('on') || dangerousSchemes.test(val)) {
-          el.removeAttribute(attr.name);
-        }
-      }
-    });
-    return doc.body.innerHTML;
+    return html
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
+      .replace(/<script\b[^>]*\/>/gi, '')
+      .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+      .replace(/\s+(?:href|src|action|formaction)\s*=\s*"(?:javascript|data|vbscript|file):/gi, ' $1=""')
+      .replace(/\s+(?:href|src|action|formaction)\s*=\s*'(?:javascript|data|vbscript|file):/gi, " $1=''");
   },
 
   filterToolBlocks(text) {
