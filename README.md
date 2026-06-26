@@ -1,15 +1,39 @@
-# CogitoAgent
+<p align="center">
+  <img src="introduction/main.png" alt="CogitoAgent 主界面" width="720" />
+</p>
 
-> 持续思考的本地自主 AI 智能体
+<h1 align="center">CogitoAgent</h1>
 
-CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作、代码执行与联网能力。它直接在用户配置的工作目录下运行，无需上传任何文件至第三方服务器，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
+<p align="center">
+  <b>持续思考的本地自主 AI 智能体</b>
+  <br>
+  <i>Think Continuously. Act Autonomously. Stay Private.</i>
+</p>
 
-不同于传统的聊天机器人，CogitoAgent 具备**持续思考**、**自主探索**、**工具执行**的能力，能够在后台主动发现和整理用户的本地文件资产，并可通过扩展工具集获得更多能力。
+<p align="center">
+  <a href="#核心特性">特性</a> •
+  <a href="#-快速开始">快速开始</a> •
+  <a href="#持续思考循环">架构</a> •
+  <a href="#工具系统">工具</a> •
+  <a href="#srcagenttoolsTOOL_DEVELOPMENTmd">开发</a>
+</p>
 
-![](introduction/main.png)
-![](introduction/electron.png)
+<p align="center">
+  <img src="https://img.shields.io/badge/version-2.3.0-blue" alt="版本" />
+  <img src="https://img.shields.io/badge/node-%3E%3D18.0-brightgreen" alt="Node" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="许可证" />
+  <img src="https://img.shields.io/badge/status-stable-success" alt="状态" />
+</p>
 
+---
 
+**CogitoAgent** 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作、代码执行与联网能力。它直接在用户配置的工作目录下运行，**无需上传任何文件至第三方服务器**，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
+
+不同于传统的聊天机器人，CogitoAgent 具备 **持续思考** · **自主探索** · **工具执行** 的能力，能够在后台主动发现和整理用户的本地文件资产，并可通过扩展工具集获得更多能力。
+
+<p align="center">
+  <img src="introduction/electron.png" alt="CogitoAgent Electron 界面" width="720" />
+</p>
 
 ---
 
