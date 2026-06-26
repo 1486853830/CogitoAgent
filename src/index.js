@@ -19,7 +19,7 @@ const __dirname = path.dirname(__filename);
  * 在浏览器中打开欢迎页面
  */
 function openWelcomePage() {
-  const introPath = path.join(__dirname, '..', 'introduction', 'index.html');
+  const introPath = path.join(__dirname, '..', 'index.html');
   const url = `file://${introPath}`;
 
   // 检测操作系统并使用对应的打开命令
