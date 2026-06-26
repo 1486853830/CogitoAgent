@@ -5,33 +5,33 @@
 </h1>
 
 <p align="center">
-  <strong style="font-size: 1.4em; color: #667eea;">✦ 持续思考的本地自主 AI 智能体 ✦</strong>
+  <strong style="font-size: 1.4em; color: #667eea;">✦ Continuously Thinking Local Autonomous AI Agent ✦</strong>
   <br>
   <em style="font-size: 1.1em; color: #888;">Think Continuously · Act Autonomously · Stay Private</em>
 </p>
 
 <p align="center">
-  <a href="#-核心特性">⚡ 特性</a> &nbsp;·&nbsp;
-  <a href="#-快速开始">🚀 快速开始</a> &nbsp;·&nbsp;
-  <a href="#持续思考循环">🧠 架构</a> &nbsp;·&nbsp;
-  <a href="#工具系统">🔧 工具</a> &nbsp;·&nbsp;
-  <a href="src/agent/tools/TOOL_DEVELOPMENT.md">📦 开发</a>
+  <a href="#-core-features">⚡ Features</a> &nbsp;·&nbsp;
+  <a href="#-quick-start">🚀 Quick Start</a> &nbsp;·&nbsp;
+  <a href="#continuous-thinking-loop">🧠 Architecture</a> &nbsp;·&nbsp;
+  <a href="#tool-system">🔧 Tools</a> &nbsp;·&nbsp;
+  <a href="src/agent/tools/TOOL_DEVELOPMENT.md">📦 Development</a>
 </p>
 
 <br>
 
 <p align="center" style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
-  <a href="#"><img src="https://img.shields.io/badge/版本-2.3.0-764ba2?style=for-the-badge" alt="版本"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Version-2.3.0-764ba2?style=for-the-badge" alt="Version"></a>
   <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D18.0-339933?style=for-the-badge&logo=node.js" alt="Node"></a>
-  <a href="#"><img src="https://img.shields.io/badge/许可证-Apache_2.0-blue?style=for-the-badge" alt="许可证"></a>
-  <a href="#"><img src="https://img.shields.io/badge/状态-稳定-success?style=for-the-badge" alt="状态"></a>
-  <a href="#"><img src="https://img.shields.io/badge/运行-本地-ff6b6b?style=for-the-badge" alt="本地"></a>
+  <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge" alt="License"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=for-the-badge" alt="Status"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Run-Local-ff6b6b?style=for-the-badge" alt="Local"></a>
 </p>
 
 <br>
 
 <div align="center">
-  <img src="introduction/main.png" alt="CogitoAgent 主界面" width="80%" style="border-radius: 12px; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);" />
+  <img src="introduction/main.png" alt="CogitoAgent Main Interface" width="80%" style="border-radius: 12px; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);" />
 </div>
 
 <br>
@@ -39,14 +39,14 @@
 <table align="center">
   <tr>
     <td align="center" width="50%">
-      <img src="introduction/electron.png" alt="CogitoAgent Electron 界面" width="95%" style="border-radius: 8px;" />
+      <img src="introduction/electron.png" alt="CogitoAgent Electron Interface" width="95%" style="border-radius: 8px;" />
       <br>
-      <sub>🖥️ 桌面模式 — Electron 窗口</sub>
+      <sub>🖥️ Desktop Mode — Electron Window</sub>
     </td>
     <td align="center" width="50%">
-      <img src="introduction/desktop.png" alt="CogitoAgent 桌面预览" width="95%" style="border-radius: 8px;" />
+      <img src="introduction/desktop.png" alt="CogitoAgent Desktop Preview" width="95%" style="border-radius: 8px;" />
       <br>
-      <sub>💬 终端模式 — CLI 交互界面</sub>
+      <sub>💬 Terminal Mode — CLI Interactive Interface</sub>
     </td>
   </tr>
 </table>
@@ -55,318 +55,318 @@
 
 ---
 
-> **Cogito, ergo sum** — 我思故我在。CogitoAgent 不仅仅是一个工具，它是你本地环境中的自主思维伙伴。
+> **Cogito, ergo sum** — I think, therefore I am. CogitoAgent is not just a tool; it is your autonomous thinking partner in your local environment.
 
-**CogitoAgent** 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作、代码执行与联网能力。它直接在用户配置的工作目录下运行，**无需上传任何文件至第三方服务器**，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
+**CogitoAgent** is a locally-run autonomous AI agent that integrates file management, knowledge mining, system operations, code execution, and web connectivity. It runs directly within the working directory configured by the user, **with no need to upload any files to third-party servers**, ensuring data privacy while providing a continuously operating intelligent assistant service.
 
-不同于传统的聊天机器人，CogitoAgent 具备 **持续思考** · **自主探索** · **工具执行** 的能力，能够在后台主动发现和整理用户的本地文件资产，并可通过扩展工具集获得更多能力。
-
----
-
-## 核心特性
-
-| 特性 | 说明 |
-|------|------|
-| **隐私优先** | 所有数据本地存储，不上传任何文件到第三方服务器 |
-| **持续思考** | 每3秒自动触发思考循环，主动分析当前任务状态 |
-| **工具执行** | 内置 18 个工具模块，支持文件操作、代码执行、Git、数据库、OCR 等 |
-| **安全沙箱** | JavaScript 代码执行采用 `isolated-vm` 进程级隔离 |
-| **多会话管理** | 支持多个独立对话会话，会话数据持久化存储 |
-| **桌面模式** | Electron 桌面窗口，与终端 Agent 通过 WebSocket 通信 |
+Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Continuously** · **Explore Autonomously** · **Execute Tools**, capable of proactively discovering and organizing your local file assets in the background, with additional capabilities available through an extensible toolset.
 
 ---
 
-## 🚀 快速开始
+## Core Features
 
-### 环境要求
+| Feature | Description |
+|---------|-------------|
+| **Privacy First** | All data stored locally; no files uploaded to third-party servers |
+| **Continuous Thinking** | Automatically triggers a thinking cycle every 3 seconds, proactively analyzing current task status |
+| **Tool Execution** | Built-in 18 tool modules supporting file operations, code execution, Git, databases, OCR, and more |
+| **Security Sandbox** | JavaScript code execution uses `isolated-vm` for process-level isolation |
+| **Multi-Session Management** | Supports multiple independent conversation sessions with persistent data storage |
+| **Desktop Mode** | Electron desktop window communicating with the terminal Agent via WebSocket |
 
-- **Node.js** 18.0 或更高版本
-- **npm** 或 **yarn** 包管理器
-- **Python** 3.x（可选，用于 Python 代码执行）
+---
 
-### 安装步骤
+## 🚀 Quick Start
+
+### Requirements
+
+- **Node.js** 18.0 or higher
+- **npm** or **yarn** package manager
+- **Python** 3.x (optional, for Python code execution)
+
+### Installation
 
 ```bash
-# 克隆项目
+# Clone the project
 git clone https://gitee.com/cnt-code/cogito-agent.git
 cd cogito-agent
 
-# 安装依赖
+# Install dependencies
 npm install
 
-# 启动程序
+# Start the program
 npm start
 ```
 
-### 首次配置
+### First-Time Setup
 
-首次运行会自动引导完成以下配置：
+The first run will automatically guide you through the following configuration:
 
-1. **API Base URL** - 支持 OpenAI 兼容的第三方 API
-2. **API Key** - 您的 API 密钥
-3. **模型名称** - 如 gpt-4o、claude-3-sonnet 等
-4. **工作区路径** - AI 可以访问的目录（默认为用户主目录）
-5. **人设选择** - 选择预设的 AI 人设
+1. **API Base URL** — Supports OpenAI-compatible third-party APIs
+2. **API Key** — Your API key
+3. **Model Name** — e.g., gpt-4o, claude-3-sonnet, etc.
+4. **Workspace Path** — The directory the AI can access (defaults to user home directory)
+5. **Persona Selection** — Choose a preset AI persona
 
-### 日常使用
+### Daily Usage
 
-程序支持两种运行模式：
+The program supports two operation modes:
 
-| 命令 | 模式 | 说明 |
-|------|------|------|
-| `npm start` | 设置向导 | 首次配置或修改配置，不启动 Agent |
-| `npm run electron` | 桌面模式 | Electron 桌面窗口 + 终端 Agent，通过 WebSocket 通信 |
-| `npm run cli` | CLI 模式 | 仅终端 Agent，不启动 Electron（适合纯命令行环境） |
+| Command | Mode | Description |
+|---------|------|-------------|
+| `npm start` | Setup Wizard | First-time configuration or modifying settings; does not start the Agent |
+| `npm run electron` | Desktop Mode | Electron desktop window + terminal Agent, communicating via WebSocket |
+| `npm run cli` | CLI Mode | Terminal Agent only, without Electron (suitable for pure command-line environments) |
 
-#### 设置向导
+#### Setup Wizard
 
 ```bash
 npm start
 ```
 
-首次运行会自动打开欢迎页面并引导完成配置。如果已配置，会提示使用正确的启动命令。
+On first run, the welcome page will automatically open and guide you through configuration. If already configured, it will prompt you to use the correct startup command.
 
-#### 桌面模式
+#### Desktop Mode
 
 ```bash
 npm run electron
 ```
 
-Electron 主进程会自动拉起终端 Agent，创建桌面窗口并连接。
+The Electron main process will automatically launch the terminal Agent, create the desktop window, and establish the connection.
 
-**交互方式：**
+**Interaction Methods:**
 
-- **桌面窗口** — 半透明毛玻璃对话框 + 虚拟人物视频，直接在桌面上输入
-- **终端输入** — 在启动终端中直接输入指令，按 ENTER 发送
-- **ENTER** — 打断当前 AI 思考，进入输入状态
-- **exit** — 退出程序（或直接关闭桌面窗口）
+- **Desktop Window** — Semi-transparent frosted glass dialog + virtual character video, input directly on the desktop
+- **Terminal Input** — Type commands directly in the startup terminal, press ENTER to send
+- **ENTER** — Interrupt the current AI thinking and enter input state
+- **exit** — Exit the program (or close the desktop window directly)
 
 ![](introduction/desktop.png)
 
-#### CLI 模式
+#### CLI Mode
 
 ```bash
 npm run cli
 ```
 
-纯命令行模式，不启动 Electron 和 WebSocket 服务，直接在终端交互。
+Pure command-line mode, without Electron or WebSocket services, directly interacting in the terminal.
 
-适合：
-- 服务器环境
-- 无图形界面的远程连接
-- 资源受限环境
+Suitable for:
+- Server environments
+- Remote connections without a GUI
+- Resource-constrained environments
 
-#### 会话选择器（正在测试 暂未上线）
+#### Session Selector (In Testing — Not Yet Released)
 
-启动时（CLI 和 Electron 模式）会显示会话选择界面，用户可以选择进入已有会话或创建新会话。
+On startup (both CLI and Electron modes), a session selection interface will be displayed, allowing users to choose an existing session or create a new one.
 
-**CLI 模式会话选择：**
+**CLI Mode Session Selection:**
 
 ```
   ────────────────────────────────────────────
-  📋 选择会话：
-    0 - 创建新会话
-    1 - 默认会话 ◀ 当前
-        最后活跃: 06/20 15:30
-    2 - 工作讨论
-        最后活跃: 06/19 10:22
+  📋 Select Session:
+    0 - Create New Session
+    1 - Default Session ◀ Current
+        Last Active: 06/20 15:30
+    2 - Work Discussion
+        Last Active: 06/19 10:22
   ────────────────────────────────────────────
-  请输入编号: _
+  Enter number: _
 ```
 
-输入编号直接进入对应会话，输入 `0` 创建新会话。
+Enter the number to enter the corresponding session, or enter `0` to create a new session.
 
-**Electron 模式会话选择：**
+**Electron Mode Session Selection:**
 
-桌面窗口启动后显示会话列表，点击会话卡片进入对应会话，点击"新建会话"按钮创建新会话。
+After the desktop window starts, a session list is displayed. Click a session card to enter that session, or click the "New Session" button to create one.
 
 ---
 
-## 持续思考循环
+## Continuous Thinking Loop
 
-Agent 的核心是一个持续运行的思考循环。启动后，Agent 每隔 3 秒（可通过 `thinkingInterval` 配置）自动触发一轮思考流程：
+The core of the Agent is a continuously running thinking loop. After startup, the Agent automatically triggers one round of the thinking process every 3 seconds (configurable via `thinkingInterval`):
 
-1. 构建当前消息上下文（包括系统 prompt、工具注册表、历史对话）
-2. 调用 AI API（流式返回）
-3. 解析 AI 输出：
-   - 普通文本 → 直接追加到回复
-   - 工具调用 → 执行工具函数，结果追加到上下文
-   - WAIT 标记 → 暂停，等待用户输入
+1. Build the current message context (including system prompt, tool registry, and conversation history)
+2. Call the AI API (streaming response)
+3. Parse the AI output:
+   - Plain text → Directly appended to the reply
+   - Tool call → Execute the tool function, append the result to the context
+   - WAIT marker → Pause and wait for user input
 
-用户可随时通过 `ENTER` 打断当前思考，直接输入指令。
+Users can interrupt the current thinking at any time by pressing `ENTER` to enter input mode.
 
-## 工具系统
+## Tool System
 
-工具系统由 `registry.js` 统一管理，所有工具函数通过 `[TOOL] functionName(args) [/TOOL]` 格式调用。
+The tool system is managed uniformly by `registry.js`. All tool functions are called using the `[TOOL] functionName(args) [/TOOL]` format.
 
-### 工具分类
+### Tool Categories
 
-| 分类 | 文件 | 主要功能 |
-|------|------|----------|
-| 文件操作 | `file.js` | `ls`, `read`, `create`, `copy`, `mkdir`, `delete`, `move` |
-| 网页工具 | `web.js` | `search`, `browse`, `fetchPage`, `searchOnEngine` |
-| 浏览器自动化 | `browser.js` | `initBrowser`, `clickElement`, `fillField`, `takeScreenshot` |
-| 系统操作 | `system.js` | `listApps`, `openApp`, `closeApp` |
-| 代码执行 | `code.js` | `executeCode`, `runJavaScript`, `runPython` |
+| Category | File | Main Functions |
+|----------|------|----------------|
+| File Operations | `file.js` | `ls`, `read`, `create`, `copy`, `mkdir`, `delete`, `move` |
+| Web Tools | `web.js` | `search`, `browse`, `fetchPage`, `searchOnEngine` |
+| Browser Automation | `browser.js` | `initBrowser`, `clickElement`, `fillField`, `takeScreenshot` |
+| System Operations | `system.js` | `listApps`, `openApp`, `closeApp` |
+| Code Execution | `code.js` | `executeCode`, `runJavaScript`, `runPython` |
 | Git | `git.js` | `gitStatus`, `gitCommit`, `gitPush`, `gitPull`, `gitDiff`, `gitLog` |
-| 任务管理 | `task.js` | `createTask`, `getTasks`, `completeTask`, `splitTask` |
-| 记忆系统 | `memory.js` | `addMemory`, `searchMemory`, `getRelatedMemories`, `deleteMemory` |
-| 数据处理 | `data.js` | `readCSV`, `writeJSON`, `csvToJSON`, `queryData` |
-| 数据库 | `db.js` | `executeSQL`, `query`, `insert`, `update`, `createTable`, `getTables` |
-| 邮件 | `email.js` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail` |
-| 系统监控 | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `monitorSystem` |
-| 定时任务 | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `toggleScheduleTask` |
-| 图像识别 | `ocr.js` | `ocr`, `ocrBatch` |
+| Task Management | `task.js` | `createTask`, `getTasks`, `completeTask`, `splitTask` |
+| Memory System | `memory.js` | `addMemory`, `searchMemory`, `getRelatedMemories`, `deleteMemory` |
+| Data Processing | `data.js` | `readCSV`, `writeJSON`, `csvToJSON`, `queryData` |
+| Database | `db.js` | `executeSQL`, `query`, `insert`, `update`, `createTable`, `getTables` |
+| Email | `email.js` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail` |
+| System Monitoring | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `monitorSystem` |
+| Scheduled Tasks | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `toggleScheduleTask` |
+| Image Recognition | `ocr.js` | `ocr`, `ocrBatch` |
 
-### 工具注册机制
+### Tool Registration Mechanism
 
-工具函数统一注册到注册表，包含以下元数据：
+Tool functions are uniformly registered in the registry, containing the following metadata:
 
 ```javascript
 {
-  name: '函数名',
-  description: '函数描述',
+  name: 'functionName',
+  description: 'Function description',
   parameters: { /* JSON Schema */ },
-  category: '分类',
-  dangerLevel: 'none | low | medium | high',  // 危险操作需用户确认
-  fn: async (args) => { /* 实现 */ }
+  category: 'category',
+  dangerLevel: 'none | low | medium | high',  // Dangerous operations require user confirmation
+  fn: async (args) => { /* Implementation */ }
 }
 ```
 
-### 工具调用示例
+### Tool Call Example
 
 ```
 AI: [TOOL] ls("/project/src") [/TOOL]
-→ 返回目录文件列表
+→ Returns directory file list
 
 AI: [TOOL] runPython("print('hello')") [/TOOL]
-→ 执行 Python 代码，返回输出
+→ Executes Python code, returns output
 ```
 
-> 详细工具开发文档参见 [src/agent/tools/TOOL_DEVELOPMENT.md](src/agent/tools/TOOL_DEVELOPMENT.md)
+> Detailed tool development documentation can be found at [src/agent/tools/TOOL_DEVELOPMENT.md](src/agent/tools/TOOL_DEVELOPMENT.md)
 
-### 浏览器自动化详解
+### Browser Automation In Detail
 
-浏览器自动化工具基于 Playwright 实现，支持网页交互、截图、表单填写等操作。
+The browser automation tool is based on Playwright, supporting web page interaction, screenshots, form filling, and more.
 
 ![](introduction/web.png)
 
-#### 核心工具
+#### Core Tools
 
-| 工具 | 说明 | 参数 |
-|------|------|------|
-| `initBrowser` | 初始化浏览器实例 | 无 |
-| `navigateTo` | 导航到指定 URL | `url` |
-| `clickElement` | 点击页面元素 | `selector` |
-| `fillField` | 填写表单字段 | `selector`, `value` |
-| `takeScreenshot` | 截取页面截图 | `selector`（可选） |
-| `getText` | 获取元素文本 | `selector` |
-| `waitForElement` | 等待元素出现 | `selector`, `timeout` |
-| `closeBrowser` | 关闭浏览器实例 | 无 |
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `initBrowser` | Initialize browser instance | None |
+| `navigateTo` | Navigate to specified URL | `url` |
+| `clickElement` | Click a page element | `selector` |
+| `fillField` | Fill a form field | `selector`, `value` |
+| `takeScreenshot` | Take a page screenshot | `selector` (optional) |
+| `getText` | Get element text | `selector` |
+| `waitForElement` | Wait for an element to appear | `selector`, `timeout` |
+| `closeBrowser` | Close the browser instance | None |
 
-#### 使用示例
+#### Usage Examples
 
-**基本网页浏览：**
+**Basic Web Browsing:**
 
 ```javascript
-// 初始化浏览器
+// Initialize browser
 [TOOL] initBrowser() [/TOOL]
 
-// 导航到网页
+// Navigate to webpage
 [TOOL] navigateTo("https://example.com") [/TOOL]
 
-// 截取整页截图
+// Take full-page screenshot
 [TOOL] takeScreenshot() [/TOOL]
 
-// 关闭浏览器
+// Close browser
 [TOOL] closeBrowser() [/TOOL]
 ```
 
-**表单填写与提交：**
+**Form Filling and Submission:**
 
 ```javascript
-// 初始化并导航
+// Initialize and navigate
 [TOOL] initBrowser() [/TOOL]
 [TOOL] navigateTo("https://login.example.com") [/TOOL]
 
-// 填写登录表单
+// Fill login form
 [TOOL] fillField("#username", "myuser") [/TOOL]
 [TOOL] fillField("#password", "mypassword") [/TOOL]
 
-// 点击登录按钮
+// Click login button
 [TOOL] clickElement("#login-button") [/TOOL]
 
-// 等待登录成功
+// Wait for successful login
 [TOOL] waitForElement(".dashboard", 5000) [/TOOL]
 
-// 截取登录后页面
+// Take screenshot of logged-in page
 [TOOL] takeScreenshot() [/TOOL]
 ```
 
-**数据抓取：**
+**Data Scraping:**
 
 ```javascript
-// 导航到目标页面
+// Navigate to target page
 [TOOL] navigateTo("https://news.example.com") [/TOOL]
 
-// 获取标题列表
+// Get title list
 [TOOL] getText(".article-title") [/TOOL]
 
-// 截取特定区域
+// Take screenshot of specific area
 [TOOL] takeScreenshot(".main-content") [/TOOL]
 ```
 
-#### 浏览器配置
+#### Browser Configuration
 
-**浏览器类型：**
+**Browser Type:**
 
-默认使用 Chromium，可通过配置切换：
+Chromium is used by default, can be switched via configuration:
 
 ```json
 {
   "browser": {
     "type": "chromium",  // chromium | firefox | webkit
-    "headless": true,    // 无头模式
-    "timeout": 30000     // 默认超时（ms）
+    "headless": true,    // Headless mode
+    "timeout": 30000     // Default timeout (ms)
   }
 }
 ```
 
-**安全限制：**
+**Security Restrictions:**
 
-- 浏览器实例最多存活 5 分钟
-- 自动关闭长时间未操作的浏览器
-- 禁止访问本地文件系统 URL（file://）
-- 截图自动保存到临时目录，定期清理
+- Browser instances live for a maximum of 5 minutes
+- Automatically close browsers that have been idle for too long
+- Access to local file system URLs (file://) is prohibited
+- Screenshots are automatically saved to a temporary directory and cleaned up periodically
 
-#### 最佳实践
+#### Best Practices
 
-1. **及时关闭浏览器** - 避免资源浪费
-2. **使用无头模式** - 提高执行效率
-3. **合理设置超时** - 防止页面加载卡死
-4. **选择器优先级** - ID > Class > XPath
-5. **错误处理** - 检查元素是否存在再操作
+1. **Close browsers promptly** — Avoid resource waste
+2. **Use headless mode** — Improve execution efficiency
+3. **Set reasonable timeouts** — Prevent page loading from hanging
+4. **Selector priority** — ID > Class > XPath
+5. **Error handling** — Check if elements exist before operating
 
-### 数据库操作详解
+### Database Operations In Detail
 
-数据库工具支持 SQLite 数据库的创建、查询、插入、更新等操作。
+The database tool supports SQLite database creation, querying, insertion, updating, and more.
 
-#### 核心工具
+#### Core Tools
 
-| 工具 | 说明 | 参数 |
-|------|------|------|
-| `executeSQL` | 执行任意 SQL 语句 | `sql` |
-| `query` | 执行查询语句 | `sql`, `params`（可选） |
-| `insert` | 插入数据 | `table`, `data` |
-| `update` | 更新数据 | `table`, `data`, `where` |
-| `delete` | 删除数据 | `table`, `where` |
-| `executeTransaction` | 执行事务 | `statements` |
-| `createTable` | 创建表 | `tableName`, `schema` |
-| `listTables` | 列出所有表 | 无 |
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `executeSQL` | Execute arbitrary SQL statements | `sql` |
+| `query` | Execute query statements | `sql`, `params` (optional) |
+| `insert` | Insert data | `table`, `data` |
+| `update` | Update data | `table`, `data`, `where` |
+| `delete` | Delete data | `table`, `where` |
+| `executeTransaction` | Execute a transaction | `statements` |
+| `createTable` | Create a table | `tableName`, `schema` |
+| `listTables` | List all tables | None |
 
-#### 使用示例
+#### Usage Examples
 
-**创建表：**
+**Create Table:**
 
 ```javascript
 [TOOL] createTable("users", {
@@ -377,52 +377,52 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 }) [/TOOL]
 ```
 
-**插入数据：**
+**Insert Data:**
 
 ```javascript
-// 单条插入
+// Single insert
 [TOOL] insert("users", {
-  name: "张三",
-  email: "zhangsan@example.com",
+  name: "John Doe",
+  email: "john@example.com",
   created_at: Date.now()
 }) [/TOOL]
 
-// 批量插入
+// Batch insert
 [TOOL] executeTransaction([
-  { sql: "INSERT INTO users (name, email) VALUES (?, ?)", params: ["张三", "zhang@example.com"] },
-  { sql: "INSERT INTO users (name, email) VALUES (?, ?)", params: ["李四", "li@example.com"] }
+  { sql: "INSERT INTO users (name, email) VALUES (?, ?)", params: ["John", "john@example.com"] },
+  { sql: "INSERT INTO users (name, email) VALUES (?, ?)", params: ["Jane", "jane@example.com"] }
 ]) [/TOOL]
 ```
 
-**查询数据：**
+**Query Data:**
 
 ```javascript
-// 简单查询
+// Simple query
 [TOOL] query("SELECT * FROM users") [/TOOL]
 
-// 条件查询
-[TOOL] query("SELECT * FROM users WHERE name = ?", ["张三"]) [/TOOL]
+// Conditional query
+[TOOL] query("SELECT * FROM users WHERE name = ?", ["John"]) [/TOOL]
 
-// 排序查询
+// Sorted query
 [TOOL] query("SELECT * FROM users ORDER BY created_at DESC LIMIT 10") [/TOOL]
 ```
 
-**更新数据：**
+**Update Data:**
 
 ```javascript
 [TOOL] update("users", 
   { email: "newemail@example.com" },
-  { name: "张三" }
+  { name: "John" }
 ) [/TOOL]
 ```
 
-**删除数据：**
+**Delete Data:**
 
 ```javascript
-[TOOL] delete("users", { name: "张三" }) [/TOOL]
+[TOOL] delete("users", { name: "John" }) [/TOOL]
 ```
 
-**事务操作：**
+**Transaction Operations:**
 
 ```javascript
 [TOOL] executeTransaction([
@@ -432,9 +432,9 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ]) [/TOOL]
 ```
 
-#### 数据库配置
+#### Database Configuration
 
-**数据库路径：**
+**Database Path:**
 
 ```json
 {
@@ -445,224 +445,224 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 }
 ```
 
-**安全限制：**
+**Security Restrictions:**
 
-- 只能访问工作区内的数据库文件
-- 禁止执行 DROP DATABASE 等危险操作
-- 事务失败自动回滚
-- 查询结果最多返回 1000 行
+- Can only access database files within the workspace
+- Dangerous operations like DROP DATABASE are prohibited
+- Transactions automatically roll back on failure
+- Query results return at most 1000 rows
 
-#### 数据库管理
+#### Database Management
 
-**列出所有表：**
+**List All Tables:**
 
 ```javascript
 [TOOL] listTables() [/TOOL]
 // → ["users", "tasks", "memories"]
 ```
 
-**获取表结构：**
+**Get Table Schema:**
 
 ```javascript
 [TOOL] query("PRAGMA table_info(users)") [/TOOL]
 ```
 
-**数据库备份：**
+**Database Backup:**
 
 ```javascript
-// 导出数据库
+// Export database
 [TOOL] executeSQL("SELECT * FROM users") [/TOOL]
-// 将结果保存为 JSON 文件
+// Save results as JSON file
 [TOOL] create("./backup/users.json", JSON.stringify(result)) [/TOOL]
 ```
 
-#### 最佳实践
+#### Best Practices
 
-1. **使用事务** - 批量操作时使用事务提高性能
-2. **参数化查询** - 防止 SQL 注入
-3. **索引优化** - 为常用查询字段创建索引
-4. **定期备份** - 导出重要数据
-5. **错误处理** - 检查 SQL 执行结果
+1. **Use transactions** — Use transactions for batch operations to improve performance
+2. **Parameterized queries** — Prevent SQL injection
+3. **Index optimization** — Create indexes for frequently queried fields
+4. **Regular backups** — Export important data
+5. **Error handling** — Check SQL execution results
 
-### 图像文字识别（OCR）详解
+### Optical Character Recognition (OCR) In Detail
 
-OCR 工具基于视觉大模型（如 Qwen2.5-VL-32B-Instruct）实现图像文字识别能力，支持常见图片格式的文字提取。
+The OCR tool is based on vision-language models (such as Qwen2.5-VL-32B-Instruct) to recognize text from images, supporting common image formats.
 
-#### 核心工具
+#### Core Tools
 
-| 工具 | 说明 | 参数 |
-|------|------|------|
-| `ocr` | 识别单张图片中的文字 | `imagePath`（图片路径，支持相对/绝对路径） |
-| `ocrBatch` | 批量识别多张图片文字 | `images`（多个图片路径，用英文逗号分隔） |
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `ocr` | Recognize text from a single image | `imagePath` (image path, supports relative/absolute paths) |
+| `ocrBatch` | Batch recognize text from multiple images | `images` (multiple image paths, separated by commas) |
 
-#### 支持格式
+#### Supported Formats
 
-| 格式 | 扩展名 | 说明 |
-|------|--------|------|
-| JPEG | `.jpg` `.jpeg` | 最常用的压缩图片格式 |
-| PNG | `.png` | 无损压缩，支持透明背景 |
-| WebP | `.webp` | 现代高效压缩格式 |
-| BMP | `.bmp` | 位图，无压缩 |
-| GIF | `.gif` | 动图（取第一帧） |
+| Format | Extension | Description |
+|--------|-----------|-------------|
+| JPEG | `.jpg` `.jpeg` | Most commonly used compressed image format |
+| PNG | `.png` | Lossless compression, supports transparent backgrounds |
+| WebP | `.webp` | Modern efficient compression format |
+| BMP | `.bmp` | Bitmap, uncompressed |
+| GIF | `.gif` | Animated images (takes the first frame) |
 
-#### 使用示例
+#### Usage Examples
 
-**单张图片识别：**
+**Single Image Recognition:**
 
 ```javascript
-// 识别本地图片中的文字
+// Recognize text from a local image
 [TOOL] ocr("/path/to/screenshot.png") [/TOOL]
-// → 返回识别出的文本内容
+// → Returns the recognized text content
 
-// 识别工作区内的图片
+// Recognize an image within the workspace
 [TOOL] ocr("documents/invoice.jpg") [/TOOL]
-// → 识别发票图片中的文字信息
+// → Recognizes text information from an invoice image
 ```
 
-**批量识别多张图片：**
+**Batch Recognition:**
 
 ```javascript
-// 批量识别多张截图
+// Batch recognize multiple screenshots
 [TOOL] ocrBatch("img1.jpg, img2.png, img3.webp") [/TOOL]
-// → 依次返回每张图片的识别结果
+// → Returns recognition results for each image sequentially
 ```
 
-**配合其他工具使用：**
+**Combining with Other Tools:**
 
 ```javascript
-// 先获取目录下的图片文件，再识别
+// First get files in the directory, then recognize
 [TOOL] ls("./screenshots") [/TOOL]
 // → ["page1.png", "page2.png", "page3.png"]
 
-// 识别其中一张图片
+// Recognize one of the images
 [TOOL] ocr("./screenshots/page1.png") [/TOOL]
-// → 返回图片中的文字内容
+// → Returns text content from the image
 ```
 
-#### OCR 配置
+#### OCR Configuration
 
-在 `config.json` 中配置 OCR 相关参数：
+Configure OCR-related parameters in `config.json`:
 
 ```json
 {
   "ocr": {
-    "provider": "",              // OCR 服务提供商（可选）
-    "baseURL": "",              // OCR API 基础地址，不填则使用 api.baseURL
-    "apiKey": "",               // OCR API 密钥（必需）
-    "model": "Qwen2.5-VL-32B-Instruct"  // 视觉模型名称
+    "provider": "",              // OCR service provider (optional)
+    "baseURL": "",              // OCR API base URL, uses api.baseURL if empty
+    "apiKey": "",               // OCR API key (required)
+    "model": "Qwen2.5-VL-32B-Instruct"  // Vision model name
   }
 }
 ```
 
-**配置说明：**
+**Configuration Description:**
 
-| 字段 | 必需 | 说明 | 默认值 |
-|------|------|------|--------|
-| `apiKey` | ✅ | OCR 服务的 API 密钥 | - |
-| `baseURL` | ⚠️ | API 服务地址，不填则使用主 API 地址 | `api.baseURL` |
-| `model` | ✅ | 视觉大模型名称，需支持图像输入 | `Qwen2.5-VL-32B-Instruct` |
-| `provider` | ⚠️ | 服务商标识，用于区分不同提供商 | - |
+| Field | Required | Description | Default |
+|-------|----------|-------------|---------|
+| `apiKey` | ✅ | API key for OCR service | - |
+| `baseURL` | ⚠️ | API service URL, uses main API URL if not set | `api.baseURL` |
+| `model` | ✅ | Vision model name, must support image input | `Qwen2.5-VL-32B-Instruct` |
+| `provider` | ⚠️ | Service provider identifier, for distinguishing different providers | - |
 
-#### 支持的视觉模型
+#### Supported Vision Models
 
-| 模型名称 | 说明 |
-|----------|------|
-| `Qwen2.5-VL-32B-Instruct` | 阿里通义千问视觉模型，推荐使用 |
-| `gpt-4o` / `gpt-4o-mini` | OpenAI 视觉模型，需配置对应 API |
-| `claude-3-opus` / `claude-3-sonnet` | Anthropic 视觉模型 |
-| `gemini-1.5-pro` / `gemini-1.5-flash` | Google 视觉模型 |
+| Model Name | Description |
+|------------|-------------|
+| `Qwen2.5-VL-32B-Instruct` | Alibaba Tongyi Qianwen vision model, recommended |
+| `gpt-4o` / `gpt-4o-mini` | OpenAI vision models, requires corresponding API configuration |
+| `claude-3-opus` / `claude-3-sonnet` | Anthropic vision models |
+| `gemini-1.5-pro` / `gemini-1.5-flash` | Google vision models |
 
-#### 图片要求
+#### Image Requirements
 
-| 项目 | 限制 | 说明 |
-|------|------|------|
-| 文件大小 | ≤ 10 MB | 过大的图片会导致 API 请求失败 |
-| 格式支持 | 5 种 | JPEG、PNG、WebP、BMP、GIF |
-| 文字清晰度 | 建议 ≥ 12pt | 过小或模糊的文字可能识别不准确 |
-| 路径编码 | UTF-8 | 中文路径需确保文件系统支持 |
+| Item | Limit | Description |
+|------|-------|-------------|
+| File Size | ≤ 10 MB | Larger images may cause API request failures |
+| Format Support | 5 types | JPEG, PNG, WebP, BMP, GIF |
+| Text Clarity | ≥ 12pt recommended | Text that is too small or blurry may not be recognized accurately |
+| Path Encoding | UTF-8 | Ensure file system supports Chinese paths |
 
-#### 使用流程
+#### Usage Flow
 
 ```
-1. 在 config.json 中配置 ocr.apiKey 和 ocr.model
-2. 在对话中让 Agent 调用 ocr(imagePath)
-3. Agent 将图片编码为 base64，通过多模态 API 发送
-4. AI 模型识别图片中的文字并返回结果
-5. 结果以文本形式追加到对话上下文中
+1. Configure ocr.apiKey and ocr.model in config.json
+2. Ask the Agent to call ocr(imagePath) in conversation
+3. Agent encodes the image to base64 and sends via multimodal API
+4. AI model recognizes text in the image and returns results
+5. Results are appended to the conversation context as text
 ```
 
-#### 最佳实践
+#### Best Practices
 
-1. **确保图片清晰度** - 文字越大越清晰，识别效果越好
-2. **控制图片大小** - 建议压缩到 5MB 以内，加快处理速度
-3. **合理使用批量** - `ocrBatch` 会依次调用 API，注意 API 频率限制
-4. **路径正确** - 相对路径相对于配置的 workspace，或使用绝对路径
-5. **API 密钥保护** - 不要将 `config.json` 提交到公开仓库
+1. **Ensure image clarity** — Larger and clearer text yields better recognition results
+2. **Control image size** — Recommend compressing to under 5MB for faster processing
+3. **Use batch wisely** — `ocrBatch` calls the API sequentially; be mindful of API rate limits
+4. **Correct paths** — Relative paths are relative to the configured workspace, or use absolute paths
+5. **Protect API keys** — Do not commit `config.json` to public repositories
 
-#### 常见问题
+#### Common Issues
 
-| 问题 | 原因 | 解决方案 |
-|------|------|----------|
-| 提示「API 密钥未配置」 | `ocr.apiKey` 为空 | 在 config.json 中填入正确的 API 密钥 |
-| 「文件不存在」 | 图片路径错误 | 检查路径是否正确，相对路径是否相对于 workspace |
-| 「格式不支持」 | 文件扩展名不在支持列表 | 将图片转换为 JPEG/PNG/WebP 等格式 |
-| 「文件过大」 | 图片超过 10MB | 使用图片压缩工具减小文件大小 |
-| API 请求超时/失败 | 网络问题或 API 服务不可用 | 检查网络连接，确认 API 服务正常 |
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| "API key not configured" | `ocr.apiKey` is empty | Fill in the correct API key in config.json |
+| "File not found" | Incorrect image path | Check if the path is correct, and if relative paths are relative to workspace |
+| "Unsupported format" | File extension not in support list | Convert the image to JPEG/PNG/WebP etc. |
+| "File too large" | Image exceeds 10MB | Use image compression tools to reduce file size |
+| API request timeout/failure | Network issues or API service unavailable | Check network connection, confirm API service is functional |
 
-#### 环境变量配置
+#### Environment Variable Configuration
 
-也可以通过环境变量配置 OCR（优先级高于 config.json）：
+OCR can also be configured via environment variables (higher priority than config.json):
 
 ```bash
-# OCR API 密钥（必需）
+# OCR API key (required)
 OCR_API_KEY=your-ocr-api-key-here
 
-# OCR API 基础地址（可选，不填则使用主 API 地址）
+# OCR API base URL (optional, uses main API URL if not set)
 OCR_API_BASE_URL=https://api.example.com/v1
 
-# OCR 视觉模型名称（可选，默认为 Qwen2.5-VL-32B-Instruct）
+# OCR vision model name (optional, defaults to Qwen2.5-VL-32B-Instruct)
 OCR_MODEL=Qwen2.5-VL-32B-Instruct
 
-# OCR 服务提供商（可选）
+# OCR service provider (optional)
 OCR_PROVIDER=qwen
 ```
 
-## 记忆系统
+## Memory System
 
-记忆系统基于 SQLite 实现，提供长期信息存储和语义检索能力。
+The memory system is based on SQLite, providing long-term information storage and semantic retrieval capabilities.
 
-### 核心操作
+### Core Operations
 
-| 操作 | 函数 | 说明 |
-|------|------|------|
-| 添加记忆 | `addMemory(content, tags, metadata)` | 存储信息及标签 |
-| 搜索记忆 | `searchMemory(keyword)` | 关键词模糊搜索 |
-| 语义搜索 | `getRelatedMemories(text)` | 基于嵌入向量的语义搜索 |
-| 删除记忆 | `deleteMemory(id)` | 按 ID 删除 |
+| Operation | Function | Description |
+|-----------|----------|-------------|
+| Add Memory | `addMemory(content, tags, metadata)` | Store information with tags |
+| Search Memory | `searchMemory(keyword)` | Keyword fuzzy search |
+| Semantic Search | `getRelatedMemories(text)` | Embedding-based semantic search |
+| Delete Memory | `deleteMemory(id)` | Delete by ID |
 
-### 数据结构
+### Data Structure
 
 ```sql
 CREATE TABLE memories (
   id TEXT PRIMARY KEY,
   content TEXT NOT NULL,
-  tags TEXT,           -- JSON 数组
-  embedding BLOB,      -- 嵌入向量
-  metadata TEXT,       -- JSON 对象
+  tags TEXT,           -- JSON array
+  embedding BLOB,      -- Embedding vector
+  metadata TEXT,       -- JSON object
   created_at INTEGER
 );
 ```
 
-### 检索机制
+### Retrieval Mechanism
 
-- **关键词搜索**：LIKE 模糊匹配
-- **语义搜索**：计算余弦相似度，返回相关记忆
+- **Keyword Search**: LIKE fuzzy matching
+- **Semantic Search**: Cosine similarity calculation, returns related memories
 
-## 任务管理系统
+## Task Management System
 
-任务管理系统基于 SQLite 存储，支持任务的创建、分解、状态追踪。
+The task management system is based on SQLite storage, supporting task creation, decomposition, and status tracking.
 
-### 数据结构
+### Data Structure
 
 ```sql
 CREATE TABLE tasks (
@@ -677,187 +677,187 @@ CREATE TABLE tasks (
 );
 ```
 
-### 核心操作
+### Core Operations
 
-| 操作 | 函数 | 说明 |
-|------|------|------|
-| 创建任务 | `createTask(title, description, priority)` | 新建任务 |
-| 获取任务 | `getTasks(filter)` | 按状态/优先级筛选 |
-| 更新状态 | `completeTask(id)` | 标记为已完成 |
-| 分解任务 | `splitTask(parentId, subtasks)` | 拆分为子任务 |
+| Operation | Function | Description |
+|-----------|----------|-------------|
+| Create Task | `createTask(title, description, priority)` | Create a new task |
+| Get Tasks | `getTasks(filter)` | Filter by status/priority |
+| Update Status | `completeTask(id)` | Mark as completed |
+| Decompose Task | `splitTask(parentId, subtasks)` | Split into subtasks |
 
-### 任务状态流转
+### Task Status Flow
 
 ```
 pending → in_progress → completed
 ```
 
-子任务完成会自动更新父任务状态。
+Subtask completion automatically updates the parent task status.
 
-## 代码执行沙箱
+## Code Execution Sandbox
 
-代码执行模块使用 `isolated-vm` 实现进程级隔离，保障系统安全。
+The code execution module uses `isolated-vm` for process-level isolation, ensuring system security.
 
-### JavaScript 执行
+### JavaScript Execution
 
-| 安全措施 | 说明 |
-|----------|------|
-| 进程隔离 | 在独立 v8 isolate 中执行 |
-| 对象冻结 | 深度冻结 JSON、Math、Array 等内置对象 |
-| 危险对象禁用 | 禁止 `eval`、`Function`、`Proxy`、`process`、`require` |
-| 内存限制 | 128MB |
-| 超时控制 | 30秒自动终止 |
+| Security Measure | Description |
+|------------------|-------------|
+| Process Isolation | Executes in an independent v8 isolate |
+| Object Freezing | Deeply freezes built-in objects like JSON, Math, Array |
+| Dangerous Objects Disabled | Disables `eval`, `Function`, `Proxy`, `process`, `require` |
+| Memory Limit | 128MB |
+| Timeout Control | Auto-terminates after 30 seconds |
 
-### Python 执行
+### Python Execution
 
-| 安全措施 | 说明 |
-|----------|------|
-| 临时文件 | 代码写入临时 .py 文件执行 |
-| 命令注入防护 | 禁止 `subprocess`、`os.system` 等 |
-| 超时控制 | 执行完成后自动删除临时文件 |
+| Security Measure | Description |
+|------------------|-------------|
+| Temporary Files | Code written to temporary .py files for execution |
+| Command Injection Protection | Disables `subprocess`, `os.system`, etc. |
+| Timeout Control | Temporary files are automatically deleted after execution |
 
-### 执行流程
+### Execution Flow
 
 ```
 runJavaScript(code)
-  → 创建 isolate
-  → 注入冻结的内置对象
-  → 执行代码
-  → 返回结果或错误
-  → 销毁 isolate
+  → Create isolate
+  → Inject frozen built-in objects
+  → Execute code
+  → Return result or error
+  → Destroy isolate
 ```
 
-## 预设人设
+## Preset Personas
 
-人设配置存储在 `personas/` 目录，每个文件定义一个角色的人格特征。
+Persona configurations are stored in the `personas/` directory, each file defining a character's personality traits.
 
-### 人设文件格式
+### Persona File Format
 
 ```javascript
 // personas/explorer.js
 module.exports = {
   name: 'explorer',
-  description: '探索者',
-  prompt: '你是一个细心的探索者，擅长发现文件结构和代码逻辑...',
+  description: 'Explorer',
+  prompt: 'You are a careful explorer, skilled at discovering file structures and code logic...',
   temperature: 0.7,
   maxTokens: 2000
 };
 ```
 
-### 可用人设
+### Available Personas
 
-| 人设 | 说明 |
-|------|------|
-| explorer | 文件探索、项目理解 |
-| scholar | 知识研究、深度分析 |
-| assistant | 日常任务、简单问答 |
-| creative | 写作、创意生成 |
-| critic | 代码审查、建议改进 |
-| teacher | 教学、知识讲解 |
-| wenchen | 文学创作 |
-| wujiang | 决策执行、紧急处理 |
-| yingwei | 战略规划、项目管理 |
-| zhanshi | 技术攻关、问题解决 |
-| moushi | 策略分析、风险评估 |
-| jianguan | 质量把控、流程管理 |
-| xiake | 自由探索 |
+| Persona | Description |
+|---------|-------------|
+| explorer | File exploration, project understanding |
+| scholar | Knowledge research, in-depth analysis |
+| assistant | Daily tasks, simple Q&A |
+| creative | Writing, creative generation |
+| critic | Code review, improvement suggestions |
+| teacher | Teaching, knowledge explanation |
+| wenchen | Literary creation |
+| wujiang | Decision execution, emergency handling |
+| yingwei | Strategic planning, project management |
+| zhanshi | Technical problem-solving |
+| moushi | Strategic analysis, risk assessment |
+| jianguan | Quality control, process management |
+| xiake | Free exploration |
 
-切换命令：`/persona <name>`
+Switch command: `/persona <name>`
 
-### 人设系统详解
+### Persona System In Detail
 
-#### 人设文件结构
+#### Persona File Structure
 
-每个人设文件包含以下内容：
-
-```markdown
-# 人设名称
-
-你是一个[角色描述]。
-
-## 性格特点
-- 特点1
-- 特点2
-- 特点3
-
-## 说话风格
-- 风格描述
-- 常用表达方式
-
-## 行为模式
-- 主要行为特征
-- 交互偏好
-```
-
-#### 人设切换机制
-
-切换人设时会触发以下操作：
-
-1. **加载新人设文件** - 从 `personas/` 目录读取对应的 `.md` 文件
-2. **重建系统提示词** - 将新人设内容注入到系统提示词头部
-3. **清空当前上下文** - 防止旧人设的对话历史影响新行为
-4. **保存历史记录** - 归档当前会话对话
-
-#### 自定义人设
-
-创建自定义人设的步骤：
-
-1. 在 `personas/` 目录创建新的 `.md` 文件
-2. 按照上述结构编写人设内容
-3. 使用 `/persona <filename>` 命令切换
-
-**示例：创建"程序员"人设**
+Each persona file contains the following content:
 
 ```markdown
-# 程序员 (Programmer)
+# Persona Name
 
-你是一个经验丰富的程序员，专注于代码质量和最佳实践。
+You are a [role description].
 
-## 性格特点
-- 注重代码规范和可读性
-- 喜欢使用现代编程技术
-- 强调测试和文档的重要性
-- 对性能优化有深入研究
+## Personality Traits
+- Trait 1
+- Trait 2
+- Trait 3
 
-## 说话风格
-- 使用技术术语准确
-- 提供代码示例和最佳实践建议
-- 常用："让我看看代码"、"这个可以优化"
+## Speaking Style
+- Style description
+- Common expressions
 
-## 行为模式
-- 主动分析代码结构
-- 提供重构建议
-- 推荐合适的工具和库
-- 关注错误处理和边界情况
+## Behavior Patterns
+- Main behavioral characteristics
+- Interaction preferences
 ```
 
-#### 人设热切换
+#### Persona Switching Mechanism
 
-CogitoAgent 支持人设热切换，无需重启程序：
+Switching personas triggers the following operations:
 
-- 使用 `/persona <name>` 命令即可立即切换
-- 系统提示词会动态重新构建
-- 当前工作区路径会自动注入到新人设中
+1. **Load new persona file** — Read the corresponding `.md` file from the `personas/` directory
+2. **Rebuild system prompt** — Inject new persona content into the system prompt header
+3. **Clear current context** — Prevent old persona conversation history from affecting new behavior
+4. **Save historical records** — Archive current session conversations
 
-## 多会话管理（正在测试 暂未上线）
+#### Custom Personas
 
-`sessions/` 模块支持多个独立对话会话，每个会话维护独立的上下文。
+Steps to create a custom persona:
 
-### 会话存储
+1. Create a new `.md` file in the `personas/` directory
+2. Write the persona content following the above structure
+3. Use the `/persona <filename>` command to switch
+
+**Example: Creating a "Programmer" Persona**
+
+```markdown
+# Programmer
+
+You are an experienced programmer focused on code quality and best practices.
+
+## Personality Traits
+- Emphasis on code standards and readability
+- Preference for using modern programming techniques
+- Emphasis on testing and documentation
+- In-depth research on performance optimization
+
+## Speaking Style
+- Uses technical terminology accurately
+- Provides code examples and best practice suggestions
+- Commonly used: "Let me look at the code", "This can be optimized"
+
+## Behavior Patterns
+- Actively analyzes code structure
+- Provides refactoring suggestions
+- Recommends appropriate tools and libraries
+- Focuses on error handling and edge cases
+```
+
+#### Persona Hot-Switching
+
+CogitoAgent supports hot-switching personas without restarting the program:
+
+- Use the `/persona <name>` command to switch immediately
+- The system prompt is dynamically rebuilt
+- The current workspace path is automatically injected into the new persona
+
+## Multi-Session Management (In Testing — Not Yet Released)
+
+The `sessions/` module supports multiple independent conversation sessions, each maintaining its own independent context.
+
+### Session Storage
 
 ```
 data/sessions/
-├── session_abc123.json   # 会话元数据
+├── session_abc123.json   # Session metadata
 ├── session_def456.json
 └── ...
 ```
 
-### 会话元数据结构
+### Session Metadata Structure
 
 ```javascript
 {
   id: "abc123",
-  name: "项目A讨论",
+  name: "Project A Discussion",
   createdAt: 1718000000000,
   updatedAt: 1718001000000,
   messageCount: 45,
@@ -866,275 +866,275 @@ data/sessions/
 }
 ```
 
-### 会话命令
+### Session Commands
 
-| 命令 | 说明 |
-|------|------|
-| `/sessions` | 列出所有会话 |
-| `/new` | 创建新会话 |
-| `/switch <id>` | 切换会话 |
-| `/delete <id>` | 删除会话 |
-| `/rename <name>` | 重命名当前会话 |
+| Command | Description |
+|---------|-------------|
+| `/sessions` | List all sessions |
+| `/new` | Create a new session |
+| `/switch <id>` | Switch sessions |
+| `/delete <id>` | Delete a session |
+| `/rename <name>` | Rename the current session |
 
-### 上下文管理
+### Context Management
 
-- **上下文窗口**：自动压缩（150轮 或 100K token）
-- **会话隔离**：切换会话时清空当前上下文
+- **Context Window**: Auto-compression (150 turns or 100K tokens)
+- **Session Isolation**: Clear current context when switching sessions
 
-### WebSocket 通信详解
+### WebSocket Communication In Detail
 
-#### WebSocket 服务端
+#### WebSocket Server
 
-WebSocket 服务端运行在 Agent 进程中，默认端口 `9527`。
+The WebSocket server runs in the Agent process, default port `9527`.
 
-**核心功能：**
+**Core Functions:**
 
-| 功能 | 说明 |
-|------|------|
-| 连接管理 | 支持多个客户端同时连接 |
-| 消息广播 | 向所有客户端广播消息 |
-| 心跳机制 | 自动检测连接状态 |
-| 错误处理 | 连接断开自动清理 |
+| Function | Description |
+|----------|-------------|
+| Connection Management | Supports multiple clients simultaneously |
+| Message Broadcasting | Broadcasts messages to all clients |
+| Heartbeat Mechanism | Automatically detects connection status |
+| Error Handling | Automatically cleans up on disconnection |
 
-**消息格式：**
+**Message Format:**
 
 ```javascript
 {
   type: "message_type",
-  data: { /* 消息内容 */ }
+  data: { /* message content */ }
 }
 ```
 
-**消息类型：**
+**Message Types:**
 
-| 类型 | 说明 |
-|------|------|
-| `user_input` | 用户输入消息 |
-| `assistant_response` | AI 回复消息 |
-| `tool_call` | 工具调用通知 |
-| `tool_result` | 工具执行结果 |
-| `state_change` | 状态变化通知 |
-| `error` | 错误消息 |
+| Type | Description |
+|------|-------------|
+| `user_input` | User input message |
+| `assistant_response` | AI reply message |
+| `tool_call` | Tool call notification |
+| `tool_result` | Tool execution result |
+| `state_change` | State change notification |
+| `error` | Error message |
 
-#### Electron 客户端
+#### Electron Client
 
-Electron 主进程通过 WebSocket 连接到 Agent：
+The Electron main process connects to the Agent via WebSocket:
 
-**连接流程：**
+**Connection Flow:**
 
-1. Electron 主进程启动 Agent 子进程
-2. Agent 启动 WebSocket 服务端（端口 9527）
-3. Electron 通过 `agent-bridge.js` 建立 WebSocket 连接
-4. 双向通信：用户输入 → Agent → AI → 流式回复 → Electron 界面
+1. Electron main process starts the Agent subprocess
+2. Agent starts the WebSocket server (port 9527)
+3. Electron establishes a WebSocket connection via `agent-bridge.js`
+4. Bidirectional communication: User input → Agent → AI → Streaming reply → Electron UI
 
-**IPC 桥接：**
+**IPC Bridge:**
 
 ```javascript
-// Electron 主进程 → WebSocket
+// Electron main process → WebSocket
 ipcMain.on('user-input', (event, message) => {
   ws.send(JSON.stringify({ type: 'user_input', data: message }));
 });
 
-// WebSocket → Electron 主进程
+// WebSocket → Electron main process
 ws.on('message', (raw) => {
   const msg = JSON.parse(raw);
   mainWindow.webContents.send('ws-message', msg);
 });
 ```
 
-#### 自定义 WebSocket 客户端
+#### Custom WebSocket Client
 
-可以开发自定义客户端连接到 Agent：
+You can develop custom clients to connect to the Agent:
 
 ```javascript
 const WebSocket = require('ws');
 const ws = new WebSocket('ws://localhost:9527');
 
 ws.on('open', () => {
-  console.log('已连接到 Agent');
+  console.log('Connected to Agent');
   
-  // 发送用户消息
+  // Send user message
   ws.send(JSON.stringify({
     type: 'user_input',
-    data: '你好，请帮我分析这个项目'
+    data: 'Hello, please help me analyze this project'
   }));
 });
 
 ws.on('message', (raw) => {
   const msg = JSON.parse(raw);
-  console.log('收到消息:', msg.type);
+  console.log('Received message:', msg.type);
   
   if (msg.type === 'assistant_response') {
-    console.log('AI 回复:', msg.data);
+    console.log('AI reply:', msg.data);
   }
 });
 ```
 
-#### WebSocket 配置
+#### WebSocket Configuration
 
-**端口配置：**
+**Port Configuration:**
 
-可通过环境变量修改 WebSocket 端口：
+The WebSocket port can be modified via environment variable:
 
 ```bash
-WS_PORT=9527  # 默认端口
+WS_PORT=9527  # Default port
 ```
 
-**连接参数：**
+**Connection Parameters:**
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| 端口 | 9527 | WebSocket 服务端口 |
-| 重连间隔 | 3000ms | 断开后自动重连间隔 |
-| 心跳间隔 | 30000ms | 心跳检测间隔 |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| Port | 9527 | WebSocket service port |
+| Reconnect Interval | 3000ms | Auto-reconnect interval after disconnection |
+| Heartbeat Interval | 30000ms | Heartbeat detection interval |
 
-## 桌面模式
+## Desktop Mode
 
-桌面模式基于 Electron 实现，提供 GUI 交互界面。
+The desktop mode is implemented with Electron, providing a GUI interface.
 
-### 架构
+### Architecture
 
 ```mermaid
 flowchart TB
-    subgraph ElectronApp["Electron 桌面应用"]
-        Main["main.js<br/>(主进程)"]
-        Preload["preload.cjs<br/>(上下文桥接)"]
+    subgraph ElectronApp["Electron Desktop Application"]
+        Main["main.js<br/>(Main Process)"]
+        Preload["preload.cjs<br/>(Context Bridge)"]
         Main -- "IPC" --> Preload
     end
 
-    subgraph AgentProcess["Agent 独立进程"]
-        WSServer["ws-server.js<br/>(WebSocket服务端)"]
-        TerminalUI["终端 UI<br/>(readline)"]
+    subgraph AgentProcess["Agent Independent Process"]
+        WSServer["ws-server.js<br/>(WebSocket Server)"]
+        TerminalUI["Terminal UI<br/>(readline)"]
         WSServer --> TerminalUI
     end
 
     Main <==>|"WebSocket<br/>ws://:9527"| WSServer
 ```
 
-### 主要进程
+### Main Processes
 
-| 进程 | 文件 | 职责 |
-|------|------|------|
-| 主进程 | `electron/main.js` | 窗口管理、系统托盘 |
-| 预加载 | `electron/preload.cjs` | 安全上下文桥接 |
-| 桥接器 | `electron/agent-bridge.js` | WebSocket ↔ IPC 转换 |
-| WebSocket | `src/io/ws-server.js` | 实时通信（端口9527） |
+| Process | File | Responsibility |
+|---------|------|----------------|
+| Main Process | `electron/main.js` | Window management, system tray |
+| Preload | `electron/preload.cjs` | Secure context bridging |
+| Bridge | `electron/agent-bridge.js` | WebSocket ↔ IPC conversion |
+| WebSocket | `src/io/ws-server.js` | Real-time communication (port 9527) |
 
-### 窗口特性
+### Window Features
 
-| 特性 | 实现 |
-|------|------|
-| 无边框窗口 | `frame: false` |
-| 半透明背景 | `transparent: true` + CSS `backdrop-filter` |
-| 始终置顶 | `alwaysOnTop: true` |
-| 点击穿透 | `enableMouseEvents: false`（可配置） |
+| Feature | Implementation |
+|---------|----------------|
+| Frameless Window | `frame: false` |
+| Transparent Background | `transparent: true` + CSS `backdrop-filter` |
+| Always on Top | `alwaysOnTop: true` |
+| Click-Through | `enableMouseEvents: false` (configurable) |
 
 ---
 
-## 项目结构
+## Project Structure
 
 ```
 cogito-agent/
-├── src/                              # 源代码目录
-│   ├── agent/                        # 智能体核心模块
-│   │   ├── Agent.js                  # 核心智能体
-│   │   ├── state.js                  # 状态机
-│   │   ├── registry.js               # 工具注册表
-│   │   ├── commands.js               # 命令处理
-│   │   ├── session.js                # 多会话管理
-│   │   ├── prompt.js                 # 系统提示词构建
-│   │   ├── mcp.js                    # MCP 协议服务器
-│   │   ├── plugin.js                 # 插件系统
-│   │   ├── tracing.js                # 轻量可观测性
-│   │   ├── retry.js                  # 重试与熔断机制
-│   │   ├── tools/                    # 工具集（19个模块）
-│   │   │   ├── index.js              # 工具统一导出
-│   │   │   ├── path.js               # 路径安全工具
-│   │   │   ├── file.js               # 文件操作
-│   │   │   ├── web.js                # 网页工具
-│   │   │   ├── browser.js            # 浏览器自动化
-│   │   │   ├── system.js             # 系统操作
-│   │   │   ├── code.js               # 代码执行
-│   │   │   ├── sandbox.js            # 沙箱安全
-│   │   │   ├── git.js                # Git 版本控制
-│   │   │   ├── task.js               # 任务管理
-│   │   │   ├── memory.js             # 记忆系统
-│   │   │   ├── data.js               # 数据处理
-│   │   │   ├── db.js                 # 数据库
-│   │   │   ├── email.js              # 邮件功能
-│   │   │   ├── monitor.js            # 系统监控
-│   │   │   ├── scheduler.js          # 定时任务
-│   │   │   ├── ocr.js                # 图像文字识别（OCR）
-│   │   │   ├── storage.js            # 文件存储
-│   │   │   └── TOOL_DEVELOPMENT.md   # 工具开发文档
+├── src/                              # Source code directory
+│   ├── agent/                        # Core agent module
+│   │   ├── Agent.js                  # Core agent
+│   │   ├── state.js                  # State machine
+│   │   ├── registry.js               # Tool registry
+│   │   ├── commands.js               # Command handling
+│   │   ├── session.js                # Multi-session management
+│   │   ├── prompt.js                 # System prompt construction
+│   │   ├── mcp.js                    # MCP protocol server
+│   │   ├── plugin.js                 # Plugin system
+│   │   ├── tracing.js                # Lightweight observability
+│   │   ├── retry.js                  # Retry and circuit breaker
+│   │   ├── tools/                    # Toolset (19 modules)
+│   │   │   ├── index.js              # Tool unified export
+│   │   │   ├── path.js               # Path security utilities
+│   │   │   ├── file.js               # File operations
+│   │   │   ├── web.js                # Web tools
+│   │   │   ├── browser.js            # Browser automation
+│   │   │   ├── system.js             # System operations
+│   │   │   ├── code.js               # Code execution
+│   │   │   ├── sandbox.js            # Sandbox security
+│   │   │   ├── git.js                # Git version control
+│   │   │   ├── task.js               # Task management
+│   │   │   ├── memory.js             # Memory system
+│   │   │   ├── data.js               # Data processing
+│   │   │   ├── db.js                 # Database
+│   │   │   ├── email.js              # Email functionality
+│   │   │   ├── monitor.js            # System monitoring
+│   │   │   ├── scheduler.js          # Scheduled tasks
+│   │   │   ├── ocr.js                # Optical Character Recognition
+│   │   │   ├── storage.js            # File storage
+│   │   │   └── TOOL_DEVELOPMENT.md   # Tool development docs
 │   │   └── ...
-│   ├── api/                          # API 层
-│   │   ├── client.js                 # OpenAI 兼容 API 客户端
-│   │   ├── webSearch.js              # 联网搜索模块
-│   │   └── models.js                 # 多模型管理
-│   ├── io/                           # 输入输出
-│   │   ├── terminal.js               # 终端 UI
-│   │   ├── logger.js                 # 日志管理
-│   │   └── ws-server.js              # WebSocket 服务
-│   ├── config.js                     # 配置管理
-│   └── index.js                      # 应用入口
-├── electron/                         # Electron 桌面模式
-│   ├── main.js                       # 主进程
-│   ├── preload.cjs                   # 安全上下文桥接
-│   ├── agent-bridge.js               # WebSocket ↔ IPC 桥接
-│   ├── desktop/                      # 主窗口 UI
+│   ├── api/                          # API layer
+│   │   ├── client.js                 # OpenAI-compatible API client
+│   │   ├── webSearch.js              # Web search module
+│   │   └── models.js                 # Multi-model management
+│   ├── io/                           # Input/Output
+│   │   ├── terminal.js               # Terminal UI
+│   │   ├── logger.js                 # Log management
+│   │   └── ws-server.js              # WebSocket service
+│   ├── config.js                     # Configuration management
+│   └── index.js                      # Application entry
+├── electron/                         # Electron desktop mode
+│   ├── main.js                       # Main process
+│   ├── preload.cjs                   # Secure context bridge
+│   ├── agent-bridge.js               # WebSocket ↔ IPC bridge
+│   ├── desktop/                      # Main window UI
 │   │   ├── index.html
 │   │   ├── renderer.js
 │   │   └── style.css
-│   ├── setup/                       # 配置向导 UI
+│   ├── setup/                        # Setup wizard UI
 │   │   ├── setup.html
 │   │   ├── setup-renderer.js
 │   │   └── setup-style.css
-│   └── assets/                       # 桌面资源
-│       ├── zhanshi.mp4              # 虚拟人物视频
+│   └── assets/                       # Desktop assets
+│       ├── zhanshi.mp4              # Virtual character video
 │       └── README.md
-├── personas/                         # 13种预设人设
-├── tests/                            # 测试文件
-└── data/                             # 运行时数据（自动创建）
+├── personas/                         # 13 preset personas
+├── tests/                            # Test files
+└── data/                             # Runtime data (auto-created)
 ```
 
 ---
 
-## 常用命令速查
+## Common Command Reference
 
-### 会话管理
+### Session Management
 
-| 命令 | 说明 |
-|------|------|
-| `/sessions` | 查看所有会话列表 |
-| `/new` | 创建新会话 |
-| `/switch <id>` | 切换到指定会话 |
-| `/delete <id>` | 删除指定会话 |
-| `/rename <name>` | 重命名当前会话 |
+| Command | Description |
+|---------|-------------|
+| `/sessions` | View all sessions |
+| `/new` | Create a new session |
+| `/switch <id>` | Switch to specified session |
+| `/delete <id>` | Delete specified session |
+| `/rename <name>` | Rename current session |
 
-### 系统命令
+### System Commands
 
-| 命令 | 说明 |
-|------|------|
-| `/help` | 显示帮助信息 |
-| `/status` | 显示当前状态 |
-| `/config` | 显示配置信息 |
-| `/clear` | 清屏 |
-| `/persona <name>` | 切换人设 |
-| `/debug` | 切换调试模式 |
+| Command | Description |
+|---------|-------------|
+| `/help` | Display help information |
+| `/status` | Display current status |
+| `/config` | Display configuration |
+| `/clear` | Clear screen |
+| `/persona <name>` | Switch persona |
+| `/debug` | Toggle debug mode |
 
-### 交互快捷键
+### Interaction Shortcuts
 
-| 按键 | 说明 |
-|------|------|
-| `ENTER` | 打断当前思考，进入输入状态 |
-| `exit` | 退出程序 |
+| Key | Description |
+|-----|-------------|
+| `ENTER` | Interrupt current thinking, enter input mode |
+| `exit` | Exit the program |
 
 ---
 
-## 配置说明
+## Configuration Guide
 
-### 配置文件 (config.json)
+### Configuration File (config.json)
 
 ```json
 {
@@ -1165,9 +1165,9 @@ cogito-agent/
 }
 ```
 
-### 环境变量 (.env)
+### Environment Variables (.env)
 
-敏感配置建议使用环境变量：
+Sensitive configuration is recommended to use environment variables:
 
 ```bash
 COGITO_API_KEY=your-api-key-here
@@ -1177,234 +1177,234 @@ COGITO_WORKSPACE=/home/user/projects
 COGITO_EMAIL_PASSWORD=your-email-password
 ```
 
-### 工具分类配置
+### Tool Category Configuration
 
-按需加载工具分类，减少 Token 消耗：
+Load tool categories on demand to reduce token consumption:
 
-| 分类 | 说明 |
-|------|------|
-| `file` | 文件操作 |
-| `web` | 网络工具 |
-| `browser` | 浏览器自动化 |
-| `system` | 系统操作 |
-| `code` | 代码执行 |
-| `git` | Git 版本控制 |
-| `task` | 任务管理 |
-| `memory` | 记忆系统 |
-| `data` | 数据处理 |
-| `db` | 数据库 |
-| `email` | 邮件功能 |
-| `monitor` | 系统监控 |
-| `scheduler` | 定时任务 |
-| `ocr` | 图像文字识别 |
+| Category | Description |
+|----------|-------------|
+| `file` | File operations |
+| `web` | Web tools |
+| `browser` | Browser automation |
+| `system` | System operations |
+| `code` | Code execution |
+| `git` | Git version control |
+| `task` | Task management |
+| `memory` | Memory system |
+| `data` | Data processing |
+| `db` | Database |
+| `email` | Email functionality |
+| `monitor` | System monitoring |
+| `scheduler` | Scheduled tasks |
+| `ocr` | Optical Character Recognition |
 
-### 环境变量完整列表
+### Complete Environment Variables List
 
-所有可用的环境变量配置：
+All available environment variable configurations:
 
-#### API 配置
+#### API Configuration
 
-| 环境变量 | 说明 | 默认值 |
-|----------|------|--------|
-| `COGITO_API_KEY` | API 密钥（必需） | - |
-| `COGITO_API_BASE_URL` | API 服务地址 | `https://api.openai.com/v1` |
-| `COGITO_API_PROVIDER` | API 服务商名称 | `openai` |
-| `COGITO_MODEL` | 模型名称 | `gpt-4o` |
+| Environment Variable | Description | Default |
+|----------------------|-------------|---------|
+| `COGITO_API_KEY` | API key (required) | - |
+| `COGITO_API_BASE_URL` | API service URL | `https://api.openai.com/v1` |
+| `COGITO_API_PROVIDER` | API service provider name | `openai` |
+| `COGITO_MODEL` | Model name | `gpt-4o` |
 
-#### 多模型 API 密钥
+#### Multi-Model API Keys
 
-| 环境变量 | 说明 |
-|----------|------|
-| `OPENAI_API_KEY` | OpenAI API 密钥 |
-| `MOARK_API_KEY` | Moark API 密钥 |
-| `ANTHROPIC_API_KEY` | Anthropic API 密钥 |
-| `GOOGLE_API_KEY` | Google API 密钥 |
+| Environment Variable | Description |
+|----------------------|-------------|
+| `OPENAI_API_KEY` | OpenAI API key |
+| `MOARK_API_KEY` | Moark API key |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `GOOGLE_API_KEY` | Google API key |
 
-#### 思考与执行配置
+#### Thinking and Execution Configuration
 
-| 环境变量 | 说明 | 默认值 |
-|----------|------|--------|
-| `COGITO_THINKING_INTERVAL` | 思考间隔（毫秒） | `3000` |
-| `COGITO_CODE_TIMEOUT` | 代码执行超时（毫秒） | `30000` |
-| `COGITO_CODE_MAX_OUTPUT` | 代码输出最大大小（字符） | `100000` |
+| Environment Variable | Description | Default |
+|----------------------|-------------|---------|
+| `COGITO_THINKING_INTERVAL` | Thinking interval (ms) | `3000` |
+| `COGITO_CODE_TIMEOUT` | Code execution timeout (ms) | `30000` |
+| `COGITO_CODE_MAX_OUTPUT` | Max code output size (chars) | `100000` |
 
-#### 数据库配置
+#### Database Configuration
 
-| 环境变量 | 说明 | 默认值 |
-|----------|------|--------|
-| `COGITO_DATABASE_PATH` | SQLite 数据库文件路径 | `./data/example.db` |
+| Environment Variable | Description | Default |
+|----------------------|-------------|---------|
+| `COGITO_DATABASE_PATH` | SQLite database file path | `./data/example.db` |
 
-#### 邮件配置
+#### Email Configuration
 
-| 环境变量 | 说明 | 默认值 |
-|----------|------|--------|
-| `COGITO_EMAIL_HOST` | SMTP 服务器地址 | - |
-| `COGITO_EMAIL_PORT` | SMTP 端口 | `587` |
-| `COGITO_EMAIL_USER` | 邮箱用户名 | - |
-| `COGITO_EMAIL_PASSWORD` | 邮箱密码 | - |
-| `COGITO_EMAIL_FROM` | 发件人邮箱地址 | - |
+| Environment Variable | Description | Default |
+|----------------------|-------------|---------|
+| `COGITO_EMAIL_HOST` | SMTP server address | - |
+| `COGITO_EMAIL_PORT` | SMTP port | `587` |
+| `COGITO_EMAIL_USER` | Email username | - |
+| `COGITO_EMAIL_PASSWORD` | Email password | - |
+| `COGITO_EMAIL_FROM` | Sender email address | - |
 
-#### 工作区配置
+#### Workspace Configuration
 
-| 环境变量 | 说明 | 默认值 |
-|----------|------|--------|
-| `COGITO_WORKSPACE` | 工作区根路径 | 用户主目录 |
+| Environment Variable | Description | Default |
+|----------------------|-------------|---------|
+| `COGITO_WORKSPACE` | Workspace root path | User home directory |
 
-#### WebSocket 配置
+#### WebSocket Configuration
 
-| 环境变量 | 说明 | 默认值 |
-|----------|------|--------|
-| `WS_PORT` | WebSocket 端口 | `9527` |
-| `DISABLE_WS` | 禁用 WebSocket 服务 | `false` |
+| Environment Variable | Description | Default |
+|----------------------|-------------|---------|
+| `WS_PORT` | WebSocket port | `9527` |
+| `DISABLE_WS` | Disable WebSocket service | `false` |
 
-#### 调试配置
+#### Debug Configuration
 
-| 环境变量 | 说明 | 默认值 |
-|----------|------|--------|
-| `DEBUG` | 启用调试模式 | `false` |
-| `NODE_ENV` | 运行环境 | `development` |
+| Environment Variable | Description | Default |
+|----------------------|-------------|---------|
+| `DEBUG` | Enable debug mode | `false` |
+| `NODE_ENV` | Runtime environment | `development` |
 
-### 高级配置选项
+### Advanced Configuration Options
 
-#### 上下文压缩策略
+#### Context Compression Strategy
 
-**压缩触发条件：**
+**Compression Triggers:**
 
-- 对话轮数超过 150 轮
-- Token 数量超过 100K（估算）
+- Conversation turns exceed 150
+- Token count exceeds 100K (estimated)
 
-**压缩策略：**
+**Compression Strategy:**
 
 ```javascript
 {
-  COMPRESS_TURNS: 150,           // 触发压缩的轮数阈值
-  KEEP_RECENT_TURNS: 10,         // 压缩时保留的最近轮数
-  MAX_TOKEN_ESTIMATE: 100000,    // Token 上限（估算）
-  WARN_TOKEN_THRESHOLD: 80000    // Token 警告阈值（80%）
+  COMPRESS_TURNS: 150,           // Turn threshold to trigger compression
+  KEEP_RECENT_TURNS: 10,         // Recent turns to keep after compression
+  MAX_TOKEN_ESTIMATE: 100000,    // Token upper limit (estimated)
+  WARN_TOKEN_THRESHOLD: 80000    // Token warning threshold (80%)
 }
 ```
 
-**压缩流程：**
+**Compression Flow:**
 
-1. 提取最近 10 轮对话
-2. 归档之前的对话到文件
-3. 生成上下文摘要
-4. 重建对话历史
+1. Extract the last 10 conversation turns
+2. Archive previous conversations to file
+3. Generate context summary
+4. Rebuild conversation history
 
-**Token 估算方法：**
+**Token Estimation Methods:**
 
-- 中文字符：约 1 token ≈ 1.5 字符
-- 英文字符：约 1 token ≈ 4 字符
+- Chinese characters: ~1 token ≈ 1.5 characters
+- English characters: ~1 token ≈ 4 characters
 
-#### 工具输出截断配置
+#### Tool Output Truncation Configuration
 
-不同工具的输出截断限制：
+Output truncation limits for different tools:
 
-| 工具 | 截断限制 | 说明 |
-|------|----------|------|
-| `ls` | 5000字符 | 目录列表较短 |
-| `gitLog` | 10000字符 | Git 日志中等 |
-| `gitDiff` | 10000字符 | Git 差异中等 |
-| `executeCode` | 50000字符 | 代码执行结果较长 |
-| `runJavaScript` | 50000字符 | JS 执行结果 |
-| `runPython` | 50000字符 | Python 执行结果 |
-| `read` | 20000字符 | 文件内容中等 |
-| `executeSQL` | 20000字符 | 数据库查询结果 |
-| `searchMemory` | 10000字符 | 搜索结果 |
-| `default` | 10000字符 | 默认限制 |
+| Tool | Truncation Limit | Description |
+|------|------------------|-------------|
+| `ls` | 5000 chars | Directory listing is shorter |
+| `gitLog` | 10000 chars | Git log is medium length |
+| `gitDiff` | 10000 chars | Git diff is medium length |
+| `executeCode` | 50000 chars | Code execution results are longer |
+| `runJavaScript` | 50000 chars | JS execution results |
+| `runPython` | 50000 chars | Python execution results |
+| `read` | 20000 chars | File content is medium length |
+| `executeSQL` | 20000 chars | Database query results |
+| `searchMemory` | 10000 chars | Search results |
+| `default` | 10000 chars | Default limit |
 
-#### 会话归档策略
+#### Session Archiving Strategy
 
-**归档触发：**
+**Archive Triggers:**
 
-- 切换会话时自动归档当前会话
-- 压缩历史时归档旧对话
+- Automatically archive current session when switching
+- Archive old conversations when compressing history
 
-**归档文件：**
+**Archive Files:**
 
 ```
 data/sessions/
-├── session_abc123.json           # 当前会话
-├── session_abc123_archive.json   # 归档文件（最多保留3个）
-└── meta.json                     # 会话元数据
+├── session_abc123.json           # Current session
+├── session_abc123_archive.json   # Archive file (max 3 kept)
+└── meta.json                     # Session metadata
 ```
 
-**归档保留策略：**
+**Archive Retention Policy:**
 
-- 每个会话最多保留 3 个归档文件
-- 归档文件包含时间戳和对话内容
+- Each session retains a maximum of 3 archive files
+- Archive files contain timestamps and conversation content
 
-#### 思考间隔优化
+#### Thinking Interval Optimization
 
-**调整思考间隔：**
+**Adjusting Thinking Interval:**
 
 ```javascript
 // config.json
 {
   "chat": {
-    "thinkingInterval": 3000  // 默认 3 秒
+    "thinkingInterval": 3000  // Default 3 seconds
   }
 }
 
-// 或通过环境变量
-COGITO_THINKING_INTERVAL=5000  // 5 秒
+// Or via environment variable
+COGITO_THINKING_INTERVAL=5000  // 5 seconds
 ```
 
-**建议值：**
+**Recommended Values:**
 
-| 场景 | 建议间隔 | 说明 |
-|------|----------|------|
-| 快速响应 | 1000-2000ms | 适合频繁交互 |
-| 正常使用 | 3000ms | 默认值，平衡性能 |
-| 资源受限 | 5000-10000ms | 减少API调用频率 |
-| 后台运行 | 10000ms+ | 最小化资源占用 |
+| Scenario | Recommended Interval | Description |
+|----------|---------------------|-------------|
+| Fast Response | 1000-2000ms | Suitable for frequent interaction |
+| Normal Use | 3000ms | Default, balanced performance |
+| Resource-Constrained | 5000-10000ms | Reduces API call frequency |
+| Background Running | 10000ms+ | Minimizes resource usage |
 
 ---
 
-## Docker 部署
+## Docker Deployment
 
-### 环境要求
+### Requirements
 
 - Docker 20.10+
 - Docker Compose 2.0+
 
-### 快速启动
+### Quick Start
 
 ```bash
-# 克隆项目
+# Clone the project
 git clone https://gitee.com/cnt-code/cogito-agent.git
 cd cogito-agent
 
-# 创建配置文件
+# Create configuration file
 cp config.example.json config.json
-# 编辑 config.json 填入 API Key
+# Edit config.json and fill in API Key
 
-# 启动容器
+# Start container
 docker-compose up -d
 
-# 查看日志
+# View logs
 docker-compose logs -f
 ```
 
-### 配置说明
+### Configuration
 
-通过环境变量覆盖配置：
+Override configuration via environment variables:
 
-| 环境变量 | 说明 | 默认值 |
-|----------|------|--------|
-| `COGITO_API_KEY` | API 密钥 | - |
-| `COGITO_API_BASE_URL` | API 地址 | `https://api.openai.com/v1` |
-| `COGITO_MODEL` | 模型名称 | `gpt-4o` |
-| `COGITO_WORKSPACE` | 工作区目录 | `./workspace` |
-| `THINKING_INTERVAL` | 思考间隔(ms) | `3000` |
+| Environment Variable | Description | Default |
+|----------------------|-------------|---------|
+| `COGITO_API_KEY` | API key | - |
+| `COGITO_API_BASE_URL` | API URL | `https://api.openai.com/v1` |
+| `COGITO_MODEL` | Model name | `gpt-4o` |
+| `COGITO_WORKSPACE` | Workspace directory | `./workspace` |
+| `THINKING_INTERVAL` | Thinking interval (ms) | `3000` |
 
-### 手动构建
+### Manual Build
 
 ```bash
-# 构建镜像
+# Build image
 docker build -t cogito-agent .
 
-# 运行容器
+# Run container
 docker run -d \
   --name cogito-agent \
   -p 9527:9527 \
@@ -1413,7 +1413,7 @@ docker run -d \
   cogito-agent
 ```
 
-### Docker Compose 生产配置
+### Docker Compose Production Configuration
 
 ```yaml
 version: '3.8'
@@ -1437,55 +1437,55 @@ services:
 
 ---
 
-## CI/CD 集成(暂未启用)
+## CI/CD Integration (Not Yet Enabled)
 
-项目暂时未启用 Gitee Go 流水线：
+The project has not yet enabled Gitee Go pipelines:
 
-| 工作流 | 触发条件 | 功能 |
-|--------|----------|------|
-| `ci.yml` | push/PR | 自动化测试、Docker 构建 |
-| `release.yml` | tag v* | 构建镜像、创建 Gitee 发行版 |
+| Workflow | Trigger | Function |
+|----------|---------|----------|
+| `ci.yml` | push/PR | Automated tests, Docker build |
+| `release.yml` | tag v* | Build image, create Gitee release |
 
-**使用步骤：**
+**Usage Steps:**
 
-1. 在 Gitee 仓库 -> 服务 -> Gitee Go 中启用流水线功能
-2. 配置 Docker 镜像仓库凭证（可选，用于推送镜像）
-3. 推送代码触发 CI：
+1. Enable the pipeline feature in Gitee repository → Services → Gitee Go
+2. Configure Docker registry credentials (optional, for pushing images)
+3. Push code to trigger CI:
    ```bash
    git push origin develop
    ```
-4. 发布版本时打标签：
+4. Tag for release:
    ```bash
    git tag v1.0.0
    git push origin v1.0.0
    ```
 
-**Gitee Go 流水线说明：**
+**Gitee Go Pipeline Description:**
 
-- CI 流水线在 push 和 PR 时自动运行，包括测试和 Docker 镜像构建
-- Release 流水线在打 tag 时触发，需手动确认执行
-- 镜像构建完成后可手动推送到 Docker 仓库
+- CI pipeline runs on push and PR, including tests and Docker image builds
+- Release pipeline triggers on tag, requires manual confirmation
+- After image build, it can be manually pushed to Docker registry
 
 ---
 
-## 应用场景示例
+## Use Case Examples
 
-### 文件探索
+### File Exploration
 
 ```javascript
-// 分析项目结构
+// Analyze project structure
 [TOOL] ls("./src") [/TOOL]
 // → ["agent", "api", "io", "config.js", "index.js"]
 
-// 读取关键文件
+// Read key file
 [TOOL] read("./src/agent/Agent.js") [/TOOL]
-// → 返回文件内容
+// → Returns file content
 ```
 
-### 代码执行
+### Code Execution
 
 ```javascript
-// Python 脚本执行
+// Python script execution
 [TOOL] runPython(`
 import json
 data = {"fibonacci": [0, 1, 1, 2, 3, 5, 8]}
@@ -1493,7 +1493,7 @@ print(json.dumps(data))
 `) [/TOOL]
 // → {"fibonacci": [0, 1, 1, 2, 3, 5, 8]}
 
-// JavaScript 沙箱执行
+// JavaScript sandbox execution
 [TOOL] runJavaScript(`
 const arr = [1, 2, 3, 4, 5];
 const sum = arr.reduce((a, b) => a + b, 0);
@@ -1502,85 +1502,85 @@ console.log(sum);
 // → 15
 ```
 
-### Git 版本控制
+### Git Version Control
 
 ```javascript
-// 查看仓库状态
+// View repository status
 [TOOL] gitStatus() [/TOOL]
 // → { files: ["src/index.js", "README.md"], branch: "main" }
 
-// 提交更改
-[TOOL] gitCommit("feat: 添加新工具") [/TOOL]
+// Commit changes
+[TOOL] gitCommit("feat: add new tool") [/TOOL]
 // → committed (a1b2c3d)
 
-// 推送远程
+// Push to remote
 [TOOL] gitPush("origin", "main") [/TOOL]
 // → done
 ```
 
-### 数据库操作
+### Database Operations
 
 ```javascript
-// 执行 SQL
+// Execute SQL
 [TOOL] executeSQL("SELECT * FROM tasks WHERE status = 'pending'") [/TOOL]
-// → [{ id: "1", title: "任务A", status: "pending" }]
+// → [{ id: "1", title: "Task A", status: "pending" }]
 
-// 插入数据
-[TOOL] insert("tasks", { title: "新任务", priority: "high" }) [/TOOL]
-// → { id: "2", title: "新任务", priority: "high" }
+// Insert data
+[TOOL] insert("tasks", { title: "New Task", priority: "high" }) [/TOOL]
+// → { id: "2", title: "New Task", priority: "high" }
 ```
 
-### 联网搜索
+### Web Search
 
 ```javascript
-// 搜索信息
+// Search information
 [TOOL] search("Node.js 20 new features") [/TOOL]
 // → [{ title: "...", url: "...", snippet: "..." }]
 
-// 获取页面内容
+// Get page content
 [TOOL] fetchPage("https://nodejs.org/") [/TOOL]
 // → { title: "Node.js", content: "..." }
 ```
 
-### 图像文字识别（OCR）
+### Optical Character Recognition (OCR)
 
 ```javascript
-// 识别单张图片中的文字
+// Recognize text from a single image
 [TOOL] ocr("screenshots/invoice.png") [/TOOL]
-// → 返回图片中的文本内容
+// → Returns text content from the image
 
-// 批量识别多张图片
+// Batch recognize multiple images
 [TOOL] ocrBatch("page1.jpg, page2.jpg, page3.jpg") [/TOOL]
-// → 依次返回每张图片的识别结果
+// → Returns recognition results for each image sequentially
 
-// 配合文件操作工具使用
+// Combine with file operation tools
 [TOOL] ls("./photos") [/TOOL]
 // → ["meeting_notes.jpg", "whiteboard.png"]
 [TOOL] ocr("./photos/whiteboard.png") [/TOOL]
-// → 识别白板照片中的文字内容
+// → Recognize text from whiteboard photo
 ```
 
 ---
 
-## 架构设计
+## Architecture Design
 
-### 核心组件
+### Core Components
 
-| 组件 | 职责 | 说明 |
-|------|------|------|
-| **Agent.js** | 思考循环 | 每3秒自动触发一次思考 |
-| **state.js** | 状态机 | THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
-| **registry.js** | 工具注册表 | 18 个工具模块集中管理 |
-| **session.js** | 会话管理 | 多会话切换、上下文压缩 |
-| **commands.js** | 命令处理 | /help、/status 等特殊命令 |
-| **sandbox.js** | 代码沙箱 | isolated-vm 进程级隔离 |
-| **ws-server.js** | WebSocket | 桌面模式通信 |
+| Component | Responsibility | Description |
+|-----------|----------------|-------------|
+| **Agent.js** | Thinking loop | Automatically triggers thinking every 3 seconds |
+| **state.js** | State machine | THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
+| **registry.js** | Tool registry | Centralized management of 18 tool modules |
+| **session.js** | Session management | Multi-session switching, context compression |
+| **commands.js** | Command handling | Special commands like /help, /status |
+| **sandbox.js** | Code sandbox | isolated-vm process-level isolation |
+| **ws-server.js** | WebSocket | Desktop mode communication |
 
-### 模块关系
+### Module Relationships
 
 ```mermaid
 flowchart TB
-    subgraph Agent["Agent 子进程"]
+    subgraph Agent["Agent Subprocess"]
         A[Agent.js] --> S[session.js]
         A --> R[registry.js]
         A --> W[ws-server.js]
@@ -1596,132 +1596,132 @@ flowchart TB
 
 ---
 
-## 核心原理
+## Core Principles
 
-### 思考循环 (Think Cycle)
+### Think Cycle
 
-Agent 的核心是一个持续运行的思考循环，每隔固定间隔自动触发一轮思考，直到用户打断。
+The Agent's core is a continuously running thinking loop, automatically triggering one round of thinking at fixed intervals until interrupted by the user.
 
 ```mermaid
 flowchart TD
-    START([启动]) --> INIT[初始化会话<br/>加载 persona + 工具注册表]
-    INIT --> LOOP{思考循环}
+    START([Start]) --> INIT[Initialize Session<br/>Load persona + tool registry]
+    INIT --> LOOP{Think Loop}
     
-    LOOP -->|定时触发| BUILD[构建消息上下文]
-    BUILD --> CALL[调用 AI API<br/>流式返回]
-    CALL --> PARSE{解析输出}
+    LOOP -->|Timer trigger| BUILD[Build message context]
+    BUILD --> CALL[Call AI API<br/>Streaming response]
+    CALL --> PARSE{Parse output}
     
-    PARSE -->|普通文本| APPEND[追加到回复]
-    PARSE -->|工具调用| EXEC[执行工具]
-    PARSE -->|WAIT 标记| WAIT[等待用户输入]
+    PARSE -->|Plain text| APPEND[Append to reply]
+    PARSE -->|Tool call| EXEC[Execute tool]
+    PARSE -->|WAIT marker| WAIT[Wait for user input]
     
     APPEND --> LOOP
-    EXEC --> RESULT[获取工具结果]
-    RESULT -->|成功| APPEND_RESULT[结果追加到上下文]
+    EXEC --> RESULT[Get tool result]
+    RESULT -->|Success| APPEND_RESULT[Append result to context]
     APPEND_RESULT --> LOOP
     
-    WAIT -->|用户输入| HANDLE[处理用户消息]
-    HANDLE -->|普通消息| BUILD
-    HANDLE -->|命令 /xxx| CMD[执行命令]
+    WAIT -->|User input| HANDLE[Process user message]
+    HANDLE -->|Normal message| BUILD
+    HANDLE -->|Command /xxx| CMD[Execute command]
     CMD --> LOOP
 ```
 
-### 工具调用流程
+### Tool Call Flow
 
 ```mermaid
 sequenceDiagram
-    participant AI as AI 模型
-    participant Parser as 解析器
-    participant Registry as 工具注册表
-    participant Tool as 工具函数
-    participant Sandbox as 沙箱
+    participant AI as AI Model
+    participant Parser as Parser
+    participant Registry as Tool Registry
+    participant Tool as Tool Function
+    participant Sandbox as Sandbox
     
-    AI->>Parser: 输出 "[TOOL] ls("C:/") [/TOOL]"
-    Parser->>Registry: 查找 "ls"
+    AI->>Parser: Output "[TOOL] ls("C:/") [/TOOL]"
+    Parser->>Registry: Look up "ls"
     Registry-->>Parser: { fn, argCount, category }
     
-    alt 危险操作
-        Parser->>Parser: 请求用户确认
+    alt Dangerous Operation
+        Parser->>Parser: Request user confirmation
     end
     
-    Parser->>Tool: 调用 fn(args)
+    Parser->>Tool: Call fn(args)
     
-    alt 代码执行工具
-        Tool->>Sandbox: isolated-vm 隔离执行
+    alt Code Execution Tool
+        Tool->>Sandbox: isolated-vm isolated execution
     end
     
-    Parser->>AI: 结果追加到上下文
+    Parser->>AI: Append result to context
 ```
 
-### 桌面模式消息流
+### Desktop Mode Message Flow
 
 ```mermaid
 sequenceDiagram
-    participant User as 用户
-    participant UI as 桌面 UI
+    participant User as User
+    participant UI as Desktop UI
     participant Bridge as agent-bridge.js
     participant WS as ws-server.js
     participant Agent as Agent.js
 
-    User->>UI: 输入消息
+    User->>UI: Input message
     UI->>Bridge: IPC
     Bridge->>WS: JSON
     WS->>Agent: handleUserInput()
-    Agent->>AI: 流式 API 调用
+    Agent->>AI: Streaming API call
     
-    loop 流式输出
+    loop Streaming output
         AI-->>Agent: chunk
         Agent->>WS: broadcast
-        WS->>Bridge: 转发
-        Bridge->>UI: 渲染
+        WS->>Bridge: forward
+        Bridge->>UI: render
     end
 ```
 
-### 状态机
+### State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> THINKING: 启动
-    THINKING --> AWAITING_INPUT: 用户打断 / 命令
-    AWAITING_INPUT --> THINKING: 发送消息
-    THINKING --> AWAITING_CONFIRMATION: 危险操作
-    AWAITING_CONFIRMATION --> THINKING: 用户确认/拒绝
+    [*] --> THINKING: Start
+    THINKING --> AWAITING_INPUT: User interrupt / command
+    AWAITING_INPUT --> THINKING: Send message
+    THINKING --> AWAITING_CONFIRMATION: Dangerous operation
+    AWAITING_CONFIRMATION --> THINKING: User confirm/decline
 ```
 
 ---
 
-## 插件系统
+## Plugin System
 
-CogitoAgent 支持动态加载自定义工具插件，扩展 Agent 能力。
+CogitoAgent supports dynamically loading custom tool plugins to extend the Agent's capabilities.
 
-### 插件目录结构
+### Plugin Directory Structure
 
 ```
 plugins/
 └── my-plugin/
-    ├── index.js      # 插件入口（必需）
-    ├── package.json  # 插件配置（可选）
-    └── utils.js      # 辅助模块（可选）
+    ├── index.js      # Plugin entry (required)
+    ├── package.json  # Plugin configuration (optional)
+    └── utils.js      # Helper modules (optional)
 ```
 
-### 插件开发
+### Plugin Development
 
-#### 插件入口文件
+#### Plugin Entry File
 
 ```javascript
 // plugins/my-plugin/index.js
 
 /**
- * 插件必须导出工具数组
+ * Plugin must export an array of tools
  */
 export default [
   {
     name: 'myCustomTool',
-    description: '我的自定义工具',
+    description: 'My custom tool',
     category: 'custom',
     fn: async (arg1, arg2) => {
       try {
-        // 工具逻辑
+        // Tool logic
         const result = await someOperation(arg1, arg2);
         
         return {
@@ -1738,27 +1738,27 @@ export default [
   },
   {
     name: 'anotherTool',
-    description: '另一个工具',
+    description: 'Another tool',
     category: 'custom',
     fn: async (input) => {
-      // 工具实现
-      return { success: true, data: `处理: ${input}` };
+      // Tool implementation
+      return { success: true, data: `Processed: ${input}` };
     }
   }
 ];
 
 /**
- * 插件元数据（可选）
+ * Plugin metadata (optional)
  */
 export const metadata = {
   name: 'my-plugin',
   version: '1.0.0',
   author: 'Your Name',
-  description: '自定义插件描述'
+  description: 'Custom plugin description'
 };
 ```
 
-#### 插件配置文件
+#### Plugin Configuration File
 
 ```json
 // plugins/my-plugin/package.json
@@ -1771,111 +1771,111 @@ export const metadata = {
 }
 ```
 
-### 插件加载
+### Plugin Loading
 
-#### 自动加载
+#### Auto-Loading
 
-启动时自动加载 `plugins/` 目录下的所有插件：
+Automatically loads all plugins in the `plugins/` directory on startup:
 
 ```javascript
-// Agent 启动时会自动调用
+// Agent automatically calls this on startup
 const { loaded, errors } = await loadPlugins();
 
-console.log(`已加载 ${loaded} 个插件`);
+console.log(`Loaded ${loaded} plugins`);
 if (errors.length > 0) {
-  console.error('插件加载错误:', errors);
+  console.error('Plugin load errors:', errors);
 }
 ```
 
-#### 手动加载
+#### Manual Loading
 
 ```javascript
 import { getPluginManager } from './agent/plugin.js';
 
 const pm = getPluginManager();
 
-// 加载单个插件
+// Load a single plugin
 await pm.loadPlugin('my-plugin', '/path/to/plugin');
 
-// 列出已加载插件
+// List loaded plugins
 const plugins = pm.listPlugins();
 
-// 列出所有自定义工具
+// List all custom tools
 const tools = pm.listCustomTools();
 ```
 
-### 插件管理
+### Plugin Management
 
-| 操作 | 方法 | 说明 |
-|------|------|------|
-| 加载所有插件 | `loadPlugins()` | 自动加载 plugins 目录 |
-| 加载单个插件 | `pm.loadPlugin(name, path)` | 手动加载指定插件 |
-| 卸载插件 | `unloadPlugin(name)` | 移除插件及其工具 |
-| 列出插件 | `listPlugins()` | 获取已加载插件列表 |
-| 列出工具 | `listCustomTools()` | 获取所有自定义工具 |
+| Operation | Method | Description |
+|-----------|--------|-------------|
+| Load all plugins | `loadPlugins()` | Auto-load plugins directory |
+| Load single plugin | `pm.loadPlugin(name, path)` | Load specified plugin manually |
+| Unload plugin | `unloadPlugin(name)` | Remove plugin and its tools |
+| List plugins | `listPlugins()` | Get list of loaded plugins |
+| List tools | `listCustomTools()` | Get all custom tools |
 
-### 工具注册
+### Tool Registration
 
-插件工具会自动注册到全局工具注册表：
+Plugin tools are automatically registered in the global tool registry:
 
 ```javascript
-// 注册后可直接调用
-[TOOL] myCustomTool("参数1", "参数2") [/TOOL]
+// Can be called directly after registration
+[TOOL] myCustomTool("arg1", "arg2") [/TOOL]
 ```
 
-### 插件最佳实践
+### Plugin Best Practices
 
-1. **模块化设计** - 每个工具专注于单一功能
-2. **错误处理** - 所有工具必须返回 `{ success, data/error }` 格式
-3. **文档完善** - 提供清晰的工具描述和参数说明
-4. **版本管理** - 使用 package.json 管理版本信息
-5. **测试覆盖** - 为插件编写测试用例
+1. **Modular Design** — Each tool should focus on a single function
+2. **Error Handling** — All tools must return `{ success, data/error }` format
+3. **Comprehensive Documentation** — Provide clear tool descriptions and parameter documentation
+4. **Version Management** — Use package.json to manage version information
+5. **Test Coverage** — Write test cases for plugins
 
 ---
 
-## MCP 协议兼容
+## MCP Protocol Compatibility
 
-CogitoAgent 支持 MCP (Model Context Protocol) 协议，可将工具暴露为 MCP Server，供其他 AI 客户端调用。
+CogitoAgent supports the MCP (Model Context Protocol) protocol, exposing tools as an MCP Server for other AI clients to call.
 
-### MCP 协议概述
+### MCP Protocol Overview
 
-MCP 是一个标准化的协议，用于 AI 模型与外部工具之间的通信：
+MCP is a standardized protocol for communication between AI models and external tools:
 
-- 基于 JSON-RPC 2.0
-- 支持工具调用、资源访问、提示词管理
-- 提供统一的工具描述格式
+- Based on JSON-RPC 2.0
+- Supports tool calls, resource access, and prompt management
+- Provides unified tool description format
 
-### 启动 MCP 服务器
+### Starting the MCP Server
 
-#### 默认启动
+#### Default Start
 
 ```javascript
 import { startMCPServer } from './agent/mcp.js';
 
-// 默认端口 3001
+// Default port 3001
 const port = await startMCPServer();
-console.log(`MCP 服务器已启动: http://localhost:${port}`);
+console.log(`MCP Server started: http://localhost:${port}`);
 ```
 
-#### 自定义端口
+#### Custom Port
 
 ```javascript
 const port = await startMCPServer(4001);
 ```
 
-### MCP 工具列表
+### MCP Tool List
 
-MCP 服务器会自动暴露所有已注册的工具：
+The MCP server automatically exposes all registered tools:
 
 ```javascript
-// MCP 客户端请求工具列表
+// MCP client requests tool list
 {
   "jsonrpc": "2.0",
   "id": 1,
   "method": "tools/list"
 }
 
-// 响应
+// Response
 {
   "jsonrpc": "2.0",
   "id": 1,
@@ -1892,16 +1892,16 @@ MCP 服务器会自动暴露所有已注册的工具：
           "required": ["args"]
         }
       },
-      // ... 更多工具
+      // ... more tools
     ]
   }
 }
 ```
 
-### MCP 工具调用
+### MCP Tool Call
 
 ```javascript
-// MCP 客户端调用工具
+// MCP client calls a tool
 {
   "jsonrpc": "2.0",
   "id": 2,
@@ -1912,7 +1912,7 @@ MCP 服务器会自动暴露所有已注册的工具：
   }
 }
 
-// 响应
+// Response
 {
   "jsonrpc": "2.0",
   "id": 2,
@@ -1928,28 +1928,28 @@ MCP 服务器会自动暴露所有已注册的工具：
 }
 ```
 
-### MCP 资源访问
+### MCP Resource Access
 
-MCP 服务器提供资源访问接口：
+The MCP server provides resource access interfaces:
 
-| 资源 URI | 说明 |
-|----------|------|
-| `file://workspace` | 当前工作区目录 |
-| `session://current` | 当前会话信息 |
+| Resource URI | Description |
+|--------------|-------------|
+| `file://workspace` | Current workspace directory |
+| `session://current` | Current session information |
 
-### MCP 提示词
+### MCP Prompts
 
-MCP 服务器提供预设提示词：
+The MCP server provides preset prompts:
 
 ```javascript
-// 获取提示词列表
+// Get prompt list
 {
   "jsonrpc": "2.0",
   "id": 3,
   "method": "prompts/list"
 }
 
-// 响应
+// Response
 {
   "jsonrpc": "2.0",
   "id": 3,
@@ -1957,11 +1957,11 @@ MCP 服务器提供预设提示词：
     "prompts": [
       {
         "name": "explore",
-        "description": "开始探索工作区",
+        "description": "Start exploring the workspace",
         "arguments": [
           {
             "name": "path",
-            "description": "要探索的目录路径",
+            "description": "Directory path to explore",
             "required": false
           }
         ]
@@ -1971,108 +1971,108 @@ MCP 服务器提供预设提示词：
 }
 ```
 
-### MCP 客户端示例
+### MCP Client Example
 
 ```javascript
-// 使用 MCP 客户端连接
+// Connect using MCP client
 const client = new MCPClient('http://localhost:3001');
 
-// 初始化连接
+// Initialize connection
 await client.initialize();
 
-// 获取工具列表
+// Get tool list
 const tools = await client.listTools();
 
-// 调用工具
+// Call a tool
 const result = await client.callTool('ls', ['./src']);
 console.log(result.content[0].text);
 ```
 
-### MCP 配置
+### MCP Configuration
 
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| 端口 | 3001 | MCP 服务端口 |
-| 协议版本 | 2.0 | JSON-RPC 版本 |
-| CORS | 启用 | 允许跨域访问 |
+| Configuration Item | Default | Description |
+|--------------------|---------|-------------|
+| Port | 3001 | MCP service port |
+| Protocol Version | 2.0 | JSON-RPC version |
+| CORS | Enabled | Allows cross-origin access |
 
 ---
 
-## 追踪模块
+## Tracing Module
 
-CogitoAgent 内置轻量级追踪系统，记录工具执行、LLM 调用、状态转换等事件。
+CogitoAgent includes a lightweight tracing system that records tool executions, LLM calls, state transitions, and other events.
 
-### 追踪功能
+### Tracing Features
 
-| 功能 | 说明 |
-|------|------|
-| 事件记录 | 记录关键操作和状态变化 |
-| 性能监控 | 统计执行时间和频率 |
-| 错误追踪 | 记录错误信息和上下文 |
-| 数据持久化 | 保存追踪记录到文件 |
+| Feature | Description |
+|---------|-------------|
+| Event Recording | Records key operations and state changes |
+| Performance Monitoring | Statistics on execution time and frequency |
+| Error Tracking | Records error information and context |
+| Data Persistence | Saves trace records to files |
 
-### 追踪事件类型
+### Trace Event Types
 
-| 事件 | 说明 |
-|------|------|
-| `llm_call` | LLM API 调用 |
-| `tool_exec` | 工具执行 |
-| `state_change` | 状态转换 |
-| `session_start` | 会话开始 |
-| `session_end` | 会话结束 |
-| `error` | 错误事件 |
+| Event | Description |
+|-------|-------------|
+| `llm_call` | LLM API call |
+| `tool_exec` | Tool execution |
+| `state_change` | State transition |
+| `session_start` | Session start |
+| `session_end` | Session end |
+| `error` | Error event |
 
-### 启用追踪
+### Enabling Tracing
 
-追踪默认启用，可通过以下方式控制：
+Tracing is enabled by default and can be controlled as follows:
 
 ```javascript
 import { setTracingEnabled } from './agent/tracing.js';
 
-// 启用追踪
+// Enable tracing
 setTracingEnabled(true);
 
-// 禁用追踪
+// Disable tracing
 setTracingEnabled(false);
 ```
 
-### 追踪记录
+### Trace Records
 
-#### LLM 调用追踪
+#### LLM Call Tracing
 
 ```javascript
 traceLLMCall(
-  'gpt-4o',           // 模型名称
-  1500,               // 输入长度
-  800,                // 输出长度
-  2500,               // 执行时间（ms）
-  { total: 2300 }     // Token 使用统计
+  'gpt-4o',           // Model name
+  1500,               // Input length
+  800,                // Output length
+  2500,               // Execution time (ms)
+  { total: 2300 }     // Token usage stats
 );
 ```
 
-#### 工具执行追踪
+#### Tool Execution Tracing
 
 ```javascript
 traceToolExec(
-  'ls',               // 工具名称
-  ['./src'],          // 参数
-  { success: true },  // 结果
-  150,                // 执行时间（ms）
-  true                // 是否成功
+  'ls',               // Tool name
+  ['./src'],          // Arguments
+  { success: true },  // Result
+  150,                // Execution time (ms)
+  true                // Whether successful
 );
 ```
 
-#### 状态转换追踪
+#### State Transition Tracing
 
 ```javascript
 traceStateChange(
-  'THINKING',         // 原状态
-  'AWAITING_INPUT',   // 新状态
-  '用户打断'          // 原因
+  'THINKING',         // Previous state
+  'AWAITING_INPUT',   // New state
+  'User interrupted'  // Reason
 );
 ```
 
-### 追踪统计
+### Tracing Statistics
 
 ```javascript
 import { getStats } from './agent/tracing.js';
@@ -2096,22 +2096,22 @@ console.log(stats);
 // }
 ```
 
-### 追踪日志
+### Trace Logs
 
-追踪记录自动保存到文件：
+Trace records are automatically saved to files:
 
 ```
 data/logs/
 └── trace_sess_abc123_2024-01-15.json
 ```
 
-**日志内容：**
+**Log Content:**
 
 ```json
 {
   "sessionId": "sess_abc123",
   "savedAt": "2024-01-15T10:30:00Z",
-  "stats": { /* 统计信息 */ },
+  "stats": { /* Statistics */ },
   "traces": [
     {
       "id": "trace_x7y8z9",
@@ -2125,88 +2125,88 @@ data/logs/
         "duration": 120
       }
     },
-    // ... 更多追踪记录
+    // ... more trace records
   ]
 }
 ```
 
-### 追踪最佳实践
+### Tracing Best Practices
 
-1. **定期检查统计** - 监控性能和错误率
-2. **分析工具耗时** - 识别性能瓶颈
-3. **追踪错误模式** - 发现常见问题
-4. **优化高频工具** - 提升整体性能
+1. **Regularly check statistics** — Monitor performance and error rates
+2. **Analyze tool duration** — Identify performance bottlenecks
+3. **Trace error patterns** — Discover common issues
+4. **Optimize high-frequency tools** — Improve overall performance
 
 ---
 
-## 熔断器与重试机制
+## Circuit Breaker and Retry Mechanism
 
-CogitoAgent 内置熔断器和重试机制，保障网络请求等不稳定操作的可靠性。
+CogitoAgent includes built-in circuit breaker and retry mechanisms to ensure the reliability of unstable operations like network requests.
 
-### 熔断器机制
+### Circuit Breaker Mechanism
 
-熔断器防止系统在故障时持续请求，保护系统稳定性。
+The circuit breaker prevents the system from continuously making requests during failures, protecting system stability.
 
-#### 熔断器状态
+#### Circuit Breaker States
 
-| 状态 | 说明 | 行为 |
-|------|------|------|
-| `closed` | 正常状态 | 允许所有请求 |
-| `open` | 熔断状态 | 拒绝所有请求 |
-| `half_open` | 半开状态 | 允许少量请求测试 |
+| State | Description | Behavior |
+|-------|-------------|----------|
+| `closed` | Normal state | Allows all requests |
+| `open` | Circuit open state | Rejects all requests |
+| `half_open` | Half-open state | Allows a small number of test requests |
 
-#### 状态转换
+#### State Transitions
 
 ```
-closed → open: 失败次数达到阈值（默认5次）
-open → half_open: 超时后（默认60秒）
-half_open → closed: 测试请求成功
-half_open → open: 测试请求失败
+closed → open: Failure count reaches threshold (default 5)
+open → half_open: Timeout elapsed (default 60 seconds)
+half_open → closed: Test request succeeds
+half_open → open: Test request fails
 ```
 
-#### 熔断器配置
+#### Circuit Breaker Configuration
 
 ```javascript
 import { getCircuitBreaker } from './agent/retry.js';
 
 const breaker = getCircuitBreaker('api-calls', {
-  failureThreshold: 5,    // 失败阈值
-  resetTimeout: 60000,    // 重置超时（ms）
-  halfOpenRequests: 1     // 半开状态允许的请求数
+  failureThreshold: 5,    // Failure threshold
+  resetTimeout: 60000,    // Reset timeout (ms)
+  halfOpenRequests: 1     // Number of requests allowed in half-open state
 });
 ```
 
-#### 熔断器使用
+#### Circuit Breaker Usage
 
 ```javascript
 import { withCircuitBreaker } from './agent/retry.js';
 
 const result = await withCircuitBreaker(
   async () => {
-    // 执行不稳定操作
+    // Execute unstable operation
     return await fetchAPI();
   },
-  'api-calls',           // 熔断器名称
+  'api-calls',           // Circuit breaker name
   { failureThreshold: 5 }
 );
 
 if (!result.success) {
-  console.error('熔断器拦截:', result.error);
+  console.error('Circuit breaker intercepted:', result.error);
 }
 ```
 
-### 重试机制
+### Retry Mechanism
 
-重试机制自动重试失败的网络请求，提高成功率。
+The retry mechanism automatically retries failed network requests to improve success rates.
 
-#### 重试配置
+#### Retry Configuration
 
 ```javascript
 const retryConfig = {
-  maxRetries: 3,              // 最大重试次数
-  initialDelay: 1000,         // 初始延迟（ms）
-  maxDelay: 10000,            // 最大延迟（ms）
-  backoffMultiplier: 2,       // 退避倍数
+  maxRetries: 3,              // Maximum retry attempts
+  initialDelay: 1000,         // Initial delay (ms)
+  maxDelay: 10000,            // Maximum delay (ms)
+  backoffMultiplier: 2,       // Backoff multiplier
   retryableErrors: [
     'ECONNRESET',
     'ECONNREFUSED',
@@ -2217,41 +2217,41 @@ const retryConfig = {
 };
 ```
 
-#### 重试使用
+#### Retry Usage
 
 ```javascript
 import { withRetry } from './agent/retry.js';
 
 const result = await withRetry(
   async (attempt) => {
-    // 执行可能失败的操作
-    console.log(`尝试 ${attempt + 1}`);
+    // Execute operation that may fail
+    console.log(`Attempt ${attempt + 1}`);
     return await fetchData();
   },
   {
     maxRetries: 3,
     initialDelay: 1000,
     onRetry: (info) => {
-      console.log(`重试 ${info.attempt}/${info.maxRetries}`);
+      console.log(`Retrying ${info.attempt}/${info.maxRetries}`);
     }
   }
 );
 ```
 
-#### 退避策略
+#### Backoff Strategy
 
-重试延迟采用指数退避：
+Retry delays use exponential backoff:
 
 ```
-第1次重试: 1000ms + 随机抖动（0-25%）
-第2次重试: 2000ms + 随机抖动
-第3次重试: 4000ms + 随机抖动
-最大延迟: 10000ms
+1st retry: 1000ms + random jitter (0-25%)
+2nd retry: 2000ms + random jitter
+3rd retry: 4000ms + random jitter
+Maximum delay: 10000ms
 ```
 
-### 组合使用
+### Combined Usage
 
-熔断器和重试可以组合使用：
+Circuit breaker and retry can be used together:
 
 ```javascript
 import { withCircuitAndRetry } from './agent/retry.js';
@@ -2268,7 +2268,7 @@ const result = await withCircuitAndRetry(
 );
 ```
 
-### 状态监控
+### Status Monitoring
 
 ```javascript
 import { getAllBreakerStatus } from './agent/retry.js';
@@ -2288,31 +2288,31 @@ console.log(status);
 // }
 ```
 
-### 最佳实践
+### Best Practices
 
-1. **合理设置阈值** - 根据服务稳定性调整
-2. **监控熔断状态** - 及时发现问题
-3. **避免过度重试** - 设置合理的重试次数
-4. **记录失败原因** - 分析根本问题
+1. **Set reasonable thresholds** — Adjust based on service stability
+2. **Monitor circuit breaker status** — Detect issues promptly
+3. **Avoid excessive retries** — Set reasonable retry limits
+4. **Log failure reasons** — Analyze root causes
 
 ---
 
-## 多模型支持
+## Multi-Model Support
 
-CogitoAgent 支持多个 AI 模型提供商，可灵活切换和配置。
+CogitoAgent supports multiple AI model providers, allowing flexible switching and configuration.
 
-### 支持的提供商
+### Supported Providers
 
-| 提供商 | Base URL | 支持模型 |
-|--------|----------|----------|
+| Provider | Base URL | Supported Models |
+|----------|----------|------------------|
 | OpenAI | `https://api.openai.com/v1` | gpt-4, gpt-4-turbo, gpt-3.5-turbo |
 | Moark | `https://api.moark.com/v1` | DeepSeek-V4-Flash, DeepSeek-V4 |
 | Anthropic | `https://api.anthropic.com/v1` | claude-3-opus, claude-3-sonnet, claude-3-haiku |
 | Google | `https://generativelanguage.googleapis.com/v1beta` | gemini-pro, gemini-1.5-pro |
 
-### 配置多模型
+### Configuring Multiple Models
 
-#### 环境变量配置
+#### Environment Variable Configuration
 
 ```bash
 # OpenAI
@@ -2328,7 +2328,7 @@ ANTHROPIC_API_KEY=ant-xxxxx
 GOOGLE_API_KEY=goo-xxxxx
 ```
 
-#### 配置文件配置
+#### Configuration File
 
 ```json
 {
@@ -2353,9 +2353,9 @@ GOOGLE_API_KEY=goo-xxxxx
 }
 ```
 
-### 切换模型
+### Switching Models
 
-#### 使用命令切换
+#### Using Commands
 
 ```javascript
 import { switchProvider } from './api/models.js';
@@ -2363,20 +2363,20 @@ import { switchProvider } from './api/models.js';
 const result = switchProvider('anthropic', 'claude-3-opus');
 
 if (result.success) {
-  console.log('已切换到:', result.data.model);
+  console.log('Switched to:', result.data.model);
 }
 ```
 
-#### 使用环境变量切换
+#### Using Environment Variables
 
 ```bash
 COGITO_API_PROVIDER=anthropic
 COGITO_MODEL=claude-3-opus
 ```
 
-### 模型参数配置
+### Model Parameter Configuration
 
-不同模型可配置不同的参数：
+Different models can have different parameter configurations:
 
 ```json
 {
@@ -2390,101 +2390,101 @@ COGITO_MODEL=claude-3-opus
 }
 ```
 
-### 获取模型信息
+### Getting Model Information
 
 ```javascript
 import { getCurrentModel, listProviders, getModels } from './api/models.js';
 
-// 当前模型
+// Current model
 const current = getCurrentModel();
 console.log(current);
 // { provider: 'openai', model: 'gpt-4o', baseURL: '...' }
 
-// 所有提供商
+// All providers
 const providers = listProviders();
 
-// 指定提供商的模型列表
+// Models for a specific provider
 const models = getModels('openai');
 ```
 
-### 模型选择建议
+### Model Selection Recommendations
 
-| 场景 | 推荐模型 | 说明 |
-|------|----------|------|
-| 代码生成 | gpt-4o, DeepSeek-V4 | 强大的代码理解能力 |
-| 文本创作 | claude-3-opus | 优秀的创意写作 |
-| 快速响应 | gpt-3.5-turbo, DeepSeek-V4-Flash | 低延迟，低成本 |
-| 长文本处理 | gemini-1.5-pro | 支持超长上下文 |
-| 日常对话 | claude-3-sonnet | 平衡性能和成本 |
+| Scenario | Recommended Model | Description |
+|----------|-------------------|-------------|
+| Code Generation | gpt-4o, DeepSeek-V4 | Strong code understanding capabilities |
+| Creative Writing | claude-3-opus | Excellent creative writing |
+| Fast Response | gpt-3.5-turbo, DeepSeek-V4-Flash | Low latency, low cost |
+| Long Text Processing | gemini-1.5-pro | Supports extremely long contexts |
+| Daily Conversation | claude-3-sonnet | Balanced performance and cost |
 
 ---
 
-## 联网搜索配置
+## Web Search Configuration
 
-CogitoAgent 内置联网搜索功能，可获取实时信息。
+CogitoAgent includes built-in web search capabilities to retrieve real-time information.
 
-### 搜索配置
+### Search Configuration
 
-#### 基本配置
+#### Basic Configuration
 
 ```json
 {
   "search": {
     "enabled": true,
-    "baseURL": "",              // 搜索 API URL（空则使用默认）
-    "recencyFilter": "",        // 时间过滤器
-    "siteFilter": ""            // 站点过滤器
+    "baseURL": "",              // Search API URL (uses default if empty)
+    "recencyFilter": "",        // Time filter
+    "siteFilter": ""            // Site filter
   }
 }
 ```
 
-#### 搜索 URL 配置
+#### Search URL Configuration
 
-搜索 URL 的构建规则：
+Search URL construction rules:
 
-1. 优先使用 `search.baseURL`
-2. 否则使用 `api.baseURL` + `/web-search-v2`
-3. 默认使用 Moark 搜索 API
+1. Prefer `search.baseURL`
+2. Otherwise use `api.baseURL` + `/web-search-v2`
+3. Default to Moark search API
 
 ```bash
-# 自定义搜索 URL
+# Custom search URL
 COGITO_SEARCH_BASE_URL=https://custom-search-api.com/v1
 ```
 
-### 搜索参数
+### Search Parameters
 
-#### 时间过滤器
+#### Recency Filter
 
-限制搜索结果的时间范围：
-
-```json
-{
-  "search": {
-    "recencyFilter": "day"      // 最近一天
-  }
-}
-```
-
-| 值 | 说明 |
-|---|------|
-| `day` | 最近一天 |
-| `week` | 最近一周 |
-| `month` | 最近一个月 |
-| `year` | 最近一年 |
-
-#### 站点过滤器
-
-限制搜索结果的站点：
+Limits the time range of search results:
 
 ```json
 {
   "search": {
-    "siteFilter": "github.com"  // 只搜索 GitHub
+    "recencyFilter": "day"      // Last day
   }
 }
 ```
 
-### 搜索使用
+| Value | Description |
+|-------|-------------|
+| `day` | Last day |
+| `week` | Last week |
+| `month` | Last month |
+| `year` | Last year |
+
+#### Site Filter
+
+Limits search results to specific sites:
+
+```json
+{
+  "search": {
+    "siteFilter": "github.com"  // Search only GitHub
+  }
+}
+```
+
+### Search Usage
 
 ```javascript
 import { search } from './api/webSearch.js';
@@ -2492,11 +2492,11 @@ import { search } from './api/webSearch.js';
 const result = await search('Node.js 20 new features');
 
 if (result.success) {
-  console.log('搜索结果:', result.data);
+  console.log('Search results:', result.data);
 }
 ```
 
-### 搜索结果格式
+### Search Result Format
 
 ```javascript
 {
@@ -2508,125 +2508,125 @@ if (result.success) {
       snippet: "Node.js 20 brings new features...",
       publishedDate: "2024-01-15"
     },
-    // ... 更多结果
+    // ... more results
   ]
 }
 ```
 
-### 搜索最佳实践
+### Search Best Practices
 
-1. **使用时间过滤器** - 获取最新信息
-2. **使用站点过滤器** - 提高搜索精度
-3. **优化关键词** - 使用具体、明确的搜索词
-4. **结合工具使用** - 搜索后用 `fetchPage` 获取详细内容
+1. **Use recency filter** — Get the latest information
+2. **Use site filter** — Improve search precision
+3. **Optimize keywords** — Use specific, clear search terms
+4. **Combine with other tools** — Use `fetchPage` after searching for detailed content
 
 ---
 
-## 测试
+## Testing
 
-### 运行测试
+### Running Tests
 
 ```bash
-npm test              # 运行所有测试
-npm test -- --verbose # 详细输出
-npm test -- --coverage # 覆盖率报告
+npm test              # Run all tests
+npm test -- --verbose # Verbose output
+npm test -- --coverage # Coverage report
 
-# E2E 测试
-npm run test:e2e           # 运行 E2E 测试
-npm run test:e2e -- --watch # 监听模式
+# E2E Tests
+npm run test:e2e           # Run E2E tests
+npm run test:e2e -- --watch # Watch mode
 ```
 
-### 测试覆盖
+### Test Coverage
 
-| 模块 | 用例数 | 覆盖内容 |
-|------|:------:|---------|
-| Agent | 27 | 参数解析、工具调用、状态管理 |
-| 配置管理 | 12 | 环境变量解析、配置合并 |
-| Git 操作 | 20 | 仓库操作、安全参数传递 |
-| 代码执行 | 8 | 沙箱安全、危险代码拒绝 |
-| 数据库 | 10 | SQL 执行、CRUD、事务 |
-| Web 模块 | 3 | browse、fetchPage |
-| Browser | 2 | Playwright 生命周期 |
-| E2E WebSocket | 6 | 连接、心跳、消息收发、并发 |
-| E2E Agent 流程 | 15 | 初始化、思考循环、工具执行、状态机、会话管理 |
+| Module | Test Cases | Coverage Content |
+|--------|:----------:|------------------|
+| Agent | 27 | Parameter parsing, tool calls, state management |
+| Configuration | 12 | Environment variable parsing, config merging |
+| Git Operations | 20 | Repository operations, secure parameter passing |
+| Code Execution | 8 | Sandbox security, dangerous code rejection |
+| Database | 10 | SQL execution, CRUD, transactions |
+| Web Module | 3 | browse, fetchPage |
+| Browser | 2 | Playwright lifecycle |
+| E2E WebSocket | 6 | Connection, heartbeat, messaging, concurrency |
+| E2E Agent Flow | 15 | Initialization, think cycle, tool execution, state machine, session management |
 
-### E2E 测试说明
+### E2E Test Description
 
-E2E 测试位于 `tests/e2e/` 目录：
+E2E tests are located in `tests/e2e/`:
 
-| 测试文件 | 说明 |
-|----------|------|
-| `websocket.test.js` | WebSocket 通信测试 |
-| `agent-flow.test.js` | Agent 完整流程测试 |
+| Test File | Description |
+|-----------|-------------|
+| `websocket.test.js` | WebSocket communication tests |
+| `agent-flow.test.js` | Agent complete flow tests |
 
-E2E 测试覆盖：
-- WebSocket 连接建立、消息发送接收、心跳机制
-- Agent 初始化、思考循环、工具调用
-- 状态机转换、会话管理、记忆系统
-- 任务管理、API 集成、命令处理
-
----
-
-## 贡献指南
-
-欢迎贡献代码：
-
-1. Fork 项目
-2. 创建分支：`git checkout -b feature/your-feature`
-3. 编写代码并测试
-4. 确保 `npm test` 通过
-5. 提交 Pull Request
-
-### 代码规范
-
-- 使用 ES6+ 语法
-- 使用 `async/await` 处理异步操作
-- 工具函数返回格式：`{ success: boolean, data?: any, error?: string }`
+E2E test coverage:
+- WebSocket connection establishment, message sending/receiving, heartbeat mechanism
+- Agent initialization, thinking loop, tool calls
+- State machine transitions, session management, memory system
+- Task management, API integration, command handling
 
 ---
 
-## 更新日志
+## Contributing Guide
+
+Contributions are welcome:
+
+1. Fork the project
+2. Create a branch: `git checkout -b feature/your-feature`
+3. Write code and test
+4. Ensure `npm test` passes
+5. Submit a Pull Request
+
+### Code Standards
+
+- Use ES6+ syntax
+- Use `async/await` for asynchronous operations
+- Tool functions return format: `{ success: boolean, data?: any, error?: string }`
+
+---
+
+## Changelog
 
 ### v2.3.0
 
-- 多会话管理（创建、切换、删除、重命名）
-- 工具分类按需加载
-- 上下文自动压缩（150轮 / 100K token）
-- 沙箱升级 - 深度冻结内置对象
-- 新增 tracing.js - 追踪模块
-- 新增 retry.js - 熔断器与重试机制
-- MCP 协议兼容
-- 插件系统 (Plugin SDK)
-- 新增 OCR 图像文字识别工具
+- Multi-session management (create, switch, delete, rename)
+- Tool category on-demand loading
+- Automatic context compression (150 turns / 100K tokens)
+- Sandbox upgrade — deep freezing of built-in objects
+- New tracing.js — tracing module
+- New retry.js — circuit breaker and retry mechanism
+- MCP protocol compatibility
+- Plugin system (Plugin SDK)
+- New OCR image text recognition tool
 
 ### v2.2.0
 
-- Agent.js 拆分为独立模块
-- logger.js 支持 DEBUG/INFO/WARN/ERROR 分级
-- 测试用例增至 103+
+- Agent.js split into independent modules
+- logger.js supports DEBUG/INFO/WARN/ERROR levels
+- Test cases increased to 103+
 
 ### v2.1.0
 
-- 移除 vm2 依赖（安全漏洞）
-- 改用 Node.js 原生 vm 模块
-- 跨平台支持改进
+- Removed vm2 dependency (security vulnerability)
+- Switched to Node.js native vm module
+- Cross-platform compatibility improvements
 
 ### v2.0.0
 
-- 代码执行引擎（JS/Python）
-- Git 版本控制集成
-- 任务管理系统
-- 记忆系统
-- 数据处理工具
-- SQLite 数据库
-- 邮件功能
-- 系统监控
-- 定时任务调度
-- 多模型支持
+- Code execution engine (JS/Python)
+- Git version control integration
+- Task management system
+- Memory system
+- Data processing tools
+- SQLite database
+- Email functionality
+- System monitoring
+- Scheduled task scheduling
+- Multi-model support
 
 ---
 
-## 许可证
+## License
 
 Apache 2.0
 
