@@ -27,23 +27,24 @@ function renderMarkdown(text) {
 }
 
 /**
- * 过滤危险 HTML，防止 XSS（基于 DOM 解析，规避正则绕过）
+ * 过滤危险 HTML，防止 XSS
  */
 function sanitizeHtml(html) {
-  const template = document.createElement('template');
-  template.innerHTML = html;
-  const doc = template.content;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<body>${html}</body>`, 'text/html');
   // 移除所有 script 元素
   doc.querySelectorAll('script').forEach(el => el.remove());
-  // 移除所有元素上的事件处理器和 javascript: 链接
+  // 移除所有元素上的事件处理器和危险 URL 协议
+  const dangerousSchemes = /^(javascript|data|vbscript|file):$/i;
   doc.querySelectorAll('*').forEach(el => {
     for (const attr of Array.from(el.attributes)) {
-      if (attr.name.startsWith('on') || attr.value.replace(/[\s]/g, '').toLowerCase().startsWith('javascript:')) {
+      const val = attr.value.replace(/[\s]/g, '').toLowerCase();
+      if (attr.name.startsWith('on') || dangerousSchemes.test(val)) {
         el.removeAttribute(attr.name);
       }
     }
   });
-  return template.innerHTML;
+  return doc.body.innerHTML;
 }
 
 /**
