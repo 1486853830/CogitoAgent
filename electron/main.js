@@ -412,9 +412,7 @@ app.whenReady().then(async () => {
     const personas = [];
     
     try {
-      const dirs = fs.readdirSync(personasDir, { withFileTypes: true })
-        .filter(dir => dir.isDirectory())
-        .map(dir => dir.name);
+      const dirs = fs.readdirSync(personasDir, { withFileTypes: true }).filter(dir => dir.isDirectory()).map(dir => dir.name);
       
       for (const dir of dirs) {
         const personaPath = path.join(personasDir, dir, 'persona.md');
