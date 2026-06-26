@@ -5,6 +5,7 @@
 
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 const TRACING_DIR = path.resolve(process.cwd(), 'data', 'logs');
 const MAX_TRACES = 1000;
@@ -41,7 +42,7 @@ let traceEnabled = true;
  * 生成唯一 ID
  */
 function generateId() {
-  return `trace_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
+  return `trace_${Date.now().toString(36)}_${crypto.randomUUID().split('-')[0]}`;
 }
 
 /**
