@@ -2,6 +2,8 @@
   "name": "cogitoagent",
   "version": "2.3.0",
   "description": "CogitoAgent - 持续思考的智能体",
+  "author": "雪豹同志@cnt-code/Snow leopard (1486853830)",
+  "license": "Apache-2.0",
   "main": "electron/main.js",
   "type": "module",
   "scripts": {
