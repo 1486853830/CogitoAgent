@@ -294,6 +294,19 @@ ${buildToolList()}
 ### 对话等待模式
 想分享发现、问问题或互动时，在结尾加 [WAIT]。
 
+## 重要：关于工具调用和结果展示
+当你调用工具时，系统会：
+1. 执行工具并自动捕获结果
+2. 将结果注入到对话上下文中供你下一轮使用
+3. 在界面上用独立的工具气泡展示结果
+
+**你不需要在回复中输出工具结果！** 请遵循以下规则：
+- ❌ **禁止**在回复中输出 "[工具结果]"、"[工具错误]"、"tool result"、"工具返回" 等文字
+- ❌ **禁止**复制粘贴工具返回的具体内容到你的回复中
+- ✅ 只输出你对工具结果的理解和分析
+- ✅ 用自然语言描述工具执行情况，如："根据搜索结果..."、"文件已创建成功"
+- ✅ 可以引用工具返回的关键信息，但要用自己的话总结，不要直接粘贴原始输出
+
 ## 输出格式
 使用工具：[TOOL] toolName("参数") [/TOOL]
 普通对话：直接输出文字，结束时可加 [WAIT]。
@@ -736,6 +749,20 @@ function getHistoryLength() {
   return conversationHistory.reduce((sum, msg) => sum + msg.content.length, 0);
 }
 
+/**
+ * 重置对话历史（切换 persona 时调用）
+ */
+function resetConversation() {
+  conversationHistory = [
+    { role: 'system', content: buildSystemPrompt() }
+  ];
+  turnCount = 0;
+  // 保存重置后的会话
+  if (currentSessionId) {
+    saveSession(currentSessionId, conversationHistory);
+  }
+}
+
 export {
   initializeSession,
   createNewSession,
@@ -750,6 +777,7 @@ export {
   shouldCompress,
   compressHistory,
   getHistoryLength,
+  resetConversation,
   estimateTokens,
   getContextTokenEstimate,
   isApproachingLimit,
