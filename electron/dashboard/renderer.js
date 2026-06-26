@@ -127,6 +127,12 @@ const TOOL_CATEGORIES = [
     name: '图像文字识别',
     icon: '🔍',
     tools: ['ocr', 'ocrBatch']
+  },
+  {
+    id: 'office',
+    name: 'Office 文档',
+    icon: '📄',
+    tools: ['createPpt', 'createWord', 'createExcel', 'readExcel']
   }
 ];
 
@@ -872,7 +878,7 @@ const ChatManager = {
 
     const expandIcon = document.createElement('div');
     expandIcon.className = 'tool-expand-icon';
-    expandIcon.textContent = '▶';
+    expandIcon.textContent = '';
 
     header.appendChild(icon);
     header.appendChild(name);
