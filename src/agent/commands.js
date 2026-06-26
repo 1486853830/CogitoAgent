@@ -233,14 +233,16 @@ function printClearConfirm() {
  * 切换 Persona（将 persona 文件复制为 persona.md 并重置对话）
  */
 function switchPersona(personaName) {
-  const personaPath = path.resolve(process.cwd(), 'personas', `${personaName}.md`);
+  const personaPath = path.resolve(process.cwd(), 'personas', personaName, 'persona.md');
   const targetPath = path.resolve(process.cwd(), 'persona.md');
 
   if (!existsSync(personaPath)) {
     println(`[错误] Persona "${personaName}" 不存在`, 'red');
     println(`  可用 Persona 列表:`, 'gray');
-    const files = readdirSync(path.resolve(process.cwd(), 'personas')).filter(f => f.endsWith('.md'));
-    files.forEach(f => println(`    ${path.basename(f, '.md')}`, 'gray'));
+    const dirs = readdirSync(path.resolve(process.cwd(), 'personas'), { withFileTypes: true })
+      .filter(dir => dir.isDirectory())
+      .map(dir => dir.name);
+    dirs.forEach(d => println(`    ${d}`, 'gray'));
     return;
   }
 
@@ -270,18 +272,23 @@ function switchPersona(personaName) {
  */
 function listPersonas() {
   const personasDir = path.resolve(process.cwd(), 'personas');
-  const files = readdirSync(personasDir).filter(f => f.endsWith('.md'));
+  const dirs = readdirSync(personasDir, { withFileTypes: true })
+    .filter(dir => dir.isDirectory())
+    .map(dir => dir.name);
 
   println('');
   printDivider('─', 'cyan');
-  println(`  可用 Persona (${files.length} 个)`, 'cyan');
+  println(`  可用 Persona (${dirs.length} 个)`, 'cyan');
   printDivider('─', 'cyan');
 
-  for (const file of files) {
-    const name = path.basename(file, '.md');
-    const content = readFileSync(path.join(personasDir, file), 'utf-8');
-    const firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim() || '(无描述)';
-    println(`  ${printTag(name, 'bgBlue')} ${firstLine}`, 'gray');
+  for (const dir of dirs) {
+    const personaPath = path.join(personasDir, dir, 'persona.md');
+    let firstLine = '(无描述)';
+    if (existsSync(personaPath)) {
+      const content = readFileSync(personaPath, 'utf-8');
+      firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim() || '(无描述)';
+    }
+    println(`  ${printTag(dir, 'bgBlue')} ${firstLine}`, 'gray');
   }
   println('');
   println(`  使用 ${printTag('/persona <name>', 'bgBlue')} 切换`, 'gray');

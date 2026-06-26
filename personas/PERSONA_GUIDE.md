@@ -8,13 +8,15 @@
 
 ```
 personas/
-├── PERSONA_GUIDE.md   # 本说明文档
-├── assistant.md       # 角色文件示例
-├── programmer.md
+├── PERSONA_GUIDE.md      # 本说明文档
+├── Assistant/            # 角色文件夹（英文名）
+│   └── persona.md        # 角色文件
+├── Programmer/
+│   └── persona.md
 └── ...
 ```
 
-每个人设是一个独立的 `.md` 文件，文件名即角色 ID（不含 `.md` 后缀），例如 `programmer.md` 对应的角色 ID 是 `programmer`。
+每个人设是一个独立的文件夹，文件夹名即角色 ID，例如 `Programmer/` 对应的角色 ID 是 `Programmer`。
 
 ---
 
@@ -22,7 +24,7 @@ personas/
 
 ### 第一步：编写角色文件
 
-在 `personas/` 目录下新建一个 `.md` 文件，命名规则：使用英文小写字母，多个单词用连字符连接（如 `data-scientist.md`）。
+在 `personas/` 目录下新建一个文件夹，命名规则：使用英文大小写字母，多个单词用连字符连接（如 `Data-Scientist`），然后在文件夹内创建 `persona.md` 文件。
 
 ### 第二步：完善前端选择界面（可选）
 
@@ -35,7 +37,7 @@ personas/
 </div>
 ```
 
-> **注意**：终端命令 `/personas` 会自动读取 `personas/` 目录，无需手动更新。`/persona <id>` 命令也自动支持所有 `.md` 文件。
+> **注意**：终端命令 `/personas` 会自动读取 `personas/` 目录下的所有文件夹，无需手动更新。`/persona <id>` 命令也自动支持所有角色。
 
 ---
 
