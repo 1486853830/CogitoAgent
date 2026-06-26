@@ -14,10 +14,22 @@ const Utils = {
     return text.replace(/\n/g, '<br>');
   },
 
-  /** 过滤危险 HTML，防止 XSS */
+  /** 过滤危险 HTML，防止 XSS（基于 DOM 解析，规避正则绕过） */
   sanitizeHtml(html) {
-    const dangerous = /<script[\s\S]*?<\/script>|on\w+\s*=|javascript\s*:/gi;
-    return html.replace(dangerous, '');
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    const doc = template.content;
+    // 移除所有 script 元素
+    doc.querySelectorAll('script').forEach(el => el.remove());
+    // 移除所有元素上的事件处理器和 javascript: 链接
+    doc.querySelectorAll('*').forEach(el => {
+      for (const attr of Array.from(el.attributes)) {
+        if (attr.name.startsWith('on') || attr.value.replace(/[\s]/g, '').toLowerCase().startsWith('javascript:')) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    });
+    return template.innerHTML;
   },
 
   filterToolBlocks(text) {
