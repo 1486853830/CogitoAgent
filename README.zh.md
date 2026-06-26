@@ -1,67 +1,23 @@
-<h1 align="center">
-  <strong style="font-size: 3em; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-    CogitoAgent
-  </strong>
-</h1>
-
 <p align="center">
-  <strong style="font-size: 1.4em; color: #667eea;">✦ 持续思考的本地自主 AI 智能体 ✦</strong>
+  <strong style="font-size: 2.5em; color: #f0f0f0;">CogitoAgent</strong>
   <br>
-  <em style="font-size: 1.1em; color: #888;">Think Continuously · Act Autonomously · Stay Private</em>
+  <span style="font-size: 1.15em; color: #667eea;">Think Continuously · Act Autonomously · Stay Private</span>
 </p>
+
+<p align="center" style="max-width: 700px; margin: 0 auto;">
+Cogito, ergo sum — CogitoAgent 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作、代码执行与联网能力。它直接在用户配置的工作目录下运行，<strong>无需上传任何文件至第三方服务器</strong>，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
+</p>
+
+![Dashboard](introduction/dashboard.png)
 
 <p align="center">
-  <a href="#-核心特性">⚡ 特性</a> &nbsp;·&nbsp;
-  <a href="#-快速开始">🚀 快速开始</a> &nbsp;·&nbsp;
-  <a href="#持续思考循环">🧠 架构</a> &nbsp;·&nbsp;
-  <a href="#工具系统">🔧 工具</a> &nbsp;·&nbsp;
-  <a href="src/agent/tools/TOOL_DEVELOPMENT.md">📦 开发</a>
-</p>
-
-<br>
-
-<p align="center" style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
   <a href="#"><img src="https://img.shields.io/badge/版本-2.3.0-764ba2?style=for-the-badge" alt="版本"></a>
   <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D18.0-339933?style=for-the-badge&logo=node.js" alt="Node"></a>
   <a href="#"><img src="https://img.shields.io/badge/许可证-Apache_2.0-blue?style=for-the-badge" alt="许可证"></a>
   <a href="#"><img src="https://img.shields.io/badge/状态-稳定-success?style=for-the-badge" alt="状态"></a>
-  <a href="#"><img src="https://img.shields.io/badge/运行-本地-ff6b6b?style=for-the-badge" alt="本地"></a>
 </p>
 
 <br>
-
-<div align="center">
-  <img src="introduction/main.png" alt="CogitoAgent 主界面" width="80%" style="border-radius: 12px; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);" />
-</div>
-
-<br>
-
-<table align="center">
-  <tr>
-    <td align="center" width="50%">
-      <img src="introduction/electron.png" alt="CogitoAgent Electron 界面" width="95%" style="border-radius: 8px;" />
-      <br>
-      <sub>🖥️ 桌面模式 — Electron 窗口</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="introduction/desktop.png" alt="CogitoAgent 桌面预览" width="95%" style="border-radius: 8px;" />
-      <br>
-      <sub>🖥️ 桌面模式 — Electron 窗口</sub>
-    </td>
-  </tr>
-</table>
-
-<br>
-
----
-
-> **Cogito, ergo sum** — 我思故我在。CogitoAgent 不仅仅是一个工具，它是你本地环境中的自主思维伙伴。
-
-**CogitoAgent** 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作、代码执行与联网能力。它直接在用户配置的工作目录下运行，**无需上传任何文件至第三方服务器**，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
-
-不同于传统的聊天机器人，CogitoAgent 具备 **持续思考** · **自主探索** · **工具执行** 的能力，能够在后台主动发现和整理用户的本地文件资产，并可通过扩展工具集获得更多能力。
-
----
 
 ## 核心特性
 
@@ -115,7 +71,7 @@ npm start
 | 命令 | 模式 | 说明 |
 |------|------|------|
 | `npm start` | 设置向导 | 首次配置或修改配置，不启动 Agent |
-| `npm run electron` | 桌面模式 | Electron 桌面悬浮窗 + 终端 Agent，通过 WebSocket 通信 |
+| `npm run electron:desktop` | 桌面模式 | Electron 桌面悬浮窗 + 终端 Agent，通过 WebSocket 通信 |
 | `npm run electron:dashboard` | Dashboard 模式 | 全窗口 Electron 仪表盘，带会话管理和工具调用可视化 |
 | `npm run cli` | CLI 模式 | 仅终端 Agent，不启动 Electron（适合纯命令行环境） |
 
@@ -130,7 +86,7 @@ npm start
 #### 桌面模式
 
 ```bash
-npm run electron
+npm run electron:desktop
 ```
 
 Electron 主进程会自动拉起终端 Agent，创建桌面窗口并连接。
@@ -143,6 +99,36 @@ Electron 主进程会自动拉起终端 Agent，创建桌面窗口并连接。
 - **exit** — 退出程序（或直接关闭桌面窗口）
 
 ![](introduction/desktop.png)
+
+#### Dashboard 模式
+
+```bash
+npm run electron:dashboard
+```
+
+全窗口 Electron 仪表盘，采用左侧边栏 + 主内容区布局，提供会话管理、对话和工具调用可视化的集成工作空间。
+
+**布局结构：**
+
+| 区域 | 组件 | 说明 |
+|------|------|------|
+| 左侧边栏 | 会话列表 | 动态列出所有会话，点击切换，支持新建会话 |
+| 主内容区 | 对话视图 | 消息展示，支持流式 AI 回复和工具调用卡片 |
+| 主内容区 | 欢迎页 | 未选择会话时显示，含快捷功能卡片和输入框 |
+
+**功能特性：**
+
+- **会话管理** — 从侧边栏浏览、切换和创建会话；会话历史跨重启持久化
+- **工具可视化** — 工具调用显示为黄色卡片，结果显示为绿色可折叠卡片，错误显示为红色卡片
+- **流式输出** — 实时流式 AI 回复，采用双缓冲和 rAF 节流优化渲染，无闪烁
+- **技能探索** — 按分类浏览所有可用工具（14 个分类，约 30 个工具），标注危险等级
+- **快捷操作** — 新建任务、技能浏览器等快捷入口
+
+**界面示意：**
+
+![](introduction/dashboard.png)
+
+
 
 #### CLI 模式
 
