@@ -19,6 +19,7 @@
   "dependencies": {
     "@unblessed/node": "^1.0.0-alpha.23",
     "cheerio": "^1.0.0",
+    "dompurify": "^3.4.11",
     "dotenv": "^16.4.5",
     "electron": "^42.5.0",
     "isolated-vm": "^6.1.2",
