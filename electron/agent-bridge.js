@@ -10,11 +10,12 @@ import WebSocket from 'ws';
 const WS_URL = 'ws://localhost:9527';
 let ws = null;
 let reconnectTimer = null;
+const connectedWindows = new Set();
 
 /**
  * 连接 WebSocket 服务
  */
-function connect(mainWindow) {
+function connect() {
   if (ws && ws.readyState === WebSocket.OPEN) return;
 
   console.log('[AgentBridge] 正在连接 Agent...');
@@ -31,14 +32,16 @@ function connect(mainWindow) {
   ws.on('message', (raw) => {
     try {
       const msg = JSON.parse(raw.toString());
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        // 状态变化走 agent-state 通道
-        if (msg.type === 'agent-state') {
-          mainWindow.webContents.send('agent-state', msg.state);
-        } else {
-          mainWindow.webContents.send('agent-reply', msg);
+      // 向所有已注册的窗口转发消息
+      connectedWindows.forEach(win => {
+        if (!win.isDestroyed()) {
+          if (msg.type === 'agent-state') {
+            win.webContents.send('agent-state', msg.state);
+          } else {
+            win.webContents.send('agent-reply', msg);
+          }
         }
-      }
+      });
     } catch {
       // 忽略解析失败
     }
@@ -46,26 +49,49 @@ function connect(mainWindow) {
 
   ws.on('close', () => {
     console.log('[AgentBridge] 连接断开，3秒后重连...');
-    reconnectTimer = setTimeout(() => connect(mainWindow), 3000);
+    reconnectTimer = setTimeout(() => connect(), 3000);
   });
 
   ws.on('error', (err) => {
     console.log('[AgentBridge] 连接失败:', err.message);
-    reconnectTimer = setTimeout(() => connect(mainWindow), 3000);
+    reconnectTimer = setTimeout(() => connect(), 3000);
   });
 }
 
 /**
  * 初始化 Agent 桥接
- * @param {BrowserWindow} mainWindow
+ * @param {BrowserWindow} win
  */
-function initAgentBridge(mainWindow) {
-  console.log('[AgentBridge] 已初始化');
+function initAgentBridge(win) {
+  console.log('[AgentBridge] 窗口注册');
+
+  // 注册窗口
+  connectedWindows.add(win);
 
   // 连接 Agent WebSocket
-  connect(mainWindow);
+  connect();
 
-  // 处理来自渲染进程的用户消息，转发到 Agent
+  // 窗口关闭时移除
+  win.on('closed', () => {
+    connectedWindows.delete(win);
+    // 如果没有窗口了，关闭连接
+    if (connectedWindows.size === 0 && ws) {
+      ws.close();
+      ws = null;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+    }
+  });
+}
+
+// 处理来自渲染进程的用户消息，转发到 Agent（全局只注册一次）
+let userMessageHandlerRegistered = false;
+function ensureUserMessageHandler() {
+  if (userMessageHandlerRegistered) return;
+  userMessageHandlerRegistered = true;
+
   ipcMain.on('user-message', (_event, text) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'user-message', text }));
@@ -76,17 +102,20 @@ function initAgentBridge(mainWindow) {
   ipcMain.on('request-history', (event) => {
     event.reply('agent-history', []);
   });
-
-  // 窗口关闭时清理
-  mainWindow.on('closed', () => {
-    if (ws) {
-      ws.close();
-      ws = null;
-    }
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
-    }
-  });
 }
 
-export { initAgentBridge };
+ensureUserMessageHandler();
+
+/**
+ * 发送消息给 Agent（供 main.js 调用）
+ * @param {string} text
+ */
+function sendToAgent(text) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'user-message', text }));
+    return true;
+  }
+  return false;
+}
+
+export { initAgentBridge, sendToAgent };
