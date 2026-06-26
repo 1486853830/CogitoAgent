@@ -1,39 +1,65 @@
-<p align="center">
-  <img src="introduction/main.png" alt="CogitoAgent 主界面" width="720" />
-</p>
+<h1 align="center">
+  <strong style="font-size: 3em; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+    CogitoAgent
+  </strong>
+</h1>
 
-<h1 align="center">CogitoAgent</h1>
-
 <p align="center">
-  <b>持续思考的本地自主 AI 智能体</b>
+  <strong style="font-size: 1.4em; color: #667eea;">✦ 持续思考的本地自主 AI 智能体 ✦</strong>
   <br>
-  <i>Think Continuously. Act Autonomously. Stay Private.</i>
+  <em style="font-size: 1.1em; color: #888;">Think Continuously · Act Autonomously · Stay Private</em>
 </p>
 
 <p align="center">
-  <a href="#核心特性">特性</a> •
-  <a href="#-快速开始">快速开始</a> •
-  <a href="#持续思考循环">架构</a> •
-  <a href="#工具系统">工具</a> •
-  <a href="#srcagenttoolsTOOL_DEVELOPMENTmd">开发</a>
+  <a href="#-核心特性">⚡ 特性</a> &nbsp;·&nbsp;
+  <a href="#-快速开始">🚀 快速开始</a> &nbsp;·&nbsp;
+  <a href="#持续思考循环">🧠 架构</a> &nbsp;·&nbsp;
+  <a href="#工具系统">🔧 工具</a> &nbsp;·&nbsp;
+  <a href="src/agent/tools/TOOL_DEVELOPMENT.md">📦 开发</a>
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/version-2.3.0-blue" alt="版本" />
-  <img src="https://img.shields.io/badge/node-%3E%3D18.0-brightgreen" alt="Node" />
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="许可证" />
-  <img src="https://img.shields.io/badge/status-stable-success" alt="状态" />
+<br>
+
+<p align="center" style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+  <a href="#"><img src="https://img.shields.io/badge/版本-2.3.0-764ba2?style=for-the-badge" alt="版本"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D18.0-339933?style=for-the-badge&logo=node.js" alt="Node"></a>
+  <a href="#"><img src="https://img.shields.io/badge/许可证-MIT-green?style=for-the-badge" alt="许可证"></a>
+  <a href="#"><img src="https://img.shields.io/badge/状态-稳定-success?style=for-the-badge" alt="状态"></a>
+  <a href="#"><img src="https://img.shields.io/badge/运行-本地-ff6b6b?style=for-the-badge" alt="本地"></a>
 </p>
+
+<br>
+
+<div align="center">
+  <img src="introduction/main.png" alt="CogitoAgent 主界面" width="80%" style="border-radius: 12px; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);" />
+</div>
+
+<br>
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <img src="introduction/electron.png" alt="CogitoAgent Electron 界面" width="95%" style="border-radius: 8px;" />
+      <br>
+      <sub>🖥️ 桌面模式 — Electron 毛玻璃窗口</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="introduction/desktop.png" alt="CogitoAgent 桌面预览" width="95%" style="border-radius: 8px;" />
+      <br>
+      <sub>💬 终端模式 — CLI 交互界面</sub>
+    </td>
+  </tr>
+</table>
+
+<br>
 
 ---
+
+> **Cogito, ergo sum** — 我思故我在。CogitoAgent 不仅仅是一个工具，它是你本地环境中的自主思维伙伴。
 
 **CogitoAgent** 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作、代码执行与联网能力。它直接在用户配置的工作目录下运行，**无需上传任何文件至第三方服务器**，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
 
 不同于传统的聊天机器人，CogitoAgent 具备 **持续思考** · **自主探索** · **工具执行** 的能力，能够在后台主动发现和整理用户的本地文件资产，并可通过扩展工具集获得更多能力。
-
-<p align="center">
-  <img src="introduction/electron.png" alt="CogitoAgent Electron 界面" width="720" />
-</p>
 
 ---
 
