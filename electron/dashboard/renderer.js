@@ -14,6 +14,12 @@ const Utils = {
     return text.replace(/\n/g, '<br>');
   },
 
+  /** 过滤危险 HTML，防止 XSS */
+  sanitizeHtml(html) {
+    const dangerous = /<script[\s\S]*?<\/script>|on\w+\s*=|javascript\s*:/gi;
+    return html.replace(dangerous, '');
+  },
+
   filterToolBlocks(text) {
     return text
       .replace(/\[TOOL\][\s\S]*?\[\/TOOL\]/g, '')
@@ -693,7 +699,7 @@ const ChatManager = {
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     if (extra.isHtml) {
-      bubble.innerHTML = content;
+      bubble.innerHTML = Utils.sanitizeHtml(content);
     } else {
       bubble.textContent = content;
     }

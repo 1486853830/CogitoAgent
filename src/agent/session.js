@@ -4,6 +4,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { getBasePath } from './tools/index.js';
 import { getEnabledCategories, getAllCategories, getToolsByCategory, TOOL_CATEGORIES } from './registry.js';
 
@@ -12,7 +13,7 @@ const META_FILE = path.join(SESSIONS_DIR, 'meta.json');
 
 // 生成唯一 ID
 function generateId() {
-  return 'sess_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  return 'sess_' + Date.now().toString(36) + crypto.randomUUID().split('-')[0];
 }
 
 // 确保目录存在

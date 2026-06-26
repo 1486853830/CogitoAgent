@@ -27,6 +27,14 @@ function renderMarkdown(text) {
 }
 
 /**
+ * 过滤危险 HTML，防止 XSS
+ */
+function sanitizeHtml(html) {
+  const dangerous = /<script[\s\S]*?<\/script>|on\w+\s*=|javascript\s*:/gi;
+  return html.replace(dangerous, '');
+}
+
+/**
  * 过滤工具调用内容，仅保留正文
  */
 function filterToolBlocks(text) {
@@ -116,7 +124,7 @@ function addMessage(type, content, extra = {}) {
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   if (extra.isHtml) {
-    bubble.innerHTML = content;
+    bubble.innerHTML = sanitizeHtml(content);
   } else {
     bubble.textContent = content;
   }
@@ -203,7 +211,7 @@ function handleReply(data) {
         currentAssistantBubble = addMessage('assistant', renderMarkdown(filtered), { isHtml: true });
       } else {
         const bubble = currentAssistantBubble.querySelector('.bubble');
-        bubble.innerHTML = renderMarkdown(filtered);
+        bubble.innerHTML = sanitizeHtml(renderMarkdown(filtered));
       }
       currentAssistantBubble.querySelector('.bubble').classList.add('typing-cursor');
       scrollToBottom();

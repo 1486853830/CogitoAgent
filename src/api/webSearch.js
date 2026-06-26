@@ -17,7 +17,7 @@ async function search(content) {
   }
 
   // 构建搜索 URL：优先用 search.baseURL，否则用 api.baseURL + /web-search-v2
-  let searchURL = cfg.search.baseURL || (cfg.api.baseURL ? `${cfg.api.baseURL.replace('/v1', '/v1')}/web-search-v2` : '');
+  let searchURL = cfg.search.baseURL || (cfg.api.baseURL ? `${cfg.api.baseURL}/web-search-v2` : '');
   // 如果 api.baseURL 是空的，使用默认的 moark URL
   if (!searchURL) {
     searchURL = 'https://api.moark.com/v1/web-search-v2';
