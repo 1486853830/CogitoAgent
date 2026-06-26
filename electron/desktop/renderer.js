@@ -27,15 +27,10 @@ function renderMarkdown(text) {
 }
 
 /**
- * 过滤危险 HTML，防止 XSS（纯字符串模式，不涉及 HTML 解析）
+ * 过滤危险 HTML，防止 XSS（使用 DOMPurify）
  */
 function sanitizeHtml(html) {
-  return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
-    .replace(/<script\b[^>]*\/>/gi, '')
-    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/\s+(?:href|src|action|formaction)\s*=\s*"(?:javascript|data|vbscript|file):/gi, ' $1=""')
-    .replace(/\s+(?:href|src|action|formaction)\s*=\s*'(?:javascript|data|vbscript|file):/gi, " $1=''");
+  return window.DOMPurify ? window.DOMPurify.sanitize(html) : html;
 }
 
 /**
