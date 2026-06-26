@@ -9,8 +9,7 @@ import { println, printDivider, printTag } from '../io/terminal.js';
 import { loadConfig } from '../config.js';
 import { getToolNames, getToolsByCategory } from './registry.js';
 import * as tools from './tools/index.js';
-import { listSessions, getCurrentSession, createNewSession, switchSession, deleteSession, renameSession } from './session.js';
-import { resetConversation } from './prompt.js';
+import { listSessions, getCurrentSession, createNewSession, switchSession, deleteSession, renameSession, resetConversation } from './session.js';
 
 // 命令帮助文本
 const HELP_TEXT = `

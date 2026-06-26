@@ -115,7 +115,8 @@ The program supports two operation modes:
 | Command | Mode | Description |
 |---------|------|-------------|
 | `npm start` | Setup Wizard | First-time configuration or modifying settings; does not start the Agent |
-| `npm run electron` | Desktop Mode | Electron desktop window + terminal Agent, communicating via WebSocket |
+| `npm run electron` | Desktop Mode | Electron desktop overlay window + terminal Agent, communicating via WebSocket |
+| `npm run electron:dashboard` | Dashboard Mode | Full-window Electron dashboard with session management and tool call visualization |
 | `npm run cli` | CLI Mode | Terminal Agent only, without Electron (suitable for pure command-line environments) |
 
 #### Setup Wizard
@@ -1011,11 +1012,18 @@ flowchart TB
     Main <==>|"WebSocket<br/>ws://:9527"| WSServer
 ```
 
+### Windows
+
+| Window | File | Description |
+|--------|------|-------------|
+| Overlay Window | `electron/desktop/` | Semi-transparent overlay with virtual character (Overlay Mode) |
+| Dashboard Window | `electron/dashboard/` | Full-window dashboard with session list, chat, and tool call history (Dashboard Mode) |
+
 ### Main Processes
 
 | Process | File | Responsibility |
 |---------|------|----------------|
-| Main Process | `electron/main.js` | Window management, system tray |
+| Main Process | `electron/main.js` | Window management, system tray, mode routing |
 | Preload | `electron/preload.cjs` | Secure context bridging |
 | Bridge | `electron/agent-bridge.js` | WebSocket ↔ IPC conversion |
 | WebSocket | `src/io/ws-server.js` | Real-time communication (port 9527) |
@@ -1041,8 +1049,7 @@ cogito-agent/
 │   │   ├── state.js                  # State machine
 │   │   ├── registry.js               # Tool registry
 │   │   ├── commands.js               # Command handling
-│   │   ├── session.js                # Multi-session management
-│   │   ├── prompt.js                 # System prompt construction
+│   │   ├── session.js                # Multi-session management + system prompt
 │   │   ├── mcp.js                    # MCP protocol server
 │   │   ├── plugin.js                 # Plugin system
 │   │   ├── tracing.js                # Lightweight observability
@@ -1082,7 +1089,11 @@ cogito-agent/
 │   ├── main.js                       # Main process
 │   ├── preload.cjs                   # Secure context bridge
 │   ├── agent-bridge.js               # WebSocket ↔ IPC bridge
-│   ├── desktop/                      # Main window UI
+│   ├── desktop/                      # Overlay window UI
+│   │   ├── index.html
+│   │   ├── renderer.js
+│   │   └── style.css
+│   ├── dashboard/                    # Dashboard window UI
 │   │   ├── index.html
 │   │   ├── renderer.js
 │   │   └── style.css

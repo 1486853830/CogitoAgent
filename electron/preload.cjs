@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 窗口操作
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
+  maximizeWindow: () => ipcRenderer.send('window-maximize'),
   closeWindow: () => ipcRenderer.send('window-close'),
   
   // 窗口移动（用于拖拽视频）
@@ -33,6 +34,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 请求历史消息
   requestHistory: () => ipcRenderer.send('request-history'),
+
+  // 模式切换
+  getCurrentMode: () => ipcRenderer.invoke('get-current-mode'),
+  switchToDesktop: () => ipcRenderer.send('switch-to-desktop'),
+  switchToDashboard: () => ipcRenderer.send('switch-to-dashboard'),
 
   // ===== 配置向导相关 IPC =====
 
@@ -60,4 +66,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 获取当前 persona 的媒体资源（视频或图片）
   getPersonaMedia: () => ipcRenderer.invoke('get-persona-media'),
+
+  // ===== 会话管理 IPC =====
+  // 获取会话列表
+  getSessions: () => ipcRenderer.invoke('get-sessions'),
+
+  // 切换会话
+  switchSession: (sessionId) => ipcRenderer.send('switch-session', sessionId),
+
+  // 获取当前会话 ID
+  getCurrentSession: () => ipcRenderer.invoke('get-current-session'),
+
+  // 获取指定会话的历史消息
+  getSessionHistory: (sessionId) => ipcRenderer.invoke('get-session-history', sessionId),
+
+  // 打开外部链接
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
 });
