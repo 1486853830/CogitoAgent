@@ -119,6 +119,7 @@ import {
 } from './scheduler.js';
 import { FileStorage, createStorage } from './storage.js';
 import { ocr, ocrBatch } from './ocr.js';
+import { createPpt, createWord, createExcel, readExcel } from './office.js';
 import {
   isSandboxEnabled,
   createJavaScriptSandbox,
@@ -249,7 +250,11 @@ export {
   runPythonSandbox,
   executeCodeSandbox,
   ocr,
-  ocrBatch
+  ocrBatch,
+  createPpt,
+  createWord,
+  createExcel,
+  readExcel
 };
 
 // ============================================
@@ -400,6 +405,12 @@ const TOOL_METADATA = {
   // OCR 图像文字识别
   ocr: { argCount: 1 },
   ocrBatch: { argCount: 1 },
+
+  // PPT 创建
+  createPpt: { argCount: 1 },
+  createWord: { argCount: 1 },
+  createExcel: { argCount: 1 },
+  readExcel: { argCount: 1 },
 };
 
 // 导出工具元数据（供 registry.js 参考）

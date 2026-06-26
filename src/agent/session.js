@@ -252,6 +252,22 @@ function buildToolList() {
 
 `;
         break;
+      case 'office':
+        toolList += `### Office 文档工具
+- createPpt(options) - 创建 PPT 文件，参数包含 outputPath(输出路径)、slides(幻灯片数组，每项含 title/content/image/bullets)、title(标题)、author(作者)
+- createWord(options) - 创建 Word 文档，参数包含 outputPath(输出路径)、paragraphs(段落数组，每项含 type/text/level/items/rows/src 等)、title(标题)、author(作者)
+- createExcel(options) - 创建 Excel 文件，参数包含 outputPath(输出路径)、sheets(工作表数组，每项含 name/data，data为二维数组)
+- readExcel(filePath) - 读取 Excel 文件，返回各工作表数据的二维数组
+
+【重要】使用 Office 工具时：
+1. 确保 outputPath 以正确的扩展名结尾（.pptx/.docx/.xlsx）
+2. PPT 的 slides 每项支持：title(标题)、content(正文)、bullets(要点数组)、image(图片路径)
+3. Word 的 paragraphs 支持 type：heading(标题，带level)、text(正文)、list(列表，带items)、table(表格，带rows)、image(图片，带src/width/height)
+4. Excel 的 sheets 每项含 name(表名) 和 data(二维数组数据)
+5. 图片路径必须是有效的本地文件路径
+
+`;
+        break;
     }
   }
   

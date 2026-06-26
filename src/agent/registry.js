@@ -22,7 +22,8 @@ const TOOL_CATEGORIES = {
   email: '邮件功能',
   monitor: '系统监控',
   scheduler: '定时任务',
-  ocr: '图像文字识别'
+  ocr: '图像文字识别',
+  office: 'Office文档'
 };
 
 // 工具注册表
@@ -167,6 +168,12 @@ const TOOL_REGISTRY = {
   // OCR 图像文字识别
   ocr: { fn: tools.ocr, argCount: 2, category: 'ocr' },
   ocrBatch: { fn: tools.ocrBatch, argCount: 1, category: 'ocr' },
+
+  // Office 文档
+  createPpt: { fn: tools.createPpt, argCount: 1, category: 'office' },
+  createWord: { fn: tools.createWord, argCount: 1, category: 'office' },
+  createExcel: { fn: tools.createExcel, argCount: 1, category: 'office' },
+  readExcel: { fn: tools.readExcel, argCount: 1, category: 'office' },
 };
 
 // 危险操作列表

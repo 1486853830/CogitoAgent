@@ -27,7 +27,7 @@ Cogito, ergo sum — CogitoAgent 不仅仅是一个工具，它是你本地环�
 |------|------|
 | **隐私优先** | 所有数据本地存储，不上传任何文件到第三方服务器 |
 | **持续思考** | 每3秒自动触发思考循环，主动分析当前任务状态 |
-| **工具执行** | 内置 18 个工具模块，支持文件操作、代码执行、Git、数据库、OCR 等 |
+| **工具执行** | 内置 19 个工具模块，支持文件操作、代码执行、Git、数据库、OCR、Office 文档等 |
 | **安全沙箱** | JavaScript 代码执行采用 `isolated-vm` 进程级隔离 |
 | **多会话管理** | 支持多个独立对话会话，会话数据持久化存储 |
 | **桌面模式** | Electron 桌面窗口，与终端 Agent 通过 WebSocket 通信 |
@@ -212,6 +212,7 @@ Agent 的核心是一个持续运行的思考循环。启动后，Agent 每隔 3
 | 系统监控 | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `monitorSystem` |
 | 定时任务 | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `toggleScheduleTask` |
 | 图像识别 | `ocr.js` | `ocr`, `ocrBatch` |
+| Office 文档 | `office.js` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
 
 ### 工具注册机制
 
@@ -621,6 +622,154 @@ OCR_MODEL=Qwen2.5-VL-32B-Instruct
 # OCR 服务提供商（可选）
 OCR_PROVIDER=qwen
 ```
+
+### Office 文档工具详解
+
+Office 文档工具支持创建 PPT 演示文稿、Word 文档和 Excel 表格，基于纯 JavaScript 库实现，无需安装 Office 软件。
+
+#### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `createPpt` | 创建 PPT 演示文稿 | `options`（对象）或 `outputPath, title, content`（位置参数） |
+| `createWord` | 创建 Word 文档 | `options`（对象）或 `outputPath, title, content`（位置参数） |
+| `createExcel` | 创建 Excel 表格 | `options`（对象）或 `outputPath, sheetName, data`（位置参数） |
+| `readExcel` | 读取 Excel 文件 | `filePath`（文件路径） |
+
+#### 支持的格式
+
+| 文档类型 | 扩展名 | 核心库 |
+|----------|--------|--------|
+| 演示文稿 | `.pptx` | pptxgenjs |
+| 文档 | `.docx` | docx |
+| 表格 | `.xlsx` | xlsx (SheetJS) |
+
+#### 使用示例
+
+**创建简单 PPT（位置参数）：**
+
+```javascript
+[TOOL] createPpt("data/presentation.pptx", "项目报告", "这是项目报告的内容") [/TOOL]
+```
+
+**创建复杂 PPT（对象参数）：**
+
+```javascript
+[TOOL] createPpt({
+  outputPath: "data/presentation.pptx",
+  title: "季度汇报",
+  author: "CogitoAgent",
+  slides: [
+    { title: "封面", content: "2024年Q2季度汇报" },
+    { title: "业绩概览", bullets: ["营收增长25%", "用户增长30%", "市场份额提升5%"] },
+    { title: "数据分析", image: "data/chart.png" }
+  ]
+}) [/TOOL]
+```
+
+**创建 Word 文档：**
+
+```javascript
+[TOOL] createWord({
+  outputPath: "data/report.docx",
+  title: "项目报告",
+  paragraphs: [
+    { type: "heading", text: "第一章 项目概述", level: 1 },
+    { type: "text", text: "本项目旨在..." },
+    { type: "heading", text: "核心成果", level: 2 },
+    { type: "list", items: ["完成系统设计", "实现核心功能", "通过测试验证"] },
+    { type: "heading", text: "数据统计", level: 2 },
+    { type: "table", rows: [["指标", "数值"], ["用户数", "10000"], ["转化率", "25%"]] }
+  ]
+}) [/TOOL]
+```
+
+**创建 Excel 表格：**
+
+```javascript
+[TOOL] createExcel({
+  outputPath: "data/sales.xlsx",
+  sheets: [
+    {
+      name: "销售数据",
+      data: [
+        ["产品", "销量", "金额"],
+        ["A产品", 100, 5000],
+        ["B产品", 200, 8000],
+        ["C产品", 150, 6000]
+      ]
+    },
+    {
+      name: "库存数据",
+      data: [
+        ["产品", "库存"],
+        ["A产品", 50],
+        ["B产品", 30]
+      ]
+    }
+  ]
+}) [/TOOL]
+```
+
+**读取 Excel 文件：**
+
+```javascript
+[TOOL] readExcel("data/sales.xlsx") [/TOOL]
+// → { "销售数据": [["产品","销量",...], ...], "库存数据": [...] }
+```
+
+#### PPT 幻灯片参数说明
+
+每张幻灯片支持以下字段：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `title` | string | 幻灯片标题 |
+| `content` | string | 正文内容 |
+| `bullets` | string[] | 要点列表（项目符号） |
+| `image` | string | 图片文件路径 |
+
+#### Word 段落类型说明
+
+| 类型 | 参数 | 说明 |
+|------|------|------|
+| `heading` | `text`, `level`(1-6) | 标题段落 |
+| `text` | `text` | 正文段落 |
+| `list` | `items`(string[]) | 列表段落 |
+| `table` | `rows`(二维数组) | 表格段落 |
+| `image` | `src`, `width`, `height` | 图片段落 |
+
+#### Excel 数据格式
+
+- `sheets` 为数组，每项包含 `name`（表名）和 `data`（二维数组）
+- `data` 的第一行通常作为表头
+- 单元格值可以是字符串或数字
+
+#### 两种调用方式
+
+所有 Office 创建工具都支持两种调用方式：
+
+| 方式 | 语法 | 适用场景 |
+|------|------|----------|
+| **位置参数** | `createPpt(outputPath, title, content)` | 快速创建简单文档 |
+| **对象参数** | `createPpt({ outputPath, slides, ... })` | 创建复杂格式文档 |
+
+#### 最佳实践
+
+1. **使用正确扩展名** - PPT 用 `.pptx`，Word 用 `.docx`，Excel 用 `.xlsx`
+2. **路径使用相对路径** - 相对于工作区目录，或使用绝对路径
+3. **图片提前准备** - 插入的图片需确保文件存在
+4. **数据格式正确** - Excel 数据使用二维数组，表头在第一行
+5. **大文档注意性能** - 过多幻灯片/表格可能增加生成时间
+
+#### 常见问题
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| 提示「缺少 outputPath 参数」 | 未指定输出路径 | 确保传入正确的文件路径参数 |
+| 生成的文件打不开 | 扩展名不正确 | 确保使用正确的扩展名（.pptx/.docx/.xlsx） |
+| 图片不显示 | 图片路径错误或文件不存在 | 检查图片路径是否正确，文件是否存在 |
+| 中文乱码 | 编码问题 | 确保使用 UTF-8 编码，库已内置中文支持 |
 
 ## 记忆系统
 
@@ -1066,6 +1215,7 @@ cogito-agent/
 │   │   │   ├── monitor.js            # 系统监控
 │   │   │   ├── scheduler.js          # 定时任务
 │   │   │   ├── ocr.js                # 图像文字识别（OCR）
+│   │   │   ├── office.js             # Office文档（PPT/Word/Excel）
 │   │   │   ├── storage.js            # 文件存储
 │   │   │   └── TOOL_DEVELOPMENT.md   # 工具开发文档
 │   │   └── ...
@@ -1202,6 +1352,7 @@ COGITO_EMAIL_PASSWORD=your-email-password
 | `monitor` | 系统监控 |
 | `scheduler` | 定时任务 |
 | `ocr` | 图像文字识别 |
+| `office` | Office文档（PPT/Word/Excel） |
 
 ### 环境变量完整列表
 
@@ -1565,6 +1716,49 @@ console.log(sum);
 // → 识别白板照片中的文字内容
 ```
 
+### Office 文档生成
+
+```javascript
+// 创建 PPT 演示文稿
+[TOOL] createPpt({
+  outputPath: "data/presentation.pptx",
+  title: "项目汇报",
+  slides: [
+    { title: "封面", content: "2024年度项目总结" },
+    { title: "核心成果", bullets: ["完成目标1", "完成目标2", "超额完成目标3"] },
+    { title: "数据展示", image: "data/chart.png" }
+  ]
+}) [/TOOL]
+// → { success: true, path: "data/presentation.pptx", slideCount: 3 }
+
+// 创建 Word 文档
+[TOOL] createWord({
+  outputPath: "data/report.docx",
+  title: "分析报告",
+  paragraphs: [
+    { type: "heading", text: "一、概述", level: 1 },
+    { type: "text", text: "本报告对...进行了深入分析。" },
+    { type: "heading", text: "二、数据统计", level: 2 },
+    { type: "table", rows: [["项目", "数值"], ["A", "100"], ["B", "200"]] }
+  ]
+}) [/TOOL]
+// → { success: true, path: "data/report.docx", paragraphCount: 4 }
+
+// 创建 Excel 表格
+[TOOL] createExcel({
+  outputPath: "data/data.xlsx",
+  sheets: [
+    { name: "销售", data: [["产品", "销量"], ["A", 100], ["B", 200]] },
+    { name: "库存", data: [["产品", "库存"], ["A", 50], ["B", 30]] }
+  ]
+}) [/TOOL]
+// → { success: true, path: "data/data.xlsx", sheetCount: 2 }
+
+// 读取 Excel 文件
+[TOOL] readExcel("data/data.xlsx") [/TOOL]
+// → { "销售": [["产品","销量"],...], "库存": [["产品","库存"],...] }
+```
+
 ---
 
 ## 架构设计
@@ -1575,7 +1769,7 @@ console.log(sum);
 |------|------|------|
 | **Agent.js** | 思考循环 | 每3秒自动触发一次思考 |
 | **state.js** | 状态机 | THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
-| **registry.js** | 工具注册表 | 18 个工具模块集中管理 |
+| **registry.js** | 工具注册表 | 19 个工具模块集中管理 |
 | **session.js** | 会话管理 | 多会话切换、上下文压缩 |
 | **commands.js** | 命令处理 | /help、/status 等特殊命令 |
 | **sandbox.js** | 代码沙箱 | isolated-vm 进程级隔离 |

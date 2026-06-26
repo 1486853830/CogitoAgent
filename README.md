@@ -26,7 +26,7 @@ Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Contin
 |---------|-------------|
 | **Privacy First** | All data stored locally; no files uploaded to third-party servers |
 | **Continuous Thinking** | Automatically triggers a thinking cycle every 3 seconds, proactively analyzing current task status |
-| **Tool Execution** | Built-in 18 tool modules supporting file operations, code execution, Git, databases, OCR, and more |
+| **Tool Execution** | Built-in 19 tool modules supporting file operations, code execution, Git, databases, OCR, Office documents, and more |
 | **Security Sandbox** | JavaScript code execution uses `isolated-vm` for process-level isolation |
 | **Multi-Session Management** | Supports multiple independent conversation sessions with persistent data storage |
 | **Desktop Mode** | Electron desktop window communicating with the terminal Agent via WebSocket |
@@ -211,6 +211,7 @@ The tool system is managed uniformly by `registry.js`. All tool functions are ca
 | System Monitoring | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `monitorSystem` |
 | Scheduled Tasks | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `toggleScheduleTask` |
 | Image Recognition | `ocr.js` | `ocr`, `ocrBatch` |
+| Office Documents | `office.js` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
 
 ### Tool Registration Mechanism
 
@@ -620,6 +621,154 @@ OCR_MODEL=Qwen2.5-VL-32B-Instruct
 # OCR service provider (optional)
 OCR_PROVIDER=qwen
 ```
+
+### Office Document Tools in Detail
+
+Office document tools support creating PPT presentations, Word documents, and Excel spreadsheets. Implemented with pure JavaScript libraries, no Office software installation required.
+
+#### Core Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `createPpt` | Create PPT presentation | `options` (object) or `outputPath, title, content` (positional) |
+| `createWord` | Create Word document | `options` (object) or `outputPath, title, content` (positional) |
+| `createExcel` | Create Excel spreadsheet | `options` (object) or `outputPath, sheetName, data` (positional) |
+| `readExcel` | Read Excel file | `filePath` (file path) |
+
+#### Supported Formats
+
+| Document Type | Extension | Core Library |
+|---------------|-----------|--------------|
+| Presentation | `.pptx` | pptxgenjs |
+| Document | `.docx` | docx |
+| Spreadsheet | `.xlsx` | xlsx (SheetJS) |
+
+#### Usage Examples
+
+**Create a simple PPT (positional args):**
+
+```javascript
+[TOOL] createPpt("data/presentation.pptx", "Project Report", "This is the project report content") [/TOOL]
+```
+
+**Create a complex PPT (object args):**
+
+```javascript
+[TOOL] createPpt({
+  outputPath: "data/presentation.pptx",
+  title: "Quarterly Report",
+  author: "CogitoAgent",
+  slides: [
+    { title: "Cover", content: "Q2 2024 Quarterly Report" },
+    { title: "Performance Overview", bullets: ["Revenue +25%", "Users +30%", "Market share +5%"] },
+    { title: "Data Analysis", image: "data/chart.png" }
+  ]
+}) [/TOOL]
+```
+
+**Create a Word document:**
+
+```javascript
+[TOOL] createWord({
+  outputPath: "data/report.docx",
+  title: "Project Report",
+  paragraphs: [
+    { type: "heading", text: "Chapter 1 Project Overview", level: 1 },
+    { type: "text", text: "This project aims to..." },
+    { type: "heading", text: "Key Achievements", level: 2 },
+    { type: "list", items: ["System design completed", "Core features implemented", "Testing passed"] },
+    { type: "heading", text: "Statistics", level: 2 },
+    { type: "table", rows: [["Metric", "Value"], ["Users", "10000"], ["Conversion", "25%"]] }
+  ]
+}) [/TOOL]
+```
+
+**Create an Excel spreadsheet:**
+
+```javascript
+[TOOL] createExcel({
+  outputPath: "data/sales.xlsx",
+  sheets: [
+    {
+      name: "Sales Data",
+      data: [
+        ["Product", "Quantity", "Amount"],
+        ["Product A", 100, 5000],
+        ["Product B", 200, 8000],
+        ["Product C", 150, 6000]
+      ]
+    },
+    {
+      name: "Inventory Data",
+      data: [
+        ["Product", "Stock"],
+        ["Product A", 50],
+        ["Product B", 30]
+      ]
+    }
+  ]
+}) [/TOOL]
+```
+
+**Read an Excel file:**
+
+```javascript
+[TOOL] readExcel("data/sales.xlsx") [/TOOL]
+// → { "Sales Data": [["Product","Quantity",...], ...], "Inventory Data": [...] }
+```
+
+#### PPT Slide Parameters
+
+Each slide supports the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | Slide title |
+| `content` | string | Body content |
+| `bullets` | string[] | Bullet point list |
+| `image` | string | Image file path |
+
+#### Word Paragraph Types
+
+| Type | Parameters | Description |
+|------|------------|-------------|
+| `heading` | `text`, `level`(1-6) | Heading paragraph |
+| `text` | `text` | Body paragraph |
+| `list` | `items`(string[]) | List paragraph |
+| `table` | `rows`(2D array) | Table paragraph |
+| `image` | `src`, `width`, `height` | Image paragraph |
+
+#### Excel Data Format
+
+- `sheets` is an array, each item contains `name` (sheet name) and `data` (2D array)
+- The first row of `data` is usually used as the header
+- Cell values can be strings or numbers
+
+#### Two Calling Modes
+
+All Office creation tools support two calling modes:
+
+| Mode | Syntax | Use Case |
+|------|--------|----------|
+| **Positional args** | `createPpt(outputPath, title, content)` | Quick simple document creation |
+| **Object args** | `createPpt({ outputPath, slides, ... })` | Complex formatted documents |
+
+#### Best Practices
+
+1. **Use correct extensions** — PPT: `.pptx`, Word: `.docx`, Excel: `.xlsx`
+2. **Use relative paths** — Relative to workspace directory, or use absolute paths
+3. **Prepare images in advance** — Ensure inserted image files exist
+4. **Correct data format** — Excel data uses 2D arrays with header in first row
+5. **Mind performance for large docs** — Too many slides/tables may increase generation time
+
+#### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| "Missing outputPath parameter" | Output path not specified | Ensure correct file path parameter is passed |
+| Generated file won't open | Incorrect extension | Ensure correct extension (.pptx/.docx/.xlsx) |
+| Images not showing | Wrong image path or file not found | Check image path is correct and file exists |
+| Chinese garbled text | Encoding issue | Ensure UTF-8 encoding; libraries have built-in Chinese support |
 
 ## Memory System
 
@@ -1065,6 +1214,7 @@ cogito-agent/
 │   │   │   ├── monitor.js            # System monitoring
 │   │   │   ├── scheduler.js          # Scheduled tasks
 │   │   │   ├── ocr.js                # Optical Character Recognition
+│   │   │   ├── office.js             # Office documents (PPT/Word/Excel)
 │   │   │   ├── storage.js            # File storage
 │   │   │   └── TOOL_DEVELOPMENT.md   # Tool development docs
 │   │   └── ...
@@ -1201,6 +1351,7 @@ Load tool categories on demand to reduce token consumption:
 | `monitor` | System monitoring |
 | `scheduler` | Scheduled tasks |
 | `ocr` | Optical Character Recognition |
+| `office` | Office documents (PPT/Word/Excel) |
 
 ### Complete Environment Variables List
 
@@ -1564,6 +1715,49 @@ console.log(sum);
 // → Recognize text from whiteboard photo
 ```
 
+### Office Document Generation
+
+```javascript
+// Create a PPT presentation
+[TOOL] createPpt({
+  outputPath: "data/presentation.pptx",
+  title: "Project Report",
+  slides: [
+    { title: "Cover", content: "2024 Annual Project Summary" },
+    { title: "Key Achievements", bullets: ["Goal 1 completed", "Goal 2 completed", "Goal 3 exceeded"] },
+    { title: "Data Visualization", image: "data/chart.png" }
+  ]
+}) [/TOOL]
+// → { success: true, path: "data/presentation.pptx", slideCount: 3 }
+
+// Create a Word document
+[TOOL] createWord({
+  outputPath: "data/report.docx",
+  title: "Analysis Report",
+  paragraphs: [
+    { type: "heading", text: "1. Overview", level: 1 },
+    { type: "text", text: "This report provides in-depth analysis of..." },
+    { type: "heading", text: "2. Statistics", level: 2 },
+    { type: "table", rows: [["Item", "Value"], ["A", "100"], ["B", "200"]] }
+  ]
+}) [/TOOL]
+// → { success: true, path: "data/report.docx", paragraphCount: 4 }
+
+// Create an Excel spreadsheet
+[TOOL] createExcel({
+  outputPath: "data/data.xlsx",
+  sheets: [
+    { name: "Sales", data: [["Product", "Qty"], ["A", 100], ["B", 200]] },
+    { name: "Inventory", data: [["Product", "Stock"], ["A", 50], ["B", 30]] }
+  ]
+}) [/TOOL]
+// → { success: true, path: "data/data.xlsx", sheetCount: 2 }
+
+// Read an Excel file
+[TOOL] readExcel("data/data.xlsx") [/TOOL]
+// → { "Sales": [["Product","Qty"],...], "Inventory": [["Product","Stock"],...] }
+```
+
 ---
 
 ## Architecture Design
@@ -1574,7 +1768,7 @@ console.log(sum);
 |-----------|----------------|-------------|
 | **Agent.js** | Thinking loop | Automatically triggers thinking every 3 seconds |
 | **state.js** | State machine | THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
-| **registry.js** | Tool registry | Centralized management of 18 tool modules |
+| **registry.js** | Tool registry | Centralized management of 19 tool modules |
 | **session.js** | Session management | Multi-session switching, context compression |
 | **commands.js** | Command handling | Special commands like /help, /status |
 | **sandbox.js** | Code sandbox | isolated-vm process-level isolation |
