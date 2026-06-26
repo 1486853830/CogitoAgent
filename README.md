@@ -23,7 +23,7 @@
 <p align="center" style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
   <a href="#"><img src="https://img.shields.io/badge/版本-2.3.0-764ba2?style=for-the-badge" alt="版本"></a>
   <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D18.0-339933?style=for-the-badge&logo=node.js" alt="Node"></a>
-  <a href="#"><img src="https://img.shields.io/badge/许可证-MIT-green?style=for-the-badge" alt="许可证"></a>
+  <a href="#"><img src="https://img.shields.io/badge/许可证-Apache_2.0-blue?style=for-the-badge" alt="许可证"></a>
   <a href="#"><img src="https://img.shields.io/badge/状态-稳定-success?style=for-the-badge" alt="状态"></a>
   <a href="#"><img src="https://img.shields.io/badge/运行-本地-ff6b6b?style=for-the-badge" alt="本地"></a>
 </p>
@@ -41,7 +41,7 @@
     <td align="center" width="50%">
       <img src="introduction/electron.png" alt="CogitoAgent Electron 界面" width="95%" style="border-radius: 8px;" />
       <br>
-      <sub>🖥️ 桌面模式 — Electron 毛玻璃窗口</sub>
+      <sub>🖥️ 桌面模式 — Electron 窗口</sub>
     </td>
     <td align="center" width="50%">
       <img src="introduction/desktop.png" alt="CogitoAgent 桌面预览" width="95%" style="border-radius: 8px;" />
