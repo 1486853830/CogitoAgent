@@ -191,14 +191,15 @@ function getAvailablePersonas() {
   const personas = [];
   
   try {
-    const files = fs.readdirSync(personasDir);
-    for (const file of files) {
-      if (file.endsWith('.md') && file !== 'persona.md') {
-        const name = file.replace('.md', '');
-        // 读取文件第一行作为中文名
-        const content = fs.readFileSync(path.join(personasDir, file), 'utf-8');
+    const dirs = fs.readdirSync(personasDir, { withFileTypes: true })
+      .filter(dir => dir.isDirectory())
+      .map(dir => dir.name);
+    for (const dir of dirs) {
+      const personaPath = path.join(personasDir, dir, 'persona.md');
+      if (fs.existsSync(personaPath)) {
+        const content = fs.readFileSync(personaPath, 'utf-8');
         const firstLine = content.split('\n')[0].replace(/^#\s*/, '').trim();
-        personas.push({ name, firstLine, filename: file });
+        personas.push({ name: dir, firstLine, filename: `${dir}/persona.md` });
       }
     }
   } catch (e) {
