@@ -234,7 +234,7 @@ function handleReply(data) {
       // 工具结果已隐藏，仅显示工具调用
       break;
 
-    case 'done':
+    case 'end':
       if (currentAssistantBubble) {
         currentAssistantBubble.querySelector('.bubble').classList.remove('typing-cursor');
       }
