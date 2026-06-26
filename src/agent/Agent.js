@@ -587,6 +587,9 @@ async function thinkCycle() {
     // 循环处理所有工具调用
     const toolCalls = parseAllToolCalls(fullResponse);
 
+    // 构建最终回复（包含工具结果，让 AI 下一轮能看到）
+    let finalResponse = fullResponse;
+
     if (toolCalls.length > 0) {
       for (const toolCall of toolCalls) {
         // WebSocket 广播工具调用开始
@@ -597,19 +600,22 @@ async function thinkCycle() {
           // 把工具结果也显示成灰色小框
           const resultText = formatToolResult(toolCall.tool, result.data);
           printToolBlock(resultText, '工具结果');
-          addAssistantMessage(fullResponse + `\n\n[工具结果]: ${JSON.stringify(result.data)}`);
+          // 追加到最终回复，让 AI 下一轮能看到
+          finalResponse += `\n\n[工具结果]: ${resultText}`;
           // WebSocket 广播工具结果
           broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: resultText });
         } else {
           println(`[失败] ${result.error}`, 'red');
-          addAssistantMessage(fullResponse + `\n\n[工具错误]: ${result.error}`);
+          // 追加到最终回复，让 AI 下一轮能看到
+          finalResponse += `\n\n[工具错误]: ${result.error}`;
           // WebSocket 广播工具错误
           broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: false, data: result.error });
         }
       }
-    } else {
-      addAssistantMessage(fullResponse);
     }
+
+    // 只添加一次最终回复到对话历史
+    addAssistantMessage(finalResponse);
 
     if (shouldCompress()) {
       println('[系统] 正在压缩对话历史...', 'gray');
@@ -619,9 +625,11 @@ async function thinkCycle() {
 
     if (wantsToWait || state.current !== STATE.THINKING) {
       state.current = STATE.AWAITING_INPUT;
-      broadcast('agent-reply', { type: 'done' });
+      const nextAction = wantsToWait ? 'wait' : 'continue';
+      broadcast('agent-reply', { type: 'end', nextAction });
       broadcast('agent-state', { state: 'idle' });
     } else if (toolCalls.length > 0) {
+      broadcast('agent-reply', { type: 'end', nextAction: 'tools' });
       scheduleNextCycle();
     }
 

@@ -115,7 +115,8 @@ npm start
 | 命令 | 模式 | 说明 |
 |------|------|------|
 | `npm start` | 设置向导 | 首次配置或修改配置，不启动 Agent |
-| `npm run electron` | 桌面模式 | Electron 桌面窗口 + 终端 Agent，通过 WebSocket 通信 |
+| `npm run electron` | 桌面模式 | Electron 桌面悬浮窗 + 终端 Agent，通过 WebSocket 通信 |
+| `npm run electron:dashboard` | Dashboard 模式 | 全窗口 Electron 仪表盘，带会话管理和工具调用可视化 |
 | `npm run cli` | CLI 模式 | 仅终端 Agent，不启动 Electron（适合纯命令行环境） |
 
 #### 设置向导
@@ -1011,11 +1012,18 @@ flowchart TB
     Main <==>|"WebSocket<br/>ws://:9527"| WSServer
 ```
 
+### 窗口
+
+| 窗口 | 文件 | 说明 |
+|------|------|------|
+| 悬浮窗 | `electron/desktop/` | 半透明毛玻璃悬浮窗 + 虚拟人物视频（桌面模式） |
+| 仪表盘 | `electron/dashboard/` | 全窗口仪表盘，含会话列表、对话、工具调用记录（Dashboard 模式） |
+
 ### 主要进程
 
 | 进程 | 文件 | 职责 |
 |------|------|------|
-| 主进程 | `electron/main.js` | 窗口管理、系统托盘 |
+| 主进程 | `electron/main.js` | 窗口管理、系统托盘、模式路由 |
 | 预加载 | `electron/preload.cjs` | 安全上下文桥接 |
 | 桥接器 | `electron/agent-bridge.js` | WebSocket ↔ IPC 转换 |
 | WebSocket | `src/io/ws-server.js` | 实时通信（端口9527） |
@@ -1041,8 +1049,7 @@ cogito-agent/
 │   │   ├── state.js                  # 状态机
 │   │   ├── registry.js               # 工具注册表
 │   │   ├── commands.js               # 命令处理
-│   │   ├── session.js                # 多会话管理
-│   │   ├── prompt.js                 # 系统提示词构建
+│   │   ├── session.js                # 多会话管理 + 系统提示词
 │   │   ├── mcp.js                    # MCP 协议服务器
 │   │   ├── plugin.js                 # 插件系统
 │   │   ├── tracing.js                # 轻量可观测性
@@ -1082,7 +1089,11 @@ cogito-agent/
 │   ├── main.js                       # 主进程
 │   ├── preload.cjs                   # 安全上下文桥接
 │   ├── agent-bridge.js               # WebSocket ↔ IPC 桥接
-│   ├── desktop/                      # 主窗口 UI
+│   ├── desktop/                      # 悬浮窗 UI
+│   │   ├── index.html
+│   │   ├── renderer.js
+│   │   └── style.css
+│   ├── dashboard/                    # 仪表盘窗口 UI
 │   │   ├── index.html
 │   │   ├── renderer.js
 │   │   └── style.css

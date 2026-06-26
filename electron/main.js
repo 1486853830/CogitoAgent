@@ -4,11 +4,11 @@
  * 支持首次配置向导模式
  */
 
-import { app, BrowserWindow, ipcMain, screen, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, screen, dialog, shell } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn, execSync } from 'child_process';
-import { initAgentBridge } from './agent-bridge.js';
+import { initAgentBridge, sendToAgent } from './agent-bridge.js';
 import fs from 'fs';
 import os from 'os';
 
@@ -17,11 +17,14 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow = null;
 let setupWindow = null;
+let dashboardWindow = null;
 let agentProcess = null;
 let isQuitting = false;  // 标记是否为用户主动退出
 let mainWindowCreated = false;  // 标记主窗口是否曾经创建过
+let dashboardWindowCreated = false;  // 标记 Dashboard 窗口是否曾经创建过
 let isTransitioningToMain = false;  // 标记正在从配置向导过渡到主窗口
 let currentPersona = '';  // 当前选中的 persona
+let currentMode = 'desktop';  // 当前模式: desktop / dashboard
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const CONFIG_FILE = path.join(PROJECT_ROOT, 'config.json');
@@ -332,6 +335,44 @@ function createMainWindow() {
   console.log('[主进程] 主窗口已创建');
 }
 
+/**
+ * 创建 Dashboard 窗口（工作台模式）
+ */
+function createDashboardWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const winWidth = 1100;
+  const winHeight = 720;
+
+  dashboardWindow = new BrowserWindow({
+    width: winWidth,
+    height: winHeight,
+    x: Math.floor((width - winWidth) / 2),
+    y: Math.floor((height - winHeight) / 2),
+    minWidth: 800,
+    minHeight: 600,
+    frame: false,
+    backgroundColor: '#1a1a24',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  dashboardWindow.setMenuBarVisibility(false);
+  dashboardWindow.loadFile(path.join(__dirname, 'dashboard', 'index.html'));
+
+  initAgentBridge(dashboardWindow);
+
+  dashboardWindow.on('closed', () => {
+    dashboardWindow = null;
+  });
+
+  dashboardWindowCreated = true;
+  currentMode = 'dashboard';
+  console.log('[主进程] Dashboard 窗口已创建');
+}
+
 // 当所有窗口关闭时退出
 app.on('window-all-closed', () => {
   // 正在从配置向导过渡到主窗口时，不退出也不杀 Agent
@@ -359,13 +400,54 @@ app.on('before-quit', () => {
 
 app.whenReady().then(async () => {
   // ===== IPC: 窗口操作 =====
-  ipcMain.on('window-minimize', () => mainWindow?.minimize());
-  ipcMain.on('window-close', () => mainWindow?.close());
+  ipcMain.on('window-minimize', () => {
+    const win = dashboardWindow || mainWindow;
+    win?.minimize();
+  });
+  ipcMain.on('window-maximize', () => {
+    const win = dashboardWindow || mainWindow;
+    if (win) {
+      if (win.isMaximized()) {
+        win.unmaximize();
+      } else {
+        win.maximize();
+      }
+    }
+  });
+  ipcMain.on('window-close', () => {
+    const win = dashboardWindow || mainWindow;
+    win?.close();
+  });
 
   ipcMain.on('window-move', (_event, { x, y }) => {
     if (mainWindow) {
       const [currentX, currentY] = mainWindow.getPosition();
       mainWindow.setPosition(currentX + x, currentY + y);
+    }
+  });
+
+  // ===== IPC: 模式切换 =====
+  ipcMain.handle('get-current-mode', () => {
+    return currentMode;
+  });
+
+  ipcMain.on('switch-to-desktop', () => {
+    if (dashboardWindow) {
+      dashboardWindow.close();
+      dashboardWindow = null;
+    }
+    if (!mainWindow) {
+      createMainWindow();
+    }
+  });
+
+  ipcMain.on('switch-to-dashboard', () => {
+    if (mainWindow) {
+      mainWindow.close();
+      mainWindow = null;
+    }
+    if (!dashboardWindow) {
+      createDashboardWindow();
     }
   });
 
@@ -460,6 +542,89 @@ app.whenReady().then(async () => {
     return { type: 'video', path: 'video.mp4' };
   });
 
+  // ===== 会话管理 IPC =====
+  // 获取会话列表（从 meta.json 读取基本信息，从会话文件读取预览）
+  ipcMain.handle('get-sessions', () => {
+    const sessionsDir = path.join(PROJECT_ROOT, 'data', 'sessions');
+    const metaPath = path.join(sessionsDir, 'meta.json');
+    try {
+      let sessions = [];
+      if (fs.existsSync(metaPath)) {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+        sessions = meta.sessions.map(s => ({
+          id: s.id,
+          name: s.name,
+          createdAt: s.createdAt,
+          lastActiveAt: s.lastActiveAt,
+          isActive: s.id === meta.activeId
+        }));
+      }
+
+      // 读取每个会话文件的第一条用户消息作为预览
+      for (const session of sessions) {
+        try {
+          const sessionFile = path.join(sessionsDir, `${session.id}.json`);
+          if (fs.existsSync(sessionFile)) {
+            const messages = JSON.parse(fs.readFileSync(sessionFile, 'utf-8'));
+            // 找第一条用户消息作为预览
+            const firstUserMsg = messages.find(m => m.role === 'user');
+            if (firstUserMsg) {
+              session.preview = firstUserMsg.content.substring(0, 50);
+            }
+          }
+        } catch {
+          // 忽略读取失败
+        }
+      }
+      return sessions;
+    } catch (e) {
+      console.error('[主进程] 读取会话列表失败:', e.message);
+    }
+    return [];
+  });
+
+  // 切换会话（通过 WebSocket 发送给 Agent）
+  ipcMain.on('switch-session', (_event, sessionId) => {
+    sendToAgent(`/switch ${sessionId}`);
+  });
+
+  // 获取当前会话 ID
+  ipcMain.handle('get-current-session', () => {
+    const metaPath = path.join(PROJECT_ROOT, 'data', 'sessions', 'meta.json');
+    try {
+      if (fs.existsSync(metaPath)) {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+        return meta.activeId;
+      }
+    } catch (e) {
+      console.error('[主进程] 读取当前会话失败:', e.message);
+    }
+    return null;
+  });
+
+  // 获取指定会话的历史消息（排除 system prompt）
+  ipcMain.handle('get-session-history', (_event, sessionId) => {
+    const sessionFile = path.join(PROJECT_ROOT, 'data', 'sessions', `${sessionId}.json`);
+    try {
+      if (fs.existsSync(sessionFile)) {
+        const messages = JSON.parse(fs.readFileSync(sessionFile, 'utf-8'));
+        // 过滤掉 system prompt，只返回对话内容
+        return messages.filter(m => m.role !== 'system').map(m => ({
+          role: m.role,
+          content: m.content
+        }));
+      }
+    } catch (e) {
+      console.error('[主进程] 读取会话历史失败:', e.message);
+    }
+    return [];
+  });
+
+  // 打开外部链接
+  ipcMain.handle('open-external', async (_event, url) => {
+    shell.openExternal(url);
+  });
+
   // ===== 启动逻辑 =====
   if (!isConfigured()) {
     console.log('[主进程] 未配置，显示配置向导');
@@ -520,7 +685,7 @@ function getCurrentPersona() {
  */
 async function launchMainApp() {
   // 防止重复调用（例如来自渲染进程的多次 IPC）
-  if (isTransitioningToMain || mainWindow || mainWindowCreated) {
+  if (isTransitioningToMain || mainWindow || mainWindowCreated || dashboardWindow || dashboardWindowCreated) {
     console.log('[主进程] launchMainApp 已被调用，跳过');
     return;
   }
@@ -538,10 +703,22 @@ async function launchMainApp() {
     console.log('[主进程] 当前 persona:', currentPersona);
   }
 
+  // 读取启动模式
+  const envConfig = loadEnvFile();
+  const mode = envConfig['COGITO_MODE'] || process.env.COGITO_MODE || 'desktop';
+  currentMode = mode;
+  console.log('[主进程] 启动模式:', mode);
+
   killPortProcess(9527);
   console.log('[主进程] 正在启动终端 Agent...');
   await startAgentProcess();
-  console.log('[主进程] Agent 就绪，创建主窗口');
-  createMainWindow();
+  console.log('[主进程] Agent 就绪，创建窗口');
+
+  if (mode === 'dashboard') {
+    createDashboardWindow();
+  } else {
+    createMainWindow();
+  }
+
   isTransitioningToMain = false;  // 过渡完成
 }
