@@ -1,23 +1,24 @@
+# CogitoAgent
+
+> **Think Continuously · Act Autonomously · Stay Private**
+
+Cogito, ergo sum — CogitoAgent is not just a tool; it is your autonomous thinking partner in your local environment.
+
+**CogitoAgent** is a locally-run autonomous AI agent that integrates file management, knowledge mining, system operations, code execution, and web connectivity. It runs directly within the working directory configured by the user, **with no need to upload any files to third-party servers**, ensuring data privacy while providing a continuously operating intelligent assistant service.
+
+![CogitoAgent dashboard](introduction/dashboard.png)
+
+
+Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Continuously**, **Explore Autonomously**, and **Execute Tools**, capable of proactively discovering and organizing your local file assets in the background, with additional capabilities available through an extensible toolset.
+
 <p align="center">
-  <strong style="font-size: 2.5em; color: #f0f0f0;">CogitoAgent</strong>
-  <br>
-  <span style="font-size: 1.15em; color: #667eea;">Think Continuously · Act Autonomously · Stay Private</span>
+  <a href="#"><img src="https://img.shields.io/badge/Version-2.3.0-764ba2?style=flat-square" alt="Version"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D18.0-339933?style=flat-square&logo=node.js" alt="Node"></a>
+  <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=flat-square" alt="Status"></a>
 </p>
 
-<p align="center" style="max-width: 700px; margin: 0 auto;">
-Cogito, ergo sum — CogitoAgent is a locally-run autonomous AI agent that integrates file management, knowledge mining, system operations, code execution, and web connectivity. It runs directly within the working directory configured by the user, <strong>with no need to upload any files to third-party servers</strong>, ensuring data privacy while providing a continuously operating intelligent assistant service.
-</p>
-
-![Dashboard](introduction/dashboard.png)
-
-<p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/Version-2.3.0-764ba2?style=for-the-badge" alt="Version"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D18.0-339933?style=for-the-badge&logo=node.js" alt="Node"></a>
-  <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge" alt="License"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=for-the-badge" alt="Status"></a>
-</p>
-
-<br>
+---
 
 ## Core Features
 
