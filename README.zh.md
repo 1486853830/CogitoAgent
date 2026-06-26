@@ -46,7 +46,7 @@
     <td align="center" width="50%">
       <img src="introduction/desktop.png" alt="CogitoAgent 桌面预览" width="95%" style="border-radius: 8px;" />
       <br>
-      <sub>💬 终端模式 — CLI 交互界面</sub>
+      <sub>🖥️ 桌面模式 — Electron 窗口</sub>
     </td>
   </tr>
 </table>

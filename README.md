@@ -46,7 +46,7 @@
     <td align="center" width="50%">
       <img src="introduction/desktop.png" alt="CogitoAgent Desktop Preview" width="95%" style="border-radius: 8px;" />
       <br>
-      <sub>💬 Terminal Mode — CLI Interactive Interface</sub>
+      <sub>🖥️ Desktop Mode — Electron Window</sub>
     </td>
   </tr>
 </table>
