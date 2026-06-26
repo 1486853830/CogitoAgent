@@ -6,7 +6,7 @@
 const messagesEl = document.getElementById('messages');
 const inputEl = document.getElementById('userInput');
 const btnSend = document.getElementById('btnSend');
-const charVideo = document.getElementById('charVideo');
+const characterEl = document.querySelector('.character');
 const panel = document.getElementById('panel');
 const btnMinimize = document.getElementById('btnMinimize');
 const btnClose = document.getElementById('btnClose');
@@ -16,8 +16,8 @@ let currentAssistantBubble = null;
 let isProcessing = false;
 let lastToolKey = '';  // 工具调用去重
 
-// 视频状态映射（可根据实际视频文件修改）
-const videoStates = { default: '../assets/zhanshi.mp4' };
+// 默认媒体路径
+const DEFAULT_MEDIA = { type: 'video', path: '../assets/zhanshi.mp4' };
 
 /**
  * 渲染 Markdown 为 HTML
@@ -37,13 +37,46 @@ function filterToolBlocks(text) {
 }
 
 /**
- * 切换视频状态（单视频模式，始终播放同一个视频）
+ * 动态加载 persona 媒体资源（视频或图片）
+ */
+async function loadPersonaMedia() {
+  try {
+    const media = await window.electronAPI.getPersonaMedia();
+    
+    characterEl.innerHTML = '';
+    
+    if (media.type === 'image') {
+      const img = document.createElement('img');
+      img.src = media.path;
+      img.alt = 'Persona Image';
+      characterEl.appendChild(img);
+    } else {
+      const video = document.createElement('video');
+      video.id = 'charVideo';
+      video.autoplay = true;
+      video.loop = true;
+      video.muted = true;
+      video.src = media.path;
+      characterEl.appendChild(video);
+    }
+  } catch (e) {
+    console.error('加载 persona 媒体失败:', e);
+    characterEl.innerHTML = '';
+    const video = document.createElement('video');
+    video.id = 'charVideo';
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.src = DEFAULT_MEDIA.path;
+    characterEl.appendChild(video);
+  }
+}
+
+/**
+ * 切换视频状态（根据状态更新视频）
  */
 function changeVideoState(_state) {
-  const src = videoStates.default;
-  if (!src || charVideo.src.endsWith(src)) return;
-  charVideo.src = src;
-  charVideo.play().catch(() => {});
+  // 状态变化时不切换视频，视频由 persona 决定
 }
 
 /**
@@ -273,6 +306,9 @@ window.electronAPI.onHistory((history) => {
 // 加载历史
 window.electronAPI.requestHistory();
 
+// 加载 persona 媒体资源
+loadPersonaMedia();
+
 // 点击输入框聚焦
 inputEl.focus();
 document.addEventListener('click', () => {
@@ -292,10 +328,10 @@ let dragStartY = 0;
 const DRAG_THRESHOLD = 5;  // 拖动阈值（像素）
 
 /**
- * 点击视频切换面板显示/隐藏
+ * 点击人物区域切换面板显示/隐藏
  * 注意：如果发生了拖动，则不触发切换
  */
-charVideo.addEventListener('click', (e) => {
+characterEl.addEventListener('click', (e) => {
   // 如果发生了拖动，不触发展开/收起
   if (hasDragged) {
     hasDragged = false;
@@ -315,9 +351,9 @@ charVideo.addEventListener('click', (e) => {
 });
 
 /**
- * 拖拽视频移动窗口位置
+ * 拖拽人物区域移动窗口位置
  */
-charVideo.addEventListener('mousedown', (e) => {
+characterEl.addEventListener('mousedown', (e) => {
   // 只响应左键
   if (e.button !== 0) return;
   

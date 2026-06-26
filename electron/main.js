@@ -21,6 +21,7 @@ let agentProcess = null;
 let isQuitting = false;  // 标记是否为用户主动退出
 let mainWindowCreated = false;  // 标记主窗口是否曾经创建过
 let isTransitioningToMain = false;  // 标记正在从配置向导过渡到主窗口
+let currentPersona = '';  // 当前选中的 persona
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const CONFIG_FILE = path.join(PROJECT_ROOT, 'config.json');
@@ -99,6 +100,9 @@ function saveConfig(config) {
       '# 工作区配置',
       `COGITO_WORKSPACE=${config.workspace || os.homedir()}`,
       '',
+      '# 人设配置',
+      `COGITO_PERSONA=${config.persona || ''}`,
+      '',
       '# 其他配置可在 .env.example 中查看',
     ];
 
@@ -110,6 +114,7 @@ function saveConfig(config) {
       const srcPath = path.join(PROJECT_ROOT, 'personas', config.persona, 'persona.md');
       if (fs.existsSync(srcPath)) {
         fs.copyFileSync(srcPath, PERSONA_FILE);
+        currentPersona = config.persona;
         console.log('[主进程] 人设已应用:', config.persona);
       }
     }
@@ -431,6 +436,30 @@ app.whenReady().then(async () => {
     return personas;
   });
 
+  // 获取当前 persona 的媒体资源（优先视频，其次图片）
+  ipcMain.handle('get-persona-media', () => {
+    if (!currentPersona) {
+      return { type: 'video', path: '../assets/zhanshi.mp4' };
+    }
+    
+    const personaDir = path.join(PROJECT_ROOT, 'personas', currentPersona);
+    
+    const videoPath = path.join(personaDir, 'video.mp4');
+    if (fs.existsSync(videoPath)) {
+      return { type: 'video', path: `../../personas/${currentPersona}/video.mp4` };
+    }
+    
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    for (const ext of imageExtensions) {
+      const imagePath = path.join(personaDir, `image.${ext}`);
+      if (fs.existsSync(imagePath)) {
+        return { type: 'image', path: `../../personas/${currentPersona}/image.${ext}` };
+      }
+    }
+    
+    return { type: 'video', path: '../assets/zhanshi.mp4' };
+  });
+
   // ===== 启动逻辑 =====
   if (!isConfigured()) {
     console.log('[主进程] 未配置，显示配置向导');
@@ -452,6 +481,41 @@ app.whenReady().then(async () => {
 });
 
 /**
+ * 获取当前 persona ID（优先从 .env 读取）
+ */
+function getCurrentPersona() {
+  if (currentPersona) return currentPersona;
+  
+  // 优先从 .env 文件读取
+  try {
+    const envConfig = loadEnvFile();
+    if (envConfig['COGITO_PERSONA']) {
+      currentPersona = envConfig['COGITO_PERSONA'];
+      return currentPersona;
+    }
+  } catch (e) {
+    console.error('[主进程] 从 .env 读取 persona 失败:', e.message);
+  }
+  
+  // 回退到从 persona.md 获取
+  try {
+    if (fs.existsSync(PERSONA_FILE)) {
+      const content = fs.readFileSync(PERSONA_FILE, 'utf-8');
+      const firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim();
+      const match = firstLine.match(/\(([^)]+)\)$/);
+      if (match) {
+        currentPersona = match[1].trim();
+        return currentPersona;
+      }
+    }
+  } catch (e) {
+    console.error('[主进程] 读取 persona.md 失败:', e.message);
+  }
+  
+  return '';
+}
+
+/**
  * 启动主应用
  */
 async function launchMainApp() {
@@ -466,6 +530,12 @@ async function launchMainApp() {
     isTransitioningToMain = true;  // 防止 window-all-closed 误退出
     setupWindow.close();
     setupWindow = null;
+  }
+
+  // 读取当前 persona
+  getCurrentPersona();
+  if (currentPersona) {
+    console.log('[主进程] 当前 persona:', currentPersona);
   }
 
   killPortProcess(9527);
