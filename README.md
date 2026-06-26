@@ -1,67 +1,23 @@
-<h1 align="center">
-  <strong style="font-size: 3em; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-    CogitoAgent
-  </strong>
-</h1>
-
 <p align="center">
-  <strong style="font-size: 1.4em; color: #667eea;">✦ Continuously Thinking Local Autonomous AI Agent ✦</strong>
+  <strong style="font-size: 2.5em; color: #f0f0f0;">CogitoAgent</strong>
   <br>
-  <em style="font-size: 1.1em; color: #888;">Think Continuously · Act Autonomously · Stay Private</em>
+  <span style="font-size: 1.15em; color: #667eea;">Think Continuously · Act Autonomously · Stay Private</span>
 </p>
+
+<p align="center" style="max-width: 700px; margin: 0 auto;">
+Cogito, ergo sum — CogitoAgent is a locally-run autonomous AI agent that integrates file management, knowledge mining, system operations, code execution, and web connectivity. It runs directly within the working directory configured by the user, <strong>with no need to upload any files to third-party servers</strong>, ensuring data privacy while providing a continuously operating intelligent assistant service.
+</p>
+
+![Dashboard](introduction/dashboard.png)
 
 <p align="center">
-  <a href="#-core-features">⚡ Features</a> &nbsp;·&nbsp;
-  <a href="#-quick-start">🚀 Quick Start</a> &nbsp;·&nbsp;
-  <a href="#continuous-thinking-loop">🧠 Architecture</a> &nbsp;·&nbsp;
-  <a href="#tool-system">🔧 Tools</a> &nbsp;·&nbsp;
-  <a href="src/agent/tools/TOOL_DEVELOPMENT.md">📦 Development</a>
-</p>
-
-<br>
-
-<p align="center" style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
   <a href="#"><img src="https://img.shields.io/badge/Version-2.3.0-764ba2?style=for-the-badge" alt="Version"></a>
   <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D18.0-339933?style=for-the-badge&logo=node.js" alt="Node"></a>
   <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=for-the-badge" alt="Status"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Run-Local-ff6b6b?style=for-the-badge" alt="Local"></a>
 </p>
 
 <br>
-
-<div align="center">
-  <img src="introduction/main.png" alt="CogitoAgent Main Interface" width="80%" style="border-radius: 12px; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);" />
-</div>
-
-<br>
-
-<table align="center">
-  <tr>
-    <td align="center" width="50%">
-      <img src="introduction/electron.png" alt="CogitoAgent Electron Interface" width="95%" style="border-radius: 8px;" />
-      <br>
-      <sub>🖥️ Desktop Mode — Electron Window</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="introduction/desktop.png" alt="CogitoAgent Desktop Preview" width="95%" style="border-radius: 8px;" />
-      <br>
-      <sub>🖥️ Desktop Mode — Electron Window</sub>
-    </td>
-  </tr>
-</table>
-
-<br>
-
----
-
-> **Cogito, ergo sum** — I think, therefore I am. CogitoAgent is not just a tool; it is your autonomous thinking partner in your local environment.
-
-**CogitoAgent** is a locally-run autonomous AI agent that integrates file management, knowledge mining, system operations, code execution, and web connectivity. It runs directly within the working directory configured by the user, **with no need to upload any files to third-party servers**, ensuring data privacy while providing a continuously operating intelligent assistant service.
-
-Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Continuously** · **Explore Autonomously** · **Execute Tools**, capable of proactively discovering and organizing your local file assets in the background, with additional capabilities available through an extensible toolset.
-
----
 
 ## Core Features
 
@@ -115,7 +71,7 @@ The program supports two operation modes:
 | Command | Mode | Description |
 |---------|------|-------------|
 | `npm start` | Setup Wizard | First-time configuration or modifying settings; does not start the Agent |
-| `npm run electron` | Desktop Mode | Electron desktop overlay window + terminal Agent, communicating via WebSocket |
+| `npm run electron:desktop` | Desktop Mode | Electron desktop overlay window + terminal Agent, communicating via WebSocket |
 | `npm run electron:dashboard` | Dashboard Mode | Full-window Electron dashboard with session management and tool call visualization |
 | `npm run cli` | CLI Mode | Terminal Agent only, without Electron (suitable for pure command-line environments) |
 
@@ -130,7 +86,7 @@ On first run, the welcome page will automatically open and guide you through con
 #### Desktop Mode
 
 ```bash
-npm run electron
+npm run electron:desktop
 ```
 
 The Electron main process will automatically launch the terminal Agent, create the desktop window, and establish the connection.
@@ -143,6 +99,36 @@ The Electron main process will automatically launch the terminal Agent, create t
 - **exit** — Exit the program (or close the desktop window directly)
 
 ![](introduction/desktop.png)
+
+#### Dashboard Mode
+
+```bash
+npm run electron:dashboard
+```
+
+A full-window Electron dashboard with a three-column layout, providing an integrated workspace for session management, conversation, and tool call visualization.
+
+**Layout Structure:**
+
+| Area | Component | Description |
+|------|-----------|-------------|
+| Left Sidebar | Session List | Dynamic list of all sessions, click to switch, with new session button |
+| Main Area | Chat View | Conversation display with streaming AI responses and tool call cards |
+| Welcome View | Landing Page | Shown when no session is active, with quick action cards and input |
+
+**Features:**
+
+- **Session Management** — Browse, switch, and create sessions from the sidebar; session history persists across restarts
+- **Tool Visualization** — Tool calls shown as yellow cards, results as green collapsible cards, errors as red cards
+- **Streaming Output** — Real-time streaming AI responses with optimized rendering (no flicker)
+- **Skills Explorer** — Browse all available tools by category (14 categories, ~30 tools) with danger level indicators
+- **Quick Actions** — New task, skills browser, and workspace selector from the sidebar
+
+**Interface:**
+
+![](introduction/dashboard.png)
+
+
 
 #### CLI Mode
 
