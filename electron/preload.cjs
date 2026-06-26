@@ -57,4 +57,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 获取 personas 列表
   getPersonas: () => ipcRenderer.invoke('get-personas'),
+
+  // 获取当前 persona 的媒体资源（视频或图片）
+  getPersonaMedia: () => ipcRenderer.invoke('get-persona-media'),
 });
