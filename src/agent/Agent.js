@@ -655,6 +655,12 @@ async function start() {
   // 初始化会话
   initializeSession();
 
+  // 从环境变量加载 persona
+  const envPersona = process.env.COGITO_PERSONA;
+  if (envPersona) {
+    switchPersona(envPersona);
+  }
+
   // 启动 WebSocket 服务（供 Electron 桌面端连接，可通过 DISABLE_WS 环境变量禁用）
   if (process.env.DISABLE_WS !== 'true') {
     try {

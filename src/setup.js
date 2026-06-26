@@ -281,6 +281,9 @@ function saveEnvConfig(config) {
     '# 工作区配置',
     `COGITO_WORKSPACE=${config.workspace || ''}`,
     '',
+    '# 人设配置',
+    `COGITO_PERSONA=${config.persona || ''}`,
+    '',
     '# 其他配置可在 .env.example 中查看',
   ];
   

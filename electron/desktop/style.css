@@ -40,7 +40,8 @@ html, body {
   cursor: grabbing;  /* 拖拽时的鼠标样式 */
 }
 
-.character video {
+.character video,
+.character img {
   width: 100%;
   height: 100%;
   object-fit: cover;
