@@ -2,7 +2,7 @@
  * 会话管理模块 - 支持多会话
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'fs';
 import path from 'path';
 import { getBasePath } from './tools/index.js';
 import { getEnabledCategories, getAllCategories, getToolsByCategory, TOOL_CATEGORIES } from './registry.js';
@@ -502,6 +502,12 @@ function renameSession(sessionId, newName) {
  */
 function listSessions() {
   const meta = loadMeta();
+  
+  // 如果 meta 中没有会话但磁盘上有会话文件，自动恢复
+  if (meta.sessions.length === 0) {
+    recoverSessionsFromDisk(meta);
+  }
+  
   return meta.sessions.map(s => ({
     id: s.id,
     name: s.name,
@@ -509,6 +515,49 @@ function listSessions() {
     lastActiveAt: s.lastActiveAt,
     isActive: s.id === currentSessionId
   }));
+}
+
+/**
+ * 从磁盘恢复丢失的会话元数据
+ */
+function recoverSessionsFromDisk(meta) {
+  try {
+    const files = readdirSync(SESSIONS_DIR);
+    const recovered = [];
+    
+    for (const file of files) {
+      if (!file.match(/^sess_[^_]+\.json$/)) continue;
+      const sessionId = file.replace('.json', '');
+      try {
+        const content = JSON.parse(readFileSync(path.join(SESSIONS_DIR, file), 'utf-8'));
+        const messageCount = Array.isArray(content) ? content.filter(m => m.role !== 'system').length : 0;
+        recovered.push({
+          id: sessionId,
+          name: `会话 ${recovered.length + 1}`,
+          createdAt: new Date().toISOString(),
+          lastActiveAt: new Date().toISOString(),
+          messageCount
+        });
+        console.error(`[会话] 已恢复会话: ${sessionId} (${messageCount} 条消息)`);
+      } catch (e) {
+        // 跳过损坏的文件
+      }
+    }
+    
+    if (recovered.length > 0) {
+      meta.sessions = recovered;
+      if (!meta.activeId || !meta.sessions.find(s => s.id === meta.activeId)) {
+        meta.activeId = recovered[0].id;
+      }
+      if (!currentSessionId) {
+        currentSessionId = meta.activeId;
+      }
+      saveMeta(meta);
+      console.error(`[会话] 已从磁盘恢复 ${recovered.length} 个会话`);
+    }
+  } catch (e) {
+    // 目录不存在时忽略
+  }
 }
 
 /**
