@@ -156,7 +156,7 @@ Suitable for:
 - Remote connections without a GUI
 - Resource-constrained environments
 
-#### Session Selector (In Testing — Not Yet Released)
+#### Session Selector
 
 On startup (both CLI and Electron modes), a session selection interface will be displayed, allowing users to choose an existing session or create a new one.
 
@@ -839,7 +839,7 @@ CogitoAgent supports hot-switching personas without restarting the program:
 - The system prompt is dynamically rebuilt
 - The current workspace path is automatically injected into the new persona
 
-## Multi-Session Management (In Testing — Not Yet Released)
+## Multi-Session Management
 
 The `sessions/` module supports multiple independent conversation sessions, each maintaining its own independent context.
 
