@@ -521,7 +521,7 @@ app.whenReady().then(async () => {
   // 获取当前 persona 的媒体资源（优先视频，其次图片）
   ipcMain.handle('get-persona-media', () => {
     if (!currentPersona) {
-      return { type: 'video', path: 'video.mp4' };
+      return { type: 'video', path: 'default' };
     }
     
     const personaDir = path.join(PROJECT_ROOT, 'personas', currentPersona);
@@ -539,7 +539,7 @@ app.whenReady().then(async () => {
       }
     }
     
-    return { type: 'video', path: 'video.mp4' };
+    return { type: 'video', path: 'default' };
   });
 
   // ===== 会话管理 IPC =====
