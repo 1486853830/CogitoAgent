@@ -10,6 +10,7 @@ const characterEl = document.querySelector('.character');
 const panel = document.getElementById('panel');
 const btnMinimize = document.getElementById('btnMinimize');
 const btnClose = document.getElementById('btnClose');
+const btnDashboard = document.getElementById('btnDashboard');
 
 let currentAssistantBubble = null;
 let isProcessing = false;
@@ -61,6 +62,10 @@ function bindEvents() {
 
   btnClose.addEventListener('click', () => {
     window.electronAPI?.closeWindow();
+  });
+
+  btnDashboard.addEventListener('click', () => {
+    window.electronAPI?.switchToDashboard();
   });
 
   document.addEventListener('click', () => {

@@ -216,6 +216,10 @@ const NavManager = {
     const skillBtns = document.querySelectorAll('.action-btn');
     skillBtns.forEach(btn => {
       if (btn.id === 'newTaskBtn') return;
+      if (btn.id === 'desktopModeBtn') {
+        btn.addEventListener('click', () => this.switchToDesktop());
+        return;
+      }
       btn.addEventListener('click', () => {
         const label = btn.textContent.trim();
         this.handleQuickAction(label);
