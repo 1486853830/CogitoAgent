@@ -1,5 +1,6 @@
 /* ============================================
    CogitoAgent Desktop - 毛玻璃桌面风格
+   仅包含 desktop 特有样式，公共样式在 ../shared/common.css
    ============================================ */
 
 * {
@@ -28,16 +29,16 @@ html, body {
   overflow: hidden;
   z-index: 1;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
-  cursor: grab;  /* 提示可拖拽 */
+  cursor: grab;
   transition: transform 0.2s ease;
 }
 
 .character:hover {
-  transform: scale(1.05);  /* 鼠标悬停时轻微放大 */
+  transform: scale(1.05);
 }
 
 .character:active {
-  cursor: grabbing;  /* 拖拽时的鼠标样式 */
+  cursor: grabbing;
 }
 
 .character video,
@@ -66,14 +67,12 @@ html, body {
   transition: all 0.3s ease;
 }
 
-/* 面板可见状态 */
 .panel-visible {
   opacity: 1;
   transform: translateX(0) scale(1);
   pointer-events: auto;
 }
 
-/* 面板隐藏状态 */
 .panel-hidden {
   opacity: 0;
   transform: translateX(50px) scale(0.95);
@@ -156,158 +155,18 @@ html, body {
 
 /* 空状态 */
 .empty-hint {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   padding: 40px 20px;
-  opacity: 0.5;
 }
 
 .hint-icon {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 12px;
   color: rgba(255, 255, 255, 0.7);
-  letter-spacing: 1px;
 }
 
 .hint-text {
   color: rgba(255, 255, 255, 0.5);
-  font-size: 14px;
 }
 
-/* ---- 消息气泡 ---- */
-.message {
-  display: flex;
-  flex-direction: column;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.message.user {
-  align-items: flex-end;
-}
-
-.message.assistant {
-  align-items: flex-start;
-}
-
-.message .bubble {
-  max-width: 85%;
-  padding: 10px 14px;
-  border-radius: 14px;
-  font-size: 13px;
-  line-height: 1.6;
-  word-break: break-word;
-}
-
-/* ---- Markdown 渲染样式 ---- */
-.message .bubble h1 { font-size: 18px; margin: 8px 0 4px; color: #e0e0f0; }
-.message .bubble h2 { font-size: 16px; margin: 6px 0 4px; color: #d0d0e0; }
-.message .bubble h3 { font-size: 14px; margin: 6px 0 4px; color: #c0c0d0; }
-.message .bubble h4, .message .bubble h5, .message .bubble h6 { font-size: 13px; margin: 4px 0 2px; }
-
-.message .bubble p { margin: 4px 0; }
-.message .bubble p:first-child { margin-top: 0; }
-.message .bubble p:last-child { margin-bottom: 0; }
-
-.message .bubble ul, .message .bubble ol {
-  padding-left: 20px;
-  margin: 4px 0;
-}
-
-.message .bubble li {
-  margin: 2px 0;
-}
-
-.message .bubble pre {
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin: 6px 0;
-  overflow-x: auto;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.message .bubble pre code {
-  background: none;
-  padding: 0;
-  font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
-  color: #c8d6e5;
-}
-
-.message .bubble code {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
-  font-size: 12px;
-  color: #e8a870;
-}
-
-.message .bubble blockquote {
-  border-left: 3px solid rgba(99, 140, 255, 0.4);
-  padding-left: 12px;
-  margin: 6px 0;
-  color: rgba(255, 255, 255, 0.5);
-  font-style: italic;
-}
-
-.message .bubble a {
-  color: #8ab4f8;
-  text-decoration: none;
-}
-
-.message .bubble a:hover {
-  text-decoration: underline;
-}
-
-.message .bubble table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 6px 0;
-  font-size: 12px;
-}
-
-.message .bubble th {
-  background: rgba(99, 140, 255, 0.15);
-  padding: 6px 10px;
-  text-align: left;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.message .bubble td {
-  padding: 4px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.message .bubble hr {
-  border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  margin: 8px 0;
-}
-
-.message .bubble img {
-  max-width: 100%;
-  border-radius: 6px;
-}
-
-.message .bubble strong {
-  color: #e8e8f0;
-  font-weight: 600;
-}
-
-.message .bubble em {
-  color: #c8c8d8;
-}
-
+/* ---- 消息气泡（desktop 主题色覆盖） ---- */
 .message.user .bubble {
   background: rgba(99, 140, 255, 0.3);
   border: 1px solid rgba(99, 140, 255, 0.2);
@@ -323,38 +182,69 @@ html, body {
 }
 
 .message .time {
-  font-size: 10px;
   color: rgba(255, 255, 255, 0.3);
-  margin-top: 2px;
-  padding: 0 4px;
 }
 
-/* 工具调用样式 */
+/* ---- Markdown 桌面主题色 ---- */
+.message .bubble h1 { color: #e0e0f0; }
+.message .bubble h2 { color: #d0d0e0; }
+.message .bubble h3 { color: #c0c0d0; }
+
+.message .bubble pre {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.message .bubble pre code {
+  color: #c8d6e5;
+}
+
+.message .bubble code {
+  background: rgba(0, 0, 0, 0.3);
+  color: #e8a870;
+}
+
+.message .bubble blockquote {
+  border-left-color: rgba(99, 140, 255, 0.4);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.message .bubble a {
+  color: #8ab4f8;
+}
+
+.message .bubble th {
+  background: rgba(99, 140, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.message .bubble td {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.message .bubble hr {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.message .bubble strong {
+  color: #e8e8f0;
+}
+
+.message .bubble em {
+  color: #c8c8d8;
+}
+
+/* ---- 工具调用样式（桌面主题色） ---- */
 .message.tool-start .bubble {
   background: rgba(255, 200, 60, 0.12);
   border: 1px solid rgba(255, 200, 60, 0.15);
   color: #ffc83c;
-  font-size: 12px;
-  font-family: 'SF Mono', 'Consolas', monospace;
 }
 
-/* 工具结果卡片样式 */
-.message.tool-result {
-  align-items: flex-start;
-}
-
-.message.tool-result .bubble {
-  background: transparent;
-  border: none;
-  padding: 0;
-  max-width: 90%;
-}
-
+/* ---- 工具结果卡片（桌面主题色） ---- */
 .tool-result-card {
   background: rgba(0, 180, 120, 0.1);
   border: 1px solid rgba(0, 180, 120, 0.2);
-  border-radius: 12px;
-  overflow: hidden;
 }
 
 .tool-result-card.tool-error {
@@ -362,24 +252,17 @@ html, body {
   border-color: rgba(255, 80, 80, 0.2);
 }
 
-.tool-result-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+.tool-result-card:hover {
+  background: rgba(0, 180, 120, 0.15);
 }
 
-.tool-icon {
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 10px;
-  font-weight: bold;
+.tool-result-card.tool-error:hover {
+  background: rgba(255, 80, 80, 0.15);
+}
+
+.tool-result-header {
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom-color: rgba(255, 255, 255, 0.06);
 }
 
 .tool-result-card:not(.tool-error) .tool-icon {
@@ -393,17 +276,7 @@ html, body {
 }
 
 .tool-name {
-  flex: 1;
-  font-family: 'SF Mono', 'Consolas', monospace;
-  font-size: 12px;
   color: rgba(255, 255, 255, 0.8);
-}
-
-.tool-status {
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-weight: 500;
 }
 
 .tool-status.success {
@@ -416,83 +289,24 @@ html, body {
   color: #f87171;
 }
 
-.tool-result-card {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.tool-result-card:hover {
-  background: rgba(0, 180, 120, 0.15);
-}
-
-.tool-result-card.tool-error:hover {
-  background: rgba(255, 80, 80, 0.15);
-}
-
-.tool-result-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
 .tool-expand-icon {
-  margin-left: auto;
-  font-size: 14px;
   color: rgba(255, 255, 255, 0.4);
-  transition: transform 0.2s ease;
-}
-
-.tool-result-expanded .tool-expand-icon {
-  transform: rotate(90deg);
-}
-
-.tool-result-content {
-  padding: 12px;
-  max-height: 300px;
-  overflow-y: auto;
 }
 
 .tool-result-content pre {
-  margin: 0;
-  padding: 8px 10px;
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-  font-size: 11px;
-  line-height: 1.5;
   color: #a0d0b0;
-  white-space: pre-wrap;
-  word-break: break-all;
 }
 
 .tool-result-card.tool-error .tool-result-content pre {
   color: #e8a0a0;
 }
 
-.tool-result-collapsed .tool-result-content {
-  display: none;
-}
-
-.tool-result-expanded .tool-result-content {
-  display: block;
-}
-
+/* ---- 错误消息 ---- */
 .message.error .bubble {
   background: rgba(255, 80, 80, 0.15);
-  border: 1px solid rgba(255, 80, 80, 0.2);
+  border-color: rgba(255, 80, 80, 0.2);
   color: #ff8888;
-}
-
-/* 流式输出光标 */
-.typing-cursor::after {
-  content: '▎';
-  animation: blink 1s step-end infinite;
-}
-
-@keyframes blink {
-  50% { opacity: 0; }
 }
 
 /* ---- 输入区域 ---- */

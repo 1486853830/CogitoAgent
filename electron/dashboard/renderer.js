@@ -1,44 +1,13 @@
 /**
  * Dashboard 渲染进程 - 模块化重构
  * 模块: WindowManager / ChatManager / NavManager / AppState
+ * 公共组件: SharedUtils / PersonaManager / MessageRenderer (来自 ../shared/)
  */
 
 // ============================================================
-// 工具函数模块
+// 工具函数模块 - 复用公共 SharedUtils
 // ============================================================
-const Utils = {
-  renderMarkdown(text) {
-    if (window.marked) {
-      return marked.parse(text, { breaks: true, gfm: true });
-    }
-    return text.replace(/\n/g, '<br>');
-  },
-
-  /** 过滤危险 HTML，防止 XSS（使用 DOMPurify） */
-  sanitizeHtml(html) {
-    return window.DOMPurify ? window.DOMPurify.sanitize(html) : html;
-  },
-
-  filterToolBlocks(text) {
-    return text
-      .replace(/\[TOOL\][\s\S]*?\[\/TOOL\]/g, '')
-      .replace(/^\[工具结果\]:.*$/gm, '')
-      .replace(/^\[工具错误\]:.*$/gm, '')
-      .replace(/\n```\n/g, '\n')
-      .trim();
-  },
-
-  autoResizeTextarea(textarea) {
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
-  },
-
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  },
-};
+const Utils = SharedUtils;
 
 // ============================================================
 // 工具分类数据（与后端 registry.js 保持一致）
@@ -163,6 +132,26 @@ const AppState = {
   setWaiting(val) {
     this.isWaiting = val;
     ChatManager.updateSendButtonState();
+  },
+};
+
+// ============================================================
+// Persona 形象管理模块 - 复用公共 PersonaManager
+// ============================================================
+const PersonaUIManager = {
+  init() {
+    const characterEl = document.getElementById('personaCharacter');
+    if (!characterEl) {
+      console.warn('[PersonaUIManager] 未找到 personaCharacter 元素');
+      return;
+    }
+
+    PersonaManager.init({
+      containerEl: characterEl,
+      defaultMediaPath: '../shared/video.mp4',
+    });
+
+    console.log('[PersonaUIManager] 初始化完成');
   },
 };
 
@@ -575,6 +564,16 @@ const ChatManager = {
     this.inputTop = document.getElementById('chatInput');
     this.inputBottom = document.getElementById('chatInputBottom');
 
+    MessageRenderer.init({
+      messagesEl: this.messagesEl,
+      layout: 'dashboard',
+      showAvatar: true,
+      userAvatarText: '我',
+      assistantAvatarText: 'AI',
+      emptyHintIcon: 'Cogito Agent',
+      emptyHintText: '有什么可以帮你的？',
+    });
+
     // 顶部发送按钮
     if (this.sendBtnTop) {
       this.sendBtnTop.addEventListener('click', () => this.handleSendFromWelcome());
@@ -641,18 +640,12 @@ const ChatManager = {
 
   clearMessages() {
     if (!this.messagesEl) return;
-    this.messagesEl.innerHTML = `
-      <div class="empty-hint">
-        <div class="hint-icon">Cogito Agent</div>
-        <div class="hint-text">有什么可以帮你的？</div>
-      </div>
-    `;
+    MessageRenderer.clearMessages();
     AppState.currentAssistantBubble = null;
   },
 
   clearEmptyHint() {
-    const hint = this.messagesEl?.querySelector('.empty-hint');
-    if (hint) hint.remove();
+    MessageRenderer.clearEmptyHint();
   },
 
   handleSendFromWelcome() {
@@ -831,88 +824,11 @@ const ChatManager = {
   },
 
   addToolCall(toolName, args) {
-    // 与 desktop 一致：用 addMessage 创建 tool-start 类型的消息
-    const argsStr = Array.isArray(args)
-      ? args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(', ')
-      : typeof args === 'object'
-      ? Object.entries(args).map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`).join(', ')
-      : String(args);
-    this.addMessage('tool-start', `🔧 ${toolName}(${argsStr})`);
+    MessageRenderer.addToolCall(toolName, args);
   },
 
-  /**
-   * 添加工具结果卡片（复用 desktop 样式）
-   */
   addToolResult(toolName, data, success = true) {
-    const msgDiv = document.createElement('div');
-    msgDiv.className = 'message tool-result';
-
-    const avatar = document.createElement('div');
-    avatar.className = 'message-avatar';
-    avatar.textContent = '⚙';
-
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-
-    const card = document.createElement('div');
-    card.className = `tool-result-card ${success ? '' : 'tool-error'} tool-result-collapsed`;
-
-    // header
-    const header = document.createElement('div');
-    header.className = 'tool-result-header';
-
-    const icon = document.createElement('div');
-    icon.className = 'tool-icon';
-    icon.textContent = success ? '✓' : '✕';
-
-    const name = document.createElement('div');
-    name.className = 'tool-name';
-    name.textContent = toolName;
-
-    const status = document.createElement('div');
-    status.className = `tool-status ${success ? 'success' : 'error'}`;
-    status.textContent = success ? '成功' : '失败';
-
-    const expandIcon = document.createElement('div');
-    expandIcon.className = 'tool-expand-icon';
-    expandIcon.textContent = '';
-
-    header.appendChild(icon);
-    header.appendChild(name);
-    header.appendChild(status);
-    header.appendChild(expandIcon);
-
-    // content
-    const resultContent = document.createElement('div');
-    resultContent.className = 'tool-result-content';
-
-    const pre = document.createElement('pre');
-    pre.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-    resultContent.appendChild(pre);
-
-    card.appendChild(header);
-    card.appendChild(resultContent);
-    bubble.appendChild(card);
-    contentDiv.appendChild(bubble);
-    msgDiv.appendChild(avatar);
-    msgDiv.appendChild(contentDiv);
-
-    // 点击展开/收起
-    card.addEventListener('click', () => {
-      if (card.classList.contains('tool-result-collapsed')) {
-        card.classList.remove('tool-result-collapsed');
-        card.classList.add('tool-result-expanded');
-      } else {
-        card.classList.remove('tool-result-expanded');
-        card.classList.add('tool-result-collapsed');
-      }
-    });
-
-    this.messagesEl.appendChild(msgDiv);
-    this.scrollToBottom();
+    MessageRenderer.addToolResult(toolName, data, success);
   },
 
   handleStateChange(state) {
@@ -989,18 +905,11 @@ const ChatManager = {
 
   loadHistory(history) {
     if (!history || history.length === 0) return;
-    this.clearEmptyHint();
-    history.forEach(msg => {
-      this.addMessage(msg.role, msg.content);
-    });
+    MessageRenderer.loadHistory(history);
   },
 
   scrollToBottom() {
-    setTimeout(() => {
-      if (this.messagesEl) {
-        this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
-      }
-    }, 50);
+    MessageRenderer.scrollToBottom();
   },
 };
 
@@ -1014,6 +923,12 @@ function initApp() {
     WindowManager.init();
   } catch (e) {
     console.error('[WindowManager] 初始化失败:', e);
+  }
+
+  try {
+    PersonaUIManager.init();
+  } catch (e) {
+    console.error('[PersonaUIManager] 初始化失败:', e);
   }
 
   try {
