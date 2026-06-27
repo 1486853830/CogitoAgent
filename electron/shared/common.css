@@ -1,0 +1,285 @@
+/* ============================================================
+ *  Common Styles - 公共样式库
+ *  适用于 desktop 和 dashboard 两种模式
+ *  包含：消息气泡、Markdown 渲染、工具结果卡片、空状态等
+ * ============================================================ */
+
+/* ===== 空状态提示 ===== */
+.empty-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+}
+
+.hint-icon {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+
+.hint-text {
+  font-size: 14px;
+}
+
+/* ===== 消息气泡通用样式 ===== */
+.message {
+  display: flex;
+  gap: 8px;
+  max-width: 85%;
+  align-items: flex-start;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.message.user {
+  align-self: flex-end;
+}
+
+.message .bubble {
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.message .time {
+  font-size: 10px;
+  margin-top: 2px;
+  padding: 0 4px;
+}
+
+/* ===== Markdown 渲染样式 ===== */
+.message .bubble h1 { font-size: 18px; margin: 8px 0 4px; }
+.message .bubble h2 { font-size: 16px; margin: 6px 0 4px; }
+.message .bubble h3 { font-size: 14px; margin: 6px 0 4px; }
+.message .bubble h4, .message .bubble h5, .message .bubble h6 { font-size: 13px; margin: 4px 0 2px; }
+
+.message .bubble p { margin: 4px 0; }
+.message .bubble p:first-child { margin-top: 0; }
+.message .bubble p:last-child { margin-bottom: 0; }
+
+.message .bubble ul, .message .bubble ol {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+
+.message .bubble li {
+  margin: 2px 0;
+}
+
+.message .bubble pre {
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 6px 0;
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.message .bubble pre code {
+  background: none;
+  padding: 0;
+  font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
+}
+
+.message .bubble code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.message .bubble blockquote {
+  border-left: 3px solid;
+  padding-left: 12px;
+  margin: 6px 0;
+  font-style: italic;
+}
+
+.message .bubble a {
+  text-decoration: none;
+}
+
+.message .bubble a:hover {
+  text-decoration: underline;
+}
+
+.message .bubble table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 6px 0;
+  font-size: 12px;
+}
+
+.message .bubble th {
+  padding: 6px 10px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.message .bubble td {
+  padding: 4px 10px;
+}
+
+.message .bubble hr {
+  border: none;
+  border-top: 1px solid;
+  margin: 8px 0;
+}
+
+.message .bubble img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.message .bubble strong {
+  font-weight: 600;
+}
+
+/* ===== 工具调用样式 ===== */
+.message.tool-start .bubble {
+  font-size: 12px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+/* ===== 工具结果卡片样式 ===== */
+.message.tool-result {
+  align-items: flex-start;
+  max-width: 95%;
+}
+
+.message.tool-result .bubble {
+  background: transparent;
+  border: none;
+  padding: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.tool-result-card {
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.tool-result-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.6), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.tool-result-card.tool-error::before {
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.6), transparent);
+}
+
+.tool-result-card:hover::before {
+  opacity: 1;
+}
+
+.tool-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid;
+}
+
+.tool-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.tool-name {
+  flex: 1;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 12px;
+}
+
+.tool-status {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.tool-result-content {
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.tool-result-content pre {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.tool-result-collapsed .tool-result-content {
+  display: none;
+}
+
+.tool-result-expanded .tool-result-content {
+  display: block;
+}
+
+/* ===== 错误消息 ===== */
+.message.error .bubble {
+  border: 1px solid;
+}
+
+/* ===== 流式输出光标 ===== */
+.bubble.typing-cursor::after {
+  content: '▎';
+  animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  50% { opacity: 0; }
+}
+
+/* ===== Dashboard 布局特有样式 ===== */
+.dashboard-layout .message-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+}
+
+.dashboard-layout .message-content {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
