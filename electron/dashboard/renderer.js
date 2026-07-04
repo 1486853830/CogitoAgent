@@ -136,6 +136,85 @@ const AppState = {
 };
 
 // ============================================================
+// Toast 提示模块
+// ============================================================
+const ToastManager = {
+  container: null,
+  duration: 2500,
+
+  init() {
+    this.container = document.createElement('div');
+    this.container.className = 'toast-container';
+    document.body.appendChild(this.container);
+  },
+
+  show(message, type = 'info') {
+    if (!this.container) this.init();
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    let icon = '';
+    switch (type) {
+      case 'success':
+        icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+        break;
+      case 'warning':
+        icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>';
+        break;
+      case 'error':
+        icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>';
+        break;
+      default:
+        icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
+    }
+
+    toast.innerHTML = `
+      <div class="toast-icon">${icon}</div>
+      <div class="toast-message">${this.escapeHtml(message)}</div>
+      <button class="toast-close" onclick="this.parentElement.remove()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    `;
+
+    this.container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+      toast.classList.add('toast-visible');
+    });
+
+    setTimeout(() => {
+      toast.classList.remove('toast-visible');
+      setTimeout(() => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 300);
+    }, this.duration);
+  },
+
+  success(message) {
+    this.show(message, 'success');
+  },
+
+  warning(message) {
+    this.show(message, 'warning');
+  },
+
+  error(message) {
+    this.show(message, 'error');
+  },
+
+  info(message) {
+    this.show(message, 'info');
+  },
+
+  escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  },
+};
+
+// ============================================================
 // Persona 形象管理模块 - 复用公共 PersonaManager
 // ============================================================
 const PersonaUIManager = {
@@ -308,9 +387,17 @@ const NavManager = {
    * 切换到指定会话
    */
   async switchToSession(sessionId) {
+    if (AppState.isProcessing) {
+      ToastManager.warning('AI 正在思考中，请等待回复完成后再切换会话');
+      return;
+    }
+
     console.log('[NavManager] 切换到会话:', sessionId);
 
     SkillsManager.hide();
+
+    AppState.setProcessing(false);
+    AppState.currentAssistantBubble = null;
 
     // 先切换视图，显示出聊天界面
     AppState.view = 'chat';
@@ -357,7 +444,14 @@ const NavManager = {
    * 创建新会话
    */
   createNewSession() {
+    if (AppState.isProcessing) {
+      ToastManager.warning('AI 正在思考中，请等待回复完成后再创建新会话');
+      return;
+    }
+
     console.log('[NavManager] 创建新会话');
+    AppState.setProcessing(false);
+    AppState.currentAssistantBubble = null;
     window.electronAPI?.sendMessage('/new');
     setTimeout(() => this.loadSessions(), 500);
     AppState.view = 'welcome';
@@ -655,10 +749,15 @@ const ChatManager = {
   handleSendFromWelcome() {
     const text = this.inputTop.value.trim();
     if (!text) return;
+    
+    window.electronAPI?.sendMessage('/new');
+    
     this.enterChatView();
     this.sendMessage(text);
     this.inputTop.value = '';
     Utils.autoResizeTextarea(this.inputTop);
+    
+    setTimeout(() => NavManager.loadSessions(), 500);
   },
 
   handleSendFromChat() {
