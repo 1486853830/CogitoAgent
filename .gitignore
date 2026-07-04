@@ -31,9 +31,6 @@ Thumbs.db
 *.tmp
 *.temp
 
-# personas
-personas/dbgwafi.md
-persona.md
-
 #gitee
 .gitee/
+

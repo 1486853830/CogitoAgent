@@ -179,31 +179,38 @@ function formatToolError(error, toolName) {
   const errorType = classifyToolError(error);
   
   let message = '';
+  let suggestion = '';
   
   switch (errorType) {
     case 'network':
       message = `[${toolName}] 网络错误: ${error.message}`;
+      suggestion = '请检查网络连接后重试';
       break;
     case 'filesystem':
       message = `[${toolName}] 文件系统错误: ${error.message}`;
+      suggestion = '请检查文件路径是否正确';
       break;
     case 'permission':
       message = `[${toolName}] 权限错误: ${error.message}`;
+      suggestion = '请检查权限设置';
       break;
     case 'timeout':
       message = `[${toolName}] 执行超时: ${error.message}`;
+      suggestion = '操作耗时过长，请稍后重试';
       break;
     default:
       message = `[${toolName}] 执行失败: ${error.message}`;
+      suggestion = '请稍后重试';
   }
   
-  // 在DEBUG模式下添加堆栈跟踪
+  let fullMessage = `${message}\n提示: ${suggestion}`;
+  
   if (process.env.DEBUG === 'true' && error.stack) {
     const stackLines = error.stack.split('\n').slice(1, 4).join('\n');
-    message += '\n堆栈跟踪:\n' + stackLines;
+    fullMessage += '\n堆栈跟踪:\n' + stackLines;
   }
   
-  return message;
+  return fullMessage;
 }
 
 async function executeTool(toolName, args) {
@@ -597,18 +604,25 @@ async function thinkCycle() {
 
         const result = await executeTool(toolCall.tool, toolCall.args);
         if (result.success) {
-          // 把工具结果也显示成灰色小框
           const resultText = formatToolResult(toolCall.tool, result.data);
-          printToolBlock(resultText, '工具结果');
-          // 追加到最终回复，让 AI 下一轮能看到
-          finalResponse += `\n\n[工具结果]: ${resultText}`;
-          // WebSocket 广播工具结果
-          broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: resultText });
+          
+          const isEmpty = !result.data || 
+            (typeof result.data === 'string' && result.data.trim() === '') ||
+            (Array.isArray(result.data) && result.data.length === 0) ||
+            (typeof result.data === 'object' && Object.keys(result.data).length === 0);
+          
+          if (isEmpty) {
+            println(`[空结果] ${toolCall.tool} 返回空结果`, 'yellow');
+            finalResponse += `\n\n[工具结果]: [空结果] ${toolCall.tool} 返回空结果，未找到相关信息。`;
+            broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: '[空结果] 未找到相关信息', isEmpty: true });
+          } else {
+            printToolBlock(resultText, '工具结果');
+            finalResponse += `\n\n[工具结果]: ${resultText}`;
+            broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: resultText });
+          }
         } else {
           println(`[失败] ${result.error}`, 'red');
-          // 追加到最终回复，让 AI 下一轮能看到
           finalResponse += `\n\n[工具错误]: ${result.error}`;
-          // WebSocket 广播工具错误
           broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: false, data: result.error });
         }
       }
