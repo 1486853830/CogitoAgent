@@ -464,6 +464,15 @@ function handleUserInput(input) {
   
   // 处理特殊命令
   if (input.startsWith('/')) {
+    if (input === '/stop') {
+      shouldStop = true;
+      clearTimeout(thinkingTimer);
+      isProcessing = false;
+      println('[中断] 思考已停止', 'yellow');
+      state.current = STATE.AWAITING_INPUT;
+      broadcast('agent-state', { state: 'idle' });
+      return;
+    }
     if (handleCommand(input)) {
       return;
     }
@@ -549,6 +558,7 @@ async function thinkCycle() {
   try {
     const messages = getMessages();
     let fullResponse = '';
+    let cleanFullResponse = '';
     let wantsToWait = false;
 
     // 重置标签状态
@@ -565,9 +575,18 @@ async function thinkCycle() {
         printReasoning(chunk.reasoning);
       }
       if (chunk.content) {
+        let cleanChunk = chunk.content;
+        cleanChunk = cleanChunk.split('\n').filter(line => 
+          !line.trim().startsWith('[工具结果]:') && 
+          !line.trim().startsWith('[工具错误]:')
+        ).join('\n');
+        
         fullResponse += chunk.content;
-        // WebSocket 广播流式内容
-        broadcast('agent-reply', { type: 'chunk', content: chunk.content, full: fullResponse });
+        cleanFullResponse += cleanChunk;
+        
+        if (cleanChunk.trim()) {
+          broadcast('agent-reply', { type: 'chunk', content: cleanChunk, full: cleanFullResponse });
+        }
       }
     }
 
@@ -595,17 +614,23 @@ async function thinkCycle() {
     const toolCalls = parseAllToolCalls(fullResponse);
 
     // 构建最终回复（包含工具结果，让 AI 下一轮能看到）
-    let finalResponse = fullResponse;
+    // 先清理 AI 可能生成的虚假工具结果标记，避免干扰下一轮
+    let finalResponse = fullResponse.split('\n').filter(line => 
+      !line.trim().startsWith('[工具结果]:') && 
+      !line.trim().startsWith('[工具错误]:')
+    ).join('\n');
 
     if (toolCalls.length > 0) {
       for (const toolCall of toolCalls) {
-        // WebSocket 广播工具调用开始
+        if (shouldStop) {
+          println('[中断] 工具执行已停止', 'yellow');
+          break;
+        }
+        
         broadcast('agent-reply', { type: 'tool-start', tool: toolCall.tool, args: toolCall.args });
 
         const result = await executeTool(toolCall.tool, toolCall.args);
         if (result.success) {
-          const resultText = formatToolResult(toolCall.tool, result.data);
-          
           const isEmpty = !result.data || 
             (typeof result.data === 'string' && result.data.trim() === '') ||
             (Array.isArray(result.data) && result.data.length === 0) ||
@@ -616,6 +641,7 @@ async function thinkCycle() {
             finalResponse += `\n\n[工具结果]: [空结果] ${toolCall.tool} 返回空结果，未找到相关信息。`;
             broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: '[空结果] 未找到相关信息', isEmpty: true });
           } else {
+            const resultText = formatToolResult(toolCall.tool, result.data);
             printToolBlock(resultText, '工具结果');
             finalResponse += `\n\n[工具结果]: ${resultText}`;
             broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: resultText });
@@ -624,6 +650,11 @@ async function thinkCycle() {
           println(`[失败] ${result.error}`, 'red');
           finalResponse += `\n\n[工具错误]: ${result.error}`;
           broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: false, data: result.error });
+        }
+        
+        if (shouldStop) {
+          println('[中断] 工具执行已停止', 'yellow');
+          break;
         }
       }
     }
