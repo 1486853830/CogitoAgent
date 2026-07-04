@@ -692,19 +692,31 @@ const ChatManager = {
 
     // 顶部发送按钮
     if (this.sendBtnTop) {
-      this.sendBtnTop.addEventListener('click', () => this.handleSendFromWelcome());
+      this.sendBtnTop.addEventListener('click', () => {
+        if (AppState.isProcessing) {
+          this.stopProcessing();
+        } else {
+          this.handleSendFromWelcome();
+        }
+      });
     }
 
     // 底部发送按钮
     if (this.sendBtnBottom) {
-      this.sendBtnBottom.addEventListener('click', () => this.handleSendFromChat());
+      this.sendBtnBottom.addEventListener('click', () => {
+        if (AppState.isProcessing) {
+          this.stopProcessing();
+        } else {
+          this.handleSendFromChat();
+        }
+      });
     }
 
     // 输入框事件
     if (this.inputTop) {
       this.inputTop.addEventListener('input', () => Utils.autoResizeTextarea(this.inputTop));
       this.inputTop.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === 'Enter' && !e.shiftKey && !AppState.isProcessing) {
           e.preventDefault();
           this.handleSendFromWelcome();
         }
@@ -714,7 +726,7 @@ const ChatManager = {
     if (this.inputBottom) {
       this.inputBottom.addEventListener('input', () => Utils.autoResizeTextarea(this.inputBottom));
       this.inputBottom.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === 'Enter' && !e.shiftKey && !AppState.isProcessing) {
           e.preventDefault();
           this.handleSendFromChat();
         }
@@ -787,9 +799,7 @@ const ChatManager = {
   },
 
   sendMessage(text) {
-    // 正在处理中 → 点击打断
     if (AppState.isProcessing) {
-      window.electronAPI?.sendMessage('\n');
       return;
     }
 
@@ -799,6 +809,15 @@ const ChatManager = {
 
     window.electronAPI?.sendMessage(text);
     console.log('[ChatManager] 发送消息:', text);
+  },
+
+  stopProcessing() {
+    if (!AppState.isProcessing) {
+      return;
+    }
+    
+    window.electronAPI?.sendMessage('/stop');
+    console.log('[ChatManager] 发送停止命令');
   },
 
   addMessage(type, content, extra = {}) {
