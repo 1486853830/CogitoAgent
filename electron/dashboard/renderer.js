@@ -453,11 +453,18 @@ const NavManager = {
     AppState.setProcessing(false);
     AppState.currentAssistantBubble = null;
     window.electronAPI?.sendMessage('/new');
-    setTimeout(() => this.loadSessions(), 500);
-    AppState.view = 'welcome';
-    document.getElementById('welcomeView').style.display = 'flex';
-    document.getElementById('chatView').style.display = 'none';
+    
     ChatManager.clearMessages();
+    ChatManager.enterChatView();
+    
+    const input = document.getElementById('chatInputBottom');
+    if (input) {
+      input.value = '';
+      Utils.autoResizeTextarea(input);
+      input.focus();
+    }
+    
+    setTimeout(() => this.loadSessions(), 500);
   },
 
   /**
@@ -500,17 +507,28 @@ const NavManager = {
   },
 
   newTask() {
+    if (AppState.isProcessing) {
+      ToastManager.warning('AI 正在思考中，请等待回复完成后再创建新会话');
+      return;
+    }
+
     SkillsManager.hide();
-    AppState.view = 'welcome';
-    document.getElementById('welcomeView').style.display = 'flex';
-    document.getElementById('chatView').style.display = 'none';
+    AppState.setProcessing(false);
+    AppState.currentAssistantBubble = null;
+    
+    window.electronAPI?.sendMessage('/new');
+    
     ChatManager.clearMessages();
-    const input = document.getElementById('chatInput');
+    ChatManager.enterChatView();
+    
+    const input = document.getElementById('chatInputBottom');
     if (input) {
       input.value = '';
       Utils.autoResizeTextarea(input);
       input.focus();
     }
+    
+    setTimeout(() => this.loadSessions(), 500);
     console.log('[NavManager] 新建任务');
   },
 
