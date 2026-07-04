@@ -549,8 +549,11 @@ app.whenReady().then(async () => {
     const metaPath = path.join(sessionsDir, 'meta.json');
     try {
       let sessions = [];
+      let meta = { sessions: [], activeId: null };
+      
       if (fs.existsSync(metaPath)) {
-        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+        meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+        if (!meta.sessions) meta.sessions = [];
         sessions = meta.sessions.map(s => ({
           id: s.id,
           name: s.name,
@@ -558,6 +561,49 @@ app.whenReady().then(async () => {
           lastActiveAt: s.lastActiveAt,
           isActive: s.id === meta.activeId
         }));
+      }
+
+      // 如果 meta 为空但磁盘上有会话文件，自动恢复
+      if (sessions.length === 0 && fs.existsSync(sessionsDir)) {
+        try {
+          const files = fs.readdirSync(sessionsDir);
+          const recovered = [];
+          
+          for (const file of files) {
+            if (!file.match(/^sess_[^_]+\.json$/)) continue;
+            const sessionId = file.replace('.json', '');
+            try {
+              const content = JSON.parse(fs.readFileSync(path.join(sessionsDir, file), 'utf-8'));
+              const messageCount = Array.isArray(content) ? content.filter(m => m.role !== 'system').length : 0;
+              recovered.push({
+                id: sessionId,
+                name: `会话 ${recovered.length + 1}`,
+                createdAt: new Date().toISOString(),
+                lastActiveAt: new Date().toISOString(),
+                isActive: sessionId === meta.activeId,
+                messageCount
+              });
+            } catch {
+              // 跳过损坏的文件
+            }
+          }
+          
+          if (recovered.length > 0) {
+            sessions = recovered;
+            // 同步回 meta.json
+            meta.sessions = recovered.map(s => ({
+              id: s.id,
+              name: s.name,
+              createdAt: s.createdAt,
+              lastActiveAt: s.lastActiveAt,
+              messageCount: s.messageCount || 0
+            }));
+            fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
+            console.log(`[主进程] 已从磁盘恢复 ${recovered.length} 个会话`);
+          }
+        } catch {
+          // 目录不存在时忽略
+        }
       }
 
       // 读取每个会话文件的第一条用户消息作为预览
