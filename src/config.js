@@ -20,7 +20,7 @@ const DEFAULT_CONFIG = {
     model: ''           // 模型名称
   },
   chat: {
-    maxTokens: 384000,
+    maxTokens: 131072,
     temperature: 0.7,
     topP: 0.7,
     topK: 50,
