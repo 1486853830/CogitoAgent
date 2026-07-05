@@ -94,12 +94,11 @@
     .container {
       position: relative;
       z-index: 1;
-      max-width: 1100px;
+      max-width: 1200px;
       margin: 0 auto;
       padding: 60px 40px;
     }
 
-    /* Language Toggle */
     .lang-toggle {
       position: fixed;
       top: 20px;
@@ -136,7 +135,6 @@
       color: #fff;
     }
 
-    /* Bilingual text */
     .en { display: block; }
     .zh { display: none; }
 
@@ -155,7 +153,6 @@
     html[lang="zh"] .zh-only { display: inline; }
     html[lang="en"] .zh-only { display: none; }
 
-    /* Header */
     header {
       text-align: center;
       margin-bottom: 60px;
@@ -237,7 +234,6 @@
       letter-spacing: 6px;
     }
 
-    /* Quote */
     .quote-box {
       max-width: 700px;
       margin: 0 auto 30px;
@@ -262,7 +258,6 @@
       color: var(--text-muted);
     }
 
-    /* Repo Bar */
     .repo-bar {
       display: flex;
       justify-content: center;
@@ -306,7 +301,6 @@
     .repo-btn svg { flex-shrink: 0; }
     .repo-btn .zh { font-size: 0.82em; }
 
-    /* Sections common */
     section { margin-bottom: 50px; }
 
     .section-header {
@@ -330,7 +324,6 @@
       font-weight: 600;
     }
 
-    /* Hero */
     .hero {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -355,7 +348,6 @@
       margin-bottom: 12px;
     }
 
-    /* Feature cards */
     .features {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -432,7 +424,6 @@
       font-size: 0.78rem;
     }
 
-    /* Terminal */
     .terminal-frame {
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
@@ -534,7 +525,6 @@
       border-radius: 8px;
     }
 
-    /* Stats */
     .stats-section {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -576,7 +566,6 @@
       color: var(--text-muted);
     }
 
-    /* Models grid */
     .models-grid {
       display: flex;
       flex-wrap: wrap;
@@ -600,7 +589,6 @@
 
     .model-tag .check { color: #34d399; margin-right: 6px; }
 
-    /* Tools grid */
     .tools-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -643,7 +631,6 @@
       color: var(--text-muted);
     }
 
-    /* Tool table */
     .tool-table {
       width: 100%;
       border-collapse: collapse;
@@ -668,7 +655,6 @@
 
     .tool-table .zh { font-size: 0.78rem; color: var(--text-muted); }
 
-    /* Commands */
     .commands-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -708,7 +694,6 @@
       color: var(--text-muted);
     }
 
-    /* Architecture */
     .arch-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -744,7 +729,6 @@
       color: var(--text-secondary);
     }
 
-    /* Start section */
     .start-section {
       text-align: center;
       padding: 50px;
@@ -820,7 +804,6 @@
       box-shadow: 0 10px 40px rgba(59, 130, 246, 0.15);
     }
 
-    /* Usage modes */
     .modes-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -867,7 +850,6 @@
       color: var(--accent-secondary);
     }
 
-    /* Section content text */
     .section-text {
       font-size: 0.92rem;
       color: var(--text-secondary);
@@ -880,7 +862,6 @@
       color: var(--text-muted);
     }
 
-    /* Session picker */
     .session-demo {
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
@@ -897,7 +878,6 @@
     .session-demo .dim { color: var(--text-muted); }
     .session-demo .num { color: var(--accent-primary); }
 
-    /* Footer */
     footer {
       margin-top: 50px;
       padding-top: 30px;
@@ -915,10 +895,8 @@
 
     footer a:hover { color: var(--text-primary); }
 
-    /* Smooth scroll */
     html { scroll-behavior: smooth; }
 
-    /* Animations */
     .fade-in {
       opacity: 0;
       transform: translateY(30px);
@@ -935,17 +913,133 @@
     .models-section { animation-delay: 0.3s; }
     .tools-section { animation-delay: 0.35s; }
     .arch-section { animation-delay: 0.4s; }
-    .modes-section { animation-delay: 0.45s; }
-    .commands-section { animation-delay: 0.5s; }
-    .start-section { animation-delay: 0.6s; }
+    .tech-details-section { animation-delay: 0.45s; }
+    .modes-section { animation-delay: 0.5s; }
+    .screenshots-section { animation-delay: 0.55s; }
+    .vision-section { animation-delay: 0.6s; }
+    .commands-section { animation-delay: 0.65s; }
+    .start-section { animation-delay: 0.7s; }
 
-    /* Responsive */
     @media (max-width: 768px) {
       .container { padding: 50px 18px; }
       .title, .title-accent { font-size: 2.8rem; }
       .tagline { font-size: 0.95rem; letter-spacing: 2px; }
       .start-section { padding: 30px 18px; }
     }
+
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .screenshots-grid { grid-template-columns: 1fr; }
+    }
+
+    .screenshot-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .screenshot-card:hover {
+      border-color: rgba(59, 130, 246, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .screenshot-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      background: rgba(0, 0, 0, 0.3);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .screenshot-header svg { width: 18px; height: 18px; color: var(--accent-secondary); }
+
+    .screenshot-title {
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .screenshot-image {
+      padding: 12px;
+    }
+
+    .screenshot-image img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+    }
+
+    .vision-showcase {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .vision-showcase { grid-template-columns: 1fr; }
+    }
+
+    .vision-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .vision-header {
+      padding: 14px 16px;
+      background: rgba(0, 0, 0, 0.3);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .vision-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .vision-image {
+      padding: 12px;
+    }
+
+    .vision-image img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+    }
+
+    .vision-desc {
+      padding: 0 16px 16px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .code-snippet {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 16px;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 0.82rem;
+      overflow-x: auto;
+      margin-top: 16px;
+    }
+
+    .code-snippet .comment { color: var(--text-muted); }
+    .code-snippet .keyword { color: #c678dd; }
+    .code-snippet .string { color: #98c379; }
+    .code-snippet .function { color: #61afef; }
   </style>
 </head>
 <body lang="en">
@@ -955,15 +1049,12 @@
     <div class="particles" id="particles"></div>
   </div>
 
-  <!-- Language Toggle -->
   <div class="lang-toggle">
     <button class="lang-btn active" onclick="switchLang('en')">EN</button>
     <button class="lang-btn" onclick="switchLang('zh')">中文</button>
   </div>
 
   <div class="container">
-
-    <!-- Header -->
     <header class="fade-in">
       <div class="badge">
         <span class="badge-dot"></span>
@@ -977,13 +1068,11 @@
       <p class="tagline-zh">持续思考 · 自主行动 · 数据私有</p>
     </header>
 
-    <!-- Quote -->
     <div class="quote-box fade-in">
       <p>"Cogito, ergo sum — I think, therefore I am. CogitoAgent is not just a tool; it is your autonomous thinking partner running entirely in your local environment."</p>
       <cite>— CogitoAgent v2.3.0</cite>
     </div>
 
-    <!-- Repo Buttons -->
     <div class="repo-bar fade-in">
       <a href="https://github.com/SnowLeopard-io/CogitoAgent" target="_blank" class="repo-btn primary">
         <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
@@ -999,7 +1088,6 @@
       </a>
     </div>
 
-    <!-- Hero -->
     <section class="hero fade-in">
       <div class="hero-content">
         <h2><span class="en">Your Local AI Autonomous Agent</span><span class="zh">您的本地 AI 自主智能体</span></h2>
@@ -1065,13 +1153,12 @@
             <span class="preview-title"><span class="en">Desktop Preview</span><span class="zh">桌面预览</span></span>
           </div>
           <div class="preview-image">
-            <img src="introduction/electron.png" alt="CogitoAgent Electron Preview" />
+            <img src="introduction/electron-desktop.png" alt="CogitoAgent Electron Desktop" />
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Stats -->
     <section class="stats-section fade-in">
       <div class="stat-card">
         <div class="stat-number">100+</div>
@@ -1082,39 +1169,38 @@
         <div class="stat-label"><span class="en">Tool Modules</span><span class="zh">工具模块</span></div>
       </div>
       <div class="stat-card">
-        <div class="stat-number">13</div>
+        <div class="stat-number">22</div>
         <div class="stat-label"><span class="en">Preset Personas</span><span class="zh">预设人设</span></div>
       </div>
       <div class="stat-card">
-        <div class="stat-number">9</div>
+        <div class="stat-number">12</div>
         <div class="stat-label"><span class="en">Quick Commands</span><span class="zh">快捷指令</span></div>
       </div>
     </section>
 
-    <!-- Models -->
     <section class="models-section fade-in">
       <div class="section-header">
         <span class="section-num">01</span>
         <h2 class="section-title"><span class="en">Supported Models</span><span class="zh">支持模型</span></h2>
       </div>
       <div class="models-grid">
-        <div class="model-tag"><span class="check">✓</span>OpenAI</div>
+        <div class="model-tag"><span class="check">✓</span>OpenAI (GPT-4o)</div>
         <div class="model-tag"><span class="check">✓</span>Moark</div>
-        <div class="model-tag"><span class="check">✓</span>Anthropic</div>
-        <div class="model-tag"><span class="check">✓</span>Google</div>
+        <div class="model-tag"><span class="check">✓</span>Anthropic (Claude)</div>
+        <div class="model-tag"><span class="check">✓</span>Google (Gemini)</div>
+        <div class="model-tag"><span class="check">✓</span>Ollama (Local)</div>
         <div class="model-tag"><span class="check">✓</span>OpenAI-Compatible API</div>
       </div>
     </section>
 
-    <!-- Tools -->
     <section class="tools-section fade-in">
       <div class="section-header">
         <span class="section-num">02</span>
         <h2 class="section-title"><span class="en">Tool Modules</span><span class="zh">工具模块</span></h2>
       </div>
       <p class="section-text bilingual">
-        <span class="en">All tool functions are managed uniformly by <code>registry.js</code> and called using the <code>[TOOL] functionName(args) [/TOOL]</code> format.</span>
-        <span class="zh">所有工具函数由 <code>registry.js</code> 统一管理，使用 <code>[TOOL] functionName(args) [/TOOL]</code> 格式调用。</span>
+        <span class="en">All tool functions are managed uniformly by <code>registry.js</code> and called using the <code>[TOOL] functionName(args) [/TOOL]</code> format. Tools are loaded on-demand by category.</span>
+        <span class="zh">所有工具函数由 <code>registry.js</code> 统一管理，使用 <code>[TOOL] functionName(args) [/TOOL]</code> 格式调用。工具按分类按需加载。</span>
       </p>
 
       <div class="tools-grid">
@@ -1122,42 +1208,42 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
           <div class="tool-info">
             <div class="tool-name">File Operations<span class="zh">文件操作</span></div>
-            <div class="tool-count">ls, read, create, copy, mkdir, delete</div>
+            <div class="tool-count">ls, read, create, copy, mkdir, delete, rename</div>
           </div>
         </div>
         <div class="tool-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           <div class="tool-info">
             <div class="tool-name">Web Tools<span class="zh">网页工具</span></div>
-            <div class="tool-count">search, browse, fetchPage</div>
+            <div class="tool-count">search, browse, fetchPage, searchOnEngine</div>
           </div>
         </div>
         <div class="tool-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
           <div class="tool-info">
             <div class="tool-name">Code Execution<span class="zh">代码执行</span></div>
-            <div class="tool-count">JavaScript, Python (sandboxed)</div>
+            <div class="tool-count">JavaScript, Python, formatCode, executeFile</div>
           </div>
         </div>
         <div class="tool-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
           <div class="tool-info">
             <div class="tool-name">Git VCS<span class="zh">Git 版本控制</span></div>
-            <div class="tool-count">commit, push, branch, checkout, diff</div>
+            <div class="tool-count">commit, push, branch, checkout, diff, stash</div>
           </div>
         </div>
         <div class="tool-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           <div class="tool-info">
             <div class="tool-name">Task Management<span class="zh">任务管理</span></div>
-            <div class="tool-count">create, track, split, complete</div>
+            <div class="tool-count">create, track, split, complete, stats</div>
           </div>
         </div>
         <div class="tool-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
           <div class="tool-info">
             <div class="tool-name">Memory System<span class="zh">记忆系统</span></div>
-            <div class="tool-count">store, search, recall, stats</div>
+            <div class="tool-count">store, search, recall, stats, related</div>
           </div>
         </div>
         <div class="tool-item">
@@ -1175,17 +1261,24 @@
           </div>
         </div>
         <div class="tool-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          <div class="tool-info">
+            <div class="tool-name">Vision Analysis<span class="zh">视觉分析</span></div>
+            <div class="tool-count">image description, content understanding</div>
+          </div>
+        </div>
+        <div class="tool-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           <div class="tool-info">
             <div class="tool-name">Email<span class="zh">邮件功能</span></div>
-            <div class="tool-count">text, HTML, attachments</div>
+            <div class="tool-count">text, HTML, attachments, templates</div>
           </div>
         </div>
         <div class="tool-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <div class="tool-info">
             <div class="tool-name">Scheduled Tasks<span class="zh">定时任务</span></div>
-            <div class="tool-count">cron-style scheduling</div>
+            <div class="tool-count">cron-style scheduling, toggle</div>
           </div>
         </div>
         <div class="tool-item">
@@ -1205,7 +1298,122 @@
       </div>
     </section>
 
-    <!-- Architecture -->
+    <section class="screenshots-section fade-in">
+      <div class="section-header">
+        <span class="section-num">06</span>
+        <h2 class="section-title"><span class="en">Feature Showcases</span><span class="zh">功能展示</span></h2>
+      </div>
+      <p class="section-text bilingual">
+        <span class="en">Explore the powerful features of CogitoAgent through these screenshots.</span>
+        <span class="zh">通过这些截图探索 CogitoAgent 的强大功能。</span>
+      </p>
+
+      <div class="screenshots-grid">
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span class="screenshot-title"><span class="en">Dashboard Overview</span><span class="zh">仪表盘概览</span></span>
+          </div>
+          <div class="screenshot-image">
+            <img src="introduction/electron-dashboard.png" alt="CogitoAgent Dashboard" />
+          </div>
+        </div>
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <span class="screenshot-title"><span class="en">Desktop Window</span><span class="zh">桌面窗口</span></span>
+          </div>
+          <div class="screenshot-image">
+            <img src="introduction/desktop.png" alt="CogitoAgent Desktop" />
+          </div>
+        </div>
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <span class="screenshot-title"><span class="en">Web Search</span><span class="zh">网络搜索</span></span>
+          </div>
+          <div class="screenshot-image">
+            <img src="introduction/web.png" alt="CogitoAgent Web Search" />
+          </div>
+        </div>
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span class="screenshot-title"><span class="en">File Explorer</span><span class="zh">文件浏览器</span></span>
+          </div>
+          <div class="screenshot-image">
+            <img src="introduction/file.png" alt="CogitoAgent File Explorer" />
+          </div>
+        </div>
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <span class="screenshot-title"><span class="en">Code Execution</span><span class="zh">代码执行</span></span>
+          </div>
+          <div class="screenshot-image">
+            <img src="introduction/cli.png" alt="CogitoAgent Code Execution" />
+          </div>
+        </div>
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="screenshot-title"><span class="en">Run Application</span><span class="zh">运行应用</span></span>
+          </div>
+          <div class="screenshot-image">
+            <img src="introduction/runapp.png" alt="CogitoAgent Run Application" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="vision-section fade-in">
+      <div class="section-header">
+        <span class="section-num">07</span>
+        <h2 class="section-title"><span class="en">Vision & OCR</span><span class="zh">视觉与 OCR</span></h2>
+      </div>
+      <p class="section-text bilingual">
+        <span class="en">CogitoAgent integrates advanced computer vision capabilities, enabling image analysis, OCR text extraction, and visual understanding.</span>
+        <span class="zh">CogitoAgent 集成了先进的计算机视觉能力，支持图像分析、OCR 文本提取和视觉理解。</span>
+      </p>
+
+      <div class="vision-showcase">
+        <div class="vision-card">
+          <div class="vision-header">
+            <div class="vision-title"><span class="en">Vision Analysis</span><span class="zh">视觉分析</span></div>
+          </div>
+          <div class="vision-image">
+            <img src="introduction/vision.png" alt="CogitoAgent Vision Analysis" />
+          </div>
+          <div class="vision-desc bilingual">
+            <span class="en">Analyze images for content description, object detection, scene understanding, and more using multi-modal AI models.</span>
+            <span class="zh">使用多模态 AI 模型分析图像内容描述、物体检测、场景理解等。</span>
+          </div>
+        </div>
+        <div class="vision-card">
+          <div class="vision-header">
+            <div class="vision-title"><span class="en">OCR Recognition</span><span class="zh">OCR 识别</span></div>
+          </div>
+          <div class="vision-image">
+            <img src="introduction/electron-desktop.png" alt="CogitoAgent OCR" />
+          </div>
+          <div class="vision-desc bilingual">
+            <span class="en">Extract text from images, screenshots, and documents. Support batch processing for multiple images.</span>
+            <span class="zh">从图像、截图和文档中提取文本。支持多图像批量处理。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-snippet">
+        <span class="comment">// Example: Vision analysis</span><br>
+        <span class="function">[TOOL]</span> <span class="keyword">vision</span><span class="string">("screenshot.png", "Describe this image")</span> <span class="function">[/TOOL]</span><br><br>
+        <span class="comment">// Example: OCR text extraction</span><br>
+        <span class="function">[TOOL]</span> <span class="keyword">ocr</span><span class="string">("document.png")</span> <span class="function">[/TOOL]</span><br><br>
+        <span class="comment">// Example: Batch OCR</span><br>
+        <span class="function">[TOOL]</span> <span class="keyword">ocrBatch</span><span class="string">("img1.png, img2.png")</span> <span class="function">[/TOOL]</span>
+      </div>
+    </section>
+
+
     <section class="arch-section fade-in">
       <div class="section-header">
         <span class="section-num">03</span>
@@ -1229,7 +1437,7 @@
         <div class="arch-item">
           <div class="arch-icon">🔌</div>
           <div class="arch-name"><span class="en">Plugin System</span><span class="zh">插件系统</span></div>
-          <div class="arch-desc"><span class="en">SDK for extending capabilities</span><span class="zh">扩展能力 SDK</span></div>
+          <div class="arch-desc"><span class="en">Dynamic tool loading</span><span class="zh">动态工具加载</span></div>
         </div>
         <div class="arch-item">
           <div class="arch-icon">🛡️</div>
@@ -1249,26 +1457,237 @@
       </div>
     </section>
 
-    <!-- Usage Modes -->
-    <section class="modes-section fade-in">
+    <section class="tech-details-section fade-in">
       <div class="section-header">
         <span class="section-num">04</span>
+        <h2 class="section-title"><span class="en">Technical Details</span><span class="zh">技术细节</span></h2>
+      </div>
+
+      <div class="tech-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div class="tech-card" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 24px;">
+          <div style="font-size: 1.5rem; margin-bottom: 12px;">🔄</div>
+          <h3 style="font-size: 1.05rem; font-weight: 600; margin-bottom: 8px;">
+            <span class="en">State Machine</span><span class="zh">状态机</span>
+          </h3>
+          <p class="section-text bilingual" style="font-size: 0.85rem; margin-bottom: 14px;">
+            <span class="en">Three core states managed by <code>state.js</code> with strict transitions.</span>
+            <span class="zh">由 <code>state.js</code> 管理的三个核心状态，具有严格的状态转换。</span>
+          </p>
+          <div class="code-snippet" style="font-size: 0.78rem;">
+            <span class="comment">// State transitions</span><br>
+            <span class="keyword">AWAITING_INPUT</span> → <span class="keyword">THINKING</span> (user input)<br>
+            <span class="keyword">THINKING</span> → <span class="keyword">AWAITING_CONFIRMATION</span> (dangerous tool)<br>
+            <span class="keyword">THINKING</span> → <span class="keyword">AWAITING_INPUT</span> (response ready)<br>
+            <span class="keyword">AWAITING_CONFIRMATION</span> → <span class="keyword">THINKING</span> (confirmed)
+          </div>
+        </div>
+
+        <div class="tech-card" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 24px;">
+          <div style="font-size: 1.5rem; margin-bottom: 12px;">🔌</div>
+          <h3 style="font-size: 1.05rem; font-weight: 600; margin-bottom: 8px;">
+            <span class="en">Tool Registry</span><span class="zh">工具注册表</span>
+          </h3>
+          <p class="section-text bilingual" style="font-size: 0.85rem; margin-bottom: 14px;">
+            <span class="en">Centralized tool management with metadata including category, parameters, danger level, and execution handler.</span>
+            <span class="zh">集中式工具管理，包含分类、参数、危险等级和执行句柄等元数据。</span>
+          </p>
+          <div class="code-snippet" style="font-size: 0.78rem;">
+            <span class="comment">// Tool registration format</span><br>
+            <span class="string">name:</span> <span class="keyword">'functionName'</span>,<br>
+            <span class="string">description:</span> <span class="keyword">'description'</span>,<br>
+            <span class="string">parameters:</span> <span class="keyword">{ /* JSON Schema */ }</span>,<br>
+            <span class="string">category:</span> <span class="keyword">'file/code/git/...'</span>,<br>
+            <span class="string">dangerLevel:</span> <span class="keyword">'none/low/medium/high'</span>
+          </div>
+        </div>
+
+        <div class="tech-card" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 24px;">
+          <div style="font-size: 1.5rem; margin-bottom: 12px;">🛡️</div>
+          <h3 style="font-size: 1.05rem; font-weight: 600; margin-bottom: 8px;">
+            <span class="en">Security Sandbox</span><span class="zh">安全沙箱</span>
+          </h3>
+          <p class="section-text bilingual" style="font-size: 0.85rem; margin-bottom: 14px;">
+            <span class="en">Process-level isolation using <code>isolated-vm</code> with deep-freezing of built-in objects and resource limits.</span>
+            <span class="zh">使用 <code>isolated-vm</code> 实现进程级隔离，内置对象深度冻结，资源使用受限。</span>
+          </p>
+          <div class="code-snippet" style="font-size: 0.78rem;">
+            <span class="comment">// Sandbox security features</span><br>
+            ✅ <span class="keyword">Deep freeze</span> of built-in objects<br>
+            ✅ <span class="keyword">No file system</span> access<br>
+            ✅ <span class="keyword">No network</span> access<br>
+            ✅ <span class="keyword">Execution timeout</span> limit<br>
+            ✅ <span class="keyword">Memory usage</span> limit
+          </div>
+        </div>
+
+        <div class="tech-card" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 24px;">
+          <div style="font-size: 1.5rem; margin-bottom: 12px;">📦</div>
+          <h3 style="font-size: 1.05rem; font-weight: 600; margin-bottom: 8px;">
+            <span class="en">Context Compression</span><span class="zh">上下文压缩</span>
+          </h3>
+          <p class="section-text bilingual" style="font-size: 0.85rem; margin-bottom: 14px;">
+            <span class="en">Auto-compression when conversation exceeds max length. Uses LLM to summarize early messages while keeping recent context.</span>
+            <span class="zh">当对话超过最大长度时自动压缩。使用 LLM 总结早期消息，保留最近上下文。</span>
+          </p>
+          <div class="code-snippet" style="font-size: 0.78rem;">
+            <span class="comment">// Compression strategy</span><br>
+            <span class="keyword">maxHistoryLength:</span> <span class="string">100</span> (messages)<br>
+            <span class="keyword">compressThreshold:</span> <span class="string">80%</span> of max<br>
+            <span class="keyword">keepRecent:</span> <span class="string">20</span> latest messages<br>
+            <span class="keyword">summarize:</span> <span class="string">Early messages → summary</span>
+          </div>
+        </div>
+
+        <div class="tech-card" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 24px;">
+          <div style="font-size: 1.5rem; margin-bottom: 12px;">📈</div>
+          <h3 style="font-size: 1.05rem; font-weight: 600; margin-bottom: 8px;">
+            <span class="en">Tracing & Retry</span><span class="zh">追踪与重试</span>
+          </h3>
+          <p class="section-text bilingual" style="font-size: 0.85rem; margin-bottom: 14px;">
+            <span class="en">Lightweight observability with tracing.js and reliable network requests with retry.js using exponential backoff.</span>
+            <span class="zh">轻量级可观测性（tracing.js）和可靠网络请求（retry.js），支持指数退避策略。</span>
+          </p>
+          <div class="code-snippet" style="font-size: 0.78rem;">
+            <span class="comment">// Retry configuration</span><br>
+            <span class="keyword">maxAttempts:</span> <span class="string">3</span><br>
+            <span class="keyword">delay:</span> <span class="string">1000ms</span><br>
+            <span class="keyword">backoff:</span> <span class="string">'exponential'</span><br>
+            <span class="keyword">retryOn:</span> <span class="string">[Error, Timeout]</span>
+          </div>
+        </div>
+
+        <div class="tech-card" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 24px;">
+          <div style="font-size: 1.5rem; margin-bottom: 12px;">🌐</div>
+          <h3 style="font-size: 1.05rem; font-weight: 600; margin-bottom: 8px;">
+            <span class="en">MCP Protocol</span><span class="zh">MCP 协议</span>
+          </h3>
+          <p class="section-text bilingual" style="font-size: 0.85rem; margin-bottom: 14px;">
+            <span class="en">Model Context Protocol support for integration with other AI clients. Exposes tools via JSON-RPC.</span>
+            <span class="zh">支持模型上下文协议（MCP），可与其他 AI 客户端集成。通过 JSON-RPC 暴露工具。</span>
+          </p>
+          <div class="code-snippet" style="font-size: 0.78rem;">
+            <span class="comment">// MCP methods</span><br>
+            <span class="keyword">tools/list</span> - List all tools<br>
+            <span class="keyword">tools/call</span> - Invoke tool<br>
+            <span class="keyword">resources/list</span> - List resources<br>
+            <span class="keyword">resources/read</span> - Read resource
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 30px;">
+        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px;">
+          <span class="en">Thinking Cycle Workflow</span><span class="zh">思考循环流程</span>
+        </h3>
+        <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 24px;">
+          <div class="flow-diagram" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: center;">
+            <div class="flow-step" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 10px; padding: 14px 20px; text-align: center; min-width: 120px;">
+              <div style="font-size: 0.78rem; color: var(--accent-primary); margin-bottom: 4px;">01</div>
+              <div style="font-size: 0.85rem; font-weight: 600;">
+                <span class="en">Perceive Input</span><span class="zh">感知输入</span>
+              </div>
+            </div>
+            <div style="color: var(--accent-primary); font-size: 1.2rem;">→</div>
+            <div class="flow-step" style="background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 10px; padding: 14px 20px; text-align: center; min-width: 120px;">
+              <div style="font-size: 0.78rem; color: var(--accent-secondary); margin-bottom: 4px;">02</div>
+              <div style="font-size: 0.85rem; font-weight: 600;">
+                <span class="en">Build Prompt</span><span class="zh">构建提示</span>
+              </div>
+            </div>
+            <div style="color: var(--accent-primary); font-size: 1.2rem;">→</div>
+            <div class="flow-step" style="background: rgba(167, 139, 250, 0.1); border: 1px solid rgba(167, 139, 250, 0.2); border-radius: 10px; padding: 14px 20px; text-align: center; min-width: 120px;">
+              <div style="font-size: 0.78rem; color: #a78bfa; margin-bottom: 4px;">03</div>
+              <div style="font-size: 0.85rem; font-weight: 600;">
+                <span class="en">Call LLM</span><span class="zh">调用 LLM</span>
+              </div>
+            </div>
+            <div style="color: var(--accent-primary); font-size: 1.2rem;">→</div>
+            <div class="flow-step" style="background: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.2); border-radius: 10px; padding: 14px 20px; text-align: center; min-width: 120px;">
+              <div style="font-size: 0.78rem; color: #34d399; margin-bottom: 4px;">04</div>
+              <div style="font-size: 0.85rem; font-weight: 600;">
+                <span class="en">Parse Response</span><span class="zh">解析响应</span>
+              </div>
+            </div>
+            <div style="color: var(--accent-primary); font-size: 1.2rem;">→</div>
+            <div class="flow-step" style="background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.2); border-radius: 10px; padding: 14px 20px; text-align: center; min-width: 120px;">
+              <div style="font-size: 0.78rem; color: #f97316; margin-bottom: 4px;">05</div>
+              <div style="font-size: 0.85rem; font-weight: 600;">
+                <span class="en">Execute Tools</span><span class="zh">执行工具</span>
+              </div>
+            </div>
+            <div style="color: var(--accent-primary); font-size: 1.2rem;">→</div>
+            <div class="flow-step" style="background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 14px 20px; text-align: center; min-width: 120px;">
+              <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 4px;">06</div>
+              <div style="font-size: 0.85rem; font-weight: 600;">
+                <span class="en">Update State</span><span class="zh">更新状态</span>
+              </div>
+            </div>
+            <div style="color: var(--accent-primary); font-size: 1.2rem;">↻</div>
+          </div>
+          <p class="section-text bilingual" style="font-size: 0.85rem; text-align: center; margin-top: 16px;">
+            <span class="en">Auto-repeats every 3 seconds until response is ready (configurable via <code>thinkingInterval</code>)</span>
+            <span class="zh">每3秒自动重复，直到响应准备就绪（可通过 <code>thinkingInterval</code> 配置）</span>
+          </p>
+        </div>
+      </div>
+
+      <div style="margin-top: 30px;">
+        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px;">
+          <span class="en">Project Structure</span><span class="zh">项目结构</span>
+        </h3>
+        <div class="code-snippet">
+          <span class="comment">// Core files and their responsibilities</span><br><br>
+          <span class="string">src/</span><br>
+          <span class="keyword">├── agent/</span> <span class="comment">// Agent core modules</span><br>
+          <span class="keyword">│   ├── Agent.js</span> <span class="comment">// Thinking loop controller</span><br>
+          <span class="keyword">│   ├── state.js</span> <span class="comment">// State machine management</span><br>
+          <span class="keyword">│   ├── registry.js</span> <span class="comment">// Tool registration & discovery</span><br>
+          <span class="keyword">│   ├── session.js</span> <span class="comment">// Multi-session management</span><br>
+          <span class="keyword">│   ├── commands.js</span> <span class="comment">// Command handling (/help, /status, etc.)</span><br>
+          <span class="keyword">│   ├── stats.js</span> <span class="comment">// Usage statistics & metrics</span><br>
+          <span class="keyword">│   ├── tracing.js</span> <span class="comment">// Lightweight observability</span><br>
+          <span class="keyword">│   ├── retry.js</span> <span class="comment">// Retry & circuit breaker</span><br>
+          <span class="keyword">│   ├── mcp.js</span> <span class="comment">// MCP Server protocol</span><br>
+          <span class="keyword">│   ├── plugin.js</span> <span class="comment">// Plugin system</span><br>
+          <span class="keyword">│   └── tools/</span> <span class="comment">// 18+ tool modules</span><br>
+          <span class="keyword">├── api/</span> <span class="comment">// API layer (client, models, webSearch)</span><br>
+          <span class="keyword">├── io/</span> <span class="comment">// Terminal, Logger, WebSocket</span><br>
+          <span class="keyword">├── config.js</span> <span class="comment">// Configuration management</span><br>
+          <span class="keyword">└── index.js</span> <span class="comment">// Application entry</span><br><br>
+          <span class="string">electron/</span> <span class="comment">// Desktop mode (Electron)</span><br>
+          <span class="string">personas/</span> <span class="comment">// 22 preset personas</span><br>
+          <span class="string">data/</span> <span class="comment">// Runtime data (auto-created)</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="modes-section fade-in">
+      <div class="section-header">
+        <span class="section-num">05</span>
         <h2 class="section-title"><span class="en">Getting Started</span><span class="zh">快速开始</span></h2>
       </div>
 
       <p class="section-text bilingual">
-        <span class="en">CogitoAgent offers two operation modes to suit different environments.</span>
-        <span class="zh">CogitoAgent 提供两种运行模式以适应不同环境。</span>
+        <span class="en">CogitoAgent offers multiple operation modes to suit different environments and preferences.</span>
+        <span class="zh">CogitoAgent 提供多种运行模式以适应不同环境和偏好。</span>
       </p>
 
       <div class="modes-grid">
         <div class="mode-card">
           <div class="mode-title"><span class="en">🖥️ Desktop Mode</span><span class="zh">🖥️ 桌面模式</span></div>
           <div class="mode-desc bilingual">
-            <span class="en">Electron desktop window + terminal Agent, communicating via WebSocket. Features a semi-transparent frosted glass dialog and virtual character video.</span>
-            <span class="zh">Electron 桌面窗口 + 终端 Agent，通过 WebSocket 通信。半透明毛玻璃对话框 + 虚拟人物视频。</span>
+            <span class="en">Electron desktop window + terminal Agent, communicating via WebSocket (port 9527). Features a semi-transparent frosted glass dialog for seamless interaction.</span>
+            <span class="zh">Electron 桌面窗口 + 终端 Agent，通过 WebSocket（端口 9527）通信。半透明毛玻璃对话框，实现无缝交互。</span>
           </div>
-          <span class="mode-cmd">npm run electron</span>
+          <span class="mode-cmd">npm run electron:desktop</span>
+        </div>
+        <div class="mode-card">
+          <div class="mode-title"><span class="en">📊 Dashboard Mode</span><span class="zh">📊 仪表盘模式</span></div>
+          <div class="mode-desc bilingual">
+            <span class="en">Full-window dashboard with session management, tool usage statistics, and real-time monitoring.</span>
+            <span class="zh">全屏仪表盘，包含会话管理、工具使用统计和实时监控。</span>
+          </div>
+          <span class="mode-cmd">npm run electron:dashboard</span>
         </div>
         <div class="mode-card">
           <div class="mode-title"><span class="en">💻 CLI Mode</span><span class="zh">💻 命令行模式</span></div>
@@ -1277,6 +1696,14 @@
             <span class="zh">纯命令行模式，无 Electron 或 WebSocket。适用于服务器、远程连接或资源受限环境。</span>
           </div>
           <span class="mode-cmd">npm run cli</span>
+        </div>
+        <div class="mode-card">
+          <div class="mode-title"><span class="en">🚀 Setup Wizard</span><span class="zh">🚀 配置向导</span></div>
+          <div class="mode-desc bilingual">
+            <span class="en">Interactive setup wizard for first-time configuration: API settings, workspace path, and persona selection.</span>
+            <span class="zh">交互式配置向导，首次运行时引导完成：API 设置、工作区路径和人设选择。</span>
+          </div>
+          <span class="mode-cmd">npm start</span>
         </div>
       </div>
 
@@ -1288,33 +1715,9 @@
       </div>
     </section>
 
-    <!-- Session Selector -->
-    <section class="fade-in" style="margin-bottom: 50px;">
-      <div class="section-header">
-        <span class="section-num">05</span>
-        <h2 class="section-title"><span class="en">Session Selector</span><span class="zh">会话选择器</span></h2>
-      </div>
-      <p class="section-text bilingual">
-        <span class="en">On startup, you can choose to enter an existing session or create a new one. Sessions are dynamically read from the <code>data/sessions/</code> directory.</span>
-        <span class="zh">启动时可以选择进入已有会话或创建新会话。会话从 <code>data/sessions/</code> 目录动态读取。</span>
-      </p>
-      <div class="session-demo">
-        <span class="dim">────────────────────────────────────────────</span><br>
-        <span class="en"><span class="prompt">📋 Select Session:</span></span><span class="zh"><span class="prompt">📋 选择会话：</span></span><br>
-        <span class="num"> 0</span> - <span class="en">Create New Session</span><span class="zh">创建新会话</span><br>
-        <span class="num"> 1</span> - Default Session <span class="current">◀ Current</span><br>
-        &nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">Last Active: 06/21 15:30</span><br>
-        <span class="num"> 2</span> - Work Discussion<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;<span class="dim">Last Active: 06/19 10:22</span><br>
-        <span class="dim">────────────────────────────────────────────</span><br>
-        <span class="prompt en">Enter number:</span><span class="prompt zh">请输入编号：</span> _
-      </div>
-    </section>
-
-    <!-- Commands -->
     <section class="commands-section fade-in">
       <div class="section-header">
-        <span class="section-num">06</span>
+        <span class="section-num">08</span>
         <h2 class="section-title"><span class="en">Quick Commands</span><span class="zh">快捷指令</span></h2>
       </div>
       <div class="commands-grid">
@@ -1350,10 +1753,25 @@
           <span class="cmd-key">/config</span>
           <span class="cmd-desc"><span class="en">Show configuration</span><span class="zh">查看配置</span></span>
         </div>
+        <div class="command-item">
+          <span class="cmd-key">/sessions</span>
+          <span class="cmd-desc"><span class="en">List all sessions</span><span class="zh">列出所有会话</span></span>
+        </div>
+        <div class="command-item">
+          <span class="cmd-key">/new</span>
+          <span class="cmd-desc"><span class="en">Create new session</span><span class="zh">创建新会话</span></span>
+        </div>
+        <div class="command-item">
+          <span class="cmd-key">/switch</span>
+          <span class="cmd-desc"><span class="en">Switch session</span><span class="zh">切换会话</span></span>
+        </div>
+        <div class="command-item">
+          <span class="cmd-key">/clear</span>
+          <span class="cmd-desc"><span class="en">Clear conversation</span><span class="zh">清除对话</span></span>
+        </div>
       </div>
     </section>
 
-    <!-- Start -->
     <section class="start-section fade-in">
       <h2 class="start-title"><span class="en">Ready to Get Started?</span><span class="zh">准备好开始了吗？</span></h2>
       <p class="start-subtitle bilingual">
@@ -1374,7 +1792,6 @@
       </div>
     </section>
 
-    <!-- Footer -->
     <footer>
       <p>CogitoAgent v2.3.0</p>
       <p style="margin-top: 8px;">
@@ -1392,7 +1809,6 @@
   </div>
 
   <script>
-    // Language switching
     function switchLang(lang) {
       document.querySelector('html').setAttribute('lang', lang);
       document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
@@ -1400,13 +1816,11 @@
       localStorage.setItem('cogito-lang', lang);
     }
 
-    // Restore saved language preference
     const savedLang = localStorage.getItem('cogito-lang');
     if (savedLang) {
       switchLang(savedLang);
     }
 
-    // Generate particles dynamically
     function generateParticles() {
       const container = document.getElementById('particles');
       if (!container) return;
@@ -1442,7 +1856,6 @@
     }
     generateParticles();
 
-    // Intersection Observer for fade-in
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -1452,7 +1865,6 @@
     }, { threshold: 0.1 });
 
     document.querySelectorAll('.fade-in').forEach(el => {
-      // Initially pause animations
       if (!el.classList.contains('stats-section') && !el.classList.contains('hero') && !el.classList.contains('header')) {
         el.style.animationPlayState = 'paused';
       }
