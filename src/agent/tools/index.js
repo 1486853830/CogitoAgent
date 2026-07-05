@@ -119,6 +119,7 @@ import {
 } from './scheduler.js';
 import { FileStorage, createStorage } from './storage.js';
 import { ocr, ocrBatch } from './ocr.js';
+import { vision, visionFromUrl } from './vision.js';
 import { createPpt, createWord, createExcel, readExcel } from './office.js';
 import {
   isSandboxEnabled,
@@ -251,6 +252,8 @@ export {
   executeCodeSandbox,
   ocr,
   ocrBatch,
+  vision,
+  visionFromUrl,
   createPpt,
   createWord,
   createExcel,
@@ -405,6 +408,10 @@ const TOOL_METADATA = {
   // OCR 图像文字识别
   ocr: { argCount: 1 },
   ocrBatch: { argCount: 1 },
+
+  // 视觉分析
+  vision: { argCount: 2 },
+  visionFromUrl: { argCount: 2 },
 
   // PPT 创建
   createPpt: { argCount: 1 },

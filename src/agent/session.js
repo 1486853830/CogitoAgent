@@ -252,6 +252,18 @@ function buildToolList() {
 
 `;
         break;
+      case 'vision':
+        toolList += `### 视觉分析工具（Vision）
+- vision(imagePath, prompt) - 分析本地图片内容，支持流式返回思考过程和最终分析结果。支持 jpg/png/webp/bmp/gif 格式，可自定义提示词（如"请详细描述这张图片"、"图中有什么文字？"）
+- visionFromUrl(imageUrl, prompt) - 分析网络图片 URL 的内容，支持流式返回思考过程和最终分析结果
+
+【重要】使用 Vision 工具时必须：
+1. 详细描述图片中的内容，包括物体、场景、文字、颜色、布局等
+2. 如果图片包含文字，需准确读取并输出
+3. 分析结果应包含 reasoning（思考过程）和 content（最终结论）两部分
+
+`;
+        break;
       case 'office':
         toolList += `### Office 文档工具
 - createPpt(options) - 创建 PPT 文件，参数包含 outputPath(输出路径)、slides(幻灯片数组，每项含 title/content/image/bullets)、title(标题)、author(作者)

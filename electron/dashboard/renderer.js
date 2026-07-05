@@ -98,6 +98,12 @@ const TOOL_CATEGORIES = [
     tools: ['ocr', 'ocrBatch']
   },
   {
+    id: 'vision',
+    name: '视觉分析',
+    icon: '👁️',
+    tools: ['vision', 'visionFromUrl']
+  },
+  {
     id: 'office',
     name: 'Office 文档',
     icon: '📄',
@@ -1192,7 +1198,7 @@ const VisualizationManager = {
       file: '文件', web: '网络', system: '系统', browser: '浏览器',
       code: '代码', git: 'Git', task: '任务', memory: '记忆',
       data: '数据', db: '数据库', email: '邮件', monitor: '监控',
-      scheduler: '定时', ocr: 'OCR', office: 'Office'
+      scheduler: '定时', ocr: 'OCR', vision: '视觉', office: 'Office'
     };
 
     const filteredData = data.filter(d => d.callCount > 0);
