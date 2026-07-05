@@ -6,7 +6,7 @@ Cogito, ergo sum — CogitoAgent 不仅仅是一个工具，它是你本地环�
 
 **CogitoAgent** 是一款运行于本地的自主 AI 智能体，融合了文件管理、知识挖掘、系统操作、代码执行与联网能力。它直接在用户配置的工作目录下运行，**无需上传任何文件至第三方服务器**，在保障数据隐私安全的同时，提供持续运转的智能助理服务。
 
-![CogitoAgent 控制面板模式](introduction/dashboard.png)
+![CogitoAgent 控制面板模式](introduction/electron-dashboard.png)
 
 不同于传统的聊天机器人，CogitoAgent 具备 **持续思考**、**自主探索** 和 **工具执行** 的能力，能够在后台主动发现和整理用户的本地文件资产，并可通过扩展工具集获得更多能力。
 

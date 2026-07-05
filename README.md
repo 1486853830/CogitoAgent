@@ -6,7 +6,7 @@ Cogito, ergo sum — CogitoAgent is not just a tool; it is your autonomous think
 
 **CogitoAgent** is a locally-run autonomous AI agent that integrates file management, knowledge mining, system operations, code execution, and web connectivity. It runs directly within the working directory configured by the user, **with no need to upload any files to third-party servers**, ensuring data privacy while providing a continuously operating intelligent assistant service.
 
-![CogitoAgent dashboard](introduction/dashboard.png)
+![CogitoAgent dashboard](introduction/electron-dashboard.png)
 
 Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Continuously**, **Explore Autonomously**, and **Execute Tools**, capable of proactively discovering and organizing your local file assets in the background, with additional capabilities available through an extensible toolset.
 
