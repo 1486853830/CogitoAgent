@@ -39,6 +39,11 @@ const DEFAULT_CONFIG = {
     apiKey: '',           // OCR API 密钥
     model: 'Qwen2.5-VL-32B-Instruct'  // OCR/VL 模型名称
   },
+  vision: {
+    baseURL: '',          // 视觉分析 API base URL（空则使用主 API baseURL）
+    apiKey: '',           // 视觉分析 API 密钥（空则回退到主 API Key）
+    model: 'Qwen2.5-VL-32B-Instruct'  // 视觉模型名称
+  },
   workspace: os.homedir(),      // 工作区根路径（跨平台）
   database: {
     path: './data/example.db'  // SQLite 数据库路径
@@ -214,6 +219,24 @@ function loadEnvConfig() {
     envConfig.ocr = ocrConfig;
   }
 
+  // 视觉分析配置
+  const visionConfig = {};
+  const visionKey = process.env.COGITO_VISION_API_KEY || process.env.VISION_API_KEY;
+  if (visionKey) {
+    visionConfig.apiKey = visionKey;
+  }
+  const visionBaseURL = process.env.COGITO_VISION_API_BASE_URL || process.env.VISION_API_BASE_URL;
+  if (visionBaseURL) {
+    visionConfig.baseURL = visionBaseURL;
+  }
+  const visionModel = process.env.COGITO_VISION_MODEL || process.env.VISION_MODEL;
+  if (visionModel) {
+    visionConfig.model = visionModel;
+  }
+  if (Object.keys(visionConfig).length > 0) {
+    envConfig.vision = visionConfig;
+  }
+
   return envConfig;
 }
 
@@ -296,6 +319,11 @@ function sanitizeConfig(config) {
   // 过滤 OCR API 密钥
   if (sanitized.ocr && sanitized.ocr.apiKey) {
     delete sanitized.ocr.apiKey;
+  }
+
+  // 过滤视觉分析 API 密钥
+  if (sanitized.vision && sanitized.vision.apiKey) {
+    delete sanitized.vision.apiKey;
   }
   
   return sanitized;
