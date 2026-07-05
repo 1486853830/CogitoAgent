@@ -23,6 +23,7 @@ const TOOL_CATEGORIES = {
   monitor: '系统监控',
   scheduler: '定时任务',
   ocr: '图像文字识别',
+  vision: '视觉分析',
   office: 'Office文档'
 };
 
@@ -169,6 +170,10 @@ const TOOL_REGISTRY = {
   ocr: { fn: tools.ocr, argCount: 2, category: 'ocr' },
   ocrBatch: { fn: tools.ocrBatch, argCount: 1, category: 'ocr' },
 
+  // 视觉分析
+  vision: { fn: tools.vision, argCount: 2, category: 'vision' },
+  visionFromUrl: { fn: tools.visionFromUrl, argCount: 2, category: 'vision' },
+
   // Office 文档
   createPpt: { fn: tools.createPpt, argCount: 1, category: 'office' },
   createWord: { fn: tools.createWord, argCount: 1, category: 'office' },
@@ -248,7 +253,8 @@ function getToolsByCategory() {
     email: ['sendEmail', 'sendTextEmail', 'sendHtmlEmail', 'sendTemplateEmail', 'sendEmailWithAttachments', 'checkEmailConfig'],
     monitor: ['getCPUInfo', 'getMemoryInfo', 'getDiskInfo', 'getNetworkInfo', 'getProcesses', 'getSystemInfo', 'getCurrentProcess', 'getSystemLoad', 'monitorSystem'],
     scheduler: ['addScheduleTask', 'getScheduleTasks', 'getScheduleTask', 'updateScheduleTask', 'toggleScheduleTask', 'removeScheduleTask', 'startScheduler', 'stopScheduler'],
-    ocr: ['ocr', 'ocrBatch']
+    ocr: ['ocr', 'ocrBatch'],
+    vision: ['vision', 'visionFromUrl']
   };
 }
 
