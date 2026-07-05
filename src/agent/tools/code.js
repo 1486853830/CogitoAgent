@@ -5,9 +5,19 @@ import fsSync from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
+import { loadConfig } from '../../config.js';
 
-const MAX_EXECUTION_TIME = 30000;
-const MAX_OUTPUT_SIZE = 100000;
+/**
+ * 从配置读取代码执行限制
+ * 支持 .env 中 COGITO_CODE_TIMEOUT / COGITO_CODE_MAX_OUTPUT 配置
+ */
+function getCodeLimits() {
+  const cfg = loadConfig();
+  return {
+    maxExecutionTime: cfg.code?.maxExecutionTime ?? 30000,
+    maxOutputSize: cfg.code?.maxOutputSize ?? 100000
+  };
+}
 
 /**
  * 生成安全的临时文件路径
@@ -124,12 +134,13 @@ function createSandbox() {
  */
 async function runJavaScript(code) {
   return new Promise((resolve) => {
+    const { maxExecutionTime, maxOutputSize } = getCodeLimits();
     const timeoutId = setTimeout(() => {
       resolve({
         success: false,
-        error: '执行超时（超过30秒）'
+        error: `执行超时（超过${maxExecutionTime / 1000}秒）`
       });
-    }, MAX_EXECUTION_TIME);
+    }, maxExecutionTime);
 
     try {
       const { context } = createSandbox();
@@ -145,7 +156,7 @@ async function runJavaScript(code) {
       `;
 
       const result = vm.runInContext(wrappedCode, context, {
-        timeout: MAX_EXECUTION_TIME,
+        timeout: maxExecutionTime,
         displayErrors: true
       });
 
@@ -161,8 +172,8 @@ async function runJavaScript(code) {
           output = String(result.result);
         }
 
-        if (output.length > MAX_OUTPUT_SIZE) {
-          output = output.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
+        if (output.length > maxOutputSize) {
+          output = output.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
         }
 
         resolve({
@@ -254,15 +265,16 @@ async function runPython(code) {
   return new Promise(async (resolve) => {
     let tmpPath = null;
     let timedOut = false;
+    const { maxExecutionTime, maxOutputSize } = getCodeLimits();
 
     const timeoutId = setTimeout(async () => {
       timedOut = true;
       await cleanupTmpFile(tmpPath);  // 超时时也清理临时文件
       resolve({
         success: false,
-        error: '执行超时（超过30秒）'
+        error: `执行超时（超过${maxExecutionTime / 1000}秒）`
       });
-    }, MAX_EXECUTION_TIME);
+    }, maxExecutionTime);
 
     try {
       // 检测 GUI 阻塞调用并注入超时机制
@@ -301,7 +313,7 @@ async function runPython(code) {
       delete secureEnv.VIRTUAL_ENV;
 
       execFile('python', [tmpPath], {
-        timeout: MAX_EXECUTION_TIME,
+        timeout: maxExecutionTime,
         encoding: 'utf8',
         env: secureEnv,
         // 限制子进程权限（仅 UNIX）
@@ -311,7 +323,7 @@ async function runPython(code) {
         if (timedOut) return;  // 如果已经超时，忽略回调
 
         clearTimeout(timeoutId);
-        
+
         await cleanupTmpFile(tmpPath);
 
         if (error) {
@@ -323,21 +335,21 @@ async function runPython(code) {
         }
 
         let result = stdout || '执行完成，无输出';
-        
+
         // GUI 程序特殊提示
         if (isGuiCode) {
-          result = '🖼️ [GUI 程序已执行]\n' + 
+          result = '🖼️ [GUI 程序已执行]\n' +
                    '提示：窗口将在 10 秒后自动关闭\n' +
-                   '如果窗口未显示，可能是因为当前环境不支持图形界面\n\n' + 
+                   '如果窗口未显示，可能是因为当前环境不支持图形界面\n\n' +
                    (stdout ? '[程序输出]:\n' + stdout : '');
         }
-        
+
         if (stderr) {
           result += '\n[错误输出]: ' + stderr;
         }
 
-        if (result.length > MAX_OUTPUT_SIZE) {
-          result = result.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
+        if (result.length > maxOutputSize) {
+          result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
         }
 
         resolve({
