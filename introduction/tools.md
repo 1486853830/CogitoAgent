@@ -4,28 +4,30 @@
 
 ## 工具系统
 
-![文件操作功能截图](file.png)
-
 工具系统由 `registry.js` 统一管理，所有工具函数通过 `[TOOL] functionName(args) [/TOOL]` 格式调用。
 
 ### 工具分类
 
 | 分类 | 文件 | 主要功能 |
 |------|------|----------|
-| 文件操作 | `file.js` | `ls`, `read`, `create`, `copy`, `mkdir`, `delete`, `move` |
-| 网页工具 | `web.js` | `search`, `browse`, `fetchPage`, `searchOnEngine` |
-| 浏览器自动化 | `browser.js` | `initBrowser`, `clickElement`, `fillField`, `takeScreenshot` |
-| 系统操作 | `system.js` | `listApps`, `openApp`, `closeApp` |
-| 代码执行 | `code.js` | `executeCode`, `runJavaScript`, `runPython` |
-| Git | `git.js` | `gitStatus`, `gitCommit`, `gitPush`, `gitPull`, `gitDiff`, `gitLog` |
-| 任务管理 | `task.js` | `createTask`, `getTasks`, `completeTask`, `splitTask` |
-| 记忆系统 | `memory.js` | `addMemory`, `searchMemory`, `getRelatedMemories`, `deleteMemory` |
-| 数据处理 | `data.js` | `readCSV`, `writeJSON`, `csvToJSON`, `queryData` |
-| 数据库 | `db.js` | `executeSQL`, `query`, `insert`, `update`, `createTable`, `getTables` |
-| 邮件 | `email.js` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail` |
-| 系统监控 | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `monitorSystem` |
-| 定时任务 | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `toggleScheduleTask` |
+| 文件操作 | `file.js` | `ls`, `read`, `create`, `copy`, `mkdir`, `delete`, `move`, `append`, `write`, `rename` |
+| 路径工具 | `path.js` | `getBasePath`, `joinPath`, `resolvePath`, `normalizePath`, `getExtension`, `getFileName`, `getParentDir` |
+| 网络工具 | `web.js` | `search`, `browse`, `fetchPage`, `searchOnEngine` |
+| 浏览器自动化 | `browser.js` | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile` |
+| 系统操作 | `system.js` | `listApps`, `openApp`, `closeApp`, `getOSInfo`, `getUserName`, `getHomeDir` |
+| 代码执行 | `code.js` | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode` |
+| 安全沙箱 | `sandbox.js` | `createJavaScriptSandbox`, `runJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox` |
+| Git | `git.js` | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
+| 任务管理 | `task.js` | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks` |
+| 记忆系统 | `memory.js` | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory` |
+| 数据处理 | `data.js` | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`, `filterData`, `groupData`, `aggregateData` |
+| 数据库 | `db.js` | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB` |
+| 邮件 | `email.js` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig` |
+| 系统监控 | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem` |
+| 定时任务 | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler` |
+| 存储 | `storage.js` | `FileStorage`, `createStorage`, `getStorage`, `clearStorage` |
 | 图像识别 | `ocr.js` | `ocr`, `ocrBatch` |
+| 视觉分析 | `vision.js` | `vision`, `visionFromUrl` |
 | Office 文档 | `office.js` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
 
 ### 工具注册机制
@@ -38,7 +40,7 @@
   description: '函数描述',
   parameters: { /* JSON Schema */ },
   category: '分类',
-  dangerLevel: 'none | low | medium | high',  // 危险操作需用户确认
+  dangerLevel: 'none | low | medium | high',
   fn: async (args) => { /* 实现 */ }
 }
 ```
@@ -53,13 +55,64 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 → 执行 Python 代码，返回输出
 ```
 
-> 详细工具开发文档参见 `src/agent/tools/TOOL_DEVELOPMENT.md`
+---
+
+## 文件操作工具详解
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `ls` | 列出目录内容 | `path`（目录路径） |
+| `read` | 读取文件内容 | `path`（文件路径） |
+| `create` | 创建文件 | `path`, `content` |
+| `write` | 写入文件（覆盖） | `path`, `content` |
+| `append` | 追加内容到文件 | `path`, `content` |
+| `copy` | 复制文件 | `source`, `destination` |
+| `move` | 移动文件 | `source`, `destination` |
+| `rename` | 重命名文件 | `path`, `newName` |
+| `mkdir` | 创建目录 | `path` |
+| `delete` | 删除文件或目录 | `path` |
+
+### 使用示例
+
+```javascript
+[TOOL] ls("./src") [/TOOL]
+[TOOL] read("./src/config.js") [/TOOL]
+[TOOL] create("notes.txt", "Hello World") [/TOOL]
+[TOOL] append("notes.txt", "\nNew line") [/TOOL]
+[TOOL] copy("notes.txt", "notes_backup.txt") [/TOOL]
+[TOOL] mkdir("./data") [/TOOL]
+```
+
+---
+
+## 路径工具详解
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `getBasePath` | 获取基础路径 | 无 |
+| `joinPath` | 拼接路径 | `...paths` |
+| `resolvePath` | 解析绝对路径 | `...paths` |
+| `normalizePath` | 规范化路径 | `path` |
+| `getExtension` | 获取文件扩展名 | `path` |
+| `getFileName` | 获取文件名 | `path` |
+| `getParentDir` | 获取父目录 | `path` |
+
+### 使用示例
+
+```javascript
+[TOOL] getBasePath() [/TOOL]
+[TOOL] joinPath("src", "agent", "tools") [/TOOL]
+[TOOL] getExtension("document.pdf") [/TOOL]
+[TOOL] getFileName("/path/to/file.txt") [/TOOL]
+```
 
 ---
 
 ## 浏览器自动化详解
-
-![浏览器自动化截图](web.png)
 
 浏览器自动化工具基于 Playwright 实现，支持网页交互、截图、表单填写等操作。
 
@@ -68,96 +121,217 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 | 工具 | 说明 | 参数 |
 |------|------|------|
 | `initBrowser` | 初始化浏览器实例 | 无 |
-| `navigateTo` | 导航到指定 URL | `url` |
 | `clickElement` | 点击页面元素 | `selector` |
 | `fillField` | 填写表单字段 | `selector`, `value` |
+| `selectOption` | 选择下拉框选项 | `selector`, `value` |
+| `viewChanges` | 查看页面变化 | `timeout`（可选） |
+| `getPageContent` | 获取页面内容 | 无 |
 | `takeScreenshot` | 截取页面截图 | `selector`（可选） |
-| `getText` | 获取元素文本 | `selector` |
-| `waitForElement` | 等待元素出现 | `selector`, `timeout` |
 | `closeBrowser` | 关闭浏览器实例 | 无 |
+| `searchOnPage` | 在页面内搜索文本 | `query` |
+| `findElements` | 查找页面元素 | `selector` |
+| `searchOnEngine` | 在搜索引擎搜索 | `query` |
+| `downloadFile` | 下载文件 | `url`, `savePath` |
 
 ### 使用示例
 
-**基本网页浏览：**
-
 ```javascript
-// 初始化浏览器
 [TOOL] initBrowser() [/TOOL]
-
-// 导航到网页
-[TOOL] navigateTo("https://example.com") [/TOOL]
-
-// 截取整页截图
+[TOOL] clickElement("#login-btn") [/TOOL]
+[TOOL] fillField("#username", "user") [/TOOL]
+[TOOL] selectOption("#country", "China") [/TOOL]
 [TOOL] takeScreenshot() [/TOOL]
-
-// 关闭浏览器
+[TOOL] getPageContent() [/TOOL]
 [TOOL] closeBrowser() [/TOOL]
-```
-
-**表单填写与提交：**
-
-```javascript
-// 初始化并导航
-[TOOL] initBrowser() [/TOOL]
-[TOOL] navigateTo("https://login.example.com") [/TOOL]
-
-// 填写登录表单
-[TOOL] fillField("#username", "myuser") [/TOOL]
-[TOOL] fillField("#password", "mypassword") [/TOOL]
-
-// 点击登录按钮
-[TOOL] clickElement("#login-button") [/TOOL]
-
-// 等待登录成功
-[TOOL] waitForElement(".dashboard", 5000) [/TOOL]
-
-// 截取登录后页面
-[TOOL] takeScreenshot() [/TOOL]
-```
-
-**数据抓取：**
-
-```javascript
-// 导航到目标页面
-[TOOL] navigateTo("https://news.example.com") [/TOOL]
-
-// 获取标题列表
-[TOOL] getText(".article-title") [/TOOL]
-
-// 截取特定区域
-[TOOL] takeScreenshot(".main-content") [/TOOL]
 ```
 
 ### 浏览器配置
 
-**浏览器类型：**
-
-默认使用 Chromium，可通过配置切换：
-
 ```json
 {
   "browser": {
-    "type": "chromium",  // chromium | firefox | webkit
-    "headless": true,    // 无头模式
-    "timeout": 30000     // 默认超时（ms）
+    "type": "chromium",
+    "headless": true,
+    "timeout": 30000
   }
 }
 ```
 
-**安全限制：**
+### 安全限制
 
 - 浏览器实例最多存活 5 分钟
 - 自动关闭长时间未操作的浏览器
 - 禁止访问本地文件系统 URL（file://）
 - 截图自动保存到临时目录，定期清理
 
-### 最佳实践
+---
 
-1. **及时关闭浏览器** - 避免资源浪费
-2. **使用无头模式** - 提高执行效率
-3. **合理设置超时** - 防止页面加载卡死
-4. **选择器优先级** - ID > Class > XPath
-5. **错误处理** - 检查元素是否存在再操作
+## 代码执行工具详解
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `executeCode` | 执行代码（自动识别语言） | `code`, `language`（可选） |
+| `executeFile` | 执行代码文件 | `filePath` |
+| `runJavaScript` | 执行 JavaScript 代码 | `code` |
+| `runPython` | 执行 Python 代码 | `code` |
+| `formatCode` | 格式化代码 | `code`, `language` |
+
+### 使用示例
+
+```javascript
+[TOOL] runJavaScript("console.log('Hello')") [/TOOL]
+[TOOL] runPython("print(1+2)") [/TOOL]
+[TOOL] executeFile("./script.py") [/TOOL]
+[TOOL] formatCode("function test(){return 1}", "javascript") [/TOOL]
+```
+
+---
+
+## 安全沙箱工具详解
+
+安全沙箱使用 `isolated-vm` 实现进程级隔离，防止恶意代码访问宿主环境。
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `createJavaScriptSandbox` | 创建 JavaScript 沙箱 | `options`（可选） |
+| `runJavaScriptSandbox` | 在沙箱中执行 JS | `code`, `context`（可选） |
+| `runPythonSandbox` | 在沙箱中执行 Python | `code` |
+| `executeCodeSandbox` | 在沙箱中执行代码 | `code`, `language` |
+
+### 安全特性
+
+- 内置对象深度冻结
+- 禁止访问文件系统和网络
+- 禁止访问进程环境
+- 代码执行超时限制
+- 内存使用限制
+
+---
+
+## Git 工具详解
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `gitInit` | 初始化仓库 | `path`（可选） |
+| `gitClone` | 克隆仓库 | `url`, `path`（可选） |
+| `gitAdd` | 添加文件 | `files` |
+| `gitCommit` | 提交更改 | `message`, `options`（可选） |
+| `gitPush` | 推送到远程 | `remote`, `branch` |
+| `gitPull` | 拉取远程 | `remote`, `branch` |
+| `gitStatus` | 查看状态 | 无 |
+| `gitLog` | 查看日志 | `options`（可选） |
+| `gitBranchCreate` | 创建分支 | `name` |
+| `gitBranchDelete` | 删除分支 | `name` |
+| `gitBranchList` | 列出分支 | 无 |
+| `gitCheckout` | 切换分支 | `name` |
+| `gitCheckoutNew` | 创建并切换分支 | `name` |
+| `gitMerge` | 合并分支 | `branch` |
+| `gitDiff` | 查看差异 | `options`（可选） |
+| `gitRemoteAdd` | 添加远程 | `name`, `url` |
+| `gitRemoteList` | 列出远程 | 无 |
+| `gitConfigUser` | 配置用户 | `name`, `email` |
+| `gitReset` | 重置 | `mode`, `target` |
+| `gitStash` | 暂存 | 无 |
+| `gitStashPop` | 恢复暂存 | 无 |
+
+### 使用示例
+
+```javascript
+[TOOL] gitInit() [/TOOL]
+[TOOL] gitAdd(".") [/TOOL]
+[TOOL] gitCommit("feat: add new feature") [/TOOL]
+[TOOL] gitPush("origin", "main") [/TOOL]
+[TOOL] gitStatus() [/TOOL]
+```
+
+---
+
+## 任务管理工具详解
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `createTask` | 创建任务 | `title`, `description`（可选）, `priority`（可选） |
+| `getTasks` | 获取所有任务 | `status`（可选） |
+| `getTask` | 获取单个任务 | `id` |
+| `updateTask` | 更新任务 | `id`, `data` |
+| `deleteTask` | 删除任务 | `id` |
+| `completeTask` | 完成任务 | `id` |
+| `splitTask` | 拆分任务 | `id`, `subTasks` |
+| `getTaskStats` | 获取任务统计 | 无 |
+| `clearTasks` | 清除所有任务 | 无 |
+
+### 使用示例
+
+```javascript
+[TOOL] createTask("完成项目文档", "编写 README 和架构文档", "high") [/TOOL]
+[TOOL] getTasks("pending") [/TOOL]
+[TOOL] completeTask("task-id-1") [/TOOL]
+[TOOL] getTaskStats() [/TOOL]
+```
+
+---
+
+## 记忆系统工具详解
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `addMemory` | 添加记忆 | `content`, `tags`（可选） |
+| `searchMemory` | 搜索记忆 | `query` |
+| `getAllMemories` | 获取所有记忆 | 无 |
+| `getMemory` | 获取单个记忆 | `id` |
+| `updateMemory` | 更新记忆 | `id`, `data` |
+| `deleteMemory` | 删除记忆 | `id` |
+| `getMemoryStats` | 获取记忆统计 | 无 |
+| `getRelatedMemories` | 获取相关记忆 | `id` |
+| `clearMemory` | 清除所有记忆 | 无 |
+
+### 使用示例
+
+```javascript
+[TOOL] addMemory("用户偏好：喜欢简洁的界面设计", ["user", "preference"]) [/TOOL]
+[TOOL] searchMemory("界面设计") [/TOOL]
+[TOOL] getRelatedMemories("memory-id") [/TOOL]
+```
+
+---
+
+## 数据处理工具详解
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `readCSV` | 读取 CSV 文件 | `path` |
+| `writeCSV` | 写入 CSV 文件 | `path`, `data` |
+| `readJSON` | 读取 JSON 文件 | `path` |
+| `writeJSON` | 写入 JSON 文件 | `path`, `data` |
+| `csvToJSON` | CSV 转 JSON | `csvContent` |
+| `jsonToCSV` | JSON 转 CSV | `jsonData` |
+| `queryData` | 查询数据 | `data`, `query` |
+| `analyzeData` | 分析数据 | `data`, `options` |
+| `sortData` | 排序数据 | `data`, `field`, `order` |
+| `filterData` | 过滤数据 | `data`, `condition` |
+| `groupData` | 分组数据 | `data`, `field` |
+| `aggregateData` | 聚合数据 | `data`, `aggregation` |
+
+### 使用示例
+
+```javascript
+[TOOL] readCSV("data.csv") [/TOOL]
+[TOOL] writeJSON("output.json", { key: "value" }) [/TOOL]
+[TOOL] sortData(data, "date", "desc") [/TOOL]
+[TOOL] filterData(data, { status: "active" }) [/TOOL]
+```
 
 ---
 
@@ -173,82 +347,31 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 | `query` | 执行查询语句 | `sql`, `params`（可选） |
 | `insert` | 插入数据 | `table`, `data` |
 | `update` | 更新数据 | `table`, `data`, `where` |
-| `delete` | 删除数据 | `table`, `where` |
-| `executeTransaction` | 执行事务 | `statements` |
+| `deleteData` | 删除数据 | `table`, `where` |
 | `createTable` | 创建表 | `tableName`, `schema` |
-| `listTables` | 列出所有表 | 无 |
+| `dropTable` | 删除表 | `tableName` |
+| `getTables` | 列出所有表 | 无 |
+| `getTableSchema` | 获取表结构 | `tableName` |
+| `executeTransaction` | 执行事务 | `statements` |
+| `closeDB` | 关闭数据库连接 | 无 |
 
 ### 使用示例
 
-**创建表：**
-
 ```javascript
-[TOOL] createTable("users", {
-  id: "INTEGER PRIMARY KEY AUTOINCREMENT",
-  name: "TEXT NOT NULL",
-  email: "TEXT UNIQUE",
-  created_at: "INTEGER"
-}) [/TOOL]
-```
-
-**插入数据：**
-
-```javascript
-// 单条插入
-[TOOL] insert("users", {
-  name: "张三",
-  email: "zhangsan@example.com",
-  created_at: Date.now()
-}) [/TOOL]
-
-// 批量插入
-[TOOL] executeTransaction([
-  { sql: "INSERT INTO users (name, email) VALUES (?, ?)", params: ["张三", "zhang@example.com"] },
-  { sql: "INSERT INTO users (name, email) VALUES (?, ?)", params: ["李四", "li@example.com"] }
-]) [/TOOL]
-```
-
-**查询数据：**
-
-```javascript
-// 简单查询
+[TOOL] createTable("users", { id: "INTEGER PRIMARY KEY", name: "TEXT" }) [/TOOL]
+[TOOL] insert("users", { name: "张三" }) [/TOOL]
 [TOOL] query("SELECT * FROM users") [/TOOL]
-
-// 条件查询
-[TOOL] query("SELECT * FROM users WHERE name = ?", ["张三"]) [/TOOL]
-
-// 排序查询
-[TOOL] query("SELECT * FROM users ORDER BY created_at DESC LIMIT 10") [/TOOL]
-```
-
-**更新数据：**
-
-```javascript
-[TOOL] update("users", 
-  { email: "newemail@example.com" },
-  { name: "张三" }
-) [/TOOL]
-```
-
-**删除数据：**
-
-```javascript
-[TOOL] delete("users", { name: "张三" }) [/TOOL]
-```
-
-**事务操作：**
-
-```javascript
+[TOOL] update("users", { name: "李四" }, { id: 1 }) [/TOOL]
+[TOOL] deleteData("users", { id: 1 }) [/TOOL]
+[TOOL] getTables() [/TOOL]
+[TOOL] getTableSchema("users") [/TOOL]
 [TOOL] executeTransaction([
   { sql: "UPDATE accounts SET balance = balance - 100 WHERE id = 1" },
-  { sql: "UPDATE accounts SET balance = balance + 100 WHERE id = 2" },
-  { sql: "INSERT INTO transactions (from_id, to_id, amount) VALUES (1, 2, 100)" }
+  { sql: "UPDATE accounts SET balance = balance + 100 WHERE id = 2" }
 ]) [/TOOL]
 ```
 
 ### 数据库配置
-
-**数据库路径：**
 
 ```json
 {
@@ -259,397 +382,179 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 }
 ```
 
-**安全限制：**
+### 安全限制
 
 - 只能访问工作区内的数据库文件
 - 禁止执行 DROP DATABASE 等危险操作
 - 事务失败自动回滚
 - 查询结果最多返回 1000 行
 
-### 数据库管理
-
-**列出所有表：**
-
-```javascript
-[TOOL] listTables() [/TOOL]
-// → ["users", "tasks", "memories"]
-```
-
-**获取表结构：**
-
-```javascript
-[TOOL] query("PRAGMA table_info(users)") [/TOOL]
-```
-
-**数据库备份：**
-
-```javascript
-// 导出数据库
-[TOOL] executeSQL("SELECT * FROM users") [/TOOL]
-// 将结果保存为 JSON 文件
-[TOOL] create("./backup/users.json", JSON.stringify(result)) [/TOOL]
-```
-
-### 最佳实践
-
-1. **使用事务** - 批量操作时使用事务提高性能
-2. **参数化查询** - 防止 SQL 注入
-3. **索引优化** - 为常用查询字段创建索引
-4. **定期备份** - 导出重要数据
-5. **错误处理** - 检查 SQL 执行结果
-
 ---
 
-## 图像文字识别（OCR）详解
-
-OCR 工具基于视觉大模型（如 Qwen2.5-VL-32B-Instruct）实现图像文字识别能力，支持常见图片格式的文字提取。
-
----
-
-## 视觉分析（Vision）详解
-
-![视觉分析功能截图](vision.png)
-
-视觉分析工具基于多模态大模型，支持对图片内容进行描述、理解与问答，可分析本地图片和网络图片。
+## 邮件工具详解
 
 ### 核心工具
 
 | 工具 | 说明 | 参数 |
 |------|------|------|
-| `vision` | 分析本地图片内容 | `imagePath`（图片路径），`prompt`（可选提示词） |
-| `visionFromUrl` | 分析网络图片 URL | `imageUrl`（图片 URL），`prompt`（可选提示词） |
-
-### 支持格式
-
-与 OCR 相同，支持 JPEG、PNG、WebP、BMP、GIF 五种格式。
+| `sendEmail` | 发送邮件 | `options` |
+| `sendTextEmail` | 发送纯文本邮件 | `to`, `subject`, `body` |
+| `sendHtmlEmail` | 发送 HTML 邮件 | `to`, `subject`, `html` |
+| `sendTemplateEmail` | 发送模板邮件 | `to`, `template`, `data` |
+| `sendEmailWithAttachments` | 发送带附件的邮件 | `options`, `attachments` |
+| `checkEmailConfig` | 检查邮件配置 | 无 |
 
 ### 使用示例
 
-**分析本地图片：**
+```javascript
+[TOOL] sendTextEmail("user@example.com", "测试邮件", "Hello") [/TOOL]
+[TOOL] sendHtmlEmail("user@example.com", "HTML 邮件", "<h1>Hello</h1>") [/TOOL]
+```
+
+---
+
+## 系统监控工具详解
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `getCPUInfo` | 获取 CPU 信息 | 无 |
+| `getMemoryInfo` | 获取内存信息 | 无 |
+| `getDiskInfo` | 获取磁盘信息 | 无 |
+| `getNetworkInfo` | 获取网络信息 | 无 |
+| `getProcesses` | 获取进程列表 | 无 |
+| `getSystemInfo` | 获取系统信息 | 无 |
+| `getCurrentProcess` | 获取当前进程信息 | 无 |
+| `getSystemLoad` | 获取系统负载 | 无 |
+| `monitorSystem` | 监控系统状态 | `interval`（可选） |
+
+### 使用示例
+
+```javascript
+[TOOL] getCPUInfo() [/TOOL]
+[TOOL] getMemoryInfo() [/TOOL]
+[TOOL] getSystemInfo() [/TOOL]
+```
+
+---
+
+## 定时任务工具详解
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `addScheduleTask` | 添加定时任务 | `name`, `cron`, `command` |
+| `getScheduleTasks` | 获取所有定时任务 | 无 |
+| `getScheduleTask` | 获取单个定时任务 | `id` |
+| `updateScheduleTask` | 更新定时任务 | `id`, `data` |
+| `toggleScheduleTask` | 启用/禁用定时任务 | `id` |
+| `removeScheduleTask` | 删除定时任务 | `id` |
+| `startScheduler` | 启动调度器 | 无 |
+| `stopScheduler` | 停止调度器 | 无 |
+
+### 使用示例
+
+```javascript
+[TOOL] addScheduleTask("daily-report", "0 9 * * *", "generateReport()") [/TOOL]
+[TOOL] getScheduleTasks() [/TOOL]
+[TOOL] toggleScheduleTask("task-id") [/TOOL]
+```
+
+---
+
+## 图像文字识别（OCR）详解
+
+OCR 工具基于视觉大模型实现图像文字识别能力，支持常见图片格式的文字提取。
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `ocr` | 识别单张图片中的文字 | `imagePath` |
+| `ocrBatch` | 批量识别多张图片文字 | `images`（用逗号分隔） |
+
+### 支持格式
+
+JPEG、PNG、WebP、BMP、GIF
+
+### 使用示例
+
+```javascript
+[TOOL] ocr("/path/to/screenshot.png") [/TOOL]
+[TOOL] ocrBatch("img1.jpg, img2.png, img3.webp") [/TOOL]
+```
+
+### OCR 配置
+
+```json
+{
+  "ocr": {
+    "provider": "",
+    "baseURL": "",
+    "apiKey": "",
+    "model": "Qwen2.5-VL-32B-Instruct"
+  }
+}
+```
+
+---
+
+## 视觉分析（Vision）详解
+
+视觉分析工具基于多模态大模型，支持对图片内容进行描述、理解与问答。
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `vision` | 分析本地图片内容 | `imagePath`, `prompt`（可选） |
+| `visionFromUrl` | 分析网络图片 URL | `imageUrl`, `prompt`（可选） |
+
+### 使用示例
 
 ```javascript
 [TOOL] vision("/path/to/photo.jpg") [/TOOL]
-// → 返回图片的详细描述和分析结果
-
-[TOOL] vision("screenshots/ui.png", "请描述这个界面的布局和功能") [/TOOL]
-// → 返回针对界面的具体分析
-```
-
-**分析网络图片：**
-
-```javascript
+[TOOL] vision("ui.png", "请描述这个界面的布局") [/TOOL]
 [TOOL] visionFromUrl("https://example.com/image.jpg") [/TOOL]
-// → 返回网络图片的分析结果
 ```
-
-### 特性
-
-- **流式响应** — 支持 SSE 流式返回思考过程（reasoning_content）和分析内容
-- **思考过程可见** — 返回结果包含「思考过程」和「分析结果」两部分
-- **配置回退** — 可独立配置 API Key 和模型，不配置则自动回退到主 API 配置
 
 ### Vision 配置
 
 ```json
 {
   "vision": {
-    "baseURL": "",              // 视觉 API 地址（可选，默认使用 api.baseURL）
-    "apiKey": "",               // 视觉 API 密钥（可选，默认回退到主 API Key）
-    "model": "Qwen2.5-VL-32B-Instruct"  // 视觉模型名称
+    "baseURL": "",
+    "apiKey": "",
+    "model": "Qwen2.5-VL-32B-Instruct"
   }
 }
-```
-
----
-
-### 核心工具
-
-| 工具 | 说明 | 参数 |
-|------|------|------|
-| `ocr` | 识别单张图片中的文字 | `imagePath`（图片路径，支持相对/绝对路径） |
-| `ocrBatch` | 批量识别多张图片文字 | `images`（多个图片路径，用英文逗号分隔） |
-
-### 支持格式
-
-| 格式 | 扩展名 | 说明 |
-|------|--------|------|
-| JPEG | `.jpg` `.jpeg` | 最常用的压缩图片格式 |
-| PNG | `.png` | 无损压缩，支持透明背景 |
-| WebP | `.webp` | 现代高效压缩格式 |
-| BMP | `.bmp` | 位图，无压缩 |
-| GIF | `.gif` | 动图（取第一帧） |
-
-### 使用示例
-
-**单张图片识别：**
-
-```javascript
-// 识别本地图片中的文字
-[TOOL] ocr("/path/to/screenshot.png") [/TOOL]
-// → 返回识别出的文本内容
-
-// 识别工作区内的图片
-[TOOL] ocr("documents/invoice.jpg") [/TOOL]
-// → 识别发票图片中的文字信息
-```
-
-**批量识别多张图片：**
-
-```javascript
-// 批量识别多张截图
-[TOOL] ocrBatch("img1.jpg, img2.png, img3.webp") [/TOOL]
-// → 依次返回每张图片的识别结果
-```
-
-**配合其他工具使用：**
-
-```javascript
-// 先获取目录下的图片文件，再识别
-[TOOL] ls("./screenshots") [/TOOL]
-// → ["page1.png", "page2.png", "page3.png"]
-
-// 识别其中一张图片
-[TOOL] ocr("./screenshots/page1.png") [/TOOL]
-// → 返回图片中的文字内容
-```
-
-### OCR 配置
-
-在 `config.json` 中配置 OCR 相关参数：
-
-```json
-{
-  "ocr": {
-    "provider": "",              // OCR 服务提供商（可选）
-    "baseURL": "",              // OCR API 基础地址，不填则使用 api.baseURL
-    "apiKey": "",               // OCR API 密钥（必需）
-    "model": "Qwen2.5-VL-32B-Instruct"  // 视觉模型名称
-  }
-}
-```
-
-**配置说明：**
-
-| 字段 | 必需 | 说明 | 默认值 |
-|------|------|------|--------|
-| `apiKey` | ✅ | OCR 服务的 API 密钥 | - |
-| `baseURL` | ⚠️ | API 服务地址，不填则使用主 API 地址 | `api.baseURL` |
-| `model` | ✅ | 视觉大模型名称，需支持图像输入 | `Qwen2.5-VL-32B-Instruct` |
-| `provider` | ⚠️ | 服务商标识，用于区分不同提供商 | - |
-
-### 支持的视觉模型
-
-| 模型名称 | 说明 |
-|----------|------|
-| `Qwen2.5-VL-32B-Instruct` | 阿里通义千问视觉模型，推荐使用 |
-| `gpt-4o` / `gpt-4o-mini` | OpenAI 视觉模型，需配置对应 API |
-| `claude-3-opus` / `claude-3-sonnet` | Anthropic 视觉模型 |
-| `gemini-1.5-pro` / `gemini-1.5-flash` | Google 视觉模型 |
-
-### 图片要求
-
-| 项目 | 限制 | 说明 |
-|------|------|------|
-| 文件大小 | ≤ 10 MB | 过大的图片会导致 API 请求失败 |
-| 格式支持 | 5 种 | JPEG、PNG、WebP、BMP、GIF |
-| 文字清晰度 | 建议 ≥ 12pt | 过小或模糊的文字可能识别不准确 |
-| 路径编码 | UTF-8 | 中文路径需确保文件系统支持 |
-
-### 使用流程
-
-```
-1. 在 config.json 中配置 ocr.apiKey 和 ocr.model
-2. 在对话中让 Agent 调用 ocr(imagePath)
-3. Agent 将图片编码为 base64，通过多模态 API 发送
-4. AI 模型识别图片中的文字并返回结果
-5. 结果以文本形式追加到对话上下文中
-```
-
-### 最佳实践
-
-1. **确保图片清晰度** - 文字越大越清晰，识别效果越好
-2. **控制图片大小** - 建议压缩到 5MB 以内，加快处理速度
-3. **合理使用批量** - `ocrBatch` 会依次调用 API，注意 API 频率限制
-4. **路径正确** - 相对路径相对于配置的 workspace，或使用绝对路径
-5. **API 密钥保护** - 不要将 `config.json` 提交到公开仓库
-
-### 常见问题
-
-| 问题 | 原因 | 解决方案 |
-|------|------|----------|
-| 提示「API 密钥未配置」 | `ocr.apiKey` 为空 | 在 config.json 中填入正确的 API 密钥 |
-| 「文件不存在」 | 图片路径错误 | 检查路径是否正确，相对路径是否相对于 workspace |
-| 「格式不支持」 | 文件扩展名不在支持列表 | 将图片转换为 JPEG/PNG/WebP 等格式 |
-| 「文件过大」 | 图片超过 10MB | 使用图片压缩工具减小文件大小 |
-| API 请求超时/失败 | 网络问题或 API 服务不可用 | 检查网络连接，确认 API 服务正常 |
-
-### 环境变量配置
-
-也可以通过环境变量配置 OCR（优先级高于 config.json）：
-
-```bash
-# OCR API 密钥（必需）
-OCR_API_KEY=your-ocr-api-key-here
-
-# OCR API 基础地址（可选，不填则使用主 API 地址）
-OCR_API_BASE_URL=https://api.example.com/v1
-
-# OCR 视觉模型名称（可选，默认为 Qwen2.5-VL-32B-Instruct）
-OCR_MODEL=Qwen2.5-VL-32B-Instruct
-
-# OCR 服务提供商（可选）
-OCR_PROVIDER=qwen
 ```
 
 ---
 
 ## Office 文档工具详解
 
-Office 文档工具支持创建 PPT 演示文稿、Word 文档和 Excel 表格，基于纯 JavaScript 库实现，无需安装 Office 软件。
+Office 文档工具支持创建 PPT 演示文稿、Word 文档和 Excel 表格。
 
 ### 核心工具
 
 | 工具 | 说明 | 参数 |
 |------|------|------|
-| `createPpt` | 创建 PPT 演示文稿 | `options`（对象）或 `outputPath, title, content`（位置参数） |
-| `createWord` | 创建 Word 文档 | `options`（对象）或 `outputPath, title, content`（位置参数） |
-| `createExcel` | 创建 Excel 表格 | `options`（对象）或 `outputPath, sheetName, data`（位置参数） |
-| `readExcel` | 读取 Excel 文件 | `filePath`（文件路径） |
-
-### 支持的格式
-
-| 文档类型 | 扩展名 | 核心库 |
-|----------|--------|--------|
-| 演示文稿 | `.pptx` | pptxgenjs |
-| 文档 | `.docx` | docx |
-| 表格 | `.xlsx` | xlsx (SheetJS) |
+| `createPpt` | 创建 PPT 演示文稿 | `options` 或 `outputPath, title, content` |
+| `createWord` | 创建 Word 文档 | `options` 或 `outputPath, title, content` |
+| `createExcel` | 创建 Excel 表格 | `options` 或 `outputPath, sheetName, data` |
+| `readExcel` | 读取 Excel 文件 | `filePath` |
 
 ### 使用示例
 
-**创建简单 PPT（位置参数）：**
-
 ```javascript
-[TOOL] createPpt("data/presentation.pptx", "项目报告", "这是项目报告的内容") [/TOOL]
+[TOOL] createPpt("data/presentation.pptx", "项目报告", "内容") [/TOOL]
+[TOOL] createWord({ outputPath: "doc.docx", paragraphs: [...] }) [/TOOL]
+[TOOL] createExcel({ outputPath: "data.xlsx", sheets: [...] }) [/TOOL]
+[TOOL] readExcel("data.xlsx") [/TOOL]
 ```
-
-**创建复杂 PPT（对象参数）：**
-
-```javascript
-[TOOL] createPpt({
-  outputPath: "data/presentation.pptx",
-  title: "季度汇报",
-  author: "CogitoAgent",
-  slides: [
-    { title: "封面", content: "2024年Q2季度汇报" },
-    { title: "业绩概览", bullets: ["营收增长25%", "用户增长30%", "市场份额提升5%"] },
-    { title: "数据分析", image: "data/chart.png" }
-  ]
-}) [/TOOL]
-```
-
-**创建 Word 文档：**
-
-```javascript
-[TOOL] createWord({
-  outputPath: "data/report.docx",
-  title: "项目报告",
-  paragraphs: [
-    { type: "heading", text: "第一章 项目概述", level: 1 },
-    { type: "text", text: "本项目旨在..." },
-    { type: "heading", text: "核心成果", level: 2 },
-    { type: "list", items: ["完成系统设计", "实现核心功能", "通过测试验证"] },
-    { type: "heading", text: "数据统计", level: 2 },
-    { type: "table", rows: [["指标", "数值"], ["用户数", "10000"], ["转化率", "25%"]] }
-  ]
-}) [/TOOL]
-```
-
-**创建 Excel 表格：**
-
-```javascript
-[TOOL] createExcel({
-  outputPath: "data/sales.xlsx",
-  sheets: [
-    {
-      name: "销售数据",
-      data: [
-        ["产品", "销量", "金额"],
-        ["A产品", 100, 5000],
-        ["B产品", 200, 8000],
-        ["C产品", 150, 6000]
-      ]
-    },
-    {
-      name: "库存数据",
-      data: [
-        ["产品", "库存"],
-        ["A产品", 50],
-        ["B产品", 30]
-      ]
-    }
-  ]
-}) [/TOOL]
-```
-
-**读取 Excel 文件：**
-
-```javascript
-[TOOL] readExcel("data/sales.xlsx") [/TOOL]
-// → { "销售数据": [["产品","销量",...], ...], "库存数据": [...] }
-```
-
-### PPT 幻灯片参数说明
-
-每张幻灯片支持以下字段：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `title` | string | 幻灯片标题 |
-| `content` | string | 正文内容 |
-| `bullets` | string[] | 要点列表（项目符号） |
-| `image` | string | 图片文件路径 |
-
-### Word 段落类型说明
-
-| 类型 | 参数 | 说明 |
-|------|------|------|
-| `heading` | `text`, `level`(1-6) | 标题段落 |
-| `text` | `text` | 正文段落 |
-| `list` | `items`(string[]) | 列表段落 |
-| `table` | `rows`(二维数组) | 表格段落 |
-| `image` | `src`, `width`, `height` | 图片段落 |
-
-### Excel 数据格式
-
-- `sheets` 为数组，每项包含 `name`（表名）和 `data`（二维数组）
-- `data` 的第一行通常作为表头
-- 单元格值可以是字符串或数字
-
-### 两种调用方式
-
-所有 Office 创建工具都支持两种调用方式：
-
-| 方式 | 语法 | 适用场景 |
-|------|------|----------|
-| **位置参数** | `createPpt(outputPath, title, content)` | 快速创建简单文档 |
-| **对象参数** | `createPpt({ outputPath, slides, ... })` | 创建复杂格式文档 |
-
-### 最佳实践
-
-1. **使用正确扩展名** - PPT 用 `.pptx`，Word 用 `.docx`，Excel 用 `.xlsx`
-2. **路径使用相对路径** - 相对于工作区目录，或使用绝对路径
-3. **图片提前准备** - 插入的图片需确保文件存在
-4. **数据格式正确** - Excel 数据使用二维数组，表头在第一行
-5. **大文档注意性能** - 过多幻灯片/表格可能增加生成时间
-
-### 常见问题
-
-| 问题 | 原因 | 解决方案 |
-|------|------|----------|
-| 提示「缺少 outputPath 参数」 | 未指定输出路径 | 确保传入正确的文件路径参数 |
-| 生成的文件打不开 | 扩展名不正确 | 确保使用正确的扩展名（.pptx/.docx/.xlsx） |
-| 图片不显示 | 图片路径错误或文件不存在 | 检查图片路径是否正确，文件是否存在 |
-| 中文乱码 | 编码问题 | 确保使用 UTF-8 编码，库已内置中文支持 |
 
 ---
 
@@ -658,132 +563,51 @@ Office 文档工具支持创建 PPT 演示文稿、Word 文档和 Excel 表格�
 ### 文件探索
 
 ```javascript
-// 分析项目结构
 [TOOL] ls("./src") [/TOOL]
-// → ["agent", "api", "io", "config.js", "index.js"]
-
-// 读取关键文件
 [TOOL] read("./src/agent/Agent.js") [/TOOL]
-// → 返回文件内容
 ```
 
 ### 代码执行
 
 ```javascript
-// Python 脚本执行
-[TOOL] runPython(`
-import json
-data = {"fibonacci": [0, 1, 1, 2, 3, 5, 8]}
-print(json.dumps(data))
-`) [/TOOL]
-// → {"fibonacci": [0, 1, 1, 2, 3, 5, 8]}
-
-// JavaScript 沙箱执行
-[TOOL] runJavaScript(`
-const arr = [1, 2, 3, 4, 5];
-const sum = arr.reduce((a, b) => a + b, 0);
-console.log(sum);
-`) [/TOOL]
-// → 15
+[TOOL] runPython("print('Hello')") [/TOOL]
+[TOOL] runJavaScript("console.log([1,2,3].reduce((a,b)=>a+b,0))") [/TOOL]
+[TOOL] executeFile("./script.py") [/TOOL]
 ```
 
 ### Git 版本控制
 
 ```javascript
-// 查看仓库状态
 [TOOL] gitStatus() [/TOOL]
-// → { files: ["src/index.js", "README.md"], branch: "main" }
-
-// 提交更改
-[TOOL] gitCommit("feat: 添加新工具") [/TOOL]
-// → committed (a1b2c3d)
-
-// 推送远程
+[TOOL] gitAdd(".") [/TOOL]
+[TOOL] gitCommit("feat: add feature") [/TOOL]
 [TOOL] gitPush("origin", "main") [/TOOL]
-// → done
 ```
 
 ### 数据库操作
 
 ```javascript
-// 执行 SQL
-[TOOL] executeSQL("SELECT * FROM tasks WHERE status = 'pending'") [/TOOL]
-// → [{ id: "1", title: "任务A", status: "pending" }]
-
-// 插入数据
-[TOOL] insert("tasks", { title: "新任务", priority: "high" }) [/TOOL]
-// → { id: "2", title: "新任务", priority: "high" }
+[TOOL] executeSQL("SELECT * FROM tasks") [/TOOL]
+[TOOL] insert("tasks", { title: "新任务" }) [/TOOL]
 ```
 
 ### 联网搜索
 
 ```javascript
-// 搜索信息
-[TOOL] search("Node.js 20 new features") [/TOOL]
-// → [{ title: "...", url: "...", snippet: "..." }]
-
-// 获取页面内容
+[TOOL] search("Node.js features") [/TOOL]
 [TOOL] fetchPage("https://nodejs.org/") [/TOOL]
-// → { title: "Node.js", content: "..." }
 ```
 
-### 图像文字识别（OCR）
+### 图像识别与视觉分析
 
 ```javascript
-// 识别单张图片中的文字
-[TOOL] ocr("screenshots/invoice.png") [/TOOL]
-// → 返回图片中的文本内容
-
-// 批量识别多张图片
-[TOOL] ocrBatch("page1.jpg, page2.jpg, page3.jpg") [/TOOL]
-// → 依次返回每张图片的识别结果
-
-// 配合文件操作工具使用
-[TOOL] ls("./photos") [/TOOL]
-// → ["meeting_notes.jpg", "whiteboard.png"]
-[TOOL] ocr("./photos/whiteboard.png") [/TOOL]
-// → 识别白板照片中的文字内容
+[TOOL] ocr("screenshot.png") [/TOOL]
+[TOOL] vision("photo.jpg", "请描述这张图片") [/TOOL]
 ```
 
 ### Office 文档生成
 
 ```javascript
-// 创建 PPT 演示文稿
-[TOOL] createPpt({
-  outputPath: "data/presentation.pptx",
-  title: "项目汇报",
-  slides: [
-    { title: "封面", content: "2024年度项目总结" },
-    { title: "核心成果", bullets: ["完成目标1", "完成目标2", "超额完成目标3"] },
-    { title: "数据展示", image: "data/chart.png" }
-  ]
-}) [/TOOL]
-// → { success: true, path: "data/presentation.pptx", slideCount: 3 }
-
-// 创建 Word 文档
-[TOOL] createWord({
-  outputPath: "data/report.docx",
-  title: "分析报告",
-  paragraphs: [
-    { type: "heading", text: "一、概述", level: 1 },
-    { type: "text", text: "本报告对...进行了深入分析。" },
-    { type: "heading", text: "二、数据统计", level: 2 },
-    { type: "table", rows: [["项目", "数值"], ["A", "100"], ["B", "200"]] }
-  ]
-}) [/TOOL]
-// → { success: true, path: "data/report.docx", paragraphCount: 4 }
-
-// 创建 Excel 表格
-[TOOL] createExcel({
-  outputPath: "data/data.xlsx",
-  sheets: [
-    { name: "销售", data: [["产品", "销量"], ["A", 100], ["B", 200]] },
-    { name: "库存", data: [["产品", "库存"], ["A", 50], ["B", 30]] }
-  ]
-}) [/TOOL]
-// → { success: true, path: "data/data.xlsx", sheetCount: 2 }
-
-// 读取 Excel 文件
-[TOOL] readExcel("data/data.xlsx") [/TOOL]
-// → { "销售": [["产品","销量"],...], "库存": [["产品","库存"],...] }
+[TOOL] createPpt("data/presentation.pptx", "项目汇报", "内容") [/TOOL]
+[TOOL] createExcel("data/sales.xlsx", "销售", [["产品", "销量"]]) [/TOOL]
 ```

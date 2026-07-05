@@ -24,11 +24,14 @@ Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Contin
 | Feature | Description |
 |---------|-------------|
 | **Privacy First** | All data stored locally; no files uploaded to third-party servers |
-| **Continuous Thinking** | Automatically triggers a thinking cycle every 3 seconds |
-| **Tool Execution** | 15+ tool modules for file operations, code execution, Git, databases, OCR, Office documents, and more |
+| **Continuous Thinking** | Automatically triggers a thinking cycle every 3 seconds (configurable) |
+| **Tool Execution** | 16+ tool modules with 100+ tools for file operations, code execution, Git, databases, OCR, Office documents, and more |
 | **Security Sandbox** | JavaScript code execution uses `isolated-vm` for process-level isolation |
-| **Multi-Session Management** | Multiple independent conversation sessions with persistent storage |
+| **Multi-Session Management** | Multiple independent conversation sessions with persistent storage and auto-compression |
 | **Desktop Mode** | Electron desktop window communicating via WebSocket with the terminal Agent |
+| **MCP Protocol** | Expose tools as MCP Server for integration with other AI clients |
+| **Plugin System** | Dynamically load custom tool plugins |
+| **Thought Chain Visualization** | Real-time visualization of thinking process and tool execution |
 
 ---
 
@@ -80,19 +83,22 @@ All tools are managed by `registry.js` and invoked via `[TOOL] functionName(args
 
 | Category | File | Main Functions |
 |----------|------|----------------|
-| File Operations | `file.js` | `ls`, `read`, `create`, `copy`, `mkdir`, `delete`, `move` |
-| Web Tools | `web.js` | `search`, `browse`, `fetchPage`, `searchOnEngine` |
-| Browser Automation | `browser.js` | `initBrowser`, `clickElement`, `fillField`, `takeScreenshot` |
+| File Operations | `file.js` | `ls`, `read`, `create`, `copy`, `mkdir` |
+| Path Utilities | `path.js` | `getBasePath` |
+| Web Tools | `web.js` | `search`, `browse`, `fetchPage` |
+| Browser Automation | `browser.js` | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile` |
 | System Operations | `system.js` | `listApps`, `openApp`, `closeApp` |
-| Code Execution | `code.js` | `executeCode`, `runJavaScript`, `runPython` |
-| Git | `git.js` | `gitStatus`, `gitCommit`, `gitPush`, `gitPull`, `gitDiff`, `gitLog` |
-| Task Management | `task.js` | `createTask`, `getTasks`, `completeTask`, `splitTask` |
-| Memory System | `memory.js` | `addMemory`, `searchMemory`, `getRelatedMemories`, `deleteMemory` |
-| Data Processing | `data.js` | `readCSV`, `writeJSON`, `csvToJSON`, `queryData` |
-| Database | `db.js` | `executeSQL`, `query`, `insert`, `update`, `createTable`, `getTables` |
-| Email | `email.js` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail` |
-| System Monitoring | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `monitorSystem` |
-| Scheduled Tasks | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `toggleScheduleTask` |
+| Code Execution | `code.js` | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode` |
+| Security Sandbox | `sandbox.js` | `createJavaScriptSandbox`, `runJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox` |
+| Git | `git.js` | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
+| Task Management | `task.js` | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks` |
+| Memory System | `memory.js` | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory` |
+| Data Processing | `data.js` | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData` |
+| Database | `db.js` | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB` |
+| Email | `email.js` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig` |
+| System Monitoring | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem` |
+| Scheduled Tasks | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler` |
+| Storage | `storage.js` | `FileStorage`, `createStorage` |
 | Image Recognition | `ocr.js` | `ocr`, `ocrBatch` |
 | Vision Analysis | `vision.js` | `vision`, `visionFromUrl` |
 | Office Documents | `office.js` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
@@ -109,9 +115,14 @@ All tools are managed by `registry.js` and invoked via `[TOOL] functionName(args
 | **state.js** | State machine — THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
 | **registry.js** | Tool registry — centralized management of all tool modules |
 | **session.js** | Session management — multi-session switching, context compression |
-| **commands.js** | Command handling — /help, /status, etc. |
+| **commands.js** | Command handling — /help, /status, /persona, /sessions, etc. |
 | **sandbox.js** | Code sandbox — isolated-vm process-level isolation |
-| **ws-server.js** | WebSocket — desktop mode communication |
+| **stats.js** | Statistics — tool usage tracking and metrics |
+| **tracing.js** | Tracing — lightweight observability for tool executions and LLM calls |
+| **retry.js** | Retry & Circuit Breaker — reliable network requests |
+| **mcp.js** | MCP Server — expose tools as MCP protocol |
+| **plugin.js** | Plugin system — dynamic loading of custom tool plugins |
+| **ws-server.js** | WebSocket — desktop mode communication (port 9527) |
 
 > Complete architecture details: think cycle diagrams, tool call flow, state machine, message flow, WebSocket → [introduction/architecture.md](introduction/architecture.md) (Chinese)
 
@@ -130,7 +141,9 @@ All tools are managed by `registry.js` and invoked via `[TOOL] functionName(args
 | `/status` | Display current status |
 | `/config` | Display configuration |
 | `/persona <name>` | Switch persona |
-| `/clear` | Clear screen |
+| `/personas` | List all available personas |
+| `/tools` | List all available tools |
+| `/clear` | Clear conversation history |
 | `/debug` | Toggle debug mode |
 | `ENTER` | Interrupt thinking, enter input mode |
 | `exit` | Exit the program |
@@ -152,18 +165,19 @@ cogito-agent/
 ├── src/                              # Source code
 │   ├── agent/                        # Core agent module
 │   │   ├── Agent.js / state.js / registry.js
-│   │   ├── commands.js / session.js / mcp.js
-│   │   ├── plugin.js / tracing.js / retry.js
-│   │   └── tools/                    # 16 tool modules
-│   ├── api/                          # API layer
+│   │   ├── commands.js / session.js / stats.js
+│   │   ├── mcp.js / plugin.js / tracing.js / retry.js
+│   │   └── tools/                    # 16+ tool modules
+│   ├── api/                          # API layer (client, models, webSearch)
 │   ├── io/                           # Terminal, Logger, WebSocket
 │   ├── config.js                     # Configuration management
 │   └── index.js                      # Application entry
 ├── electron/                         # Desktop mode
 │   ├── main.js / preload.cjs / agent-bridge.js
 │   ├── desktop/ / dashboard/ / setup/
+│   ├── shared/                       # Shared utilities
 │   └── assets/
-├── personas/                         # 13 preset personas
+├── personas/                         # 22 preset personas (13 modern + 9 ancient)
 ├── tests/                            # Test files
 ├── data/                             # Runtime data (auto-created)
 └── introduction/                     # Detailed documentation
@@ -184,8 +198,10 @@ cogito-agent/
 - **Memory System** — SQLite-based long-term storage and semantic retrieval
 - **Task Management** — Task creation, decomposition, and status tracking
 - **Code Sandbox** — `isolated-vm` process-level isolation for JS and Python
-- **Personas** — 13 preset roles with custom and hot-switch support
+- **Personas** — 22 preset roles with custom and hot-switch support
 - **Session Management** — Independent contexts with auto-compression
+- **Statistics** — Tool usage tracking and performance metrics
+- **Thought Chain Visualization** — Real-time thinking process display
 
 ## Extensions
 
@@ -215,6 +231,8 @@ docker-compose up -d
 - Sandbox upgrade — deep freezing of built-in objects
 - New tracing.js, retry.js, MCP protocol, plugin system
 - New OCR and Vision analysis tools
+- Statistics module for tool usage tracking
+- Thought chain visualization
 
 ### v2.2.0
 - Agent.js modularized, logger.js with log levels

@@ -11,10 +11,15 @@
 | **Agent 引擎** | `Agent.js` | 思考循环主控制器，负责任务编排、状态转换、LLM 交互调度 |
 | **状态管理** | `state.js` | 集中式状态管理，维护 Agent 生命周期状态（THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION） |
 | **工具注册中心** | `registry.js` | 工具注册与发现，管理所有可用工具的元数据、参数 schema 和执行句柄 |
-| **会话管理** | `session.js` | 多会话隔离，管理对话上下文、历史记录和配置持久化 |
+| **会话管理** | `session.js` | 多会话隔离，管理对话上下文、历史记录和配置持久化，支持自动压缩 |
 | **命令执行器** | `commands.js` | 将 Agent 决策转化为具体操作，执行工具调用并处理结果 |
-| **安全沙箱** | `sandbox.js` | 命令执行沙箱，提供安全的代码/命令执行环境，限制权限和资源 |
-| **WebSocket 服务器** | `ws-server.js` | 实时双向通信层，为 Electron 客户端和其他 WS 客户端提供消息通道 |
+| **安全沙箱** | `sandbox.js` | 命令执行沙箱，提供安全的代码/命令执行环境，使用 `isolated-vm` 进程级隔离 |
+| **统计模块** | `stats.js` | 工具使用追踪和性能指标，记录调用次数、耗时等统计数据 |
+| **追踪模块** | `tracing.js` | 轻量级可观测性，记录工具执行和 LLM 调用的详细追踪信息 |
+| **重试与熔断** | `retry.js` | 可靠的网络请求，支持指数退避重试和熔断机制 |
+| **MCP Server** | `mcp.js` | 将工具暴露为 MCP 协议，支持与其他 AI 客户端集成 |
+| **插件系统** | `plugin.js` | 动态加载自定义工具插件，扩展 Agent 能力 |
+| **WebSocket 服务器** | `ws-server.js` | 实时双向通信层，为 Electron 客户端和其他 WS 客户端提供消息通道（端口 9527） |
 
 ---
 
@@ -26,7 +31,7 @@ flowchart TB
         Main["main.js<br/>窗口管理"]
         Preload["preload.cjs<br/>IPC 桥接"]
         Bridge["agent-bridge.js<br/>Agent 通信桥"]
-        WSServer["ws-server.js<br/>WebSocket 服务"]
+        WSServer["ws-server.js<br/>WebSocket 服务<br/>端口: 9527"]
     end
 
     subgraph Subprocess["Agent 子进程"]
@@ -36,33 +41,41 @@ flowchart TB
         Session["session.js<br/>会话管理"]
         Commands["commands.js<br/>命令执行"]
         Sandbox["sandbox.js<br/>安全沙箱"]
+        Stats["stats.js<br/>统计模块"]
+        Tracing["tracing.js<br/>追踪模块"]
+        Retry["retry.js<br/>重试熔断"]
+        MCP["mcp.js<br/>MCP Server"]
+        Plugin["plugin.js<br/>插件系统"]
     end
 
     subgraph External["外部接口"]
         LLM["LLM API"]
         Tools["工具集<br/>文件/终端/搜索等"]
         WSClient["自定义 WS 客户端"]
+        MCPClient["MCP 客户端"]
     end
 
-    %% Electron 内部关系
     Main --> Preload
     Preload --> Bridge
     Bridge --> WSServer
 
-    %% 子进程内部关系
     Agent --> State
     Agent --> Registry
     Agent --> Session
     Agent --> Commands
+    Agent --> Stats
+    Agent --> Tracing
     Commands --> Sandbox
+    Commands --> Retry
+    Registry --> Plugin
+    Agent --> MCP
 
-    %% 跨进程通信
     WSServer <-->|"WebSocket<br/>JSON 消息"| Agent
 
-    %% 外部通信
     Agent <-->|"HTTP/SSE"| LLM
     Commands --> Tools
     WSClient <-->|"WebSocket"| WSServer
+    MCPClient <-->|"MCP Protocol"| MCP
 ```
 
 ---
@@ -116,6 +129,8 @@ sequenceDiagram
     participant Registry as registry.js
     participant Cmd as commands.js
     participant Sandbox as sandbox.js
+    participant Stats as stats.js
+    participant Tracing as tracing.js
     participant Tool as 外部工具
 
     User->>Agent: 发送消息
@@ -128,12 +143,15 @@ sequenceDiagram
     alt 调用工具
         Agent->>Registry: 查找工具注册信息
         Registry-->>Agent: 返回工具句柄与参数 Schema
+        Agent->>Tracing: 记录工具调用开始
         Agent->>Cmd: execute(command, params)
         Cmd->>Sandbox: 安全执行
         Sandbox->>Tool: 执行具体操作
         Tool-->>Sandbox: 返回执行结果
         Sandbox-->>Cmd: 返回格式化输出
         Cmd-->>Agent: 返回结果
+        Agent->>Stats: 记录工具使用统计
+        Agent->>Tracing: 记录工具调用结束
 
         Agent->>Agent: 解析结果，构建下一步提示
         Agent->>LLM: 发送工具结果与继续请求
@@ -223,8 +241,6 @@ stateDiagram-v2
 
 ## 7. 桌面模式（Electron）
 
-![Electron 桌面模式截图](electron-desktop.png)
-
 ### 7.1 架构图
 
 ```mermaid
@@ -232,6 +248,7 @@ flowchart TB
     subgraph Renderer["Renderer Process（窗口）"]
         DesktopWin["Desktop Window<br/>主交互界面"]
         DashWin["Dashboard Window<br/>仪表盘"]
+        SetupWin["Setup Window<br/>配置向导"]
     end
 
     subgraph MainProcess["Main Process"]
@@ -247,6 +264,7 @@ flowchart TB
 
     DesktopWin -->|"contextBridge.invoke"| Preload
     DashWin -->|"contextBridge.invoke"| Preload
+    SetupWin -->|"contextBridge.invoke"| Preload
     Preload -->|"ipcRenderer/ipcMain"| MainJS
     MainJS -->|"事件转发"| AgentBridge
     AgentBridge -->|"ws.send"| WSServer
@@ -259,13 +277,12 @@ flowchart TB
 |------|------|------|
 | **Desktop Window** | `desktop.html` | 主交互界面——用户输入、对话展示、实时流式输出 |
 | **Dashboard Window** | `dashboard.html` | 仪表盘——会话概览、工具调用统计、运行状态监控 |
-
-![Electron Dashboard 模式截图](electron-dashboard.png)
+| **Setup Window** | `setup.html` | 配置向导——首次配置 API Key、模型、工作目录、角色 |
 
 ### 7.3 主要进程
 
 #### `main.js` — 窗口管理器
-- 创建和管理 Desktop、Dashboard 窗口实例
+- 创建和管理 Desktop、Dashboard、Setup 窗口实例
 - 注册 IPC 通道（`ipcMain.handle` / `ipcMain.on`）
 - 管理系统托盘、菜单栏和全局快捷键
 - 控制窗口生命周期（创建、隐藏、显示、销毁）
@@ -276,7 +293,6 @@ flowchart TB
 - 实现请求-响应模式的异步调用
 
 ```javascript
-// 示例：preload.cjs 核心结构
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -284,7 +300,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('agent:message', payload),
   onResponse: (callback) =>
     ipcRenderer.on('agent:response', (_event, data) => callback(data)),
-  // ...
 });
 ```
 
@@ -312,14 +327,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 ### 8.1 WebSocket 服务器
 
-`ws-server.js` 是基于 `ws` 库构建的 WebSocket 服务端，作为 Agent 与外部客户端（Electron 主进程、自定义客户端）的实时通信桥梁。
+`ws-server.js` 是基于 `ws` 库构建的 WebSocket 服务端，作为 Agent 与外部客户端（Electron 主进程、自定义客户端）的实时通信桥梁，默认监听端口 **9527**。
 
 #### 核心功能
 
 | 功能 | 说明 |
 |------|------|
 | **连接管理** | 维护活跃客户端列表，处理连接/断开事件 |
-| **消息路由** | 基于 `type` 字段分发消息到对应处理器 |
+| **消息路由** | 基于 `action` 字段分发消息到对应处理器 |
 | **心跳检测** | 定时 ping/pong 检测客户端存活状态 |
 | **重连支持** | 客户端断线后自动重连，服务端保持会话状态 |
 | **广播** | 支持向所有或指定客户端广播消息 |
@@ -328,7 +343,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 ```json
 {
-  "type": "message_type",
+  "action": "message_action",
   "id": "req-uuid-xxxx",
   "timestamp": "2026-07-05T10:30:00.000Z",
   "payload": {
@@ -341,18 +356,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `type` | string | 消息类型 |
+| `action` | string | 消息动作类型 |
 | `id` | string | 请求唯一标识，用于响应关联 |
 | `timestamp` | string | ISO 8601 时间戳 |
 | `payload` | object | 消息体，存放具体数据 |
 
 #### 消息类型
 
-| 方向 | type | 说明 |
-|------|------|------|
+| 方向 | action | 说明 |
+|------|--------|------|
 | Client → Server | `user:message` | 用户发送消息 |
 | Client → Server | `session:create` | 创建新会话 |
 | Client → Server | `session:switch` | 切换会话 |
+| Client → Server | `session:delete` | 删除会话 |
+| Client → Server | `session:rename` | 重命名会话 |
 | Client → Server | `tool:confirm` | 确认工具执行 |
 | Client → Server | `tool:reject` | 拒绝工具执行 |
 | Server → Client | `agent:thinking` | Agent 开始思考 |
@@ -372,16 +389,16 @@ sequenceDiagram
     participant Agent as Agent.js
 
     Main->>Bridge: 初始化 AgentBridge
-    Bridge->>WS: new WebSocket("ws://localhost:PORT")
+    Bridge->>WS: new WebSocket("ws://localhost:9527")
 
     activate WS
     WS-->>Bridge: on("open") — 连接成功
-    Bridge->>WS: ws.send({ type: "handshake", ... })
+    Bridge->>WS: ws.send({ action: "handshake", ... })
     WS-->>Bridge: on("message") — 握手确认
 
     loop 心跳
-        Bridge->>WS: ws.send({ type: "ping" })
-        WS-->>Bridge: { type: "pong" }
+        Bridge->>WS: ws.send({ action: "ping" })
+        WS-->>Bridge: { action: "pong" }
     end
 
     Note over Bridge,WS: IPC 桥接层
@@ -414,7 +431,7 @@ Renderer (contextBridge)
 const WebSocket = require('ws');
 
 class AgentClient {
-  constructor(url = 'ws://localhost:3100') {
+  constructor(url = 'ws://localhost:9527') {
     this.url = url;
     this.ws = null;
     this.handlers = new Map();
@@ -433,7 +450,7 @@ class AgentClient {
 
     this.ws.on('message', (raw) => {
       const msg = JSON.parse(raw.toString());
-      this.emit(msg.type, msg.payload, msg);
+      this.emit(msg.action, msg.payload, msg);
     });
 
     this.ws.on('close', () => {
@@ -447,10 +464,10 @@ class AgentClient {
     });
   }
 
-  send(type, payload = {}) {
+  send(action, payload = {}) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       const message = JSON.stringify({
-        type,
+        action,
         id: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
         payload,
@@ -490,8 +507,7 @@ class AgentClient {
   }
 }
 
-// 使用示例
-const client = new AgentClient('ws://localhost:3100');
+const client = new AgentClient('ws://localhost:9527');
 
 client.on('connected', () => {
   console.log('已连接到 Agent');
@@ -514,12 +530,56 @@ client.connect();
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `port` | `3100` | WebSocket 服务监听端口 |
+| `port` | `9527` | WebSocket 服务监听端口 |
 | `reconnectInterval` | `3000` ms | 客户端断线重连间隔 |
 | `heartbeatInterval` | `25000` ms | 心跳检测间隔（服务端 ping 客户端） |
 | `heartbeatTimeout` | `10000` ms | 心跳超时时间，超时则判定连接断开 |
 | `maxPayload` | `10 * 1024 * 1024` | 最大消息负载（字节），默认 10 MB |
 | `maxClients` | `100` | 最大并发客户端连接数 |
+
+---
+
+## 9. 会话管理
+
+### 9.1 会话结构
+
+每个会话包含独立的对话上下文，支持自动压缩和持久化存储。
+
+```javascript
+{
+  id: 'session-uuid',
+  name: '会话名称',
+  createdAt: '2026-07-05T10:00:00.000Z',
+  updatedAt: '2026-07-05T10:30:00.000Z',
+  messages: [...],
+  config: { model: 'gpt-4o', persona: 'developer' },
+  metadata: { }
+}
+```
+
+### 9.2 上下文压缩
+
+当会话历史超过配置的最大长度时，自动触发压缩：
+- 使用 LLM 总结早期对话
+- 保留最近 N 条消息
+- 将总结作为上下文前缀
+
+---
+
+## 10. 工具分类按需加载
+
+工具注册表支持按分类按需加载，减少启动时间和内存占用：
+
+```javascript
+const TOOL_CATEGORIES = {
+  file: ['file.js', 'path.js'],
+  web: ['web.js', 'browser.js'],
+  code: ['code.js', 'sandbox.js'],
+  git: ['git.js'],
+  database: ['db.js', 'data.js'],
+  // ...
+};
+```
 
 ---
 
