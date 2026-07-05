@@ -171,10 +171,57 @@
         </div>
         <!-- 对话视图（默认隐藏） -->
         <div class="chat-view" id="chatView" style="display: none;">
-          <div class="chat-messages" id="chatMessages">
-            <div class="empty-hint">
-              <div class="hint-icon">Cogito Agent</div>
-              <div class="hint-text">有什么可以帮你的？</div>
+          <div class="chat-layout">
+            <div class="chat-messages" id="chatMessages">
+              <div class="empty-hint">
+                <div class="hint-icon">Cogito Agent</div>
+                <div class="hint-text">有什么可以帮你的？</div>
+              </div>
+            </div>
+
+            <!-- 右侧面板 -->
+            <div class="chat-sidebar">
+              <!-- 思维链可视化 -->
+              <div class="panel" id="thoughtPanel">
+                <div class="panel-header">
+                  <h3>思维链</h3>
+                  <button class="panel-toggle" id="toggleThoughtPanel">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                      <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="panel-body" id="thoughtPanelBody">
+                  <div class="thought-timeline" id="thoughtTimeline"></div>
+                </div>
+              </div>
+
+              <!-- 工具统计 -->
+              <div class="panel" id="statsPanel">
+                <div class="panel-header">
+                  <h3>工具统计</h3>
+                  <button class="panel-toggle" id="toggleStatsPanel">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                      <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="panel-body" id="statsPanelBody">
+                  <div class="stats-overview">
+                    <div class="stat-item">
+                      <span class="stat-value" id="statTotalCalls">0</span>
+                      <span class="stat-label">总调用</span>
+                    </div>
+                    <div class="stat-item">
+                      <span class="stat-value" id="statSuccessRate">0%</span>
+                      <span class="stat-label">成功率</span>
+                    </div>
+                  </div>
+                  <div class="chart-container">
+                    <div id="toolUsageChart" style="width: 100%; height: 180px;"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -205,6 +252,7 @@
   <script src="../shared/message-renderer.js"></script>
   <script src="../../node_modules/marked/lib/marked.umd.js"></script>
   <script src="../../node_modules/dompurify/dist/purify.min.js"></script>
+  <script src="../../node_modules/echarts/dist/echarts.min.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

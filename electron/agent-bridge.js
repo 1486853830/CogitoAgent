@@ -37,6 +37,8 @@ function connect() {
         if (!win.isDestroyed()) {
           if (msg.type === 'agent-state') {
             win.webContents.send('agent-state', msg.state);
+          } else if (msg.type === 'thought-trace') {
+            win.webContents.send('thought-trace', { type: msg.action, step: msg.step });
           } else {
             win.webContents.send('agent-reply', msg);
           }
@@ -101,6 +103,26 @@ function ensureUserMessageHandler() {
   // 请求历史（暂不支持，桌面端独立管理历史）
   ipcMain.on('request-history', (event) => {
     event.reply('agent-history', []);
+  });
+
+  // 统计数据请求
+  ipcMain.on('stats-request', (event, payload) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      const requestId = Date.now();
+      const handler = (raw) => {
+        try {
+          const msg = JSON.parse(raw.toString());
+          if (msg.type === 'stats-response') {
+            event.reply('stats-response', msg);
+            ws.removeListener('message', handler);
+          }
+        } catch {}
+      };
+      ws.on('message', handler);
+      ws.send(JSON.stringify({ type: 'stats-request', payload, requestId }));
+    } else {
+      event.reply('stats-response', { error: 'Agent 未连接' });
+    }
   });
 }
 
