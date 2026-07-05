@@ -116,9 +116,51 @@ function loadEnvConfig() {
     }
   }
 
-  // 邮箱密码
+  // 邮件配置（完整支持 .env.example 中定义的所有字段）
+  const emailConfig = {};
+  if (process.env.COGITO_EMAIL_HOST) {
+    emailConfig.smtpHost = process.env.COGITO_EMAIL_HOST;
+  }
+  if (process.env.COGITO_EMAIL_PORT) {
+    const port = parseInt(process.env.COGITO_EMAIL_PORT, 10);
+    if (!isNaN(port)) {
+      emailConfig.smtpPort = port;
+    }
+  }
+  if (process.env.COGITO_EMAIL_USER) {
+    emailConfig.user = process.env.COGITO_EMAIL_USER;
+  }
   if (process.env.COGITO_EMAIL_PASSWORD) {
-    envConfig.email = { password: process.env.COGITO_EMAIL_PASSWORD };
+    emailConfig.password = process.env.COGITO_EMAIL_PASSWORD;
+  }
+  if (process.env.COGITO_EMAIL_FROM) {
+    emailConfig.from = process.env.COGITO_EMAIL_FROM;
+  }
+  if (Object.keys(emailConfig).length > 0) {
+    envConfig.email = emailConfig;
+  }
+
+  // 数据库配置
+  if (process.env.COGITO_DATABASE_PATH) {
+    envConfig.database = { path: process.env.COGITO_DATABASE_PATH };
+  }
+
+  // 代码执行配置
+  const codeConfig = {};
+  if (process.env.COGITO_CODE_TIMEOUT) {
+    const timeout = parseInt(process.env.COGITO_CODE_TIMEOUT, 10);
+    if (!isNaN(timeout) && timeout > 0) {
+      codeConfig.maxExecutionTime = timeout;
+    }
+  }
+  if (process.env.COGITO_CODE_MAX_OUTPUT) {
+    const maxSize = parseInt(process.env.COGITO_CODE_MAX_OUTPUT, 10);
+    if (!isNaN(maxSize) && maxSize > 0) {
+      codeConfig.maxOutputSize = maxSize;
+    }
+  }
+  if (Object.keys(codeConfig).length > 0) {
+    envConfig.code = codeConfig;
   }
 
   // 工作区
@@ -127,36 +169,46 @@ function loadEnvConfig() {
   }
 
   // 模型 API Keys
+  // 优先使用 COGITO_ 前缀版本（与 .env.example 文档一致），回退到无前缀版本（向后兼容）
   const modelsConfig = {};
-  if (process.env.OPENAI_API_KEY) {
-    modelsConfig.openai = { apiKey: process.env.OPENAI_API_KEY };
+  const openaiKey = process.env.COGITO_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  if (openaiKey) {
+    modelsConfig.openai = { apiKey: openaiKey };
   }
-  if (process.env.MOARK_API_KEY) {
-    modelsConfig.moark = { apiKey: process.env.MOARK_API_KEY };
+  const moarkKey = process.env.COGITO_MOARK_API_KEY || process.env.MOARK_API_KEY;
+  if (moarkKey) {
+    modelsConfig.moark = { apiKey: moarkKey };
   }
-  if (process.env.ANTHROPIC_API_KEY) {
-    modelsConfig.anthropic = { apiKey: process.env.ANTHROPIC_API_KEY };
+  const anthropicKey = process.env.COGITO_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+  if (anthropicKey) {
+    modelsConfig.anthropic = { apiKey: anthropicKey };
   }
-  if (process.env.GOOGLE_API_KEY) {
-    modelsConfig.google = { apiKey: process.env.GOOGLE_API_KEY };
+  const googleKey = process.env.COGITO_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY;
+  if (googleKey) {
+    modelsConfig.google = { apiKey: googleKey };
   }
   if (Object.keys(modelsConfig).length > 0) {
     envConfig.models = modelsConfig;
   }
 
   // OCR 配置
+  // 优先使用 COGITO_ 前缀版本，回退到无前缀版本（向后兼容）
   const ocrConfig = {};
-  if (process.env.OCR_API_KEY) {
-    ocrConfig.apiKey = process.env.OCR_API_KEY;
+  const ocrKey = process.env.COGITO_OCR_API_KEY || process.env.OCR_API_KEY;
+  if (ocrKey) {
+    ocrConfig.apiKey = ocrKey;
   }
-  if (process.env.OCR_API_BASE_URL) {
-    ocrConfig.baseURL = process.env.OCR_API_BASE_URL;
+  const ocrBaseURL = process.env.COGITO_OCR_API_BASE_URL || process.env.OCR_API_BASE_URL;
+  if (ocrBaseURL) {
+    ocrConfig.baseURL = ocrBaseURL;
   }
-  if (process.env.OCR_MODEL) {
-    ocrConfig.model = process.env.OCR_MODEL;
+  const ocrModel = process.env.COGITO_OCR_MODEL || process.env.OCR_MODEL;
+  if (ocrModel) {
+    ocrConfig.model = ocrModel;
   }
-  if (process.env.OCR_PROVIDER) {
-    ocrConfig.provider = process.env.OCR_PROVIDER;
+  const ocrProvider = process.env.COGITO_OCR_PROVIDER || process.env.OCR_PROVIDER;
+  if (ocrProvider) {
+    ocrConfig.provider = ocrProvider;
   }
   if (Object.keys(ocrConfig).length > 0) {
     envConfig.ocr = ocrConfig;
