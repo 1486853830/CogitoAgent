@@ -26,18 +26,12 @@ personas/
 
 在 `personas/` 目录下新建一个文件夹，命名规则：使用英文大小写字母，多个单词用连字符连接（如 `Data-Scientist`），然后在文件夹内创建 `persona.md` 文件。
 
-### 第二步：完善前端选择界面（可选）
+### 第二步：完成
 
-如果需要在 Electron 设置向导中显示该角色，编辑 `electron/setup/setup.html`，在 `#personaGrid` 中添加角色卡片：
+角色创建完成后，系统会自动识别并加载：
 
-```html
-<div class="persona-card" data-persona="your-role-id">
-  <div class="persona-name">角色名称</div>
-  <div class="persona-desc">一句话简介</div>
-</div>
-```
-
-> **注意**：终端命令 `/personas` 会自动读取 `personas/` 目录下的所有文件夹，无需手动更新。`/persona <id>` 命令也自动支持所有角色。
+- **CLI 模式**：通过 `/personas` 命令自动读取所有角色，无需额外配置
+- **Electron 模式**：设置向导通过 IPC 动态读取 `personas/` 目录，自动生成角色选择卡片，无需手动编辑 HTML
 
 ---
 
