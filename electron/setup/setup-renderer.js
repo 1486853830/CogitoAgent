@@ -21,12 +21,42 @@ const workspaceInput = document.getElementById('workspace');
 const personaGrid = document.getElementById('personaGrid');
 const browseBtn = document.getElementById('browseBtn');
 
+// 高级配置元素
+const thinkingIntervalInput = document.getElementById('thinkingInterval');
+const modeSelect = document.getElementById('mode');
+
+// 邮件配置元素
+const emailHostInput = document.getElementById('emailHost');
+const emailPortInput = document.getElementById('emailPort');
+const emailUserInput = document.getElementById('emailUser');
+const emailPasswordInput = document.getElementById('emailPassword');
+const emailFromInput = document.getElementById('emailFrom');
+
+// OCR 配置元素
+const ocrApiKeyInput = document.getElementById('ocrApiKey');
+const ocrBaseURLInput = document.getElementById('ocrBaseURL');
+const ocrModelInput = document.getElementById('ocrModel');
+const ocrProviderInput = document.getElementById('ocrProvider');
+
+// 视觉配置元素
+const visionApiKeyInput = document.getElementById('visionApiKey');
+const visionBaseURLInput = document.getElementById('visionBaseURL');
+const visionModelInput = document.getElementById('visionModel');
+
+// 代码执行配置元素
+const codeTimeoutInput = document.getElementById('codeTimeout');
+const codeMaxOutputInput = document.getElementById('codeMaxOutput');
+
+// 安全配置元素
+const confirmDangerousInput = document.getElementById('confirmDangerous');
+const sandboxModeInput = document.getElementById('sandboxMode');
+
 // 预设按钮
 const presetBtns = document.querySelectorAll('.preset-btn');
 
 // 状态
 let currentStep = 1;
-const totalSteps = 5;
+const totalSteps = 6;
 let selectedPersona = '';
 
 // 默认工作区路径
@@ -267,7 +297,35 @@ function submitConfig() {
       model: modelInput.value.trim()
     },
     workspace: workspaceInput.value.trim() || defaultWorkspace,
-    persona: selectedPersona
+    persona: selectedPersona,
+    thinkingInterval: thinkingIntervalInput.value.trim() ? parseInt(thinkingIntervalInput.value.trim(), 10) : 3000,
+    mode: modeSelect.value,
+    email: {
+      host: emailHostInput.value.trim(),
+      port: emailPortInput.value.trim() ? parseInt(emailPortInput.value.trim(), 10) : 587,
+      user: emailUserInput.value.trim(),
+      password: emailPasswordInput.value.trim(),
+      from: emailFromInput.value.trim()
+    },
+    ocr: {
+      apiKey: ocrApiKeyInput.value.trim(),
+      baseURL: ocrBaseURLInput.value.trim(),
+      model: ocrModelInput.value.trim() || 'Qwen2.5-VL-32B-Instruct',
+      provider: ocrProviderInput.value.trim()
+    },
+    vision: {
+      apiKey: visionApiKeyInput.value.trim(),
+      baseURL: visionBaseURLInput.value.trim(),
+      model: visionModelInput.value.trim() || 'Qwen2.5-VL-32B-Instruct'
+    },
+    code: {
+      timeout: codeTimeoutInput.value.trim() ? parseInt(codeTimeoutInput.value.trim(), 10) : 30000,
+      maxOutput: codeMaxOutputInput.value.trim() ? parseInt(codeMaxOutputInput.value.trim(), 10) : 100000
+    },
+    security: {
+      confirmDangerous: confirmDangerousInput.checked,
+      sandboxMode: sandboxModeInput.checked
+    }
   };
 
   // 禁用按钮，防止重复提交
