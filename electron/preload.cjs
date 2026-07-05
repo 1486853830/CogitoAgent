@@ -7,13 +7,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // 发送用户消息给 agent
-  sendMessage: (channel, data) => {
-    if (channel === 'stats-request') {
-      ipcRenderer.send('stats-request', data);
-    } else {
-      ipcRenderer.send('user-message', channel);
-    }
-  },
+  sendMessage: (text) => ipcRenderer.send('user-message', text),
+  
+  // 发送统计数据请求
+  sendStatsRequest: (data) => ipcRenderer.send('stats-request', data),
 
   // 窗口操作
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
