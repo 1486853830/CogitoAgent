@@ -1059,6 +1059,7 @@ const ChatManager = {
 const VisualizationManager = {
   thoughtTrace: [],
   toolUsageChart: null,
+  statsIntervalId: null,
 
   init() {
     this.initIpcListeners();
@@ -1066,6 +1067,16 @@ const VisualizationManager = {
     this.initChart();
     this.requestStats();
     console.log('[VisualizationManager] 初始化完成');
+    
+    window.addEventListener('beforeunload', () => this.destroy());
+  },
+
+  destroy() {
+    if (this.statsIntervalId) {
+      clearInterval(this.statsIntervalId);
+      this.statsIntervalId = null;
+    }
+    console.log('[VisualizationManager] 已清理资源');
   },
 
   initIpcListeners() {
@@ -1122,7 +1133,7 @@ const VisualizationManager = {
     if (window.electronAPI) {
       window.electronAPI.sendStatsRequest({});
     }
-    setInterval(() => {
+    this.statsIntervalId = setInterval(() => {
       if (window.electronAPI) {
         window.electronAPI.sendStatsRequest({});
       }
