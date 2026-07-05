@@ -120,6 +120,10 @@ function ensureUserMessageHandler() {
       };
       ws.on('message', handler);
       ws.send(JSON.stringify({ type: 'stats-request', payload, requestId }));
+      
+      setTimeout(() => {
+        ws.removeListener('message', handler);
+      }, 30000);
     } else {
       event.reply('stats-response', { error: 'Agent 未连接' });
     }
