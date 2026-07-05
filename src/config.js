@@ -237,6 +237,28 @@ function loadEnvConfig() {
     envConfig.vision = visionConfig;
   }
 
+  // 启动模式配置
+  if (process.env.COGITO_MODE) {
+    envConfig.mode = process.env.COGITO_MODE;
+  }
+
+  // 安全配置
+  const securityConfig = {};
+  if (process.env.COGITO_CONFIRM_DANGEROUS !== undefined) {
+    securityConfig.confirmDangerous = process.env.COGITO_CONFIRM_DANGEROUS.toLowerCase() !== 'false';
+  }
+  if (process.env.COGITO_SANDBOX_MODE !== undefined) {
+    securityConfig.sandboxMode = process.env.COGITO_SANDBOX_MODE.toLowerCase() !== 'false';
+  }
+  if (Object.keys(securityConfig).length > 0) {
+    envConfig.security = securityConfig;
+  }
+
+  // 人设配置
+  if (process.env.COGITO_PERSONA) {
+    envConfig.persona = process.env.COGITO_PERSONA;
+  }
+
   return envConfig;
 }
 

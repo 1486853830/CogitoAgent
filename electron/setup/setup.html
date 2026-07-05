@@ -25,6 +25,7 @@
         <span class="step" data-step="3">模型</span>
         <span class="step" data-step="4">工作区</span>
         <span class="step" data-step="5">人设</span>
+        <span class="step" data-step="6">高级</span>
       </div>
     </div>
 
@@ -90,6 +91,169 @@
         <div class="persona-grid" id="personaGrid">
           <!-- 动态生成 -->
         </div>
+      </div>
+
+      <!-- Step 6: Advanced Config -->
+      <div class="form-step" data-step="6">
+        <h2>高级配置（可选）</h2>
+        <p class="step-desc">配置思考间隔、启动模式、邮件服务、OCR、视觉分析等</p>
+        
+        <!-- Thinking Interval -->
+        <div class="input-group">
+          <label>思考间隔（毫秒）</label>
+          <input type="number" id="thinkingInterval" placeholder="3000" min="1000">
+          <span class="hint">AI 自动思考的时间间隔，最小值 1000</span>
+        </div>
+
+        <!-- Mode -->
+        <div class="input-group">
+          <label>启动模式</label>
+          <select id="mode">
+            <option value="desktop">桌面宠物模式 (Desktop)</option>
+            <option value="dashboard">工作台模式 (Dashboard)</option>
+          </select>
+          <span class="hint">默认启动时的显示模式</span>
+        </div>
+
+        <!-- Email Config Section -->
+        <div class="config-section">
+          <div class="section-header" onclick="toggleSection('emailSection')">
+            <span class="section-icon">📧</span>
+            <span>邮件配置</span>
+            <span class="section-toggle">▼</span>
+          </div>
+          <div class="section-content" id="emailSection">
+            <div class="input-group">
+              <input type="text" id="emailHost" placeholder="SMTP服务器地址">
+              <span class="hint">例如: smtp.example.com</span>
+            </div>
+            <div class="input-group">
+              <input type="number" id="emailPort" placeholder="587">
+              <span class="hint">SMTP端口</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="emailUser" placeholder="邮箱用户名">
+              <span class="hint">邮箱地址</span>
+            </div>
+            <div class="input-group">
+              <input type="password" id="emailPassword" placeholder="邮箱密码">
+              <span class="hint">邮箱密码或授权码</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="emailFrom" placeholder="发件人地址">
+              <span class="hint">发件人邮箱地址</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- OCR Config Section -->
+        <div class="config-section">
+          <div class="section-header" onclick="toggleSection('ocrSection')">
+            <span class="section-icon">📷</span>
+            <span>OCR 图像文字识别</span>
+            <span class="section-toggle">▼</span>
+          </div>
+          <div class="section-content" id="ocrSection">
+            <div class="input-group">
+              <input type="text" id="ocrApiKey" placeholder="OCR API Key">
+              <span class="hint">不填则使用主 API Key</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="ocrBaseURL" placeholder="OCR API 地址">
+              <span class="hint">例如: https://dashscope.aliyuncs.com/compatible-mode/v1</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="ocrModel" placeholder="Qwen2.5-VL-32B-Instruct">
+              <span class="hint">OCR 模型名称</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="ocrProvider" placeholder="服务商名称">
+              <span class="hint">例如: qwen-vl</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vision Config Section -->
+        <div class="config-section">
+          <div class="section-header" onclick="toggleSection('visionSection')">
+            <span class="section-icon">👁️</span>
+            <span>视觉分析</span>
+            <span class="section-toggle">▼</span>
+          </div>
+          <div class="section-content" id="visionSection">
+            <div class="input-group">
+              <input type="text" id="visionApiKey" placeholder="Vision API Key">
+              <span class="hint">不填则使用主 API Key</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="visionBaseURL" placeholder="Vision API 地址">
+              <span class="hint">不填则使用主 API 地址</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="visionModel" placeholder="Qwen2.5-VL-32B-Instruct">
+              <span class="hint">视觉模型名称</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Code Execution Config Section -->
+        <div class="config-section">
+          <div class="section-header" onclick="toggleSection('codeSection')">
+            <span class="section-icon">💻</span>
+            <span>代码执行</span>
+            <span class="section-toggle">▼</span>
+          </div>
+          <div class="section-content" id="codeSection">
+            <div class="input-group">
+              <input type="number" id="codeTimeout" placeholder="30000">
+              <span class="hint">执行超时时间（毫秒）</span>
+            </div>
+            <div class="input-group">
+              <input type="number" id="codeMaxOutput" placeholder="100000">
+              <span class="hint">最大输出大小（字符）</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security Config Section -->
+        <div class="config-section">
+          <div class="section-header" onclick="toggleSection('securitySection')">
+            <span class="section-icon">🔒</span>
+            <span>安全设置</span>
+            <span class="section-toggle">▼</span>
+          </div>
+          <div class="section-content" id="securitySection">
+            <div class="input-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="confirmDangerous" checked>
+                <span>启用危险操作确认</span>
+              </label>
+              <span class="hint">gitPush / executeCode 等操作需要确认</span>
+            </div>
+            <div class="input-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="sandboxMode" checked>
+                <span>启用代码沙盒模式</span>
+              </label>
+              <span class="hint">隔离代码执行环境，提高安全性</span>
+            </div>
+          </div>
+        </div>
+
+        <script>
+          function toggleSection(id) {
+            const section = document.getElementById(id);
+            const toggle = section.parentElement.querySelector('.section-toggle');
+            if (section.style.display === 'none') {
+              section.style.display = 'block';
+              toggle.textContent = '▼';
+            } else {
+              section.style.display = 'none';
+              toggle.textContent = '▶';
+            }
+          }
+          document.querySelectorAll('.section-content').forEach(el => el.style.display = 'none');
+        </script>
       </div>
     </div>
 

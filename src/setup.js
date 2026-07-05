@@ -246,6 +246,203 @@ async function selectPersona(rl, personas) {
 }
 
 /**
+ * 配置思考间隔
+ */
+async function configureThinkingInterval(rl) {
+  printStepTitle(6, '思考间隔配置（可选）');
+  println('');
+  printTip('AI 自动思考的时间间隔，单位毫秒，最小值 1000');
+  println(COLORS.dim + '  按回车使用默认值: 3000' + COLORS.reset);
+  println('');
+  
+  const answer = await question(rl, COLORS.yellow + '  请输入思考间隔: ' + COLORS.reset);
+  const trimmed = answer.trim();
+  
+  if (!trimmed) {
+    return 3000;
+  }
+  
+  const interval = parseInt(trimmed, 10);
+  if (!isNaN(interval) && interval >= 1000) {
+    return interval;
+  }
+  
+  printWarning('无效值，使用默认值 3000');
+  return 3000;
+}
+
+/**
+ * 配置启动模式
+ */
+async function configureMode(rl) {
+  printStepTitle(7, '启动模式配置（可选）');
+  println('');
+  println(COLORS.white + '  1 - desktop（桌面宠物模式）' + COLORS.reset);
+  println(COLORS.white + '  2 - dashboard（工作台模式）' + COLORS.reset);
+  println(COLORS.dim + '  按回车使用默认值: desktop' + COLORS.reset);
+  println('');
+  
+  const answer = await question(rl, COLORS.yellow + '  请输入模式编号: ' + COLORS.reset);
+  const trimmed = answer.trim();
+  
+  if (!trimmed) {
+    return 'desktop';
+  }
+  
+  if (trimmed === '1' || trimmed.toLowerCase() === 'desktop') {
+    return 'desktop';
+  }
+  if (trimmed === '2' || trimmed.toLowerCase() === 'dashboard') {
+    return 'dashboard';
+  }
+  
+  printWarning('无效值，使用默认值 desktop');
+  return 'desktop';
+}
+
+/**
+ * 配置邮件服务
+ */
+async function configureEmail(rl) {
+  printStepTitle(8, '邮件配置（可选）');
+  println('');
+  println(COLORS.dim + '  按回车跳过此配置（不配置邮件功能）' + COLORS.reset);
+  println('');
+  
+  const answer = await question(rl, COLORS.yellow + '  是否配置邮件服务？(y/n): ' + COLORS.reset);
+  if (answer.trim().toLowerCase() !== 'y') {
+    return null;
+  }
+  
+  println('');
+  printTip('请输入邮件服务配置');
+  
+  const host = await question(rl, COLORS.yellow + '  SMTP服务器地址: ' + COLORS.reset);
+  const port = await question(rl, COLORS.yellow + '  SMTP端口: ' + COLORS.reset);
+  const user = await question(rl, COLORS.yellow + '  邮箱用户名: ' + COLORS.reset);
+  const password = await question(rl, COLORS.yellow + '  邮箱密码: ' + COLORS.reset);
+  const from = await question(rl, COLORS.yellow + '  发件人地址: ' + COLORS.reset);
+  
+  return {
+    host: host.trim(),
+    port: port.trim() ? parseInt(port.trim(), 10) : 587,
+    user: user.trim(),
+    password: password.trim(),
+    from: from.trim()
+  };
+}
+
+/**
+ * 配置 OCR 图像文字识别
+ */
+async function configureOCR(rl) {
+  printStepTitle(9, 'OCR 图像文字识别配置（可选）');
+  println('');
+  println(COLORS.dim + '  按回车跳过此配置（使用主 API Key）' + COLORS.reset);
+  println('');
+  
+  const answer = await question(rl, COLORS.yellow + '  是否配置独立的 OCR 服务？(y/n): ' + COLORS.reset);
+  if (answer.trim().toLowerCase() !== 'y') {
+    return null;
+  }
+  
+  println('');
+  printTip('请输入 OCR 服务配置');
+  
+  const apiKey = await question(rl, COLORS.yellow + '  OCR API Key: ' + COLORS.reset);
+  const baseURL = await question(rl, COLORS.yellow + '  OCR API 地址: ' + COLORS.reset);
+  const model = await question(rl, COLORS.yellow + '  OCR 模型名称: ' + COLORS.reset);
+  const provider = await question(rl, COLORS.yellow + '  OCR 服务商: ' + COLORS.reset);
+  
+  return {
+    apiKey: apiKey.trim(),
+    baseURL: baseURL.trim(),
+    model: model.trim() || 'Qwen2.5-VL-32B-Instruct',
+    provider: provider.trim()
+  };
+}
+
+/**
+ * 配置视觉分析
+ */
+async function configureVision(rl) {
+  printStepTitle(10, '视觉分析配置（可选）');
+  println('');
+  println(COLORS.dim + '  按回车跳过此配置（使用主 API Key）' + COLORS.reset);
+  println('');
+  
+  const answer = await question(rl, COLORS.yellow + '  是否配置独立的视觉分析服务？(y/n): ' + COLORS.reset);
+  if (answer.trim().toLowerCase() !== 'y') {
+    return null;
+  }
+  
+  println('');
+  printTip('请输入视觉分析服务配置');
+  
+  const apiKey = await question(rl, COLORS.yellow + '  Vision API Key: ' + COLORS.reset);
+  const baseURL = await question(rl, COLORS.yellow + '  Vision API 地址: ' + COLORS.reset);
+  const model = await question(rl, COLORS.yellow + '  Vision 模型名称: ' + COLORS.reset);
+  
+  return {
+    apiKey: apiKey.trim(),
+    baseURL: baseURL.trim(),
+    model: model.trim() || 'Qwen2.5-VL-32B-Instruct'
+  };
+}
+
+/**
+ * 配置代码执行
+ */
+async function configureCode(rl) {
+  printStepTitle(11, '代码执行配置（可选）');
+  println('');
+  println(COLORS.dim + '  按回车跳过此配置（使用默认值）' + COLORS.reset);
+  println('');
+  
+  const answer = await question(rl, COLORS.yellow + '  是否自定义代码执行配置？(y/n): ' + COLORS.reset);
+  if (answer.trim().toLowerCase() !== 'y') {
+    return null;
+  }
+  
+  println('');
+  printTip('请输入代码执行配置');
+  
+  const timeout = await question(rl, COLORS.yellow + '  执行超时时间(毫秒，默认30000): ' + COLORS.reset);
+  const maxOutput = await question(rl, COLORS.yellow + '  最大输出大小(字符，默认100000): ' + COLORS.reset);
+  
+  return {
+    timeout: timeout.trim() ? parseInt(timeout.trim(), 10) : 30000,
+    maxOutput: maxOutput.trim() ? parseInt(maxOutput.trim(), 10) : 100000
+  };
+}
+
+/**
+ * 配置安全选项
+ */
+async function configureSecurity(rl) {
+  printStepTitle(12, '安全配置（可选）');
+  println('');
+  println(COLORS.dim + '  按回车跳过此配置（使用默认值）' + COLORS.reset);
+  println('');
+  
+  const answer = await question(rl, COLORS.yellow + '  是否自定义安全配置？(y/n): ' + COLORS.reset);
+  if (answer.trim().toLowerCase() !== 'y') {
+    return null;
+  }
+  
+  println('');
+  printTip('请输入安全配置');
+  
+  const confirmDangerous = await question(rl, COLORS.yellow + '  危险操作确认(默认true，设为false跳过确认): ' + COLORS.reset);
+  const sandboxMode = await question(rl, COLORS.yellow + '  代码沙盒模式(默认true，设为false禁用沙盒): ' + COLORS.reset);
+  
+  return {
+    confirmDangerous: confirmDangerous.trim().toLowerCase() !== 'false',
+    sandboxMode: sandboxMode.trim().toLowerCase() !== 'false'
+  };
+}
+
+/**
  * 应用选择的人设
  */
 function applyPersona(persona) {
@@ -272,19 +469,124 @@ function saveEnvConfig(config) {
     '# CogitoAgent 配置文件',
     '# 由设置向导自动生成',
     '',
-    '# API 配置',
+    '# ============================================',
+    '# API 配置（必需）',
+    '# ============================================',
+    '',
+    '# API 密钥（必需）',
     `COGITO_API_KEY=${config.api?.apiKey || ''}`,
+    '',
+    '# API 服务地址（可选，默认根据 provider 自动设置）',
     `COGITO_API_BASE_URL=${config.api?.baseURL || ''}`,
+    '',
+    '# API 服务商名称（可选，支持: openai, moark, anthropic, google）',
     `COGITO_API_PROVIDER=${config.api?.provider || 'custom'}`,
+    '',
+    '# 模型名称（可选）',
     `COGITO_MODEL=${config.api?.model || ''}`,
     '',
-    '# 工作区配置',
+    '# ============================================',
+    '# 思考间隔配置（可选）',
+    '# ============================================',
+    '',
+    '# 自动思考间隔时间（毫秒），最小值 1000',
+    `COGITO_THINKING_INTERVAL=${config.thinkingInterval || 3000}`,
+    '',
+    '# ============================================',
+    '# 启动模式配置（可选）',
+    '# ============================================',
+    '',
+    '# 启动模式: desktop（桌面宠物模式）/ dashboard（工作台模式）',
+    `COGITO_MODE=${config.mode || 'desktop'}`,
+    '',
+    '# ============================================',
+    '# 数据库配置（可选）',
+    '# ============================================',
+    '',
+    '# SQLite 数据库文件路径',
+    `COGITO_DATABASE_PATH=${config.database?.path || './data/example.db'}`,
+    '',
+    '# ============================================',
+    '# 邮件配置（可选）',
+    '# ============================================',
+    '',
+    '# SMTP 服务器地址',
+    `COGITO_EMAIL_HOST=${config.email?.host || ''}`,
+    '',
+    '# SMTP 端口',
+    `COGITO_EMAIL_PORT=${config.email?.port || 587}`,
+    '',
+    '# 邮箱用户名',
+    `COGITO_EMAIL_USER=${config.email?.user || ''}`,
+    '',
+    '# 邮箱密码',
+    `COGITO_EMAIL_PASSWORD=${config.email?.password || ''}`,
+    '',
+    '# 发件人邮箱地址',
+    `COGITO_EMAIL_FROM=${config.email?.from || ''}`,
+    '',
+    '# ============================================',
+    '# OCR 图像文字识别配置（可选）',
+    '# ============================================',
+    '',
+    '# OCR API 密钥',
+    `COGITO_OCR_API_KEY=${config.ocr?.apiKey || ''}`,
+    '',
+    '# OCR API 服务地址',
+    `COGITO_OCR_API_BASE_URL=${config.ocr?.baseURL || ''}`,
+    '',
+    '# OCR 模型名称',
+    `COGITO_OCR_MODEL=${config.ocr?.model || 'Qwen2.5-VL-32B-Instruct'}`,
+    '',
+    '# OCR 服务商名称',
+    `COGITO_OCR_PROVIDER=${config.ocr?.provider || ''}`,
+    '',
+    '# ============================================',
+    '# 视觉分析配置（可选）',
+    '# ============================================',
+    '',
+    '# 视觉分析 API 密钥（可选，默认回退到 COGITO_API_KEY）',
+    `COGITO_VISION_API_KEY=${config.vision?.apiKey || ''}`,
+    '',
+    '# 视觉分析 API 服务地址（可选，默认使用 COGITO_API_BASE_URL）',
+    `COGITO_VISION_API_BASE_URL=${config.vision?.baseURL || ''}`,
+    '',
+    '# 视觉模型名称（可选，默认 Qwen2.5-VL-32B-Instruct）',
+    `COGITO_VISION_MODEL=${config.vision?.model || 'Qwen2.5-VL-32B-Instruct'}`,
+    '',
+    '# ============================================',
+    '# 代码执行配置（可选）',
+    '# ============================================',
+    '',
+    '# 代码执行超时时间（毫秒）',
+    `COGITO_CODE_TIMEOUT=${config.code?.timeout || 30000}`,
+    '',
+    '# 代码输出最大大小（字符）',
+    `COGITO_CODE_MAX_OUTPUT=${config.code?.maxOutput || 100000}`,
+    '',
+    '# ============================================',
+    '# 安全配置（可选）',
+    '# ============================================',
+    '',
+    '# 是否启用危险操作确认（默认启用）',
+    `COGITO_CONFIRM_DANGEROUS=${config.security?.confirmDangerous !== false ? 'true' : 'false'}`,
+    '',
+    '# 是否启用代码沙盒模式（默认启用）',
+    `COGITO_SANDBOX_MODE=${config.security?.sandboxMode !== false ? 'true' : 'false'}`,
+    '',
+    '# ============================================',
+    '# 工作区配置（可选）',
+    '# ============================================',
+    '',
+    '# 工作区根路径',
     `COGITO_WORKSPACE=${config.workspace || ''}`,
     '',
-    '# 人设配置',
-    `COGITO_PERSONA=${config.persona || ''}`,
+    '# ============================================',
+    '# 人设配置（可选）',
+    '# ============================================',
     '',
-    '# 其他配置可在 .env.example 中查看',
+    '# 人设名称（对应 personas/ 目录下的文件夹名称）',
+    `COGITO_PERSONA=${config.persona || ''}`,
   ];
   
   try {
@@ -393,6 +695,34 @@ async function runSetup() {
   // 5. 人设选择
   const personas = getAvailablePersonas();
   const selectedPersona = await selectPersona(rl, personas);
+  println('');
+
+  // 6. 思考间隔配置（可选）
+  const thinkingInterval = await configureThinkingInterval(rl);
+  println('');
+
+  // 7. 启动模式配置（可选）
+  const mode = await configureMode(rl);
+  println('');
+
+  // 8. 邮件配置（可选）
+  const emailConfig = await configureEmail(rl);
+  println('');
+
+  // 9. OCR 配置（可选）
+  const ocrConfig = await configureOCR(rl);
+  println('');
+
+  // 10. 视觉分析配置（可选）
+  const visionConfig = await configureVision(rl);
+  println('');
+
+  // 11. 代码执行配置（可选）
+  const codeConfig = await configureCode(rl);
+  println('');
+
+  // 12. 安全配置（可选）
+  const securityConfig = await configureSecurity(rl);
 
   rl.close();
 
@@ -411,7 +741,15 @@ async function runSetup() {
       recencyFilter: '',
       siteFilter: ''
     },
-    workspace: normalizedWorkspace
+    workspace: normalizedWorkspace,
+    thinkingInterval,
+    mode,
+    email: emailConfig,
+    ocr: ocrConfig,
+    vision: visionConfig,
+    code: codeConfig,
+    security: securityConfig,
+    persona: selectedPersona?.name || ''
   };
 
   // 保存到 .env 文件
