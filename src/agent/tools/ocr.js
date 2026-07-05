@@ -33,12 +33,13 @@ async function callVLApi(imageBase64, mimeType, userPrompt) {
   const cfg = loadConfig();
   const ocrCfg = cfg.ocr || {};
 
-  if (!ocrCfg.apiKey) {
-    throw new Error('OCR API 密钥未配置。请在 config.json 的 ocr.apiKey 中填入你的密钥，或设置环境变量 OCR_API_KEY');
+  // OCR_API_KEY 回退到主 API Key（COGITO_API_KEY）
+  const apiKey = ocrCfg.apiKey || cfg.api?.apiKey;
+  if (!apiKey) {
+    throw new Error('OCR API 密钥未配置。请在 config.json 的 ocr.apiKey 中填入你的密钥，或设置环境变量 COGITO_OCR_API_KEY / OCR_API_KEY，也可设置主 API Key (COGITO_API_KEY) 作为回退');
   }
 
   const baseURL = ocrCfg.baseURL || cfg.api.baseURL;
-  const apiKey = ocrCfg.apiKey;
   const model = ocrCfg.model || 'Qwen2.5-VL-32B-Instruct';
 
   const url = baseURL.endsWith('/') ? `${baseURL}chat/completions` : `${baseURL}/chat/completions`;

@@ -574,7 +574,11 @@ app.whenReady().then(async () => {
             const sessionId = file.replace('.json', '');
             try {
               const content = JSON.parse(fs.readFileSync(path.join(sessionsDir, file), 'utf-8'));
-              const messageCount = Array.isArray(content) ? content.filter(m => m.role !== 'system').length : 0;
+              // 统计真实消息数（排除 system prompt 和系统注入的工具结果消息）
+              const messageCount = Array.isArray(content) ? content.filter(m =>
+                m.role !== 'system' &&
+                !(m.role === 'user' && m.content.startsWith('[系统返回的工具执行结果]'))
+              ).length : 0;
               recovered.push({
                 id: sessionId,
                 name: `会话 ${recovered.length + 1}`,
@@ -606,14 +610,16 @@ app.whenReady().then(async () => {
         }
       }
 
-      // 读取每个会话文件的第一条用户消息作为预览
+      // 读取每个会话文件的第一条真实用户消息作为预览
       for (const session of sessions) {
         try {
           const sessionFile = path.join(sessionsDir, `${session.id}.json`);
           if (fs.existsSync(sessionFile)) {
             const messages = JSON.parse(fs.readFileSync(sessionFile, 'utf-8'));
-            // 找第一条用户消息作为预览
-            const firstUserMsg = messages.find(m => m.role === 'user');
+            // 找第一条真实用户消息作为预览（排除系统注入的工具结果）
+            const firstUserMsg = messages.find(m =>
+              m.role === 'user' && !m.content.startsWith('[系统返回的工具执行结果]')
+            );
             if (firstUserMsg) {
               session.preview = firstUserMsg.content.substring(0, 50);
             }
@@ -648,17 +654,21 @@ app.whenReady().then(async () => {
     return null;
   });
 
-  // 获取指定会话的历史消息（排除 system prompt）
+  // 获取指定会话的历史消息（排除 system prompt 和系统注入的工具结果消息）
   ipcMain.handle('get-session-history', (_event, sessionId) => {
     const sessionFile = path.join(PROJECT_ROOT, 'data', 'sessions', `${sessionId}.json`);
     try {
       if (fs.existsSync(sessionFile)) {
         const messages = JSON.parse(fs.readFileSync(sessionFile, 'utf-8'));
-        // 过滤掉 system prompt，只返回对话内容
-        return messages.filter(m => m.role !== 'system').map(m => ({
-          role: m.role,
-          content: m.content
-        }));
+        // 过滤掉 system prompt 和系统注入的工具结果 user 消息
+        // 工具结果在实时聊天时已通过 tool-result 事件显示为卡片，历史中不需要重复显示
+        return messages
+          .filter(m => m.role !== 'system')
+          .filter(m => !(m.role === 'user' && m.content.startsWith('[系统返回的工具执行结果]')))
+          .map(m => ({
+            role: m.role,
+            content: m.content
+          }));
       }
     } catch (e) {
       console.error('[主进程] 读取会话历史失败:', e.message);

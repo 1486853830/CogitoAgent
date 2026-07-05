@@ -31,8 +31,16 @@ async function getIvm() {
   }
 }
 
-const MAX_EXECUTION_TIME = 30000;
-const MAX_OUTPUT_SIZE = 100000;
+// 从配置读取代码执行限制（支持 .env 中 COGITO_CODE_TIMEOUT / COGITO_CODE_MAX_OUTPUT）
+const _codeLimits = (() => {
+  const cfg = loadConfig();
+  return {
+    maxExecutionTime: cfg.code?.maxExecutionTime ?? 30000,
+    maxOutputSize: cfg.code?.maxOutputSize ?? 100000
+  };
+})();
+const MAX_EXECUTION_TIME = _codeLimits.maxExecutionTime;
+const MAX_OUTPUT_SIZE = _codeLimits.maxOutputSize;
 const MAX_MEMORY_MB = 128;
 
 /**

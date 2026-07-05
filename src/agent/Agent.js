@@ -11,7 +11,7 @@
 
 import { streamChat } from '../api/client.js';
 import * as tools from './tools/index.js';
-import { getMessages, addUserMessage, addAssistantMessage, shouldCompress, compressHistory, initializeSession } from './session.js';
+import { getMessages, addUserMessage, addAssistantMessage, addToolResultMessage, shouldCompress, compressHistory, initializeSession } from './session.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
 import { loadConfig } from '../config.js';
 import { startWsServer, broadcast, onMessage } from '../io/ws-server.js';
@@ -613,12 +613,16 @@ async function thinkCycle() {
     // 循环处理所有工具调用
     const toolCalls = parseAllToolCalls(fullResponse);
 
-    // 构建最终回复（包含工具结果，让 AI 下一轮能看到）
-    // 先清理 AI 可能生成的虚假工具结果标记，避免干扰下一轮
-    let finalResponse = fullResponse.split('\n').filter(line => 
-      !line.trim().startsWith('[工具结果]:') && 
+    // AI 回复只保留纯文本和 [TOOL] 调用，不含工具结果
+    // 先清理 AI 可能生成的虚假工具结果标记
+    let finalResponse = fullResponse.split('\n').filter(line =>
+      !line.trim().startsWith('[工具结果]:') &&
       !line.trim().startsWith('[工具错误]:')
     ).join('\n');
+
+    // 工具结果收集到独立数组，作为 user 消息注入（而非拼接到 assistant 消息）
+    // 这样 AI 能明确区分"自己说的"和"系统返回的"，避免编造工具结果
+    const toolResults = [];
 
     if (toolCalls.length > 0) {
       for (const toolCall of toolCalls) {
@@ -626,32 +630,32 @@ async function thinkCycle() {
           println('[中断] 工具执行已停止', 'yellow');
           break;
         }
-        
+
         broadcast('agent-reply', { type: 'tool-start', tool: toolCall.tool, args: toolCall.args });
 
         const result = await executeTool(toolCall.tool, toolCall.args);
         if (result.success) {
-          const isEmpty = !result.data || 
+          const isEmpty = !result.data ||
             (typeof result.data === 'string' && result.data.trim() === '') ||
             (Array.isArray(result.data) && result.data.length === 0) ||
             (typeof result.data === 'object' && Object.keys(result.data).length === 0);
-          
+
           if (isEmpty) {
             println(`[空结果] ${toolCall.tool} 返回空结果`, 'yellow');
-            finalResponse += `\n\n[工具结果]: [空结果] ${toolCall.tool} 返回空结果，未找到相关信息。`;
+            toolResults.push(`[工具结果]: [空结果] ${toolCall.tool} 返回空结果，未找到相关信息。`);
             broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: '[空结果] 未找到相关信息', isEmpty: true });
           } else {
             const resultText = formatToolResult(toolCall.tool, result.data);
             printToolBlock(resultText, '工具结果');
-            finalResponse += `\n\n[工具结果]: ${resultText}`;
+            toolResults.push(`[工具结果]: ${resultText}`);
             broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: resultText });
           }
         } else {
           println(`[失败] ${result.error}`, 'red');
-          finalResponse += `\n\n[工具错误]: ${result.error}`;
+          toolResults.push(`[工具错误]: ${result.error}`);
           broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: false, data: result.error });
         }
-        
+
         if (shouldStop) {
           println('[中断] 工具执行已停止', 'yellow');
           break;
@@ -659,8 +663,14 @@ async function thinkCycle() {
       }
     }
 
-    // 只添加一次最终回复到对话历史
+    // 1. 只把 AI 的纯回复作为 assistant 消息（不含工具结果）
     addAssistantMessage(finalResponse);
+
+    // 2. 工具结果作为独立的 user 消息注入，让 AI 下一轮明确这是系统返回的真实结果
+    if (toolResults.length > 0) {
+      const toolResultMessage = `[系统返回的工具执行结果]\n${toolResults.join('\n\n')}\n[系统] 请基于以上工具执行结果继续回复，不要编造或猜测结果。`;
+      addToolResultMessage(toolResultMessage);
+    }
 
     if (shouldCompress()) {
       println('[系统] 正在压缩对话历史...', 'gray');
