@@ -7,7 +7,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // 发送用户消息给 agent
-  sendMessage: (text) => ipcRenderer.send('user-message', text),
+  sendMessage: (channel, data) => {
+    if (channel === 'stats-request') {
+      ipcRenderer.send('stats-request', data);
+    } else {
+      ipcRenderer.send('user-message', channel);
+    }
+  },
 
   // 窗口操作
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
@@ -25,6 +31,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 监听 agent 状态变化
   onStateChange: (callback) => {
     ipcRenderer.on('agent-state', (_event, state) => callback(state));
+  },
+
+  // 监听思维链消息
+  on: (channel, callback) => {
+    if (channel === 'thought-trace') {
+      ipcRenderer.on('thought-trace', (_event, data) => callback(data));
+    } else if (channel === 'stats-response') {
+      ipcRenderer.on('stats-response', (_event, data) => callback(data));
+    }
   },
 
   // 监听历史消息

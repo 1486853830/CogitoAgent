@@ -7,6 +7,7 @@ import { WebSocketServer } from 'ws';
 
 let wss = null;
 let messageHandler = null;
+let statsHandler = null;
 
 /**
  * 启动 WebSocket 服务
@@ -29,7 +30,16 @@ function startWsServer(port = 9527) {
         ws.on('message', (raw) => {
           try {
             const msg = JSON.parse(raw.toString());
-            if (messageHandler) {
+            if (msg.type === 'stats-request' && statsHandler) {
+              const result = statsHandler(msg.payload);
+              if (result && typeof result.then === 'function') {
+                result.then(data => {
+                  ws.send(JSON.stringify({ type: 'stats-response', ...data }));
+                });
+              } else if (result) {
+                ws.send(JSON.stringify({ type: 'stats-response', ...result }));
+              }
+            } else if (messageHandler) {
               messageHandler(msg, ws);
             }
           } catch {
@@ -55,6 +65,10 @@ function onMessage(handler) {
   messageHandler = handler;
 }
 
+function onStatsRequest(handler) {
+  statsHandler = handler;
+}
+
 /**
  * 广播消息给所有已连接的客户端
  */
@@ -78,4 +92,4 @@ function stopWsServer() {
   }
 }
 
-export { startWsServer, broadcast, onMessage, stopWsServer };
+export { startWsServer, broadcast, onMessage, onStatsRequest, stopWsServer };

@@ -1054,6 +1054,243 @@ const ChatManager = {
 };
 
 // ============================================================
+// 思维链与统计可视化模块
+// ============================================================
+const VisualizationManager = {
+  thoughtTrace: [],
+  toolUsageChart: null,
+
+  init() {
+    this.initIpcListeners();
+    this.initPanelToggles();
+    this.initChart();
+    this.requestStats();
+    console.log('[VisualizationManager] 初始化完成');
+  },
+
+  initIpcListeners() {
+    if (window.electronAPI) {
+      window.electronAPI.on('thought-trace', (data) => {
+        this.handleThoughtTrace(data);
+      });
+
+      window.electronAPI.on('stats-response', (data) => {
+        this.handleStatsResponse(data);
+      });
+    } else {
+      console.warn('[VisualizationManager] electronAPI 不可用');
+    }
+  },
+
+  handleThoughtTrace(data) {
+    if (data.type === 'add') {
+      this.thoughtTrace.push(data.step);
+      this.renderThoughtTimeline();
+    } else if (data.type === 'update') {
+      const index = this.thoughtTrace.findIndex(s => s.id === data.step.id);
+      if (index !== -1) {
+        this.thoughtTrace[index] = { ...this.thoughtTrace[index], ...data.step };
+        this.renderThoughtTimeline();
+      }
+    } else if (data.type === 'clear') {
+      this.thoughtTrace = [];
+      this.renderThoughtTimeline();
+    }
+  },
+
+  handleStatsResponse(data) {
+    if (data.toolUsage) {
+      this.updateToolUsageChart(data.toolUsage);
+    }
+    if (data.session) {
+      this.updateSessionStats(data.session);
+    }
+    if (data.data) {
+      if (Array.isArray(data.data)) {
+        if (data.data.length > 0 && data.data[0].category !== undefined) {
+          this.updateToolUsageChart(data.data);
+        } else if (data.data.length > 0 && data.data[0].callCount !== undefined) {
+          this.updateToolUsageChart(data.data);
+        }
+      } else if (data.data.totalToolCalls !== undefined) {
+        this.updateSessionStats(data.data);
+      }
+    }
+  },
+
+  requestStats() {
+    if (window.electronAPI) {
+      window.electronAPI.sendMessage('stats-request', {});
+    }
+    setInterval(() => {
+      if (window.electronAPI) {
+        window.electronAPI.sendMessage('stats-request', {});
+      }
+    }, 10000);
+  },
+
+  initPanelToggles() {
+    const thoughtToggle = document.getElementById('toggleThoughtPanel');
+    if (thoughtToggle) {
+      thoughtToggle.addEventListener('click', () => {
+        const body = document.getElementById('thoughtPanelBody');
+        if (body) {
+          body.classList.toggle('collapsed');
+          const svg = thoughtToggle.querySelector('svg path');
+          if (body.classList.contains('collapsed')) {
+            svg.setAttribute('d', 'M12 8l6 6 1.41-1.41L12 5.17 4.59 12.59 6 14z');
+          } else {
+            svg.setAttribute('d', 'M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z');
+          }
+        }
+      });
+    }
+
+    const statsToggle = document.getElementById('toggleStatsPanel');
+    if (statsToggle) {
+      statsToggle.addEventListener('click', () => {
+        const body = document.getElementById('statsPanelBody');
+        if (body) {
+          body.classList.toggle('collapsed');
+          const svg = statsToggle.querySelector('svg path');
+          if (body.classList.contains('collapsed')) {
+            svg.setAttribute('d', 'M12 8l6 6 1.41-1.41L12 5.17 4.59 12.59 6 14z');
+          } else {
+            svg.setAttribute('d', 'M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z');
+          }
+        }
+      });
+    }
+  },
+
+  initChart() {
+    const chartDom = document.getElementById('toolUsageChart');
+    if (chartDom && window.echarts) {
+      this.toolUsageChart = window.echarts.init(chartDom);
+      this.updateToolUsageChart([]);
+      window.addEventListener('resize', () => {
+        this.toolUsageChart?.resize();
+      });
+    }
+  },
+
+  updateToolUsageChart(data) {
+    if (!this.toolUsageChart) return;
+
+    const categoryMap = {
+      file: '文件', web: '网络', system: '系统', browser: '浏览器',
+      code: '代码', git: 'Git', task: '任务', memory: '记忆',
+      data: '数据', db: '数据库', email: '邮件', monitor: '监控',
+      scheduler: '定时', ocr: 'OCR', office: 'Office'
+    };
+
+    const filteredData = data.filter(d => d.callCount > 0);
+    const names = filteredData.map(d => categoryMap[d.category] || d.category);
+    const values = filteredData.map(d => d.callCount);
+    const successRates = filteredData.map(d => d.successRate);
+
+    const option = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params) => {
+          const idx = params[0].dataIndex;
+          return `${names[idx]}<br/>调用次数: ${values[idx]}<br/>成功率: ${successRates[idx]}%`;
+        }
+      },
+      grid: {
+        left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: names,
+        axisLabel: {
+          color: '#94a3b8',
+          fontSize: 10,
+          rotate: 30
+        },
+        axisLine: { lineStyle: { color: 'rgba(148,163,184,0.1)' } }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: { color: '#94a3b8', fontSize: 10 },
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.05)' } }
+      },
+      series: [{
+        type: 'bar',
+        data: values.map((val, idx) => ({
+          value: val,
+          itemStyle: {
+            color: `rgba(59, 130, 246, ${0.4 + (successRates[idx] / 100) * 0.6})`,
+            borderRadius: [4, 4, 0, 0]
+          }
+        })),
+        barWidth: '60%'
+      }]
+    };
+
+    this.toolUsageChart.setOption(option);
+  },
+
+  updateSessionStats(data) {
+    const totalCallsEl = document.getElementById('statTotalCalls');
+    const successRateEl = document.getElementById('statSuccessRate');
+
+    if (totalCallsEl && data.totalToolCalls !== undefined) {
+      totalCallsEl.textContent = data.totalToolCalls;
+    }
+
+    if (successRateEl && data.totalToolCalls !== undefined) {
+      const successRate = data.totalToolCalls > 0
+        ? Math.round((data.totalToolCalls - (data.failCount || 0)) / data.totalToolCalls * 100)
+        : 0;
+      successRateEl.textContent = successRate + '%';
+    }
+  },
+
+  renderThoughtTimeline() {
+    const timelineEl = document.getElementById('thoughtTimeline');
+    if (!timelineEl) return;
+
+    if (this.thoughtTrace.length === 0) {
+      timelineEl.innerHTML = '<div class="thought-empty">等待思考开始...</div>';
+      return;
+    }
+
+    timelineEl.innerHTML = this.thoughtTrace.map(step => {
+      const details = step.details || {};
+      const detailsText = Object.entries(details)
+        .filter(([k]) => k !== 'success' && k !== 'isEmpty' && k !== 'error' && k !== 'args')
+        .map(([k, v]) => `${k}: ${typeof v === 'number' ? v : JSON.stringify(v).slice(0, 30)}`)
+        .join(', ');
+
+      const argsText = details.args ? JSON.stringify(details.args).slice(0, 50) : '';
+
+      return `
+        <div class="thought-step ${step.status}">
+          <div class="thought-step-content">
+            <div class="thought-step-name">${this.escapeHtml(step.name)}</div>
+            ${detailsText || argsText ? `<div class="thought-step-details">${this.escapeHtml(detailsText || argsText)}</div>` : ''}
+            <div class="thought-step-meta">
+              ${step.duration > 0 ? `<span class="thought-step-duration">${step.duration}s</span>` : ''}
+              <span class="thought-step-status ${step.status}">${step.status === 'running' ? '运行中' : step.status === 'completed' ? '完成' : '失败'}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    timelineEl.scrollTop = timelineEl.scrollHeight;
+  },
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+};
+
+// ============================================================
 // 应用入口
 // ============================================================
 function initApp() {
@@ -1087,6 +1324,12 @@ function initApp() {
     ChatManager.init();
   } catch (e) {
     console.error('[ChatManager] 初始化失败:', e);
+  }
+
+  try {
+    VisualizationManager.init();
+  } catch (e) {
+    console.error('[VisualizationManager] 初始化失败:', e);
   }
 
   // 初始化输入框高度

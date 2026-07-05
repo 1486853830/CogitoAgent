@@ -22,6 +22,7 @@
     "docx": "^9.7.1",
     "dompurify": "^3.4.11",
     "dotenv": "^16.4.5",
+    "echarts": "^6.1.0",
     "electron": "^42.5.0",
     "isolated-vm": "^6.1.2",
     "marked": "^18.0.5",
