@@ -14,7 +14,8 @@ import * as tools from './tools/index.js';
 import { getMessages, addUserMessage, addAssistantMessage, addToolResultMessage, shouldCompress, compressHistory, initializeSession } from './session.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
 import { loadConfig } from '../config.js';
-import { startWsServer, broadcast, onMessage } from '../io/ws-server.js';
+import { startWsServer, broadcast, onMessage, onStatsRequest } from '../io/ws-server.js';
+import { recordToolCall, recordSession, recordMessage, getToolStats, getSessionStats, getToolUsageByCategory, getTopUsedTools } from './stats.js';
 
 // 导入拆分出去的模块
 import { STATE, getState, setState, isThinking, isAwaitingInput, isAwaitingConfirmation, getPendingConfirmation, setPendingConfirmation, requestConfirmation, resolveConfirmation, state } from './state.js';
@@ -26,6 +27,42 @@ let thinkingTimer = null;
 let shouldStop = false;
 let thoughtInterval = 3000;
 let isProcessing = false;  // 并发控制标志，防止多个思考循环同时执行
+
+// 思维链追踪器
+let thoughtTrace = [];
+
+function traceStep(name, details = {}, status = 'running') {
+  const step = {
+    id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+    name,
+    details,
+    status,
+    startTime: new Date().toISOString(),
+    duration: 0
+  };
+  thoughtTrace.push(step);
+  broadcast('thought-trace', { action: 'add', step });
+  return step;
+}
+
+function updateTraceStep(id, updates) {
+  const step = thoughtTrace.find(s => s.id === id);
+  if (step) {
+    const start = new Date(step.startTime).getTime();
+    step.duration = Math.round((Date.now() - start) / 1000 * 100) / 100;
+    Object.assign(step, updates);
+    broadcast('thought-trace', { action: 'update', step });
+  }
+}
+
+function clearThoughtTrace() {
+  thoughtTrace = [];
+  broadcast('thought-trace', { action: 'clear' });
+}
+
+function getThoughtTrace() {
+  return [...thoughtTrace];
+}
 
 // 工具输出最大长度限制（根据工具类型智能截断）
 const TOOL_OUTPUT_LIMITS = {
@@ -215,8 +252,11 @@ function formatToolError(error, toolName) {
 
 async function executeTool(toolName, args) {
   const registry = TOOL_REGISTRY[toolName];
+  const startTime = Date.now();
   
   if (!registry) {
+    const duration = (Date.now() - startTime) / 1000;
+    recordToolCall(toolName, 'unknown', false, duration);
     return { 
       success: false, 
       error: `未知工具：${toolName}`,
@@ -229,6 +269,8 @@ async function executeTool(toolName, args) {
   if (isConfirmEnabled() && isDangerousOperation(toolName)) {
     const confirmed = await requestConfirmation(toolName, args);
     if (!confirmed) {
+      const duration = (Date.now() - startTime) / 1000;
+      recordToolCall(toolName, registry.category, false, duration);
       return { 
         success: false, 
         error: '用户拒绝执行此危险操作',
@@ -240,7 +282,7 @@ async function executeTool(toolName, args) {
     state.current = STATE.THINKING;
   }
 
-  const { fn, customArgs, parseJson, jsonParams } = registry;
+  const { fn, customArgs, parseJson, jsonParams, category } = registry;
   let processedArgs = args;
 
   // 处理 JSON 格式参数
@@ -276,9 +318,11 @@ async function executeTool(toolName, args) {
 
   try {
     const result = await fn(...processedArgs);
+    const duration = (Date.now() - startTime) / 1000;
     
     // 防御性检查：确保 result 是有效对象
     if (result === undefined || result === null) {
+      recordToolCall(toolName, category, true, duration);
       return {
         success: true,
         data: '执行完成（无返回值）',
@@ -289,6 +333,7 @@ async function executeTool(toolName, args) {
     
     // 如果工具已经返回了标准格式 { success, data/error }，直接使用
     if (typeof result === 'object' && 'success' in result) {
+      recordToolCall(toolName, category, result.success, duration);
       return {
         ...result,
         toolName,
@@ -297,6 +342,7 @@ async function executeTool(toolName, args) {
     }
     
     // 否则包装成标准格式
+    recordToolCall(toolName, category, true, duration);
     return {
       success: true,
       data: result,
@@ -304,6 +350,8 @@ async function executeTool(toolName, args) {
       timestamp: new Date().toISOString()
     };
   } catch (error) {
+    const duration = (Date.now() - startTime) / 1000;
+    recordToolCall(toolName, category, false, duration);
     return {
       success: false,
       error: formatToolError(error, toolName),
@@ -555,6 +603,10 @@ async function thinkCycle() {
   // WebSocket 广播思考状态
   broadcast('agent-state', { state: 'thinking' });
 
+  // 开始新的思维链追踪
+  clearThoughtTrace();
+  const cycleStep = traceStep('思考周期开始', { messageCount: getMessages().length }, 'running');
+
   try {
     const messages = getMessages();
     let fullResponse = '';
@@ -564,6 +616,9 @@ async function thinkCycle() {
     // 重置标签状态
     resetReasoningTag();
     resetContentTag();
+
+    // 追踪：发送请求到 AI
+    const requestStep = traceStep('发送请求到 AI', { messageCount: messages.length }, 'running');
 
     for await (const chunk of streamChat(messages)) {
       if (shouldStop) {
@@ -590,6 +645,9 @@ async function thinkCycle() {
       }
     }
 
+    // 追踪：AI 响应完成
+    updateTraceStep(requestStep.id, { status: 'completed', details: { responseLength: fullResponse.length } });
+
     // 收尾：关闭思考区标签
     closeReasoning();
     resetContentTag();
@@ -610,8 +668,10 @@ async function thinkCycle() {
       println('[等待] 我先不说了，等你说～', 'gray');
     }
 
-    // 循环处理所有工具调用
+    // 追踪：解析工具调用
+    const parseStep = traceStep('解析工具调用', {}, 'running');
     const toolCalls = parseAllToolCalls(fullResponse);
+    updateTraceStep(parseStep.id, { status: 'completed', details: { toolCallCount: toolCalls.length } });
 
     // AI 回复只保留纯文本和 [TOOL] 调用，不含工具结果
     // 先清理 AI 可能生成的虚假工具结果标记
@@ -633,7 +693,11 @@ async function thinkCycle() {
 
         broadcast('agent-reply', { type: 'tool-start', tool: toolCall.tool, args: toolCall.args });
 
+        // 追踪：执行工具
+        const toolStep = traceStep(`执行工具: ${toolCall.tool}`, { args: toolCall.args }, 'running');
+        
         const result = await executeTool(toolCall.tool, toolCall.args);
+        
         if (result.success) {
           const isEmpty = !result.data ||
             (typeof result.data === 'string' && result.data.trim() === '') ||
@@ -644,16 +708,19 @@ async function thinkCycle() {
             println(`[空结果] ${toolCall.tool} 返回空结果`, 'yellow');
             toolResults.push(`[工具结果]: [空结果] ${toolCall.tool} 返回空结果，未找到相关信息。`);
             broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: '[空结果] 未找到相关信息', isEmpty: true });
+            updateTraceStep(toolStep.id, { status: 'completed', details: { success: true, isEmpty: true } });
           } else {
             const resultText = formatToolResult(toolCall.tool, result.data);
             printToolBlock(resultText, '工具结果');
             toolResults.push(`[工具结果]: ${resultText}`);
             broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: resultText });
+            updateTraceStep(toolStep.id, { status: 'completed', details: { success: true, resultLength: resultText.length } });
           }
         } else {
           println(`[失败] ${result.error}`, 'red');
           toolResults.push(`[工具错误]: ${result.error}`);
           broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: false, data: result.error });
+          updateTraceStep(toolStep.id, { status: 'failed', details: { success: false, error: result.errorType } });
         }
 
         if (shouldStop) {
@@ -662,6 +729,9 @@ async function thinkCycle() {
         }
       }
     }
+
+    // 追踪：整合结果
+    const integrateStep = traceStep('整合结果', { toolResultCount: toolResults.length }, 'running');
 
     // 1. 只把 AI 的纯回复作为 assistant 消息（不含工具结果）
     addAssistantMessage(finalResponse);
@@ -672,11 +742,20 @@ async function thinkCycle() {
       addToolResultMessage(toolResultMessage);
     }
 
+    updateTraceStep(integrateStep.id, { status: 'completed' });
+
     if (shouldCompress()) {
+      const compressStep = traceStep('压缩对话历史', {}, 'running');
       println('[系统] 正在压缩对话历史...', 'gray');
       compressHistory();
       println('[系统] 压缩完成', 'gray');
+      updateTraceStep(compressStep.id, { status: 'completed' });
     }
+
+    // 追踪：思考周期结束
+    updateTraceStep(cycleStep.id, { status: 'completed', details: { 
+      nextAction: wantsToWait ? 'wait' : (toolCalls.length > 0 ? 'tools' : 'continue') 
+    }});
 
     if (wantsToWait || state.current !== STATE.THINKING) {
       state.current = STATE.AWAITING_INPUT;
@@ -689,6 +768,7 @@ async function thinkCycle() {
     }
 
   } catch (error) {
+    updateTraceStep(cycleStep.id, { status: 'failed', details: { error: error.message } });
     if (shouldStop) {
       shouldStop = false;
       return;
@@ -731,8 +811,29 @@ async function start() {
       // 处理来自桌面端的消息
       onMessage((msg) => {
         if (msg.type === 'user-message' && msg.text) {
+          recordMessage();
           handleUserInput(msg.text);
         }
+      });
+      // 处理统计数据请求
+      onStatsRequest((payload) => {
+        if (payload?.type === 'toolUsage') {
+          return { data: getToolUsageByCategory() };
+        } else if (payload?.type === 'topTools') {
+          return { data: getTopUsedTools(payload?.limit || 10) };
+        } else if (payload?.type === 'session') {
+          return { data: getSessionStats() };
+        } else if (payload?.type === 'toolStats') {
+          return { data: getToolStats() };
+        } else if (payload?.type === 'thoughtTrace') {
+          return { data: getThoughtTrace() };
+        }
+        return {
+          toolUsage: getToolUsageByCategory(),
+          topTools: getTopUsedTools(10),
+          session: getSessionStats(),
+          thoughtTrace: getThoughtTrace()
+        };
       });
     } catch (e) {
       console.log('[WS] WebSocket 启动失败，跳过（桌面端不可用）');
@@ -777,5 +878,9 @@ export {
   toggleDebug,
   handleUserInput,
   TOOL_OUTPUT_LIMITS,
-  STATE
+  STATE,
+  traceStep,
+  updateTraceStep,
+  clearThoughtTrace,
+  getThoughtTrace
 };
