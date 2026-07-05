@@ -314,15 +314,19 @@ ${buildToolList()}
 ## 重要：关于工具调用和结果展示
 当你调用工具时，系统会：
 1. 执行工具并自动捕获结果
-2. 将结果注入到对话上下文中供你下一轮使用
+2. 将结果作为独立的 user 消息注入到对话上下文中（格式：[系统返回的工具执行结果] + [工具结果]: / [工具错误]:）
 3. 在界面上用独立的工具气泡展示结果
 
-**你不需要在回复中输出工具结果！** 请遵循以下规则：
-- ❌ **禁止**在回复中输出 "[工具结果]"、"[工具错误]"、"tool result"、"工具返回" 等文字
-- ❌ **禁止**复制粘贴工具返回的具体内容到你的回复中
+**关键：工具结果由系统注入，不是你自己生成的！** 请遵循以下规则：
+- ❌ **绝对禁止**在回复中输出 "[工具结果]"、"[工具错误]"、"tool result"、"工具返回" 等文字
+- ❌ **绝对禁止**在回复中编造或猜测工具的返回结果
+- ❌ **绝对禁止**复制粘贴工具返回的具体内容到你的回复中
+- ✅ 调用工具后，等待系统在下一轮注入真实结果，再基于真实结果回复
 - ✅ 只输出你对工具结果的理解和分析
 - ✅ 用自然语言描述工具执行情况，如："根据搜索结果..."、"文件已创建成功"
 - ✅ 可以引用工具返回的关键信息，但要用自己的话总结，不要直接粘贴原始输出
+
+**如果工具尚未返回结果，你绝不能自行编造结果。宁可说"正在查询..."也不要猜测。**
 
 ## 工具调用失败或无结果时的处理规则
 
@@ -583,7 +587,11 @@ function recoverSessionsFromDisk(meta) {
       const sessionId = file.replace('.json', '');
       try {
         const content = JSON.parse(readFileSync(path.join(SESSIONS_DIR, file), 'utf-8'));
-        const messageCount = Array.isArray(content) ? content.filter(m => m.role !== 'system').length : 0;
+        // 统计真实消息数（排除 system prompt 和系统注入的工具结果消息）
+        const messageCount = Array.isArray(content) ? content.filter(m =>
+          m.role !== 'system' &&
+          !(m.role === 'user' && m.content.startsWith('[系统返回的工具执行结果]'))
+        ).length : 0;
         recovered.push({
           id: sessionId,
           name: `会话 ${recovered.length + 1}`,
@@ -653,6 +661,15 @@ function addUserMessage(content) {
 function addAssistantMessage(content) {
   conversationHistory.push({ role: 'assistant', content });
   turnCount++;
+  saveSession(currentSessionId, conversationHistory);
+}
+
+/**
+ * 添加工具结果消息（作为 user 角色注入，但不计入轮次）
+ * 工具结果由系统注入，不是真实用户输入，不影响 turnCount 和会话活跃时间
+ */
+function addToolResultMessage(content) {
+  conversationHistory.push({ role: 'user', content });
   saveSession(currentSessionId, conversationHistory);
 }
 
@@ -762,7 +779,8 @@ function generateSummary(messages) {
   const requests = [];
 
   for (const msg of messages) {
-    if (msg.role === 'user') {
+    // 跳过系统注入的工具结果消息，只统计真实用户请求
+    if (msg.role === 'user' && !msg.content.startsWith('[系统返回的工具执行结果]')) {
       requests.push(msg.content.slice(0, 80));
     }
     const matches = msg.content.matchAll(/\[TOOL\]\s*(\w+)/g);
@@ -814,6 +832,7 @@ export {
   getMessages,
   addUserMessage,
   addAssistantMessage,
+  addToolResultMessage,
   shouldCompress,
   compressHistory,
   getHistoryLength,
