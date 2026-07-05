@@ -31,16 +31,18 @@ async function getIvm() {
   }
 }
 
-// 从配置读取代码执行限制（支持 .env 中 COGITO_CODE_TIMEOUT / COGITO_CODE_MAX_OUTPUT）
-const _codeLimits = (() => {
+/**
+ * 从配置读取代码执行限制（按需调用，与 code.js 保持一致）
+ * 支持 .env 中 COGITO_CODE_TIMEOUT / COGITO_CODE_MAX_OUTPUT 配置
+ */
+function getCodeLimits() {
   const cfg = loadConfig();
   return {
     maxExecutionTime: cfg.code?.maxExecutionTime ?? 30000,
     maxOutputSize: cfg.code?.maxOutputSize ?? 100000
   };
-})();
-const MAX_EXECUTION_TIME = _codeLimits.maxExecutionTime;
-const MAX_OUTPUT_SIZE = _codeLimits.maxOutputSize;
+}
+
 const MAX_MEMORY_MB = 128;
 
 /**
@@ -66,17 +68,19 @@ async function runJavaScriptIsolated(code, timeout = 10000) {
     throw new Error('isolated-vm 不可用，请降级到原生 vm');
   }
 
+  const { maxExecutionTime, maxOutputSize } = getCodeLimits();
+
   let isolate = null;
   let consoleLogCallback = null;
   let consoleErrorCallback = null;
   let consoleWarnCallback = null;
   let consoleInfoCallback = null;
-  
+
   try {
     isolate = new ivm.Isolate({
       memoryLimit: MAX_MEMORY_MB,
       inspector: false,
-      cpuTimeout: Math.min(timeout, MAX_EXECUTION_TIME)
+      cpuTimeout: Math.min(timeout, maxExecutionTime)
     });
 
     const context = await isolate.createContext();
@@ -102,8 +106,8 @@ async function runJavaScriptIsolated(code, timeout = 10000) {
     consoleLogCallback = new ivm.Callback((...args) => {
       const line = args.map(formatArg).join(' ');
       outputBuffer += line + '\n';
-      if (outputBuffer.length > MAX_OUTPUT_SIZE) {
-        outputBuffer = outputBuffer.slice(0, MAX_OUTPUT_SIZE) + '\n[输出过长已截断]';
+      if (outputBuffer.length > maxOutputSize) {
+        outputBuffer = outputBuffer.slice(0, maxOutputSize) + '\n[输出过长已截断]';
       }
     }, { arguments: { copy: true, maxDepth: 2 } });
 
@@ -188,7 +192,7 @@ async function runJavaScriptIsolated(code, timeout = 10000) {
     `;
 
     const result = await context.eval(wrappedCode, {
-      timeout: Math.min(timeout, MAX_EXECUTION_TIME),
+      timeout: Math.min(timeout, maxExecutionTime),
       breakOnSigint: true
     });
 
@@ -207,8 +211,8 @@ async function runJavaScriptIsolated(code, timeout = 10000) {
       output = '[执行错误]: ' + resultObj.error;
     }
 
-    if (output.length > MAX_OUTPUT_SIZE) {
-      output = output.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
+    if (output.length > maxOutputSize) {
+      output = output.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
     }
 
     return {
@@ -338,12 +342,13 @@ function createJavaScriptSandbox() {
 
 async function runJavaScriptFallback(code, timeout = 10000) {
   return new Promise((resolve) => {
+    const { maxExecutionTime, maxOutputSize } = getCodeLimits();
     const timeoutId = setTimeout(() => {
       resolve({
         success: false,
         error: '执行超时（超过指定时间）'
       });
-    }, Math.min(timeout, MAX_EXECUTION_TIME));
+    }, Math.min(timeout, maxExecutionTime));
 
     try {
       const { context } = createJavaScriptSandbox();
@@ -359,7 +364,7 @@ async function runJavaScriptFallback(code, timeout = 10000) {
       `;
 
       const result = vm.runInContext(wrappedCode, context, {
-        timeout: Math.min(timeout, MAX_EXECUTION_TIME),
+        timeout: Math.min(timeout, maxExecutionTime),
         displayErrors: true
       });
 
@@ -378,8 +383,8 @@ async function runJavaScriptFallback(code, timeout = 10000) {
         output = '[执行错误]: ' + result.error;
       }
 
-      if (output.length > MAX_OUTPUT_SIZE) {
-        output = output.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
+      if (output.length > maxOutputSize) {
+        output = output.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
       }
 
       resolve({
@@ -419,12 +424,13 @@ async function runJavaScriptDirect(code) {
   console.warn('[安全警告] 非沙箱模式执行 JavaScript 代码，可能存在安全风险');
 
   return new Promise((resolve) => {
+    const { maxExecutionTime, maxOutputSize } = getCodeLimits();
     const timeoutId = setTimeout(() => {
       resolve({
         success: false,
-        error: '执行超时（超过30秒）'
+        error: `执行超时（超过${maxExecutionTime / 1000}秒）`
       });
-    }, MAX_EXECUTION_TIME);
+    }, maxExecutionTime);
 
     try {
       const safeGlobals = {
@@ -508,8 +514,8 @@ async function runJavaScriptDirect(code) {
         output = '[执行错误]: ' + result.error;
       }
 
-      if (output.length > MAX_OUTPUT_SIZE) {
-        output = output.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
+      if (output.length > maxOutputSize) {
+        output = output.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
       }
 
       resolve({
@@ -576,15 +582,16 @@ async function runPythonSandbox(code) {
   return new Promise(async (resolve) => {
     let tmpPath = null;
     let timedOut = false;
+    const { maxExecutionTime, maxOutputSize } = getCodeLimits();
 
     const timeoutId = setTimeout(async () => {
       timedOut = true;
       await cleanupTmpFile(tmpPath);
       resolve({
         success: false,
-        error: '执行超时（超过30秒）'
+        error: `执行超时（超过${maxExecutionTime / 1000}秒）`
       });
-    }, MAX_EXECUTION_TIME);
+    }, maxExecutionTime);
 
     try {
       tmpPath = generateSecureTmpPath('py');
@@ -606,11 +613,11 @@ async function runPythonSandbox(code) {
       delete secureEnv.VIRTUAL_ENV;
 
       execFile('python', [tmpPath], {
-        timeout: MAX_EXECUTION_TIME,
+        timeout: maxExecutionTime,
         encoding: 'utf8',
         cwd: os.tmpdir(),
         env: secureEnv,
-        maxBuffer: MAX_OUTPUT_SIZE * 2,
+        maxBuffer: maxOutputSize * 2,
       }, async (error, stdout, stderr) => {
         if (timedOut) return;
 
@@ -630,8 +637,8 @@ async function runPythonSandbox(code) {
           result += '\n[警告]: ' + stderr;
         }
 
-        if (result.length > MAX_OUTPUT_SIZE) {
-          result = result.slice(0, MAX_OUTPUT_SIZE) + '\n\n[输出内容过长，已截断]';
+        if (result.length > maxOutputSize) {
+          result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
         }
 
         resolve({
