@@ -1120,11 +1120,11 @@ const VisualizationManager = {
 
   requestStats() {
     if (window.electronAPI) {
-      window.electronAPI.sendMessage('stats-request', {});
+      window.electronAPI.sendStatsRequest({});
     }
     setInterval(() => {
       if (window.electronAPI) {
-        window.electronAPI.sendMessage('stats-request', {});
+        window.electronAPI.sendStatsRequest({});
       }
     }, 10000);
   },
