@@ -17,6 +17,7 @@
     "test:e2e:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/e2e --watch"
   },
   "dependencies": {
+    "@pawastation/ilink-bot-sdk": "^0.2.0",
     "@unblessed/node": "^1.0.0-alpha.23",
     "cheerio": "^1.0.0",
     "docx": "^9.7.1",
@@ -29,6 +30,7 @@
     "nodemailer": "^9.0.1",
     "playwright": "^1.61.0",
     "pptxgenjs": "^4.0.1",
+    "qrcode": "^1.5.4",
     "sql.js": "^1.10.0",
     "ws": "^8.21.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz"

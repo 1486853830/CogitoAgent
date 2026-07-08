@@ -833,6 +833,19 @@ app.whenReady().then(async () => {
     shell.openExternal(url);
   });
 
+  // ===== IPC: 微信相关 =====
+  ipcMain.on('wechat-login', () => {
+    sendToAgent('/wechat/login');
+  });
+
+  ipcMain.on('wechat-logout', () => {
+    sendToAgent('/wechat/logout');
+  });
+
+  ipcMain.on('wechat-request-status', () => {
+    sendToAgent('/wechat/status');
+  });
+
   // ===== 启动逻辑 =====
   if (!isConfigured()) {
     console.log('[主进程] 未配置，显示配置向导');

@@ -11,6 +11,7 @@ import { getToolNames, getToolsByCategory } from './registry.js';
 import * as tools from './tools/index.js';
 import { listSessions, getCurrentSession, createNewSession, switchSession, deleteSession, renameSession, resetConversation } from './session.js';
 import { orchestrator } from './orchestrator.js';
+import { manualLoginWechat, manualLogoutWechat, getWechatStatus } from './wechat-manager.js';
 
 // 命令帮助文本
 const HELP_TEXT = `
@@ -214,7 +215,29 @@ function handleCommand(input) {
     println(`[集群] 已停止 ${result.data.stoppedCount} 个智能体`, 'yellow');
     return true;
   }
-  
+
+  // 微信命令
+  if (trimmed === '/wechat/login') {
+    manualLoginWechat().catch((e) => console.error('[微信] login 异常:', e.message));
+    return true;
+  }
+
+  if (trimmed === '/wechat/logout') {
+    manualLogoutWechat().catch((e) => console.error('[微信] logout 异常:', e.message));
+    return true;
+  }
+
+  if (trimmed === '/wechat/status') {
+    getWechatStatus().then((status) => {
+      if (status.success && status.data.loggedIn) {
+        println(`[微信] 已登录账号: ${status.data.accountId}`, 'green');
+      } else {
+        println('[微信] 未登录', 'gray');
+      }
+    });
+    return true;
+  }
+
   return false;
 }
 

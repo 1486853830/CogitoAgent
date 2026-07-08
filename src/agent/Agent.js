@@ -22,13 +22,30 @@ import { STATE, getState, setState, isThinking, isAwaitingInput, isAwaitingConfi
 import { TOOL_REGISTRY, DANGEROUS_OPERATIONS, getToolNames, getToolRegistry, hasTool, isDangerousOperation, isConfirmEnabled, getToolsByCategory } from './registry.js';
 import { handleCommand, printHelp, printStatus, printClearConfirm, switchPersona, listPersonas, listTools, printConfig, toggleDebug, printClusterStatus } from './commands.js';
 import { orchestrator } from './orchestrator.js';
+import { initWechatChannel } from './wechat-manager.js';
 
 // 状态管理委托给 state.js 模块
 let thinkingTimer = null;
 let shouldStop = false;
-let thoughtInterval = 3000;
 let isProcessing = false;  // 并发控制标志，防止多个思考循环同时执行
 let consecutiveCycleCount = 0;  // 连续思考循环计数（无用户输入时）
+let thoughtInterval = 3000;
+let _replyCallback = null;  // 微信回复回调
+
+function setReplyCallback(cb) {
+  _replyCallback = cb;
+}
+
+function extractCleanReply(text) {
+  return text
+    .replace(/\[TOOL\][\s\S]*?\[\/TOOL\]/g, '')
+    .split('\n')
+    .filter(line =>
+      !line.trim().startsWith('[工具结果]:') &&
+      !line.trim().startsWith('[工具错误]:'))
+    .join('\n')
+    .trim();
+}
 const MAX_CONSECUTIVE_CYCLES = 8;  // 最大连续循环次数，超过后强制暂停等待用户
 
 // 思维链追踪器
@@ -508,6 +525,12 @@ function formatLsResult(data) {
  */
 function handleUserInput(input) {
   consecutiveCycleCount = 0;  // 用户输入时重置连续循环计数
+
+  // 非微信消息时清除微信回复回调
+  if (_replyCallback && !input.startsWith('[微信消息')) {
+    _replyCallback = null;
+  }
+
   // 检查是否为退出命令
   if (input.toLowerCase() === 'exit') {
     exit();
@@ -582,7 +605,7 @@ function handleUserInput(input) {
       const hasUserMessage = messages.some(m => m.role === 'user');
       let processedInput = input;
       if (!hasUserMessage) {
-        processedInput = `${input}\n\n[WAIT]你可以使用这个标签`;
+        processedInput = `${input}\n\n[WAIT]你需要学会使用这个标签，使用不当会卡入死循环`;
         println(`[消息] ${input}`, 'yellow');
         println('[系统] 已自动添加标签提示（首次消息）', 'gray');
       } else {
@@ -774,6 +797,11 @@ async function thinkCycle() {
     if (wantsToWait || state.current !== STATE.THINKING) {
       state.current = STATE.AWAITING_INPUT;
       const nextAction = wantsToWait ? 'wait' : 'continue';
+      if (_replyCallback) {
+        const cleanReply = extractCleanReply(finalResponse);
+        if (cleanReply) _replyCallback(cleanReply);
+        _replyCallback = null;
+      }
       broadcast('agent-reply', { type: 'end', nextAction });
       broadcast('agent-state', { state: 'idle' });
       consecutiveCycleCount = 0;
@@ -788,6 +816,11 @@ async function thinkCycle() {
         // 连续循环次数过多，强制暂停等待用户
         consecutiveCycleCount = 0;
         state.current = STATE.AWAITING_INPUT;
+        if (_replyCallback) {
+          const cleanReply = extractCleanReply(finalResponse);
+          if (cleanReply) _replyCallback(cleanReply);
+          _replyCallback = null;
+        }
         broadcast('agent-reply', { type: 'end', nextAction: 'wait' });
         broadcast('agent-state', { state: 'idle' });
         println('[系统] 已连续思考多轮，先听你说～', 'gray');
@@ -799,6 +832,7 @@ async function thinkCycle() {
 
   } catch (error) {
     updateTraceStep(cycleStep.id, { status: 'failed', details: { error: error.message } });
+    _replyCallback = null;
     if (shouldStop) {
       shouldStop = false;
       return;
@@ -886,6 +920,8 @@ async function start() {
 
   await tools.startScheduler();
 
+  await initWechatChannel();
+
   // 启动后等待用户输入，不立即开始自主探索
   println('\n  准备就绪，等待您的指令...', 'green');
   state.current = STATE.AWAITING_INPUT;
@@ -910,6 +946,7 @@ export {
   printConfig,
   toggleDebug,
   handleUserInput,
+  setReplyCallback,
   TOOL_OUTPUT_LIMITS,
   STATE,
   traceStep,
