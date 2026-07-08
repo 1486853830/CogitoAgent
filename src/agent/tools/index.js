@@ -128,6 +128,15 @@ import {
   runPythonSandbox,
   executeCodeSandbox
 } from './sandbox.js';
+import {
+  spawnAgent,
+  delegateTask,
+  getClusterStatus,
+  stopAgent,
+  stopAllAgents,
+  parallelExecute,
+  getAgent
+} from './cluster.js';
 
 export {
   getBasePath,
@@ -136,6 +145,13 @@ export {
   copy,
   mkdir,
   create,
+  spawnAgent,
+  delegateTask,
+  getClusterStatus,
+  stopAgent,
+  stopAllAgents,
+  parallelExecute,
+  getAgent,
   search,
   browse,
   fetchPage,
@@ -418,6 +434,15 @@ const TOOL_METADATA = {
   createWord: { argCount: 1 },
   createExcel: { argCount: 1 },
   readExcel: { argCount: 1 },
+
+  // 集群管理
+  spawnAgent: { argCount: 3 },
+  delegateTask: { argCount: 2 },
+  getClusterStatus: { argCount: 0 },
+  stopAgent: { argCount: 1 },
+  stopAllAgents: { argCount: 0 },
+  parallelExecute: { argCount: 1 },
+  getAgent: { argCount: 1 },
 };
 
 // 导出工具元数据（供 registry.js 参考）

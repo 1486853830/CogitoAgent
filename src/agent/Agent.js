@@ -20,13 +20,16 @@ import { recordToolCall, recordSession, recordMessage, getToolStats, getSessionS
 // 导入拆分出去的模块
 import { STATE, getState, setState, isThinking, isAwaitingInput, isAwaitingConfirmation, getPendingConfirmation, setPendingConfirmation, requestConfirmation, resolveConfirmation, state } from './state.js';
 import { TOOL_REGISTRY, DANGEROUS_OPERATIONS, getToolNames, getToolRegistry, hasTool, isDangerousOperation, isConfirmEnabled, getToolsByCategory } from './registry.js';
-import { handleCommand, printHelp, printStatus, printClearConfirm, switchPersona, listPersonas, listTools, printConfig, toggleDebug } from './commands.js';
+import { handleCommand, printHelp, printStatus, printClearConfirm, switchPersona, listPersonas, listTools, printConfig, toggleDebug, printClusterStatus } from './commands.js';
+import { orchestrator } from './orchestrator.js';
 
 // 状态管理委托给 state.js 模块
 let thinkingTimer = null;
 let shouldStop = false;
 let thoughtInterval = 3000;
 let isProcessing = false;  // 并发控制标志，防止多个思考循环同时执行
+let consecutiveCycleCount = 0;  // 连续思考循环计数（无用户输入时）
+const MAX_CONSECUTIVE_CYCLES = 8;  // 最大连续循环次数，超过后强制暂停等待用户
 
 // 思维链追踪器
 let thoughtTrace = [];
@@ -504,6 +507,7 @@ function formatLsResult(data) {
  * 处理用户输入
  */
 function handleUserInput(input) {
+  consecutiveCycleCount = 0;  // 用户输入时重置连续循环计数
   // 检查是否为退出命令
   if (input.toLowerCase() === 'exit') {
     exit();
@@ -762,9 +766,25 @@ async function thinkCycle() {
       const nextAction = wantsToWait ? 'wait' : 'continue';
       broadcast('agent-reply', { type: 'end', nextAction });
       broadcast('agent-state', { state: 'idle' });
+      consecutiveCycleCount = 0;
     } else if (toolCalls.length > 0) {
       broadcast('agent-reply', { type: 'end', nextAction: 'tools' });
+      consecutiveCycleCount = 0;
       scheduleNextCycle();
+    } else {
+      // 没有 [WAIT] 也没有工具调用，检查是否需要继续思考
+      consecutiveCycleCount++;
+      if (consecutiveCycleCount >= MAX_CONSECUTIVE_CYCLES) {
+        // 连续循环次数过多，强制暂停等待用户
+        consecutiveCycleCount = 0;
+        state.current = STATE.AWAITING_INPUT;
+        broadcast('agent-reply', { type: 'end', nextAction: 'wait' });
+        broadcast('agent-state', { state: 'idle' });
+        println('[系统] 已连续思考多轮，先听你说～', 'gray');
+      } else {
+        // 继续思考，让 AI 有机会输出更多内容
+        scheduleNextCycle();
+      }
     }
 
   } catch (error) {
@@ -827,12 +847,15 @@ async function start() {
           return { data: getToolStats() };
         } else if (payload?.type === 'thoughtTrace') {
           return { data: getThoughtTrace() };
+        } else if (payload?.type === 'cluster') {
+          return { data: orchestrator.getClusterStatus() };
         }
         return {
           toolUsage: getToolUsageByCategory(),
           topTools: getTopUsedTools(10),
           session: getSessionStats(),
-          thoughtTrace: getThoughtTrace()
+          thoughtTrace: getThoughtTrace(),
+          cluster: orchestrator.getClusterStatus()
         };
       });
     } catch (e) {
