@@ -966,6 +966,30 @@ textarea {
   color: #eab308;
 }
 
+/* 工具调用卡片主题色 */
+.tool-call-card {
+  background: rgba(234, 179, 8, 0.06);
+  border: 1px solid rgba(234, 179, 8, 0.12);
+}
+
+.tool-call-card:hover {
+  background: rgba(234, 179, 8, 0.1);
+}
+
+.tool-call-header {
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.tool-call-name {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tool-call-content pre {
+  background: rgba(0, 0, 0, 0.25);
+  color: #eab308;
+}
+
 /* 工具结果卡片主题色 */
 .tool-result-card {
   background: rgba(34, 197, 94, 0.08);
