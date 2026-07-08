@@ -93,10 +93,80 @@ const MessageRenderer = {
   },
 
   addToolCall(toolName, args) {
+    this.clearEmptyHint();
+
     const argsStr = SharedUtils.formatArgs(args);
-    return this.addMessage('tool-start', `🔧 ${toolName}(${argsStr})`, {
-      className: 'tool-start',
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message tool-call';
+
+    const card = document.createElement('div');
+    card.className = 'tool-call-card tool-call-collapsed';
+
+    const header = document.createElement('div');
+    header.className = 'tool-call-header';
+
+    const icon = document.createElement('div');
+    icon.className = 'tool-call-icon';
+    icon.textContent = '⚡';
+
+    const name = document.createElement('div');
+    name.className = 'tool-call-name';
+    name.textContent = `${toolName}(${argsStr})`;
+
+    const arrow = document.createElement('div');
+    arrow.className = 'tool-call-arrow';
+    arrow.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
+
+    header.appendChild(icon);
+    header.appendChild(name);
+    header.appendChild(arrow);
+
+    const content = document.createElement('div');
+    content.className = 'tool-call-content';
+
+    const pre = document.createElement('pre');
+    pre.textContent = `🔧 ${toolName}(${argsStr})`;
+    content.appendChild(pre);
+
+    card.appendChild(header);
+    card.appendChild(content);
+
+    card.addEventListener('click', () => {
+      if (card.classList.contains('tool-call-collapsed')) {
+        card.classList.remove('tool-call-collapsed');
+        card.classList.add('tool-call-expanded');
+      } else {
+        card.classList.remove('tool-call-expanded');
+        card.classList.add('tool-call-collapsed');
+      }
     });
+
+    if (this.options.layout === 'dashboard' && this.options.showAvatar) {
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar';
+      avatar.textContent = '⚙';
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.appendChild(card);
+
+      contentDiv.appendChild(bubble);
+      msgDiv.appendChild(avatar);
+      msgDiv.appendChild(contentDiv);
+    } else {
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.appendChild(card);
+      msgDiv.appendChild(bubble);
+    }
+
+    this.messagesEl.appendChild(msgDiv);
+    this.scrollToBottom();
+
+    return { msgDiv, card };
   },
 
   addToolResult(toolName, data, success = true) {

@@ -145,10 +145,101 @@
   font-weight: 600;
 }
 
-/* ===== 工具调用样式 ===== */
-.message.tool-start .bubble {
+/* ===== 工具调用卡片样式 ===== */
+.message.tool-call {
+  align-items: flex-start;
+  max-width: 95%;
+}
+
+.message.tool-call .bubble {
+  background: transparent;
+  border: none;
+  padding: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.tool-call-card {
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.tool-call-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 193, 7, 0.6), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.tool-call-card:hover::before {
+  opacity: 1;
+}
+
+.tool-call-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid;
+}
+
+.tool-call-icon {
+  flex-shrink: 0;
   font-size: 12px;
+}
+
+.tool-call-name {
+  flex: 1;
   font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-call-arrow {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+  opacity: 0.5;
+}
+
+.tool-call-expanded .tool-call-arrow {
+  transform: rotate(90deg);
+}
+
+.tool-call-content {
+  padding: 8px 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tool-call-content pre {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.tool-call-collapsed .tool-call-content {
+  display: none;
+}
+
+.tool-call-expanded .tool-call-content {
+  display: block;
 }
 
 /* ===== 工具结果卡片样式 ===== */

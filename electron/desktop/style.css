@@ -241,6 +241,30 @@ html, body {
   color: #ffc83c;
 }
 
+/* ---- 工具调用卡片（桌面主题色） ---- */
+.tool-call-card {
+  background: rgba(255, 200, 60, 0.08);
+  border: 1px solid rgba(255, 200, 60, 0.15);
+}
+
+.tool-call-card:hover {
+  background: rgba(255, 200, 60, 0.12);
+}
+
+.tool-call-header {
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.tool-call-name {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tool-call-content pre {
+  background: rgba(0, 0, 0, 0.2);
+  color: #d4a84b;
+}
+
 /* ---- 工具结果卡片（桌面主题色） ---- */
 .tool-result-card {
   background: rgba(0, 180, 120, 0.1);
