@@ -32,6 +32,8 @@ Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Contin
 | **MCP Protocol** | Expose tools as MCP Server for integration with other AI clients |
 | **Plugin System** | Dynamically load custom tool plugins |
 | **Thought Chain Visualization** | Real-time visualization of thinking process and tool execution |
+| **Agent Cluster** | Sub-agent creation, task delegation, and multi-agent collaboration |
+| **Monitor Panel** | Dedicated window for real-time cluster topology, thought chain, and tool stats |
 
 ---
 
@@ -174,7 +176,7 @@ cogito-agent/
 │   └── index.js                      # Application entry
 ├── electron/                         # Desktop mode
 │   ├── main.js / preload.cjs / agent-bridge.js
-│   ├── desktop/ / dashboard/ / setup/
+│   ├── desktop/ / dashboard/ / monitor/ / setup/
 │   ├── shared/                       # Shared utilities
 │   └── assets/
 ├── personas/                         # 22 preset personas (13 modern + 9 ancient)
@@ -202,6 +204,7 @@ cogito-agent/
 - **Session Management** — Independent contexts with auto-compression
 - **Statistics** — Tool usage tracking and performance metrics
 - **Thought Chain Visualization** — Real-time thinking process display
+- **Agent Cluster** — Sub-agent creation, task delegation, and cluster monitoring, see [introduction/agent-cluster.md](introduction/agent-cluster.md)
 
 ## Extensions
 
