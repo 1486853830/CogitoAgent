@@ -577,8 +577,18 @@ function handleUserInput(input) {
 
   if (state.current === STATE.AWAITING_INPUT) {
     if (input) {
-      println(`[消息] ${input}`, 'yellow');
-      addUserMessage(input);
+      // 首次消息自动添加 [WAIT] 提示，让 AI 给对话打标签
+      const messages = getMessages();
+      const hasUserMessage = messages.some(m => m.role === 'user');
+      let processedInput = input;
+      if (!hasUserMessage) {
+        processedInput = `${input}\n\n[WAIT]你可以使用这个标签`;
+        println(`[消息] ${input}`, 'yellow');
+        println('[系统] 已自动添加标签提示（首次消息）', 'gray');
+      } else {
+        println(`[消息] ${input}`, 'yellow');
+      }
+      addUserMessage(processedInput);
       state.current = STATE.THINKING;
       broadcast('agent-state', { state: 'thinking' });  // 通知前端开始思考
       scheduleNextCycle();
