@@ -24,7 +24,8 @@ const TOOL_CATEGORIES = {
   scheduler: '定时任务',
   ocr: '图像文字识别',
   vision: '视觉分析',
-  office: 'Office文档'
+  office: 'Office文档',
+  cluster: '集群管理'
 };
 
 // 工具注册表
@@ -179,6 +180,15 @@ const TOOL_REGISTRY = {
   createWord: { fn: tools.createWord, argCount: 1, category: 'office' },
   createExcel: { fn: tools.createExcel, argCount: 1, category: 'office' },
   readExcel: { fn: tools.readExcel, argCount: 1, category: 'office' },
+
+  // 集群管理
+  spawnAgent: { fn: tools.spawnAgent, argCount: 3, category: 'cluster' },
+  delegateTask: { fn: tools.delegateTask, argCount: 2, category: 'cluster' },
+  getClusterStatus: { fn: tools.getClusterStatus, argCount: 0, category: 'cluster' },
+  stopAgent: { fn: tools.stopAgent, argCount: 1, category: 'cluster' },
+  stopAllAgents: { fn: tools.stopAllAgents, argCount: 0, category: 'cluster' },
+  parallelExecute: { fn: tools.parallelExecute, argCount: 1, category: 'cluster', parseJson: [true] },
+  getAgent: { fn: tools.getAgent, argCount: 1, category: 'cluster' },
 };
 
 // 危险操作列表
@@ -254,7 +264,9 @@ function getToolsByCategory() {
     monitor: ['getCPUInfo', 'getMemoryInfo', 'getDiskInfo', 'getNetworkInfo', 'getProcesses', 'getSystemInfo', 'getCurrentProcess', 'getSystemLoad', 'monitorSystem'],
     scheduler: ['addScheduleTask', 'getScheduleTasks', 'getScheduleTask', 'updateScheduleTask', 'toggleScheduleTask', 'removeScheduleTask', 'startScheduler', 'stopScheduler'],
     ocr: ['ocr', 'ocrBatch'],
-    vision: ['vision', 'visionFromUrl']
+    vision: ['vision', 'visionFromUrl'],
+    office: ['createPpt', 'createWord', 'createExcel', 'readExcel'],
+    cluster: ['spawnAgent', 'delegateTask', 'getClusterStatus', 'stopAgent', 'stopAllAgents', 'parallelExecute', 'getAgent']
   };
 }
 

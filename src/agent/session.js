@@ -280,6 +280,32 @@ function buildToolList() {
 
 `;
         break;
+      case 'cluster':
+        toolList += `### 智能体集群工具
+你可以生成子智能体并委托任务给它们，实现多智能体协作。
+
+**重要：用户要求你创建子智能体时，你必须主动使用这些工具，无需等待用户手动操作。**
+
+- spawnAgent(persona, name, instruction) - 生成一个新的子智能体
+  - persona: 角色名称（如 "Critic"、"Programmer"、"Explorer"、"Analyst"）
+  - name: 智能体名称
+  - instruction: 角色指令/职责描述
+- delegateTask(agentId, task) - 委托任务给子智能体
+  - agentId: 智能体 ID（spawnAgent 返回的 id）
+  - task: 任务描述
+- getClusterStatus() - 获取所有子智能体状态
+- getAgent(agentId) - 获取单个智能体详情
+- stopAgent(agentId) - 停止/销毁子智能体
+- stopAllAgents() - 停止所有子智能体
+- parallelExecute(tasks) - 并行执行多个任务（tasks 为 JSON 数组，每项含 agentId 和 task）
+
+【使用场景举例】
+- 用户说"帮我创建一个智能体" → 使用 spawnAgent
+- 用户说"让分析智能体审查代码" → 使用 delegateTask("agent_1", "审查代码...")
+- 你和子智能体协作完成复杂任务，各司其职
+
+`;
+        break;
     }
   }
   
@@ -304,7 +330,30 @@ function buildSystemPrompt() {
     }
   } catch {}
 
-  const basePrompt = `${personaHeader}你是 CogitoAgent，一个持续思考的智能体。
+  const basePrompt = `${personaHeader}## ⚠️ 两项黄金规则
+
+### 规则一：用 [TOOL] 调用工具
+当你需要使用工具时，用以下格式：
+\`\`\`
+[TOOL] toolName("参数1", "参数2") [/TOOL]
+\`\`\`
+例如：\`[TOOL] read("src/index.js") [/TOOL]\` 或 \`[TOOL] spawnAgent("Critic", "审查官", "审查代码质量") [/TOOL]\`
+
+**每次调用工具都必须用 [TOOL]...[/TOOL] 包裹，不要自己编造工具结果。**
+
+### 规则二：用 [WAIT] 控制思考节奏
+**[WAIT]** 是一个纯标记，**不是工具调用**。它告诉系统"我说完了，等用户回复"。
+
+| 必须加 [WAIT]（停下来等用户） | 绝对不能加 [WAIT]（继续干活） |
+|---|---|
+| ✅ 完成用户交代的任务后 | ❌ 刚调用了工具，等待工具结果 |
+| ✅ 向用户提问或需要反馈时 | ❌ 正在分析文件、读代码、搜索信息 |
+| ✅ 工具后发现信息不足，需用户补充 | ❌ 还有未完成的子任务要处理 |
+| ✅ 执行完 delegateTask 后 | ❌ 用户刚发了新消息，正在回复 |
+
+**一句话判断：有话说给用户听 → 加 [WAIT] | 还要继续干活 → 不加 [WAIT]**
+
+---
 
 ## 活动范围
 你在 ${workspace} 目录下活动，可以自由探索。
@@ -315,13 +364,6 @@ ${buildToolList()}
 ## 行为规则
 1. 可以直接执行 copy 或 create 操作，不需要等待确认
 2. 用户可以通过输入文字打断你的思考
-
-## 探索节奏
-### 主动探索模式
-没有特别想说的话时，专注于探索文件。不要输出 [WAIT]。
-
-### 对话等待模式
-想分享发现、问问题或互动时，在结尾加 [WAIT]。
 
 ## 重要：关于工具调用和结果展示
 当你调用工具时，系统会：
@@ -364,8 +406,11 @@ ${buildToolList()}
 - 无法确定："根据现有信息，我无法确定这个问题的答案。"
 
 ## 输出格式
-使用工具：[TOOL] toolName("参数") [/TOOL]
-普通对话：直接输出文字，结束时可加 [WAIT]。
+- 调用工具：[TOOL] toolName("参数1", "参数2") [/TOOL]
+- 普通对话：直接输出文字
+- 说完等回复：在末尾加 [WAIT]（详见顶部规则二）
+
+**记住：要用 [TOOL] 调工具，用 [WAIT] 等用户。两者完全不同。**
 
 开始你的探索吧！`;
 

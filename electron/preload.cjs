@@ -36,6 +36,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('thought-trace', (_event, data) => callback(data));
     } else if (channel === 'stats-response') {
       ipcRenderer.on('stats-response', (_event, data) => callback(data));
+    } else if (channel === 'cluster-state') {
+      ipcRenderer.on('cluster-state', (_event, data) => callback(data));
     }
   },
 
