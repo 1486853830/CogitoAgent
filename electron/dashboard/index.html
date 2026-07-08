@@ -241,6 +241,25 @@
                 </button>
               </div>
             </div>
+
+            <!-- 智能体集群面板 -->
+            <div class="panel" id="clusterPanel">
+              <div class="panel-header">
+                <h3>🤖 智能体集群</h3>
+                <button class="panel-toggle" id="toggleClusterPanel">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                    <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="panel-body" id="clusterPanelBody">
+                <div class="cluster-empty">
+                  <span class="cluster-empty-text">暂无活跃智能体</span>
+                  <span class="cluster-empty-hint">使用 /spawn 命令创建子智能体</span>
+                </div>
+                <div class="cluster-list" id="clusterList"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -108,6 +108,12 @@ const TOOL_CATEGORIES = [
     name: 'Office 文档',
     icon: '📄',
     tools: ['createPpt', 'createWord', 'createExcel', 'readExcel']
+  },
+  {
+    id: 'cluster',
+    name: '集群管理',
+    icon: '🤖',
+    tools: ['spawnAgent', 'delegateTask', 'getClusterStatus', 'stopAgent', 'stopAllAgents', 'parallelExecute', 'getAgent']
   }
 ];
 
@@ -1094,6 +1100,10 @@ const VisualizationManager = {
       window.electronAPI.on('stats-response', (data) => {
         this.handleStatsResponse(data);
       });
+
+      window.electronAPI.on('cluster-state', (data) => {
+        this.renderClusterPanel(data);
+      });
     } else {
       console.warn('[VisualizationManager] electronAPI 不可用');
     }
@@ -1122,6 +1132,9 @@ const VisualizationManager = {
     if (data.session) {
       this.updateSessionStats(data.session);
     }
+    if (data.cluster) {
+      this.renderClusterPanel(data.cluster);
+    }
     if (data.data) {
       if (Array.isArray(data.data)) {
         if (data.data.length > 0 && data.data[0].category !== undefined) {
@@ -1131,6 +1144,8 @@ const VisualizationManager = {
         }
       } else if (data.data.totalToolCalls !== undefined) {
         this.updateSessionStats(data.data);
+      } else if (data.data.totalAgents !== undefined) {
+        this.renderClusterPanel(data.data);
       }
     }
   },
@@ -1170,6 +1185,22 @@ const VisualizationManager = {
         if (body) {
           body.classList.toggle('collapsed');
           const svg = statsToggle.querySelector('svg path');
+          if (body.classList.contains('collapsed')) {
+            svg.setAttribute('d', 'M12 8l6 6 1.41-1.41L12 5.17 4.59 12.59 6 14z');
+          } else {
+            svg.setAttribute('d', 'M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z');
+          }
+        }
+      });
+    }
+
+    const clusterToggle = document.getElementById('toggleClusterPanel');
+    if (clusterToggle) {
+      clusterToggle.addEventListener('click', () => {
+        const body = document.getElementById('clusterPanelBody');
+        if (body) {
+          body.classList.toggle('collapsed');
+          const svg = clusterToggle.querySelector('svg path');
           if (body.classList.contains('collapsed')) {
             svg.setAttribute('d', 'M12 8l6 6 1.41-1.41L12 5.17 4.59 12.59 6 14z');
           } else {
@@ -1304,6 +1335,72 @@ const VisualizationManager = {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  },
+
+  /**
+   * 渲染智能体集群面板
+   */
+  renderClusterPanel(data) {
+    const clusterList = document.getElementById('clusterList');
+    const clusterEmpty = document.querySelector('.cluster-empty');
+    if (!clusterList) return;
+
+    // 从 data 中提取集群状态
+    const status = data.totalAgents !== undefined ? data : (data.data || data);
+
+    if (!status || !status.agents || status.agents.length === 0) {
+      clusterList.innerHTML = '';
+      if (clusterEmpty) clusterEmpty.style.display = '';
+      return;
+    }
+
+    if (clusterEmpty) clusterEmpty.style.display = 'none';
+
+    const stateIcons = {
+      idle: '💤',
+      thinking: '🧠',
+      tool_executing: '🛠️',
+      done: '✅',
+      error: '❌'
+    };
+
+    clusterList.innerHTML = status.agents.map(agent => {
+      const icon = stateIcons[agent.state] || '🤖';
+      const timeAgo = agent.lastActiveAt
+        ? Math.round((Date.now() - new Date(agent.lastActiveAt).getTime()) / 1000)
+        : 0;
+      const timeStr = timeAgo < 60 ? `${timeAgo}秒前` : `${Math.round(timeAgo / 60)}分钟前`;
+
+      return `
+        <div class="cluster-agent-card">
+          <div class="cluster-agent-header">
+            <span class="cluster-agent-name">${icon} ${this.escapeHtml(agent.name)}</span>
+            <span class="cluster-agent-state ${agent.state}">${agent.state}</span>
+          </div>
+          <div class="cluster-agent-details">
+            <span class="cluster-agent-detail">
+              <span class="cluster-agent-detail-label">Persona:</span>
+              <span class="cluster-agent-detail-value">${this.escapeHtml(agent.persona)}</span>
+            </span>
+            <span class="cluster-agent-detail">
+              <span class="cluster-agent-detail-label">工具:</span>
+              <span class="cluster-agent-detail-value">${agent.toolCalls}</span>
+            </span>
+            <span class="cluster-agent-detail">
+              <span class="cluster-agent-detail-label">迭代:</span>
+              <span class="cluster-agent-detail-value">${agent.iterationCount}</span>
+            </span>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);display:flex;justify-content:space-between;">
+            <span>ID: ${agent.id}</span>
+            <span>${timeStr}</span>
+          </div>
+          ${agent.hasError ? `<div style="font-size:10px;color:#f87171;margin-top:2px;">错误: ${this.escapeHtml(agent.error)}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    clusterList.scrollTop = clusterList.scrollHeight;
   }
 };
 

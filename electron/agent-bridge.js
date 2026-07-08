@@ -39,6 +39,8 @@ function connect() {
             win.webContents.send('agent-state', msg.state);
           } else if (msg.type === 'thought-trace') {
             win.webContents.send('thought-trace', { type: msg.action, step: msg.step });
+          } else if (msg.type === 'cluster-state') {
+            win.webContents.send('cluster-state', msg);
           } else {
             win.webContents.send('agent-reply', msg);
           }
