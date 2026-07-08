@@ -140,6 +140,16 @@ import {
   pipeline,
   voting
 } from './cluster.js';
+import {
+  loginWechat,
+  logoutWechat,
+  startWechatPolling,
+  stopWechatPolling,
+  sendWechatMessage,
+  sendWechatImage,
+  getWechatStatus,
+  generateWechatQRCode
+} from './wechat.js';
 
 export {
   getBasePath,
@@ -279,7 +289,15 @@ export {
   createPpt,
   createWord,
   createExcel,
-  readExcel
+  readExcel,
+  loginWechat,
+  logoutWechat,
+  startWechatPolling,
+  stopWechatPolling,
+  sendWechatMessage,
+  sendWechatImage,
+  getWechatStatus,
+  generateWechatQRCode
 };
 
 // ============================================
@@ -452,6 +470,14 @@ const TOOL_METADATA = {
   panelDiscussion: { argCount: 2 },
   pipeline: { argCount: 1 },
   voting: { argCount: 2 },
+
+  // 微信消息
+  loginWechat: { argCount: 0 },
+  logoutWechat: { argCount: 0 },
+  sendWechatMessage: { argCount: 2 },
+  sendWechatImage: { argCount: 2 },
+  getWechatStatus: { argCount: 0 },
+  generateWechatQRCode: { argCount: 0 },
 };
 
 // 导出工具元数据（供 registry.js 参考）

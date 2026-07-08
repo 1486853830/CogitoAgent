@@ -25,7 +25,8 @@ const TOOL_CATEGORIES = {
   ocr: '图像文字识别',
   vision: '视觉分析',
   office: 'Office文档',
-  cluster: '集群管理'
+  cluster: '集群管理',
+  wechat: '微信消息'
 };
 
 // 工具注册表
@@ -192,6 +193,14 @@ const TOOL_REGISTRY = {
   panelDiscussion: { fn: tools.panelDiscussion, argCount: 2, category: 'cluster', parseJson: [false, true, false] },
   pipeline: { fn: tools.pipeline, argCount: 1, category: 'cluster', parseJson: [true] },
   voting: { fn: tools.voting, argCount: 2, category: 'cluster', parseJson: [false, true, true] },
+
+  // 微信消息
+  loginWechat: { fn: tools.loginWechat, argCount: 0, category: 'wechat' },
+  logoutWechat: { fn: tools.logoutWechat, argCount: 0, category: 'wechat' },
+  sendWechatMessage: { fn: tools.sendWechatMessage, argCount: 2, category: 'wechat' },
+  sendWechatImage: { fn: tools.sendWechatImage, argCount: 2, category: 'wechat' },
+  getWechatStatus: { fn: tools.getWechatStatus, argCount: 0, category: 'wechat' },
+  generateWechatQRCode: { fn: tools.generateWechatQRCode, argCount: 0, category: 'wechat' },
 };
 
 // 危险操作列表
@@ -269,7 +278,8 @@ function getToolsByCategory() {
     ocr: ['ocr', 'ocrBatch'],
     vision: ['vision', 'visionFromUrl'],
     office: ['createPpt', 'createWord', 'createExcel', 'readExcel'],
-    cluster: ['spawnAgent', 'delegateTask', 'getClusterStatus', 'stopAgent', 'stopAllAgents', 'parallelExecute', 'getAgent', 'panelDiscussion', 'pipeline', 'voting']
+    cluster: ['spawnAgent', 'delegateTask', 'getClusterStatus', 'stopAgent', 'stopAllAgents', 'parallelExecute', 'getAgent', 'panelDiscussion', 'pipeline', 'voting'],
+    wechat: ['loginWechat', 'logoutWechat', 'sendWechatMessage', 'sendWechatImage', 'getWechatStatus', 'generateWechatQRCode']
   };
 }
 

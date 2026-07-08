@@ -99,4 +99,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 打开外部链接
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+
+  // ===== 微信相关 IPC =====
+  // 登录微信
+  loginWechat: () => ipcRenderer.send('wechat-login'),
+  
+  // 登出微信
+  logoutWechat: () => ipcRenderer.send('wechat-logout'),
+  
+  // 请求微信状态
+  requestWechatStatus: () => ipcRenderer.send('wechat-request-status'),
+  
+  // 监听微信状态变化
+  onWechatState: (callback) => {
+    ipcRenderer.on('wechat-state', (_event, state) => callback(state));
+  },
+  
+  // 监听微信消息
+  onWechatMessage: (callback) => {
+    ipcRenderer.on('wechat-message', (_event, message) => callback(message));
+  },
+
+  // 监听微信二维码
+  onWechatQRCode: (callback) => {
+    ipcRenderer.on('wechat-qrcode', (_event, data) => callback(data));
+  },
+
+  // 监听微信登录状态
+  onWechatLoginStatus: (callback) => {
+    ipcRenderer.on('wechat-login-status', (_event, data) => callback(data));
+  },
 });

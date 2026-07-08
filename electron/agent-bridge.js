@@ -41,6 +41,20 @@ function connect() {
             win.webContents.send('thought-trace', { type: msg.action, step: msg.step });
           } else if (msg.type === 'cluster-state') {
             win.webContents.send('cluster-state', msg);
+          } else if (msg.type === 'wechat-state') {
+            win.webContents.send('wechat-state', msg.data);
+          } else if (msg.type === 'wechat-message') {
+            win.webContents.send('wechat-message', {
+              direction: msg.direction,
+              from: msg.from,
+              to: msg.to,
+              text: msg.text,
+              timestamp: msg.timestamp
+            });
+          } else if (msg.type === 'wechat-qrcode') {
+            win.webContents.send('wechat-qrcode', msg.data);
+          } else if (msg.type === 'wechat-login-status') {
+            win.webContents.send('wechat-login-status', msg.data);
           } else {
             win.webContents.send('agent-reply', msg);
           }
