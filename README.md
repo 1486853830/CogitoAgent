@@ -4,7 +4,7 @@
 
 Cogito, ergo sum — CogitoAgent is not just a tool; it is your autonomous thinking partner in your local environment.
 
-**CogitoAgent** is a locally-run autonomous AI agent that integrates file management, knowledge mining, system operations, code execution, and web connectivity. It runs directly within the working directory configured by the user, **with no need to upload any files to third-party servers**, ensuring data privacy while providing a continuously operating intelligent assistant service.
+**CogitoAgent** is a cloud-driven, locally-executed agent framework that integrates file management, knowledge mining, system operations, code execution, and web connectivity. It runs directly within the working directory configured by the user, powered by the LLM API of your choice for thinking and decision-making — **your workspace files stay local**, keeping your file assets secure while providing a continuously operating intelligent assistant service.
 
 ![CogitoAgent dashboard](introduction/electron-dashboard.png)
 
@@ -23,7 +23,7 @@ Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Contin
 
 | Feature | Description |
 |---------|-------------|
-| **Privacy First** | All data stored locally; no files uploaded to third-party servers |
+| **Privacy First** | Workspace files stay local; only conversation context is sent to the LLM API you specify |
 | **Continuous Thinking** | Automatically triggers a thinking cycle every 3 seconds (configurable) |
 | **Tool Execution** | 16+ tool modules with 100+ tools for file operations, code execution, Git, databases, OCR, Office documents, and more |
 | **Security Sandbox** | JavaScript code execution uses `isolated-vm` for process-level isolation |
