@@ -140,6 +140,220 @@ class AgentOrchestrator {
   }
 
   /**
+   * Panel Discussion - 多智能体就同一主题展开讨论
+   * @param {string} topic - 讨论主题
+   * @param {Array<string>} agentIds - 参与讨论的智能体 ID 列表
+   * @param {string} moderatorInstruction - 主持人指令（可选）
+   */
+  async panelDiscussion(topic, agentIds, moderatorInstruction = '') {
+    if (!agentIds || agentIds.length === 0) {
+      return { success: false, error: '请至少指定一个智能体参与讨论' };
+    }
+
+    // 验证所有智能体存在
+    const invalidIds = agentIds.filter(id => !this.agents.has(id));
+    if (invalidIds.length > 0) {
+      return { success: false, error: `智能体不存在: ${invalidIds.join(', ')}` };
+    }
+
+    // 收集每个智能体的观点
+    const opinions = [];
+    for (const agentId of agentIds) {
+      const agent = this.agents.get(agentId);
+      agent.state = 'thinking';
+      this._broadcastClusterState();
+
+      const instruction = moderatorInstruction
+        ? `参与以下讨论：\n\n主题：${topic}\n\n主持人的要求：${moderatorInstruction}\n\n请给出你的观点和分析。`
+        : `请就以下主题发表你的观点和分析：\n\n${topic}`;
+
+      try {
+        const result = await this.delegateTask(agentId, instruction);
+        opinions.push({
+          agentId: agent.id,
+          agentName: agent.name,
+          persona: agent.persona,
+          success: result.success,
+          response: result.success ? result.data : result.error
+        });
+      } catch (error) {
+        opinions.push({
+          agentId: agent.id,
+          agentName: agent.name,
+          persona: agent.persona,
+          success: false,
+          response: error.message
+        });
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        topic,
+        participantCount: agentIds.length,
+        opinions
+      }
+    };
+  }
+
+  /**
+   * Pipeline - 智能体流水线，A 的输出自动成为 B 的输入
+   * @param {Array<{agentId: string, task: string, name?: string}>} steps
+   */
+  async pipeline(steps) {
+    if (!steps || steps.length === 0) {
+      return { success: false, error: '请至少指定一个流水线步骤' };
+    }
+
+    // 验证所有智能体存在
+    const invalidIds = steps.filter(s => !this.agents.has(s.agentId));
+    if (invalidIds.length > 0) {
+      return { success: false, error: `智能体不存在: ${invalidIds.map(s => s.agentId).join(', ')}` };
+    }
+
+    const pipelineResults = [];
+    let context = '';
+
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      const agent = this.agents.get(step.agentId);
+      const stepName = step.name || `步骤 ${i + 1} (${agent.name})`;
+
+      const taskWithContext = context
+        ? `${step.task}\n\n---\n[上一步结果]\n${context}`
+        : step.task;
+
+      try {
+        const result = await this.delegateTask(step.agentId, taskWithContext);
+        const stepResult = {
+          step: i + 1,
+          stepName,
+          agentId: step.agentId,
+          agentName: agent.name,
+          success: result.success
+        };
+
+        if (result.success) {
+          stepResult.result = result.data;
+          context = result.data; // 传递给下一步
+        } else {
+          stepResult.error = result.error;
+          pipelineResults.push(stepResult);
+          return { success: false, data: { step: i + 1, error: result.error, pipelineResults } };
+        }
+
+        pipelineResults.push(stepResult);
+      } catch (error) {
+        pipelineResults.push({
+          step: i + 1,
+          stepName,
+          agentId: step.agentId,
+          agentName: agent.name,
+          success: false,
+          error: error.message
+        });
+        return { success: false, data: { step: i + 1, error: error.message, pipelineResults } };
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        totalSteps: steps.length,
+        finalResult: context,
+        pipelineResults
+      }
+    };
+  }
+
+  /**
+   * Voting - 多智能体对决策投票
+   * @param {string} question - 投票问题
+   * @param {Array<string>} agentIds - 参与投票的智能体 ID 列表
+   * @param {Array<string>} options - 选项列表（可选）
+   */
+  async voting(question, agentIds, options = []) {
+    if (!agentIds || agentIds.length === 0) {
+      return { success: false, error: '请至少指定一个智能体参与投票' };
+    }
+
+    const invalidIds = agentIds.filter(id => !this.agents.has(id));
+    if (invalidIds.length > 0) {
+      return { success: false, error: `智能体不存在: ${invalidIds.join(', ')}` };
+    }
+
+    const optionsText = options.length > 0
+      ? `\n\n选项：\n${options.map((o, i) => `${i + 1}. ${o}`).join('\n')}\n\n请从以上选项中选择一个，并说明理由。`
+      : '';
+
+    const votes = [];
+    for (const agentId of agentIds) {
+      const agent = this.agents.get(agentId);
+      agent.state = 'thinking';
+      this._broadcastClusterState();
+
+      try {
+        const result = await this.delegateTask(
+          agentId,
+          `## 投票\n\n问题：${question}${optionsText}\n\n请给出你的投票和理由。格式：\n投票：[你的选择]\n理由：...`
+        );
+
+        // 从结果中提取投票
+        let vote = '';
+        let reasoning = '';
+        if (result.success) {
+          const response = result.data;
+          const voteMatch = response.match(/投票[：:]\s*(.+)/);
+          if (voteMatch) {
+            vote = voteMatch[1].trim();
+          }
+          const reasonMatch = response.match(/理由[：:]\s*([\s\S]+)/);
+          if (reasonMatch) {
+            reasoning = reasonMatch[1].trim();
+          }
+        }
+
+        votes.push({
+          agentId: agent.id,
+          agentName: agent.name,
+          persona: agent.persona,
+          success: result.success,
+          vote: vote || '未明确投票',
+          reasoning: reasoning || (result.success ? result.data : result.error)
+        });
+      } catch (error) {
+        votes.push({
+          agentId: agent.id,
+          agentName: agent.name,
+          persona: agent.persona,
+          success: false,
+          vote: '错误',
+          reasoning: error.message
+        });
+      }
+    }
+
+    // 统计投票结果
+    const tally = {};
+    for (const v of votes) {
+      if (v.vote && v.vote !== '未明确投票' && v.vote !== '错误') {
+        tally[v.vote] = (tally[v.vote] || 0) + 1;
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        question,
+        totalVotes: votes.length,
+        tally,
+        votes
+      }
+    };
+  }
+
+  /**
    * 停止/销毁一个子智能体
    */
   stopAgent(agentId) {
