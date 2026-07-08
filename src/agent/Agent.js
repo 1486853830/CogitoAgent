@@ -605,7 +605,7 @@ function handleUserInput(input) {
       const hasUserMessage = messages.some(m => m.role === 'user');
       let processedInput = input;
       if (!hasUserMessage) {
-        processedInput = `${input}\n\n[WAIT]你需要学会使用这个标签，使用不当会卡入死循环`;
+        processedInput = `${input}\n\n[WAIT]你需要学会使用这个标签，如果你说完了，需要等待用户回复就用这个标签`;
         println(`[消息] ${input}`, 'yellow');
         println('[系统] 已自动添加标签提示（首次消息）', 'gray');
       } else {
