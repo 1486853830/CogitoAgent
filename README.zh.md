@@ -32,6 +32,8 @@
 | **MCP 协议** | 将工具暴露为 MCP Server，支持与其他 AI 客户端集成 |
 | **插件系统** | 动态加载自定义工具插件 |
 | **思维链可视化** | 实时可视化思考过程和工具执行 |
+| **智能体集群** | 支持子智能体创建与任务委派，多智能体协作 |
+| **监控面板** | 独立窗口实时展示集群拓扑、思维链和工具统计 |
 
 ---
 
@@ -174,7 +176,7 @@ cogito-agent/
 │   └── index.js                      # 应用入口
 ├── electron/                         # 桌面模式
 │   ├── main.js / preload.cjs / agent-bridge.js
-│   ├── desktop/ / dashboard/ / setup/
+│   ├── desktop/ / dashboard/ / monitor/ / setup/
 │   ├── shared/                       # 共享工具
 │   └── assets/
 ├── personas/                         # 22 个预设角色（13 现代 + 9 古代）
@@ -202,6 +204,7 @@ cogito-agent/
 - **会话管理** —— 独立上下文，自动压缩
 - **统计模块** —— 工具使用追踪和性能指标
 - **思维链可视化** —— 实时思考过程展示
+- **智能体集群** —— 子智能体创建、任务委派与集群监控，详见 [introduction/agent-cluster.md](introduction/agent-cluster.md)
 
 ## 扩展
 

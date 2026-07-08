@@ -135,7 +135,10 @@ import {
   stopAgent,
   stopAllAgents,
   parallelExecute,
-  getAgent
+  getAgent,
+  panelDiscussion,
+  pipeline,
+  voting
 } from './cluster.js';
 
 export {
@@ -152,6 +155,9 @@ export {
   stopAllAgents,
   parallelExecute,
   getAgent,
+  panelDiscussion,
+  pipeline,
+  voting,
   search,
   browse,
   fetchPage,
@@ -443,6 +449,9 @@ const TOOL_METADATA = {
   stopAllAgents: { argCount: 0 },
   parallelExecute: { argCount: 1 },
   getAgent: { argCount: 1 },
+  panelDiscussion: { argCount: 2 },
+  pipeline: { argCount: 1 },
+  voting: { argCount: 2 },
 };
 
 // 导出工具元数据（供 registry.js 参考）

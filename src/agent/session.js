@@ -296,13 +296,24 @@ function buildToolList() {
 - getClusterStatus() - 获取所有子智能体状态
 - getAgent(agentId) - 获取单个智能体详情
 - stopAgent(agentId) - 停止/销毁子智能体
-- stopAllAgents() - 停止所有子智能体
-- parallelExecute(tasks) - 并行执行多个任务（tasks 为 JSON 数组，每项含 agentId 和 task）
+-- stopAllAgents() - 停止所有子智能体
+-- parallelExecute(tasks) - 并行执行多个任务（tasks 为 JSON 数组，每项含 agentId 和 task）
+-- panelDiscussion(topic, agentIds, moderatorInstruction) - 多智能体就同一主题讨论
+  - agentIds: 数组，如 ["agent_1","agent_2"]
+  - 会依次采集每个智能体的观点
+-- pipeline(steps) - 智能体流水线，前一步结果自动传给下一步
+  - steps: 数组，每项含 agentId 和 task
+  - 例如：A 写代码 → B 审查 → C 测试
+-- voting(question, agentIds, options) - 多智能体投票表决
+  - options: 选项数组（可选）
+  - 返回每个智能体的投票和理由
 
 【使用场景举例】
 - 用户说"帮我创建一个智能体" → 使用 spawnAgent
-- 用户说"让分析智能体审查代码" → 使用 delegateTask("agent_1", "审查代码...")
-- 你和子智能体协作完成复杂任务，各司其职
+- 用户说"让智能体 XX 做 YY" → 使用 delegateTask
+- 用户说"让它们讨论 XX 话题" → 使用 panelDiscussion
+- 用户说"做个流水线" → 使用 pipeline
+- 用户说"让它们投票" → 使用 voting
 
 `;
         break;

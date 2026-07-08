@@ -18,6 +18,7 @@ const __dirname = path.dirname(__filename);
 let mainWindow = null;
 let setupWindow = null;
 let dashboardWindow = null;
+let monitorWindow = null;
 let agentProcess = null;
 let isQuitting = false;  // 标记是否为用户主动退出
 let mainWindowCreated = false;  // 标记主窗口是否曾经创建过
@@ -478,6 +479,47 @@ function createDashboardWindow() {
   console.log('[主进程] Dashboard 窗口已创建');
 }
 
+/**
+ * 创建监控面板窗口（独立弹出）
+ */
+function createMonitorWindow() {
+  if (monitorWindow && !monitorWindow.isDestroyed()) {
+    monitorWindow.focus();
+    return;
+  }
+
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const winWidth = 960;
+  const winHeight = 540;
+
+  monitorWindow = new BrowserWindow({
+    width: winWidth,
+    height: winHeight,
+    x: Math.floor((width - winWidth) / 2),
+    y: Math.floor((height - winHeight) / 2),
+    minWidth: 640,
+    minHeight: 360,
+    frame: false,
+    backgroundColor: '#030712',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  monitorWindow.setMenuBarVisibility(false);
+  monitorWindow.loadFile(path.join(__dirname, 'monitor', 'index.html'));
+
+  initAgentBridge(monitorWindow);
+
+  monitorWindow.on('closed', () => {
+    monitorWindow = null;
+  });
+
+  console.log('[主进程] 监控面板窗口已创建');
+}
+
 // 当所有窗口关闭时退出
 app.on('window-all-closed', () => {
   // 正在从配置向导过渡到主窗口时，不退出也不杀 Agent
@@ -505,12 +547,12 @@ app.on('before-quit', () => {
 
 app.whenReady().then(async () => {
   // ===== IPC: 窗口操作 =====
-  ipcMain.on('window-minimize', () => {
-    const win = dashboardWindow || mainWindow;
+  ipcMain.on('window-minimize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
     win?.minimize();
   });
-  ipcMain.on('window-maximize', () => {
-    const win = dashboardWindow || mainWindow;
+  ipcMain.on('window-maximize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
     if (win) {
       if (win.isMaximized()) {
         win.unmaximize();
@@ -519,8 +561,8 @@ app.whenReady().then(async () => {
       }
     }
   });
-  ipcMain.on('window-close', () => {
-    const win = dashboardWindow || mainWindow;
+  ipcMain.on('window-close', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
     win?.close();
   });
 
@@ -554,6 +596,11 @@ app.whenReady().then(async () => {
     if (!dashboardWindow) {
       createDashboardWindow();
     }
+  });
+
+  // ===== IPC: 打开监控面板 =====
+  ipcMain.on('open-monitor', () => {
+    createMonitorWindow();
   });
 
   // ===== IPC: 配置向导相关 =====

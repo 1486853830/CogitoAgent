@@ -189,6 +189,9 @@ const TOOL_REGISTRY = {
   stopAllAgents: { fn: tools.stopAllAgents, argCount: 0, category: 'cluster' },
   parallelExecute: { fn: tools.parallelExecute, argCount: 1, category: 'cluster', parseJson: [true] },
   getAgent: { fn: tools.getAgent, argCount: 1, category: 'cluster' },
+  panelDiscussion: { fn: tools.panelDiscussion, argCount: 2, category: 'cluster', parseJson: [false, true, false] },
+  pipeline: { fn: tools.pipeline, argCount: 1, category: 'cluster', parseJson: [true] },
+  voting: { fn: tools.voting, argCount: 2, category: 'cluster', parseJson: [false, true, true] },
 };
 
 // 危险操作列表
@@ -266,7 +269,7 @@ function getToolsByCategory() {
     ocr: ['ocr', 'ocrBatch'],
     vision: ['vision', 'visionFromUrl'],
     office: ['createPpt', 'createWord', 'createExcel', 'readExcel'],
-    cluster: ['spawnAgent', 'delegateTask', 'getClusterStatus', 'stopAgent', 'stopAllAgents', 'parallelExecute', 'getAgent']
+    cluster: ['spawnAgent', 'delegateTask', 'getClusterStatus', 'stopAgent', 'stopAllAgents', 'parallelExecute', 'getAgent', 'panelDiscussion', 'pipeline', 'voting']
   };
 }
 
