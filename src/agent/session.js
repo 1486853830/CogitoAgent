@@ -468,6 +468,19 @@ function initializeSession(sessionId = null) {
 }
 
 /**
+ * 获取或创建微信专属会话
+ */
+function getOrCreateWechatSession() {
+  const meta = loadMeta();
+  const existing = meta.sessions.find(s => s.name === '微信通道');
+  if (existing) {
+    return existing.id;
+  }
+  createNewSession('微信通道');
+  return currentSessionId;
+}
+
+/**
  * 创建新会话
  */
 function createNewSession(name = null) {
@@ -892,6 +905,7 @@ function resetConversation() {
 export {
   initializeSession,
   createNewSession,
+  getOrCreateWechatSession,
   switchSession,
   deleteSession,
   renameSession,

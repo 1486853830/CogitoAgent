@@ -135,6 +135,7 @@ const AppState = {
   lastToolKey: '',
   currentMode: 'work', // work / code / design
   view: 'welcome', // welcome / chat
+  currentSessionId: null,  // 追踪当前会话 ID
 
   setProcessing(val) {
     this.isProcessing = val;
@@ -317,6 +318,12 @@ const NavManager = {
         });
         return;
       }
+      if (btn.id === 'wechatBtn') {
+        btn.addEventListener('click', () => {
+          this.connectWechat();
+        });
+        return;
+      }
       btn.addEventListener('click', () => {
         const label = btn.textContent.trim();
         this.handleQuickAction(label);
@@ -453,6 +460,9 @@ const NavManager = {
 
     // 发送切换命令给 Agent（这会更新 meta.activeId）
     window.electronAPI?.switchSession(sessionId);
+
+    // 记录当前会话 ID
+    AppState.currentSessionId = sessionId;
 
     // 重新加载列表以更新 active 状态
     setTimeout(() => this.loadSessions(), 500);
@@ -596,6 +606,67 @@ const NavManager = {
   switchToDesktop() {
     console.log('[NavManager] 切换到桌宠模式');
     window.electronAPI?.switchToDesktop();
+  },
+
+  connectWechat() {
+    window.electronAPI?.loginWechat();
+  },
+
+  updateWechatState(state) {
+    this._wechatConnected = !!state.connected;
+    const label = document.getElementById('wechatBtnLabel');
+    const btn = document.getElementById('wechatBtn');
+    if (!label || !btn) return;
+
+    if (state.connected) {
+      label.textContent = '微信通道';
+      btn.classList.add('wechat-connected');
+      btn.title = '点击进入微信会话';
+      const modal = document.getElementById('wechatQrModal');
+      if (modal) modal.style.display = 'none';
+
+      if (state.sessionId && AppState.currentSessionId !== state.sessionId) {
+        this.switchToSession(state.sessionId);
+      }
+    } else {
+      label.textContent = '连接微信';
+      btn.classList.remove('wechat-connected');
+      btn.title = '连接微信';
+    }
+  },
+
+  handleWechatMessage(msg) {
+    const { direction, from, text } = msg;
+    if (direction === 'received') {
+      ChatManager.addToolCall('微信收到', { from, text });
+    } else if (direction === 'sent') {
+      ChatManager.addToolResult('微信回复', { to: from, text }, true);
+    }
+  },
+
+  showWechatQRCode(data) {
+    const modal = document.getElementById('wechatQrModal');
+    const img = document.getElementById('wechatQrImage');
+    const status = document.getElementById('wechatQrStatus');
+    if (!modal || !img) return;
+
+    if (data.qrCode) {
+      img.src = data.qrCode;
+      if (status) status.textContent = '请使用微信扫描二维码';
+    }
+    modal.style.display = 'flex';
+
+    const closeBtn = document.getElementById('wechatQrClose');
+    if (closeBtn) {
+      closeBtn.onclick = () => { modal.style.display = 'none'; };
+    }
+  },
+
+  updateWechatLoginStatus(data) {
+    const statusEl = document.getElementById('wechatQrStatus');
+    if (statusEl && data.status) {
+      statusEl.textContent = data.status;
+    }
   },
 };
 
@@ -769,6 +840,23 @@ const ChatManager = {
     // 请求历史
     if (window.electronAPI?.requestHistory) {
       window.electronAPI.requestHistory();
+    }
+
+    // 微信状态监听
+    if (window.electronAPI?.onWechatState) {
+      window.electronAPI.onWechatState((state) => NavManager.updateWechatState(state));
+    }
+    if (window.electronAPI?.onWechatMessage) {
+      window.electronAPI.onWechatMessage((msg) => NavManager.handleWechatMessage(msg));
+    }
+    if (window.electronAPI?.onWechatQRCode) {
+      window.electronAPI.onWechatQRCode((data) => NavManager.showWechatQRCode(data));
+    }
+    if (window.electronAPI?.onWechatLoginStatus) {
+      window.electronAPI.onWechatLoginStatus((data) => NavManager.updateWechatLoginStatus(data));
+    }
+    if (window.electronAPI?.requestWechatStatus) {
+      window.electronAPI.requestWechatStatus();
     }
 
     console.log('[ChatManager] 初始化完成');

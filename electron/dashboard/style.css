@@ -183,6 +183,21 @@ textarea {
   opacity: 0.85;
 }
 
+/* 微信连接状态 */
+.action-btn.wechat-connected {
+  color: #4ade80;
+}
+
+.action-btn.wechat-connected svg {
+  opacity: 1;
+  color: #4ade80;
+}
+
+.action-btn.wechat-connected:hover {
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80;
+}
+
 /* Persona 形象区域 */
 .persona-section {
   display: flex;
@@ -1181,3 +1196,78 @@ textarea {
 }
 
 /* chat-footer 不需要额外样式，只保留输入框 */
+
+/* ============================================================
+ * 微信二维码弹窗
+ * ============================================================ */
+
+.wechat-qr-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wechat-qr-box {
+  background: var(--bg-card, #1e1e2a);
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  min-width: 320px;
+}
+
+.wechat-qr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #e0e0e0);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.wechat-qr-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary, #888);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+
+.wechat-qr-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.wechat-qr-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.wechat-qr-image {
+  width: 280px;
+  height: 280px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.wechat-qr-status {
+  font-size: 14px;
+  color: var(--text-secondary, #a0a0a0);
+  text-align: center;
+}
