@@ -73,3 +73,51 @@ export async function getAgent(agentId) {
   }
   return { success: true, data: agent };
 }
+
+/**
+ * Panel Discussion - 多智能体就同一主题展开讨论
+ * @param {string} topic - 讨论主题
+ * @param {string} agentIds - 参与讨论的智能体 ID 列表（JSON数组字符串）
+ * @param {string} moderatorInstruction - 主持人指令（可选）
+ */
+export async function panelDiscussion(topic, agentIds, moderatorInstruction = '') {
+  let ids;
+  try {
+    ids = typeof agentIds === 'string' ? JSON.parse(agentIds) : agentIds;
+  } catch {
+    return { success: false, error: 'agentIds 参数必须是 JSON 数组' };
+  }
+  return orchestrator.panelDiscussion(topic, ids, moderatorInstruction);
+}
+
+/**
+ * Pipeline - 智能体流水线
+ * @param {string} steps - 流水线步骤（JSON数组字符串）
+ */
+export async function pipeline(steps) {
+  let stepsArr;
+  try {
+    stepsArr = typeof steps === 'string' ? JSON.parse(steps) : steps;
+  } catch {
+    return { success: false, error: 'steps 参数必须是 JSON 数组' };
+  }
+  return orchestrator.pipeline(stepsArr);
+}
+
+/**
+ * Voting - 多智能体投票
+ * @param {string} question - 投票问题
+ * @param {string} agentIds - 参与投票的智能体 ID 列表（JSON数组字符串）
+ * @param {string} options - 选项列表（JSON数组字符串，可选）
+ */
+export async function voting(question, agentIds, options = '[]') {
+  let ids;
+  let opts = [];
+  try {
+    ids = typeof agentIds === 'string' ? JSON.parse(agentIds) : agentIds;
+    opts = typeof options === 'string' ? JSON.parse(options) : options;
+  } catch {
+    return { success: false, error: 'agentIds 和 options 必须是 JSON 数组' };
+  }
+  return orchestrator.voting(question, ids, opts);
+}
