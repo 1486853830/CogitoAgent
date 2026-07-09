@@ -85,40 +85,19 @@ npm start
 All tools are managed by `registry.js` and invoked via `[TOOL] functionName(args) [/TOOL]`.
 
 ```mermaid
-mindmap
-  root((Tool System))
-    File Operations
-      Read / Write
-      Create / Copy
-    Web Tools
-      Search / Browse
-      Fetch Page
-    Browser Automation
-      Click / Fill
-      Screenshot
-    Code Execution
-      JavaScript
-      Python Sandbox
-    Git Operations
-      Commit / Push
-      Branch / Merge
-    Task Management
-      Create / Split
-      Track Status
-    Memory System
-      SQLite Storage
-      Semantic Search
-    Data Processing
-      CSV / JSON
-      Query / Analyze
-    Office Documents
-      Word / Excel / PPT
-    OCR / Vision
-      Text Recognition
-      Image Analysis
-    WeChat Integration
-      QR Login
-      Messaging
+flowchart LR
+  Tools["🛠 Tool System"]
+  Tools --> File["📁 File Operations"]
+  Tools --> Web["🌐 Web Tools"]
+  Tools --> Browser["🖥 Browser Automation"]
+  Tools --> Code["💻 Code Execution"]
+  Tools --> Git["🔀 Git Operations"]
+  Tools --> Task["📋 Task Management"]
+  Tools --> Memory["🧠 Memory System"]
+  Tools --> Data["📊 Data Processing"]
+  Tools --> Office["📝 Office Documents"]
+  Tools --> OCR["👁 OCR / Vision"]
+  Tools --> Wx["💬 WeChat Integration"]
 ```
 
 | Category | File | Main Functions |
