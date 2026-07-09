@@ -85,40 +85,19 @@ npm start
 所有工具由 `registry.js` 管理，通过 `[TOOL] functionName(args) [/TOOL]` 格式调用。
 
 ```mermaid
-mindmap
-  root((工具系统))
-    文件操作
-      读写文件
-      创建复制
-    网络工具
-      搜索浏览
-      抓取内容
-    浏览器自动化
-      点击填表
-      页面截图
-    代码执行
-      JavaScript
-      Python 沙箱
-    Git 操作
-      提交推送
-      分支合并
-    任务管理
-      创建分解
-      状态追踪
-    记忆系统
-      SQLite 存储
-      语义检索
-    数据处理
-      CSV/JSON
-      查询分析
-    Office 文档
-      Word/Excel/PPT
-    OCR / 视觉
-      文字识别
-      图像分析
-    微信集成
-      扫码登录
-      消息收发
+flowchart LR
+  Tools["🛠 工具系统"]
+  Tools --> File["📁 文件操作"]
+  Tools --> Web["🌐 网络工具"]
+  Tools --> Browser["🖥 浏览器自动化"]
+  Tools --> Code["💻 代码执行"]
+  Tools --> Git["🔀 Git 操作"]
+  Tools --> Task["📋 任务管理"]
+  Tools --> Memory["🧠 记忆系统"]
+  Tools --> Data["📊 数据处理"]
+  Tools --> Office["📝 Office 文档"]
+  Tools --> OCR["👁 OCR / 视觉"]
+  Tools --> Wx["💬 微信集成"]
 ```
 
 | 分类 | 文件 | 主要函数 |
@@ -297,37 +276,16 @@ cogito-agent/
 > 详见 [introduction/systems.md](introduction/systems.md)
 
 ```mermaid
-mindmap
-  root((核心系统))
-    记忆系统
-      SQLite 持久化
-      标签分类
-      语义检索
-    任务管理
-      创建 / 分解
-      父子层级
-      状态追踪
-    代码沙箱
-      isolated-vm 强隔离
-      CPU / 内存限制
-      Python 沙箱
-    角色系统
-      22 个预设角色
-      自定义角色
-      热切换
-    会话管理
-      独立上下文
-      自动压缩归档
-    Agent 集群
-      子智能体
-      任务委派
-      集群监控
-    统计与追踪
-      工具使用指标
-      LLM 调用追踪
-    思维链可视化
-      实时思考展示
-      工具执行链
+flowchart LR
+  Core["⚙️ 核心系统"]
+  Core --> Memory["🧠 记忆系统"]
+  Core --> Task["📋 任务管理"]
+  Core --> Sandbox["🔒 代码沙箱"]
+  Core --> Persona["👤 角色系统"]
+  Core --> Session["💬 会话管理"]
+  Core --> Cluster["🔗 Agent 集群"]
+  Core --> Stats["📊 统计与追踪"]
+  Core --> Thought["💭 思维链可视化"]
 ```
 
 - **记忆系统** —— 基于 SQLite 的长期存储和语义检索
