@@ -34,6 +34,7 @@ Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Contin
 | **Thought Chain Visualization** | Real-time visualization of thinking process and tool execution |
 | **Agent Cluster** | Sub-agent creation, task delegation, and multi-agent collaboration |
 | **Monitor Panel** | Dedicated window for real-time cluster topology, thought chain, and tool stats |
+| **WeChat Integration** | QR code login, message sending/receiving, dedicated session, tool bubble display |
 
 ---
 
@@ -83,6 +84,43 @@ npm start
 
 All tools are managed by `registry.js` and invoked via `[TOOL] functionName(args) [/TOOL]`.
 
+```mermaid
+mindmap
+  root((Tool System))
+    File Operations
+      ls / read / create
+      copy / mkdir
+    Web Tools
+      search / browse
+      fetchPage
+    Browser Automation
+      clickElement / fillField
+      takeScreenshot
+    Code Execution
+      JavaScript / Python
+      Security Sandbox
+    Git Operations
+      commit / push / pull
+      branch / merge / stash
+    Task Management
+      create / split
+      tracking
+    Memory System
+      SQLite Storage
+      Semantic Search
+    Data Processing
+      CSV / JSON
+      query / analyze
+    Office Documents
+      Word / Excel / PPT
+    OCR / Vision
+      Text Recognition
+      Image Analysis
+    WeChat Integration
+      QR Login
+      Messaging
+```
+
 | Category | File | Main Functions |
 |----------|------|----------------|
 | File Operations | `file.js` | `ls`, `read`, `create`, `copy`, `mkdir` |
@@ -107,9 +145,65 @@ All tools are managed by `registry.js` and invoked via `[TOOL] functionName(args
 
 > Detailed tool documentation: registration mechanism, usage examples, best practices → [introduction/tools.md](introduction/tools.md) (Chinese)
 
+<p align="center">
+  <img src="introduction/file.png" width="280" alt="File Operations">
+  <img src="introduction/web.png" width="280" alt="Web Search">
+  <img src="introduction/wechat.png" width="280" alt="WeChat Integration">
+  <br>
+  <em>File Operations · Web Search · WeChat Integration</em>
+</p>
+
 ---
 
 ## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Terminal["Terminal Layer"]
+        CLI["CLI Terminal<br/>Input Entry"]
+        Dashboard["Electron Dashboard<br/>GUI Window"]
+    end
+
+    subgraph Core["Core Layer"]
+        Agent["Agent.js<br/>Think Cycle 3s"]
+        State["state.js<br/>State Machine"]
+        Session["session.js<br/>Session Manager"]
+        Commands["commands.js<br/>Command Handler"]
+        Registry["registry.js<br/>Tool Registry"]
+    end
+
+    subgraph Tools["Tool Layer"]
+        File["File Operations"]
+        Web["Web Tools"]
+        Browser["Browser Automation"]
+        Code["Code Sandbox"]
+        Git["Git Operations"]
+        Task["Task Management"]
+        Memory["Memory System"]
+        Wx["WeChat Channel"]
+    end
+
+    subgraph Ext["Extension Layer"]
+        MCP["MCP Protocol"]
+        Plugin["Plugin System"]
+        Retry["Retry & Breaker"]
+        Tracing["Tracing"]
+    end
+
+    subgraph API["API Layer"]
+        LLM["LLM API<br/>OpenAI / Claude / Compatible"]
+    end
+
+    Terminal -->|WebSocket| Agent
+    Agent --> State
+    Agent --> Session
+    Agent --> Commands
+    Agent --> Registry
+    Registry --> Tools
+    Tools --> Code
+    Agent --> LLM
+    Agent --> Ext
+```
 
 | Component | Responsibility |
 |-----------|----------------|
@@ -125,6 +219,7 @@ All tools are managed by `registry.js` and invoked via `[TOOL] functionName(args
 | **mcp.js** | MCP Server — expose tools as MCP protocol |
 | **plugin.js** | Plugin system — dynamic loading of custom tool plugins |
 | **ws-server.js** | WebSocket — desktop mode communication (port 9527) |
+| **wechat-manager.js** | WeChat Channel — iLink protocol integration, message routing, session sync |
 
 > Complete architecture details: think cycle diagrams, tool call flow, state machine, message flow, WebSocket → [introduction/architecture.md](introduction/architecture.md) (Chinese)
 
@@ -147,6 +242,9 @@ All tools are managed by `registry.js` and invoked via `[TOOL] functionName(args
 | `/tools` | List all available tools |
 | `/clear` | Clear conversation history |
 | `/debug` | Toggle debug mode |
+| `/wechat` | Show WeChat channel status |
+| `/wechat login` | Login to WeChat via QR code |
+| `/wechat logout` | Logout from WeChat |
 | `ENTER` | Interrupt thinking, enter input mode |
 | `exit` | Exit the program |
 
@@ -169,6 +267,7 @@ cogito-agent/
 │   │   ├── Agent.js / state.js / registry.js
 │   │   ├── commands.js / session.js / stats.js
 │   │   ├── mcp.js / plugin.js / tracing.js / retry.js
+│   │   ├── wechat-manager.js         # WeChat channel management
 │   │   └── tools/                    # 16+ tool modules
 │   ├── api/                          # API layer (client, models, webSearch)
 │   ├── io/                           # Terminal, Logger, WebSocket
@@ -197,6 +296,40 @@ cogito-agent/
 
 > See [introduction/systems.md](introduction/systems.md) (Chinese) for details
 
+```mermaid
+mindmap
+  root((Core Systems))
+    Memory System
+      SQLite Persistence
+      Tag Classification
+      Semantic Search
+    Task Management
+      Create / Split
+      Parent-Child
+      Status Tracking
+    Code Sandbox
+      isolated-vm Isolation
+      CPU / Memory Limits
+      Python Sandbox
+    Personas
+      22 Preset Roles
+      Custom Roles
+      Hot-Switch
+    Session Management
+      Independent Contexts
+      Auto-Compression
+    Agent Cluster
+      Sub-Agents
+      Task Delegation
+      Cluster Monitoring
+    Statistics & Tracing
+      Tool Usage Metrics
+      LLM Call Tracing
+    Thought Chain Vis
+      Real-Time Display
+      Tool Execution Chain
+```
+
 - **Memory System** — SQLite-based long-term storage and semantic retrieval
 - **Task Management** — Task creation, decomposition, and status tracking
 - **Code Sandbox** — `isolated-vm` process-level isolation for JS and Python
@@ -205,6 +338,12 @@ cogito-agent/
 - **Statistics** — Tool usage tracking and performance metrics
 - **Thought Chain Visualization** — Real-time thinking process display
 - **Agent Cluster** — Sub-agent creation, task delegation, and cluster monitoring, see [introduction/agent-cluster.md](introduction/agent-cluster.md)
+
+<p align="center">
+  <img src="introduction/AgentCluster.png" width="600" alt="Agent Cluster">
+  <br>
+  <em>Agent Cluster Monitoring Panel</em>
+</p>
 
 ## Extensions
 
@@ -228,6 +367,13 @@ docker-compose up -d
 ---
 
 ## Changelog
+
+### v2.3.1
+- WeChat iLink protocol integration with QR code login and message sending/receiving
+- WeChat dedicated permanent session, click "WeChat Channel" to auto-connect and load
+- WeChat message dual-write mechanism: stored in both `weichat.json` and session history
+- Messages displayed as tool call bubbles, clearly distinguishing send/receive directions
+- Fixed persona switching bug that accidentally cleared session history
 
 ### v2.3.0
 - Multi-session management, tool category on-demand loading, auto context compression
