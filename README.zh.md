@@ -34,6 +34,7 @@
 | **思维链可视化** | 实时可视化思考过程和工具执行 |
 | **智能体集群** | 支持子智能体创建与任务委派，多智能体协作 |
 | **监控面板** | 独立窗口实时展示集群拓扑、思维链和工具统计 |
+| **微信集成** | 扫码登录、消息收发、专属会话、工具气泡展示 |
 
 ---
 
@@ -83,6 +84,43 @@ npm start
 
 所有工具由 `registry.js` 管理，通过 `[TOOL] functionName(args) [/TOOL]` 格式调用。
 
+```mermaid
+mindmap
+  root((工具系统))
+    文件操作
+      ls / read / create
+      copy / mkdir
+    网络工具
+      search / browse
+      fetchPage
+    浏览器自动化
+      clickElement / fillField
+      takeScreenshot
+    代码执行
+      JavaScript / Python
+      安全沙箱
+    Git 操作
+      提交 / 推送 / 拉取
+      分支 / 合并 / 暂存
+    任务管理
+      创建 / 分解
+      追踪
+    记忆系统
+      SQLite 存储
+      语义检索
+    数据处理
+      CSV / JSON
+      查询 / 分析
+    Office 文档
+      Word / Excel / PPT
+    OCR / 视觉
+      文字识别
+      图像分析
+    微信集成
+      扫码登录
+      消息收发
+```
+
 | 分类 | 文件 | 主要函数 |
 |------|------|----------|
 | 文件操作 | `file.js` | `ls`, `read`, `create`, `copy`, `mkdir` |
@@ -107,9 +145,65 @@ npm start
 
 > 详细工具文档：注册机制、使用示例、最佳实践 → [introduction/tools.md](introduction/tools.md)
 
+<p align="center">
+  <img src="introduction/file.png" width="280" alt="文件操作">
+  <img src="introduction/web.png" width="280" alt="网络搜索">
+  <img src="introduction/wechat.png" width="280" alt="微信集成">
+  <br>
+  <em>文件操作 · 网络搜索 · 微信集成</em>
+</p>
+
 ---
 
 ## 架构
+
+```mermaid
+flowchart TB
+    subgraph Terminal["终端层"]
+        CLI["CLI 终端<br/>交互入口"]
+        Dashboard["Electron Dashboard<br/>仪表盘窗口"]
+    end
+
+    subgraph Core["核心层"]
+        Agent["Agent.js<br/>思考循环 3s"]
+        State["state.js<br/>状态机"]
+        Session["session.js<br/>会话管理"]
+        Commands["commands.js<br/>命令处理"]
+        Registry["registry.js<br/>工具注册表"]
+    end
+
+    subgraph Tools["工具层"]
+        File["文件操作"]
+        Web["网络工具"]
+        Browser["浏览器自动化"]
+        Code["代码执行沙箱"]
+        Git["Git 操作"]
+        Task["任务管理"]
+        Memory["记忆系统"]
+        Wx["微信通道"]
+    end
+
+    subgraph Ext["扩展层"]
+        MCP["MCP 协议"]
+        Plugin["插件系统"]
+        Retry["重试与熔断"]
+        Tracing["追踪系统"]
+    end
+
+    subgraph API["API 层"]
+        LLM["LLM API<br/>OpenAI / Claude / 兼容"]
+    end
+
+    Terminal -->|WebSocket| Agent
+    Agent --> State
+    Agent --> Session
+    Agent --> Commands
+    Agent --> Registry
+    Registry --> Tools
+    Tools --> Code
+    Agent --> LLM
+    Agent --> Ext
+```
 
 | 组件 | 职责 |
 |------|------|
@@ -125,6 +219,7 @@ npm start
 | **mcp.js** | MCP Server —— 将工具暴露为 MCP 协议 |
 | **plugin.js** | 插件系统 —— 动态加载自定义工具插件 |
 | **ws-server.js** | WebSocket —— 桌面模式通信（端口 9527） |
+| **wechat-manager.js** | 微信通道 —— iLink 协议集成、消息路由、会话同步 |
 
 > 完整架构详情：思考循环图、工具调用流程、状态机、消息流、WebSocket → [introduction/architecture.md](introduction/architecture.md)
 
@@ -147,6 +242,9 @@ npm start
 | `/tools` | 列出所有可用工具 |
 | `/clear` | 清除对话历史 |
 | `/debug` | 切换调试模式 |
+| `/wechat` | 显示微信通道状态 |
+| `/wechat login` | 扫码登录微信 |
+| `/wechat logout` | 退出微信登录 |
 | `ENTER` | 中断思考，进入输入模式 |
 | `exit` | 退出程序 |
 
@@ -169,6 +267,7 @@ cogito-agent/
 │   │   ├── Agent.js / state.js / registry.js
 │   │   ├── commands.js / session.js / stats.js
 │   │   ├── mcp.js / plugin.js / tracing.js / retry.js
+│   │   ├── wechat-manager.js         # 微信通道管理
 │   │   └── tools/                    # 16+ 工具模块
 │   ├── api/                          # API 层（client, models, webSearch）
 │   ├── io/                           # Terminal, Logger, WebSocket
@@ -197,6 +296,40 @@ cogito-agent/
 
 > 详见 [introduction/systems.md](introduction/systems.md)
 
+```mermaid
+mindmap
+  root((核心系统))
+    记忆系统
+      SQLite 持久化
+      标签分类
+      语义检索
+    任务管理
+      创建 / 分解
+      父子层级
+      状态追踪
+    代码沙箱
+      isolated-vm 强隔离
+      CPU / 内存限制
+      Python 沙箱
+    角色系统
+      22 个预设角色
+      自定义角色
+      热切换
+    会话管理
+      独立上下文
+      自动压缩归档
+    Agent 集群
+      子智能体
+      任务委派
+      集群监控
+    统计与追踪
+      工具使用指标
+      LLM 调用追踪
+    思维链可视化
+      实时思考展示
+      工具执行链
+```
+
 - **记忆系统** —— 基于 SQLite 的长期存储和语义检索
 - **任务管理** —— 任务创建、分解和状态追踪
 - **代码沙箱** —— `isolated-vm` 进程级隔离，支持 JS 和 Python
@@ -205,6 +338,12 @@ cogito-agent/
 - **统计模块** —— 工具使用追踪和性能指标
 - **思维链可视化** —— 实时思考过程展示
 - **智能体集群** —— 子智能体创建、任务委派与集群监控，详见 [introduction/agent-cluster.md](introduction/agent-cluster.md)
+
+<p align="center">
+  <img src="introduction/AgentCluster.png" width="600" alt="智能体集群">
+  <br>
+  <em>智能体集群监控面板</em>
+</p>
 
 ## 扩展
 
@@ -228,6 +367,13 @@ docker-compose up -d
 ---
 
 ## 更新日志
+
+### v2.3.1
+- 微信 iLink 协议集成，支持扫码登录、消息收发
+- 微信专属永久会话，点击"微信通道"自动连接并加载
+- 微信消息双写机制：同时存储到 `weichat.json` 和会话历史
+- 消息以工具调用气泡样式展示，清晰区分收发方向
+- 修复 persona 切换时误清空会话历史的问题
 
 ### v2.3.0
 - 多会话管理、工具分类按需加载、自动上下文压缩
