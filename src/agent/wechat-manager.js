@@ -6,13 +6,34 @@ import {
   getWechatStatus,
   sendWechatMessage,
   setWechatSessionId,
+  addWechatMessage,
+  getWechatMessages,
   wechatState
 } from './tools/wechat.js';
 import { handleUserInput, setReplyCallback } from './Agent.js';
-import { getOrCreateWechatSession, switchSession, getCurrentSession } from './session.js';
+import { getOrCreateWechatSession, switchSession, getCurrentSession, setConversationHistory } from './session.js';
 import { broadcast } from '../io/ws-server.js';
 
 const WECHAT_SESSIONS = new Map();
+
+function syncWechatHistoryToSession() {
+  const msgs = getWechatMessages();
+  const history = [];
+  for (const msg of msgs) {
+    if (msg.direction === 'received') {
+      history.push({
+        role: 'user',
+        content: `[微信消息 来自 ${msg.from}] ${msg.text}`
+      });
+    } else if (msg.direction === 'sent') {
+      history.push({
+        role: 'assistant',
+        content: msg.text
+      });
+    }
+  }
+  setConversationHistory(history);
+}
 
 function ensureWechatSession() {
   const sessionId = getOrCreateWechatSession();
@@ -21,17 +42,21 @@ function ensureWechatSession() {
   if (!current || current.id !== sessionId) {
     switchSession(sessionId);
   }
+  syncWechatHistoryToSession();
   return sessionId;
 }
 
 async function handleWechatMessage(message) {
   const { from, text } = message;
+  const timestamp = new Date().toISOString();
+
+  addWechatMessage({ direction: 'received', from, text, timestamp });
 
   broadcast('wechat-message', {
     direction: 'received',
     from,
     text,
-    timestamp: new Date().toISOString()
+    timestamp
   });
 
   if (text.trim() === '/new') {
@@ -43,6 +68,7 @@ async function handleWechatMessage(message) {
   const wechatSid = wechatState.wechatSessionId;
   if (wechatSid && (!current || current.id !== wechatSid)) {
     switchSession(wechatSid);
+    syncWechatHistoryToSession();
     broadcast('wechat-state', {
       data: { connected: true, accountId: wechatState.accountId, polling: true, sessionId: wechatSid }
     });
@@ -59,11 +85,13 @@ async function handleWechatMessage(message) {
   setReplyCallback(async (replyText) => {
     const result = await sendWechatMessage(from, replyText);
     if (result.success) {
+      const replyTimestamp = new Date().toISOString();
+      addWechatMessage({ direction: 'sent', to: from, text: replyText, timestamp: replyTimestamp });
       broadcast('wechat-message', {
         direction: 'sent',
         from,
         text: replyText,
-        timestamp: new Date().toISOString()
+        timestamp: replyTimestamp
       });
     }
   });

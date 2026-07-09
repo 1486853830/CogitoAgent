@@ -343,6 +343,19 @@ function switchPersona(personaName) {
     return;
   }
 
+  // 检查 persona.md 是否已存在且内容相同，避免启动时误清空会话
+  let needsReset = true;
+  try {
+    if (existsSync(targetPath)) {
+      const existing = readFileSync(targetPath, 'utf-8');
+      if (existing === content) {
+        needsReset = false;
+      }
+    }
+  } catch {
+    // 读取出错则默认需要重置
+  }
+
   try {
     writeFileSync(targetPath, content, 'utf-8');
   } catch (err) {
@@ -350,10 +363,14 @@ function switchPersona(personaName) {
     return;
   }
 
-  // 重置对话历史，让新 persona 生效
-  resetConversation();
-  println(`[成功] Persona 已切换为: ${printTag(personaName, 'bgGreen')}`, 'green');
-  println(`[提示] 对话历史已重置，新 Persona 已生效`, 'yellow');
+  if (needsReset) {
+    // 重置对话历史，让新 persona 生效
+    resetConversation();
+    println(`[成功] Persona 已切换为: ${printTag(personaName, 'bgGreen')}`, 'green');
+    println(`[提示] 对话历史已重置，新 Persona 已生效`, 'yellow');
+  } else {
+    println(`[提示] Persona 已切换为: ${printTag(personaName, 'bgGreen')}`, 'green');
+  }
 }
 
 /**

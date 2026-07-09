@@ -846,6 +846,19 @@ app.whenReady().then(async () => {
     sendToAgent('/wechat/status');
   });
 
+  ipcMain.handle('get-wechat-history', () => {
+    const wechatFile = path.join(PROJECT_ROOT, 'data', 'wechat', 'weichat.json');
+    try {
+      if (fs.existsSync(wechatFile)) {
+        const data = JSON.parse(fs.readFileSync(wechatFile, 'utf-8'));
+        return data.messages || [];
+      }
+    } catch (e) {
+      console.error('[主进程] 读取微信历史消息失败:', e.message);
+    }
+    return [];
+  });
+
   // ===== 启动逻辑 =====
   if (!isConfigured()) {
     console.log('[主进程] 未配置，显示配置向导');

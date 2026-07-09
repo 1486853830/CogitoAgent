@@ -136,6 +136,7 @@ const AppState = {
   currentMode: 'work', // work / code / design
   view: 'welcome', // welcome / chat
   currentSessionId: null,  // 追踪当前会话 ID
+  wechatSessionId: null,   // 微信通道会话 ID
 
   setProcessing(val) {
     this.isProcessing = val;
@@ -432,30 +433,48 @@ const NavManager = {
     // 清空当前聊天
     ChatManager.clearMessages();
 
-    // 加载历史消息
-    try {
-      console.log('[NavManager] 正在加载历史消息, sessionId:', sessionId);
-      const history = await window.electronAPI?.getSessionHistory(sessionId);
-      console.log('[NavManager] 历史消息加载完成, 条数:', history?.length);
-
-      if (history && history.length > 0) {
-        // 逐条添加历史消息
-        for (const msg of history) {
-          if (msg.role === 'user') {
-            ChatManager.addMessage('user', msg.content);
-          } else if (msg.role === 'assistant') {
-            const filtered = Utils.filterToolBlocks(msg.content);
-            if (filtered) {
-              ChatManager.addMessage('assistant', Utils.renderMarkdown(filtered), { isHtml: true });
+    // 微信通道会话：加载微信历史消息（工具气泡样式）
+    if (AppState.wechatSessionId && sessionId === AppState.wechatSessionId) {
+      try {
+        const wechatHistory = await window.electronAPI?.getWechatHistory();
+        if (wechatHistory && wechatHistory.length > 0) {
+          for (const msg of wechatHistory) {
+            if (msg.direction === 'received') {
+              ChatManager.addToolCall('微信收到', { from: msg.from, text: msg.text });
+            } else if (msg.direction === 'sent') {
+              ChatManager.addToolResult('微信回复', { to: msg.to, text: msg.text }, true);
             }
           }
+        } else {
+          ChatManager.addMessage('system', '等待微信消息...');
         }
-      } else {
-        // 空会话，显示提示
-        ChatManager.addMessage('system', '新会话开始...');
+      } catch (e) {
+        console.error('[NavManager] 加载微信历史消息失败:', e);
       }
-    } catch (e) {
-      console.error('[NavManager] 加载历史消息失败:', e);
+    } else {
+      // 普通会话：加载常规历史消息
+      try {
+        console.log('[NavManager] 正在加载历史消息, sessionId:', sessionId);
+        const history = await window.electronAPI?.getSessionHistory(sessionId);
+        console.log('[NavManager] 历史消息加载完成, 条数:', history?.length);
+
+        if (history && history.length > 0) {
+          for (const msg of history) {
+            if (msg.role === 'user') {
+              ChatManager.addMessage('user', msg.content);
+            } else if (msg.role === 'assistant') {
+              const filtered = Utils.filterToolBlocks(msg.content);
+              if (filtered) {
+                ChatManager.addMessage('assistant', Utils.renderMarkdown(filtered), { isHtml: true });
+              }
+            }
+          }
+        } else {
+          ChatManager.addMessage('system', '新会话开始...');
+        }
+      } catch (e) {
+        console.error('[NavManager] 加载历史消息失败:', e);
+      }
     }
 
     // 发送切换命令给 Agent（这会更新 meta.activeId）
@@ -619,6 +638,9 @@ const NavManager = {
     if (!label || !btn) return;
 
     if (state.connected) {
+      if (state.sessionId) {
+        AppState.wechatSessionId = state.sessionId;
+      }
       label.textContent = '微信通道';
       btn.classList.add('wechat-connected');
       btn.title = '点击进入微信会话';
