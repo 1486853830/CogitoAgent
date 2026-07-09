@@ -88,31 +88,31 @@ npm start
 mindmap
   root((工具系统))
     文件操作
-      ls / read / create
-      copy / mkdir
+      读写文件
+      创建复制
     网络工具
-      search / browse
-      fetchPage
+      搜索浏览
+      抓取内容
     浏览器自动化
-      clickElement / fillField
-      takeScreenshot
+      点击填表
+      页面截图
     代码执行
-      JavaScript / Python
-      安全沙箱
+      JavaScript
+      Python 沙箱
     Git 操作
-      提交 / 推送 / 拉取
-      分支 / 合并 / 暂存
+      提交推送
+      分支合并
     任务管理
-      创建 / 分解
-      追踪
+      创建分解
+      状态追踪
     记忆系统
       SQLite 存储
       语义检索
     数据处理
-      CSV / JSON
-      查询 / 分析
+      CSV/JSON
+      查询分析
     Office 文档
-      Word / Excel / PPT
+      Word/Excel/PPT
     OCR / 视觉
       文字识别
       图像分析

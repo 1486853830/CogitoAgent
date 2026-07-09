@@ -88,29 +88,29 @@ All tools are managed by `registry.js` and invoked via `[TOOL] functionName(args
 mindmap
   root((Tool System))
     File Operations
-      ls / read / create
-      copy / mkdir
+      Read / Write
+      Create / Copy
     Web Tools
-      search / browse
-      fetchPage
+      Search / Browse
+      Fetch Page
     Browser Automation
-      clickElement / fillField
-      takeScreenshot
+      Click / Fill
+      Screenshot
     Code Execution
-      JavaScript / Python
-      Security Sandbox
+      JavaScript
+      Python Sandbox
     Git Operations
-      commit / push / pull
-      branch / merge / stash
+      Commit / Push
+      Branch / Merge
     Task Management
-      create / split
-      tracking
+      Create / Split
+      Track Status
     Memory System
       SQLite Storage
       Semantic Search
     Data Processing
       CSV / JSON
-      query / analyze
+      Query / Analyze
     Office Documents
       Word / Excel / PPT
     OCR / Vision
