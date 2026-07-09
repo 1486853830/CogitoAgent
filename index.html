@@ -1058,7 +1058,7 @@
     <header class="fade-in">
       <div class="badge">
         <span class="badge-dot"></span>
-        <span>v2.3.0 &middot; Local Autonomous Agent</span>
+        <span>v2.3.1 &middot; Local Autonomous Agent</span>
       </div>
       <div class="title-group">
         <h1 class="title">COGITO</h1>
@@ -1070,7 +1070,7 @@
 
     <div class="quote-box fade-in">
       <p>"Cogito, ergo sum — I think, therefore I am. CogitoAgent is not just a tool; it is your autonomous thinking partner running entirely in your local environment."</p>
-      <cite>— CogitoAgent v2.3.0</cite>
+      <cite>— CogitoAgent v2.3.1</cite>
     </div>
 
     <div class="repo-bar fade-in">
@@ -1120,6 +1120,11 @@
             <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
             <div class="feature-title">Persistent Memory<span class="zh">持久记忆</span></div>
             <div class="feature-desc"><span class="en">Long-term storage, cross-session learning</span><span class="zh">长期记忆存储，跨会话学习</span></div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+            <div class="feature-title">WeChat Channel<span class="zh">微信通道</span></div>
+            <div class="feature-desc"><span class="en">QR login, messaging, dedicated session</span><span class="zh">扫码登录，消息收发，专属会话</span></div>
           </div>
         </div>
       </div>
@@ -1173,7 +1178,7 @@
         <div class="stat-label"><span class="en">Preset Personas</span><span class="zh">预设人设</span></div>
       </div>
       <div class="stat-card">
-        <div class="stat-number">12</div>
+        <div class="stat-number">15</div>
         <div class="stat-label"><span class="en">Quick Commands</span><span class="zh">快捷指令</span></div>
       </div>
     </section>
@@ -1289,6 +1294,13 @@
           </div>
         </div>
         <div class="tool-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <div class="tool-info">
+            <div class="tool-name">WeChat Channel<span class="zh">微信通道</span></div>
+            <div class="tool-count">QR login, receive/send messages, dedicated session</div>
+          </div>
+        </div>
+        <div class="tool-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           <div class="tool-info">
             <div class="tool-name">Browser Automation<span class="zh">浏览器自动化</span></div>
@@ -1363,6 +1375,15 @@
             <img src="introduction/runapp.png" alt="CogitoAgent Run Application" />
           </div>
         </div>
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="screenshot-title"><span class="en">WeChat Integration</span><span class="zh">微信集成</span></span>
+          </div>
+          <div class="screenshot-image">
+            <img src="introduction/wechat.png" alt="CogitoAgent WeChat" />
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1393,10 +1414,7 @@
           <div class="vision-header">
             <div class="vision-title"><span class="en">OCR Recognition</span><span class="zh">OCR 识别</span></div>
           </div>
-          <div class="vision-image">
-            <img src="introduction/electron-desktop.png" alt="CogitoAgent OCR" />
-          </div>
-          <div class="vision-desc bilingual">
+          <div class="vision-desc bilingual" style="padding: 16px;">
             <span class="en">Extract text from images, screenshots, and documents. Support batch processing for multiple images.</span>
             <span class="zh">从图像、截图和文档中提取文本。支持多图像批量处理。</span>
           </div>
@@ -1769,6 +1787,18 @@
           <span class="cmd-key">/clear</span>
           <span class="cmd-desc"><span class="en">Clear conversation</span><span class="zh">清除对话</span></span>
         </div>
+        <div class="command-item">
+          <span class="cmd-key">/wechat</span>
+          <span class="cmd-desc"><span class="en">WeChat channel status</span><span class="zh">微信通道状态</span></span>
+        </div>
+        <div class="command-item">
+          <span class="cmd-key">/wechat login</span>
+          <span class="cmd-desc"><span class="en">Login via QR code</span><span class="zh">扫码登录微信</span></span>
+        </div>
+        <div class="command-item">
+          <span class="cmd-key">/wechat logout</span>
+          <span class="cmd-desc"><span class="en">Logout from WeChat</span><span class="zh">退出微信登录</span></span>
+        </div>
       </div>
     </section>
 
@@ -1793,7 +1823,7 @@
     </section>
 
     <footer>
-      <p>CogitoAgent v2.3.0</p>
+      <p>CogitoAgent v2.3.1</p>
       <p style="margin-top: 8px;">
         <span class="en">Built with ❤️ for local autonomous AI. Licensed under Apache 2.0.</span>
         <span class="zh">为本地自主 AI 而生。Apache 2.0 许可。</span>
