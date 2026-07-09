@@ -7,6 +7,7 @@ import { broadcast } from '../../io/ws-server.js';
 
 const STATE_DIR = path.resolve(process.cwd(), 'data', 'wechat');
 const STATE_FILE = path.join(STATE_DIR, 'wechat-state.json');
+const MESSAGES_FILE = path.join(STATE_DIR, 'weichat.json');
 
 let wechatState = {
   loggedIn: false,
@@ -80,6 +81,49 @@ async function saveState() {
   } catch (e) {
     console.error('[微信] 保存状态失败:', e.message);
   }
+}
+
+function loadWechatMessages() {
+  try {
+    if (fs.existsSync(MESSAGES_FILE)) {
+      const data = fs.readFileSync(MESSAGES_FILE, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('[微信] 加载消息失败:', e.message);
+  }
+  return { messages: [] };
+}
+
+function saveWechatMessages(messages) {
+  try {
+    if (!fs.existsSync(STATE_DIR)) {
+      fs.mkdirSync(STATE_DIR, { recursive: true });
+    }
+    fs.writeFileSync(MESSAGES_FILE, JSON.stringify({ messages }, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[微信] 保存消息失败:', e.message);
+  }
+}
+
+function addWechatMessage(msg) {
+  const data = loadWechatMessages();
+  const newMsg = {
+    id: Date.now() + '-' + crypto.randomBytes(4).toString('hex'),
+    timestamp: new Date().toISOString(),
+    ...msg
+  };
+  data.messages.push(newMsg);
+  saveWechatMessages(data.messages);
+  return newMsg;
+}
+
+function getWechatMessages(limit = 100) {
+  const data = loadWechatMessages();
+  if (limit && data.messages.length > limit) {
+    return data.messages.slice(-limit);
+  }
+  return data.messages;
 }
 
 async function loginWechat() {
@@ -387,5 +431,7 @@ export {
   getWechatStatus,
   generateWechatQRCode,
   setWechatSessionId,
+  addWechatMessage,
+  getWechatMessages,
   wechatState
 };

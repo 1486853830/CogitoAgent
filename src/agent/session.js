@@ -468,7 +468,7 @@ function initializeSession(sessionId = null) {
 }
 
 /**
- * 获取或创建微信专属会话
+ * 获取或创建微信专属会话（不切换当前会话）
  */
 function getOrCreateWechatSession() {
   const meta = loadMeta();
@@ -476,8 +476,26 @@ function getOrCreateWechatSession() {
   if (existing) {
     return existing.id;
   }
-  createNewSession('微信通道');
-  return currentSessionId;
+
+  const id = generateId();
+  const session = {
+    id,
+    name: '微信通道',
+    createdAt: new Date().toISOString(),
+    lastActiveAt: new Date().toISOString(),
+    messageCount: 0
+  };
+
+  meta.sessions.push(session);
+  saveMeta(meta);
+
+  const messages = [{ role: 'system', content: buildSystemPrompt() }];
+  const filePath = path.join(SESSIONS_DIR, `${id}.json`);
+  ensureDir();
+  writeFileSync(filePath, JSON.stringify(messages, null, 2), 'utf-8');
+
+  console.error(`[会话] 已创建微信专属会话: ${session.name}`);
+  return id;
 }
 
 /**
@@ -902,6 +920,17 @@ function resetConversation() {
   }
 }
 
+function setConversationHistory(messages) {
+  conversationHistory = [
+    { role: 'system', content: buildSystemPrompt() },
+    ...messages
+  ];
+  turnCount = messages.length;
+  if (currentSessionId) {
+    saveSession(currentSessionId, conversationHistory);
+  }
+}
+
 export {
   initializeSession,
   createNewSession,
@@ -919,6 +948,7 @@ export {
   compressHistory,
   getHistoryLength,
   resetConversation,
+  setConversationHistory,
   estimateTokens,
   getContextTokenEstimate,
   isApproachingLimit,

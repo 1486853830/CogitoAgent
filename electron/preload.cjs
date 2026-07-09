@@ -109,6 +109,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // 请求微信状态
   requestWechatStatus: () => ipcRenderer.send('wechat-request-status'),
+
+  // 获取微信历史消息
+  getWechatHistory: () => ipcRenderer.invoke('get-wechat-history'),
   
   // 监听微信状态变化
   onWechatState: (callback) => {
