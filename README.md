@@ -276,37 +276,16 @@ cogito-agent/
 > See [introduction/systems.md](introduction/systems.md) (Chinese) for details
 
 ```mermaid
-mindmap
-  root((Core Systems))
-    Memory System
-      SQLite Persistence
-      Tag Classification
-      Semantic Search
-    Task Management
-      Create / Split
-      Parent-Child
-      Status Tracking
-    Code Sandbox
-      isolated-vm Isolation
-      CPU / Memory Limits
-      Python Sandbox
-    Personas
-      22 Preset Roles
-      Custom Roles
-      Hot-Switch
-    Session Management
-      Independent Contexts
-      Auto-Compression
-    Agent Cluster
-      Sub-Agents
-      Task Delegation
-      Cluster Monitoring
-    Statistics & Tracing
-      Tool Usage Metrics
-      LLM Call Tracing
-    Thought Chain Vis
-      Real-Time Display
-      Tool Execution Chain
+flowchart LR
+  Core["⚙️ Core Systems"]
+  Core --> Memory["🧠 Memory System"]
+  Core --> Task["📋 Task Management"]
+  Core --> Sandbox["🔒 Code Sandbox"]
+  Core --> Persona["👤 Personas"]
+  Core --> Session["💬 Session Management"]
+  Core --> Cluster["🔗 Agent Cluster"]
+  Core --> Stats["📊 Statistics & Tracing"]
+  Core --> Thought["💭 Thought Chain Vis"]
 ```
 
 - **Memory System** — SQLite-based long-term storage and semantic retrieval
