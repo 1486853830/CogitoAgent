@@ -23,6 +23,9 @@ import { TOOL_REGISTRY, DANGEROUS_OPERATIONS, getToolNames, getToolRegistry, has
 import { handleCommand, printHelp, printStatus, printClearConfirm, switchPersona, listPersonas, listTools, printConfig, toggleDebug, printClusterStatus } from './commands.js';
 import { orchestrator } from './orchestrator.js';
 import { initWechatChannel } from './wechat-manager.js';
+import { parseArgs, parseToolCall, parseAllToolCalls } from './tool-parser.js';
+import { TOOL_OUTPUT_LIMITS, formatToolResult, formatLsResult, classifyToolError, formatToolError } from './tool-utils.js';
+import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from './thought-trace.js';
 
 // 状态管理委托给 state.js 模块
 let thinkingTimer = null;
@@ -48,104 +51,9 @@ function extractCleanReply(text) {
 }
 const MAX_CONSECUTIVE_CYCLES = 8;  // 最大连续循环次数，超过后强制暂停等待用户
 
-// 思维链追踪器
-let thoughtTrace = [];
+// 思维链追踪（traceStep / updateTraceStep / clearThoughtTrace / getThoughtTrace）已移动到 thought-trace.js
 
-function traceStep(name, details = {}, status = 'running') {
-  const step = {
-    id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-    name,
-    details,
-    status,
-    startTime: new Date().toISOString(),
-    duration: 0
-  };
-  thoughtTrace.push(step);
-  broadcast('thought-trace', { action: 'add', step });
-  return step;
-}
-
-function updateTraceStep(id, updates) {
-  const step = thoughtTrace.find(s => s.id === id);
-  if (step) {
-    const start = new Date(step.startTime).getTime();
-    step.duration = Math.round((Date.now() - start) / 1000 * 100) / 100;
-    Object.assign(step, updates);
-    broadcast('thought-trace', { action: 'update', step });
-  }
-}
-
-function clearThoughtTrace() {
-  thoughtTrace = [];
-  broadcast('thought-trace', { action: 'clear' });
-}
-
-function getThoughtTrace() {
-  return [...thoughtTrace];
-}
-
-// 工具输出最大长度限制（根据工具类型智能截断）
-const TOOL_OUTPUT_LIMITS = {
-  // 目录列表较短
-  ls: 5000,
-  
-  // Git 日志中等
-  gitLog: 10000,
-  gitDiff: 10000,
-  
-  // 代码执行结果较长
-  executeCode: 50000,
-  executeFile: 50000,
-  runJavaScript: 50000,
-  runPython: 50000,
-  
-  // 文件内容中等
-  read: 20000,
-  readCSV: 15000,
-  readJSON: 15000,
-  
-  // 数据库查询结果
-  executeSQL: 20000,
-  query: 20000,
-  
-  // 搜索结果
-  searchMemory: 10000,
-  search: 10000,
-  
-  // 系统信息中等
-  getProcesses: 15000,
-  monitorSystem: 15000,
-  
-  // 其他默认限制
-  default: 10000
-};
-
-function formatToolResult(tool, data) {
-  let result;
-  
-  // 处理嵌套的 { success, data } 结构
-  if (data && typeof data === 'object' && 'data' in data) {
-    data = data.data;
-  }
-  
-  if (tool === 'ls' && Array.isArray(data)) {
-    result = formatLsResult(data);
-  } else if (typeof data === 'object') {
-    result = JSON.stringify(data, null, 2);
-  } else {
-    result = String(data);
-  }
-  
-  // 根据工具类型获取截断限制
-  const limit = TOOL_OUTPUT_LIMITS[tool] || TOOL_OUTPUT_LIMITS.default;
-  
-  // 截断过长的输出
-  if (result.length > limit) {
-    return result.slice(0, limit) + '\n\n... [输出内容过长，已截断]';
-  }
-  
-  return result;
-}
+// 工具输出格式化与错误分类已移动到 tool-utils.js，此处导入并 re-export
 
 /**
  * 解析并打印完整响应，分离正文和工具块
@@ -161,8 +69,8 @@ function parseAndPrintResponse(text) {
     const before = text.slice(lastIndex, match.index);
     if (before.trim()) {
       // 跳过 [工具结果] 和 [工具错误] 的内容
-      const cleaned = before.split('\n').filter(line => 
-        !line.trim().startsWith('[工具结果]:') && 
+      const cleaned = before.split('\n').filter(line =>
+        !line.trim().startsWith('[工具结果]:') &&
         !line.trim().startsWith('[工具错误]:')
       ).join('\n');
       if (cleaned.trim()) {
@@ -181,93 +89,14 @@ function parseAndPrintResponse(text) {
   const remaining = text.slice(lastIndex);
   if (remaining.trim()) {
     // 跳过 [工具结果] 和 [工具错误] 的内容
-    const cleaned = remaining.split('\n').filter(line => 
-      !line.trim().startsWith('[工具结果]:') && 
+    const cleaned = remaining.split('\n').filter(line =>
+      !line.trim().startsWith('[工具结果]:') &&
       !line.trim().startsWith('[工具错误]:')
     ).join('\n');
     if (cleaned.trim()) {
       printContent(cleaned);
     }
   }
-}
-
-/**
- * 执行工具 - 使用注册表动态调用
- * 包含危险操作确认机制和 JSON 参数支持
- */
-/**
- * 工具错误类型识别
- */
-function classifyToolError(error) {
-  // 网络错误
-  if (error.code === 'ENOTFOUND' || 
-      error.code === 'ECONNREFUSED' || 
-      error.code === 'ETIMEDOUT' ||
-      error.message?.includes('network')) {
-    return 'network';
-  }
-  
-  // 文件系统错误
-  if (error.code === 'ENOENT' || 
-      error.code === 'EACCES' || 
-      error.code === 'EPERM' ||
-      error.code === 'ENOTDIR') {
-    return 'filesystem';
-  }
-  
-  // 权限错误
-  if (error.code === 'EACCES' || error.code === 'EPERM') {
-    return 'permission';
-  }
-  
-  // 超时错误
-  if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
-    return 'timeout';
-  }
-  
-  // 默认：未知错误
-  return 'unknown';
-}
-
-/**
- * 格式化工具错误信息
- */
-function formatToolError(error, toolName) {
-  const errorType = classifyToolError(error);
-  
-  let message = '';
-  let suggestion = '';
-  
-  switch (errorType) {
-    case 'network':
-      message = `[${toolName}] 网络错误: ${error.message}`;
-      suggestion = '请检查网络连接后重试';
-      break;
-    case 'filesystem':
-      message = `[${toolName}] 文件系统错误: ${error.message}`;
-      suggestion = '请检查文件路径是否正确';
-      break;
-    case 'permission':
-      message = `[${toolName}] 权限错误: ${error.message}`;
-      suggestion = '请检查权限设置';
-      break;
-    case 'timeout':
-      message = `[${toolName}] 执行超时: ${error.message}`;
-      suggestion = '操作耗时过长，请稍后重试';
-      break;
-    default:
-      message = `[${toolName}] 执行失败: ${error.message}`;
-      suggestion = '请稍后重试';
-  }
-  
-  let fullMessage = `${message}\n提示: ${suggestion}`;
-  
-  if (process.env.DEBUG === 'true' && error.stack) {
-    const stackLines = error.stack.split('\n').slice(1, 4).join('\n');
-    fullMessage += '\n堆栈跟踪:\n' + stackLines;
-  }
-  
-  return fullMessage;
 }
 
 async function executeTool(toolName, args) {
@@ -385,140 +214,9 @@ async function executeTool(toolName, args) {
 // 注意：handleCommand, printHelp, printStatus, printClearConfirm, switchPersona, listPersonas, listTools, printConfig, toggleDebug 
 // 已移动到 commands.js 模块中，此处导入使用
 
-/**
- * 解析单个工具调用
- * 支持更复杂的参数格式（包含括号、引号等）
- */
-function parseToolCall(text) {
-  // 改进的正则：匹配工具名和括号内的所有内容（包括嵌套括号）
-  const fullMatch = text.match(/\[TOOL\]\s*(\w+)\s*\(([\s\S]*?)\)\s*\[\/TOOL\]/);
-  if (fullMatch) {
-    const tool = fullMatch[1];
-    const argsStr = fullMatch[2];
-    const args = parseArgs(argsStr);
-    return { tool, args };
-  }
-  return null;
-}
+// parseArgs / parseToolCall / parseAllToolCalls 已移动到 tool-parser.js，此处导入并 re-export
 
-/**
- * 解析所有工具调用
- * 支持多行参数和复杂格式
- */
-function parseAllToolCalls(text) {
-  const results = [];
-  // 使用更宽松的正则，支持多行参数
-  const regex = /\[TOOL\]\s*(\w+)\s*\(([\s\S]*?)\)\s*\[\/TOOL\]/g;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    const tool = match[1];
-    const argsStr = match[2];
-    const args = parseArgs(argsStr);
-    results.push({ tool, args });
-  }
-  return results;
-}
-
-/**
- * 解析工具参数（改进版）
- * 支持多种格式：
- * 1. JSON 格式：{"path": "file.txt", "content": "hello"}
- * 2. 逗号分隔的简单参数：arg1, arg2, arg3
- * 3. 多行内容（使用特殊分隔符）
- */
-function parseArgs(argsStr) {
-  if (!argsStr || argsStr.trim() === '') {
-    return [];
-  }
-
-  const trimmed = argsStr.trim();
-
-  // 尝试解析 JSON 格式
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-    try {
-      const jsonObj = JSON.parse(trimmed);
-      return { isJson: true, data: jsonObj };
-    } catch (e) {
-      // JSON 解析失败，继续用其他方式
-    }
-  }
-
-  // 尝试解析带引号的参数（支持内容中包含逗号）
-  // 格式："path", "content with commas, etc"
-  if (trimmed.includes('"') || trimmed.includes("'")) {
-    try {
-      // 使用更智能的分割方式：只在引号外的逗号处分割
-      const args = [];
-      let current = '';
-      let inQuote = false;
-      let quoteChar = '';
-      
-      for (let i = 0; i < trimmed.length; i++) {
-        const char = trimmed[i];
-        
-        if ((char === '"' || char === "'") && !inQuote) {
-          inQuote = true;
-          quoteChar = char;
-          current += char;
-        } else if (char === quoteChar && inQuote) {
-          inQuote = false;
-          quoteChar = '';
-          current += char;
-        } else if (char === ',' && !inQuote) {
-          // 引号外的逗号是分隔符
-          args.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
-      }
-      
-      // 添加最后一个参数
-      if (current.trim()) {
-        args.push(current.trim());
-      }
-      
-      // 处理引号包裹的参数
-      return args.map(arg => {
-        const p = arg.trim();
-        if ((p.startsWith('"') && p.endsWith('"')) ||
-            (p.startsWith("'") && p.endsWith("'"))) {
-          return p.slice(1, -1);
-        }
-        return p;
-      });
-    } catch (e) {
-      // 智能分割失败，回退到简单分割
-    }
-  }
-
-  // 简单逗号分隔（向后兼容）
-  const result = [];
-  const parts = trimmed.split(',');
-  for (const part of parts) {
-    const p = part.trim();
-    if ((p.startsWith('"') && p.endsWith('"')) ||
-        (p.startsWith("'") && p.endsWith("'"))) {
-      result.push(p.slice(1, -1));
-    } else {
-      result.push(p);
-    }
-  }
-  return result;
-}
-
-function formatLsResult(data) {
-  const dirs = data.filter(i => i.type === 'dir').map(i => `  ${i.name}/`);
-  const files = data.filter(i => i.type === 'file').map(i => `  ${i.name}`);
-  let lines = [];
-  if (dirs.length) lines.push('  [目录]');
-  lines = lines.concat(dirs.slice(0, 20));
-  if (dirs.length > 20) lines.push(`  ... 还有 ${dirs.length - 20} 个目录`);
-  if (files.length) lines.push('  [文件]');
-  lines = lines.concat(files.slice(0, 20));
-  if (files.length > 20) lines.push(`  ... 还有 ${files.length - 20} 个文件`);
-  return lines.join('\n');
-}
+// formatLsResult 已移动到 tool-utils.js
 
 /**
  * 处理用户输入
