@@ -18,6 +18,7 @@ const SharedUtils = {
   filterToolBlocks(text) {
     return text
       .replace(/\[TOOL\][\s\S]*?\[\/TOOL\]/g, '')
+      .replace(/\[TOOL\][\s\S]*$/, '')
       .replace(/^\[工具结果\]:.*$/gm, '')
       .replace(/^\[工具错误\]:.*$/gm, '')
       .replace(/\n```\n/g, '\n')

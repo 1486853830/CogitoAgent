@@ -8,6 +8,9 @@
 import { createServer } from 'http';
 import { getToolRegistry, getToolsByCategory, hasTool } from './registry.js';
 import { executeTool } from './Agent.js';
+import { parseArgs, parseToolCall, parseAllToolCalls } from './tool-parser.js';
+import { formatToolResult, classifyToolError, formatToolError, TOOL_OUTPUT_LIMITS } from './tool-utils.js';
+import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from './thought-trace.js';
 
 // MCP JSON-RPC 2.0 实现
 const MCP_VERSION = '2.0';
