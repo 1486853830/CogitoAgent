@@ -8,13 +8,7 @@ const inputEl = document.getElementById('userInput');
 const btnSend = document.getElementById('btnSend');
 const characterEl = document.querySelector('.character');
 const panel = document.getElementById('panel');
-const btnMinimize = document.getElementById('btnMinimize');
-const btnClose = document.getElementById('btnClose');
 const btnDashboard = document.getElementById('btnDashboard');
-
-let currentAssistantBubble = null;
-let isProcessing = false;
-let lastToolKey = '';
 
 let isPanelVisible = true;
 let isDragging = false;
@@ -22,6 +16,9 @@ let hasDragged = false;
 let dragStartX = 0;
 let dragStartY = 0;
 const DRAG_THRESHOLD = 5;
+
+// 流式回复处理器（使用公共 StreamReplyHandler）
+let replyHandler = null;
 
 function initApp() {
   MessageRenderer.init({
@@ -35,9 +32,31 @@ function initApp() {
     defaultMediaPath: '../shared/video.mp4',
   });
 
+  // 使用公共窗口控制
+  WindowControls.init();
+
+  // 初始化流式回复处理器
+  replyHandler = StreamReplyHandler.create({
+    renderMessage: (type, content, extra) => MessageRenderer.addMessage(type, content, extra),
+    updateMessage: (msgResult, content) => {
+      const bubble = msgResult.bubble;
+      if (bubble) bubble.innerHTML = SharedUtils.sanitizeHtml(SharedUtils.renderMarkdown(content));
+    },
+    getBubbleElement: (msgResult) => msgResult?.bubble,
+    removeMessage: (msgResult) => msgResult?.msgDiv?.remove(),
+    removeTypingCursor: (msgResult) => msgResult?.bubble?.classList.remove('typing-cursor'),
+    addToolCall: (toolName, args) => MessageRenderer.addToolCall(toolName, args),
+    addToolResult: (toolName, data, success) => MessageRenderer.addToolResult(toolName, data, success),
+    filterToolBlocks: (text) => SharedUtils.filterToolBlocks(text),
+    scrollToBottom: () => MessageRenderer.scrollToBottom(),
+    onProcessingChange: (processing) => {
+      setButtonState(processing ? 'stop' : 'send');
+    },
+  });
+
   bindEvents();
 
-  window.electronAPI.onReply(handleReply);
+  window.electronAPI.onReply((data) => replyHandler.handle(data));
   window.electronAPI.onStateChange(handleStateChange);
   window.electronAPI.onHistory(handleHistory);
   window.electronAPI.requestHistory();
@@ -56,14 +75,6 @@ function bindEvents() {
     }
   });
 
-  btnMinimize.addEventListener('click', () => {
-    window.electronAPI?.minimizeWindow();
-  });
-
-  btnClose.addEventListener('click', () => {
-    window.electronAPI?.closeWindow();
-  });
-
   btnDashboard.addEventListener('click', () => {
     window.electronAPI?.switchToDashboard();
   });
@@ -79,7 +90,7 @@ function bindEvents() {
 }
 
 function sendMessage() {
-  if (isProcessing) {
+  if (replyHandler?.isProcessing()) {
     window.electronAPI.sendMessage('\n');
     return;
   }
@@ -89,9 +100,6 @@ function sendMessage() {
 
   inputEl.value = '';
   MessageRenderer.addMessage('user', text);
-  isProcessing = true;
-  setButtonState('stop');
-
   window.electronAPI.sendMessage(text);
 }
 
@@ -112,77 +120,8 @@ function setButtonState(state) {
   }
 }
 
-function handleReply(data) {
-  switch (data.type) {
-    case 'user':
-      MessageRenderer.addMessage('user', data.content);
-      break;
-
-    case 'chunk': {
-      const filtered = SharedUtils.filterToolBlocks(data.full || data.content);
-      if (!currentAssistantBubble) {
-        const result = MessageRenderer.addMessage('assistant', SharedUtils.renderMarkdown(filtered), { isHtml: true });
-        currentAssistantBubble = result.msgDiv;
-      } else {
-        const bubble = currentAssistantBubble.querySelector('.bubble');
-        bubble.innerHTML = SharedUtils.sanitizeHtml(SharedUtils.renderMarkdown(filtered));
-      }
-      currentAssistantBubble.querySelector('.bubble').classList.add('typing-cursor');
-      MessageRenderer.scrollToBottom();
-      break;
-    }
-
-    case 'tool-start': {
-      const toolKey = `${data.tool}:${JSON.stringify(data.args)}`;
-      if (toolKey === lastToolKey) break;
-      lastToolKey = toolKey;
-      setTimeout(() => { if (lastToolKey === toolKey) lastToolKey = ''; }, 500);
-
-      if (currentAssistantBubble) {
-        const bubble = currentAssistantBubble.querySelector('.bubble');
-        if (bubble && !bubble.textContent.trim()) {
-          currentAssistantBubble.remove();
-        }
-      }
-      currentAssistantBubble = null;
-      MessageRenderer.addToolCall(data.tool, data.args);
-      break;
-    }
-
-    case 'tool-result':
-      break;
-
-    case 'end':
-      if (currentAssistantBubble) {
-        currentAssistantBubble.querySelector('.bubble').classList.remove('typing-cursor');
-      }
-      currentAssistantBubble = null;
-      isProcessing = false;
-      setButtonState('send');
-      break;
-
-    case 'error':
-      if (currentAssistantBubble) {
-        currentAssistantBubble.querySelector('.bubble').classList.remove('typing-cursor');
-      }
-      currentAssistantBubble = null;
-      MessageRenderer.addMessage('error', `⚠️ ${data.message}`, { className: 'error' });
-      isProcessing = false;
-      setButtonState('send');
-      break;
-  }
-}
-
 function handleStateChange(state) {
   updateStatusIndicator(state);
-
-  if (state === 'thinking') {
-    setButtonState('stop');
-    isProcessing = true;
-  } else if (state === 'idle') {
-    setButtonState('send');
-    isProcessing = false;
-  }
 }
 
 function handleHistory(history) {
