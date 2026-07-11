@@ -150,160 +150,14 @@ const AppState = {
 };
 
 // ============================================================
-// Toast 提示模块
+// Toast 提示模块 - 使用公共 ToastManager
 // ============================================================
-const ToastManager = {
-  container: null,
-  duration: 2500,
-
-  init() {
-    this.container = document.createElement('div');
-    this.container.className = 'toast-container';
-    document.body.appendChild(this.container);
-  },
-
-  show(message, type = 'info') {
-    if (!this.container) this.init();
-
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-
-    let icon = '';
-    switch (type) {
-      case 'success':
-        icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
-        break;
-      case 'warning':
-        icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>';
-        break;
-      case 'error':
-        icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>';
-        break;
-      default:
-        icon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>';
-    }
-
-    toast.innerHTML = `
-      <div class="toast-icon">${icon}</div>
-      <div class="toast-message">${this.escapeHtml(message)}</div>
-      <button class="toast-close" onclick="this.parentElement.remove()">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-      </button>
-    `;
-
-    this.container.appendChild(toast);
-
-    requestAnimationFrame(() => {
-      toast.classList.add('toast-visible');
-    });
-
-    setTimeout(() => {
-      toast.classList.remove('toast-visible');
-      setTimeout(() => {
-        if (toast.parentNode) toast.parentNode.removeChild(toast);
-      }, 300);
-    }, this.duration);
-  },
-
-  success(message) {
-    this.show(message, 'success');
-  },
-
-  warning(message) {
-    this.show(message, 'warning');
-  },
-
-  error(message) {
-    this.show(message, 'error');
-  },
-
-  info(message) {
-    this.show(message, 'info');
-  },
-
-  escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  },
-};
+// 复用 shared/toast.js 中的 window.ToastManager
 
 // ============================================================
-// Token 用量监控模块
+// Token 用量监控模块 - 使用公共 TokenManager
 // ============================================================
-const TokenManager = {
-  todayEl: null,
-  totalEl: null,
-  detailEl: null,
-
-  init() {
-    this.todayEl = document.getElementById('tokenToday');
-    this.totalEl = document.getElementById('tokenTotal');
-    this.detailEl = document.getElementById('tokenDetail');
-
-    // 监听 WS 推送的 token 用量
-    if (window.electronAPI?.onTokenUsage) {
-      window.electronAPI.onTokenUsage((data) => this.update(data));
-    }
-
-    // 启动时主动拉取一次
-    this.requestInitial();
-
-    console.log('[TokenManager] 初始化完成');
-  },
-
-  async requestInitial() {
-    try {
-      if (window.electronAPI?.sendStatsRequest) {
-        window.electronAPI.sendStatsRequest({ type: 'tokens' });
-      }
-      if (window.electronAPI?.on) {
-        window.electronAPI.on('stats-response', (msg) => {
-          const payload = msg?.data || msg?.payload;
-          if (payload && (payload.totalTokens !== undefined || payload.todayTokens !== undefined)) {
-            this.update(payload);
-          }
-        });
-      }
-    } catch (e) {
-      console.warn('[TokenManager] 初始拉取失败:', e);
-    }
-  },
-
-  formatNum(n) {
-    const num = Number(n) || 0;
-    if (num >= 10000) return (num / 10000).toFixed(1) + 'w';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
-    return num.toString();
-  },
-
-  update(data) {
-    if (!data) return;
-    // WS 推送格式：{ input, output, total, session: {...sessionStats} }
-    // stats-response 格式：{ totalInputTokens, todayTokens, ... }
-    const s = data.session || data;
-
-    const today = Number(s.todayTokens) || 0;
-    const total = Number(s.totalTokens) || 0;
-    const todayIn = Number(s.todayInputTokens) || 0;
-    const todayOut = Number(s.todayOutputTokens) || 0;
-
-    if (this.todayEl) this.todayEl.textContent = this.formatNum(today);
-    if (this.totalEl) this.totalEl.textContent = this.formatNum(total);
-    if (this.detailEl) {
-      this.detailEl.textContent = `输入 ${this.formatNum(todayIn)} / 输出 ${this.formatNum(todayOut)}`;
-    }
-
-    // 本轮用量闪烁提示（仅 WS 推送时触发）
-    if (data.input !== undefined && data.output !== undefined) {
-      const panel = document.getElementById('tokenPanel');
-      if (panel) {
-        panel.classList.add('token-flash');
-        setTimeout(() => panel.classList.remove('token-flash'), 800);
-      }
-    }
-  },
-};
+// 复用 shared/token-manager.js 中的 window.TokenManager
 
 // ============================================================
 // Persona 形象管理模块 - 复用公共 PersonaManager
@@ -326,31 +180,11 @@ const PersonaUIManager = {
 };
 
 // ============================================================
-// 窗口控制模块
+// 窗口控制模块 - 使用公共 WindowControls
 // ============================================================
 const WindowManager = {
   init() {
-    const btnMin = document.getElementById('btnMinimize');
-    const btnMax = document.getElementById('btnMaximize');
-    const btnClose = document.getElementById('btnClose');
-
-    if (btnMin) {
-      btnMin.addEventListener('click', () => {
-        window.electronAPI?.minimizeWindow();
-      });
-    }
-    if (btnMax) {
-      btnMax.addEventListener('click', () => {
-        window.electronAPI?.maximizeWindow();
-      });
-    }
-    if (btnClose) {
-      btnClose.addEventListener('click', () => {
-        window.electronAPI?.closeWindow();
-      });
-    }
-
-    console.log('[WindowManager] 初始化完成');
+    WindowControls.init();
   },
 };
 
