@@ -8,6 +8,7 @@ import path from 'path';
 import { streamChat } from '../api/client.js';
 import { TOOL_REGISTRY } from './registry.js';
 import { broadcast } from '../io/ws-server.js';
+import { parseAllToolCalls } from './tool-parser.js';
 
 // ============================================
 // SubAgent 类 - 子智能体实例
@@ -454,8 +455,8 @@ class AgentOrchestrator {
 
       fullResponse += response;
 
-      // 解析工具调用
-      const toolCalls = this._parseToolCalls(response);
+      // 解析工具调用（复用 tool-parser.js）
+      const toolCalls = parseAllToolCalls(response);
 
       if (toolCalls.length === 0) {
         // 没有工具调用，这就是最终回复
@@ -499,73 +500,6 @@ class AgentOrchestrator {
     }
 
     return fullResponse;
-  }
-
-  /**
-   * 解析工具调用（与 Agent.js 相同格式）
-   */
-  _parseToolCalls(text) {
-    const results = [];
-    const regex = /\[TOOL\]\s*(\w+)\s*\(([\s\S]*?)\)\s*\[\/TOOL\]/g;
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      results.push({ tool: match[1], args: this._parseArgs(match[2]) });
-    }
-    return results;
-  }
-
-  /**
-   * 解析工具参数（与 Agent.js 相同逻辑）
-   */
-  _parseArgs(argsStr) {
-    if (!argsStr || argsStr.trim() === '') return [];
-    const trimmed = argsStr.trim();
-
-    // JSON 格式
-    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-      try {
-        return { isJson: true, data: JSON.parse(trimmed) };
-      } catch { /* fall through */ }
-    }
-
-    // 引号包裹的参数
-    if (trimmed.includes('"') || trimmed.includes("'")) {
-      try {
-        const args = [];
-        let current = '';
-        let inQuote = false;
-        let quoteChar = '';
-
-        for (let i = 0; i < trimmed.length; i++) {
-          const char = trimmed[i];
-          if ((char === '"' || char === "'") && !inQuote) {
-            inQuote = true;
-            quoteChar = char;
-            current += char;
-          } else if (char === quoteChar && inQuote) {
-            inQuote = false;
-            current += char;
-          } else if (char === ',' && !inQuote) {
-            args.push(current.trim());
-            current = '';
-          } else {
-            current += char;
-          }
-        }
-        if (current.trim()) args.push(current.trim());
-
-        return args.map(a => {
-          const p = a.trim();
-          if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
-            return p.slice(1, -1);
-          }
-          return p;
-        });
-      } catch { /* fall through */ }
-    }
-
-    // 简单逗号分隔
-    return trimmed.split(',').map(s => s.trim()).filter(s => s.length > 0);
   }
 
   /**

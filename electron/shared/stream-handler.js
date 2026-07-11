@@ -111,7 +111,10 @@ const StreamReplyHandler = {
 
       _defaultFilterToolBlocks(text) {
         return text
+          // 先移除完整的 [TOOL]...[/TOOL] 块
           .replace(/\[TOOL\][\s\S]*?\[\/TOOL\]/g, '')
+          // 再移除未闭合的 [TOOL] 标签（流式传输中尚未收到 [/TOOL]）
+          .replace(/\[TOOL\][\s\S]*$/, '')
           .replace(/^\[工具结果\]:.*$/gm, '')
           .replace(/^\[工具错误\]:.*$/gm, '')
           .replace(/\n```\n/g, '\n')
