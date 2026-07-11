@@ -394,6 +394,70 @@ textarea {
   font-size: 12px;
 }
 
+/* ===== Token 用量面板 ===== */
+.token-panel {
+  margin: 8px 12px;
+  padding: 10px 12px;
+  background: var(--sidebar-hover);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.token-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.token-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.token-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.token-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.token-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.token-detail {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-color);
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.token-panel.token-flash {
+  animation: token-flash-anim 0.8s ease;
+}
+
+@keyframes token-flash-anim {
+  0% { background: rgba(81, 163, 81, 0.35); transform: scale(1); }
+  30% { background: rgba(81, 163, 81, 0.25); }
+  100% { background: var(--sidebar-hover); transform: scale(1); }
+}
+
 .user-profile {
   display: flex;
   align-items: center;

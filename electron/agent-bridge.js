@@ -55,6 +55,8 @@ function connect() {
             win.webContents.send('wechat-qrcode', msg.data);
           } else if (msg.type === 'wechat-login-status') {
             win.webContents.send('wechat-login-status', msg.data);
+          } else if (msg.type === 'token-usage') {
+            win.webContents.send('token-usage', msg.data || msg);
           } else {
             win.webContents.send('agent-reply', msg);
           }

@@ -36,12 +36,29 @@ function isNetworkError(error) {
 }
 
 /**
+ * 启发式估算 token 数（API 未返回 usage 时兜底）
+ * 中文约 1 token/1.5 字符，英文约 1 token/4 字符
+ */
+function estimateTokens(text) {
+  if (!text) return 0;
+  const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+  const otherChars = text.length - chineseChars;
+  return Math.ceil(chineseChars / 1.5 + otherChars / 4);
+}
+
+/**
  * 发送消息并流式获取响应（带重试机制）
  * 使用原生 fetch，不依赖 OpenAI SDK
+ *
+ * yield 的 chunk 类型：
+ *   { content, reasoning }         - 内容增量
+ *   { usage: { input, output } }   - 流结束时返回 token 用量（若 API 支持）
+ *
+ * 流结束后，generator 的 return value 为 { usage } 或 null
  */
 async function* streamChat(messages) {
   let retryCount = 0;
-  
+
   while (retryCount < MAX_RETRIES) {
     try {
       const cfg = loadConfig();
@@ -59,6 +76,7 @@ async function* streamChat(messages) {
           })),
           model: cfg.api.model,
           stream: true,
+          stream_options: { include_usage: true },
           max_tokens: cfg.chat?.maxTokens ?? 384000,
           temperature: cfg.chat?.temperature ?? 0.7,
           top_p: cfg.chat?.topP ?? 0.7,
@@ -66,6 +84,8 @@ async function* streamChat(messages) {
           frequency_penalty: cfg.chat?.frequencyPenalty ?? 1,
         }),
       });
+
+      let capturedUsage = null;
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
@@ -93,9 +113,18 @@ async function* streamChat(messages) {
 
           try {
             const parsed = JSON.parse(data);
+
+            // 捕获 usage（OpenAI 兼容 API 在流结束时返回）
+            if (parsed.usage) {
+              capturedUsage = {
+                input: parsed.usage.prompt_tokens || 0,
+                output: parsed.usage.completion_tokens || 0
+              };
+            }
+
             const choices = parsed.choices;
             if (!choices || choices.length === 0) continue;
-            
+
             const delta = choices[0].delta;
             if (!delta) continue;
 
@@ -109,8 +138,15 @@ async function* streamChat(messages) {
         }
       }
       
-      // 成功完成
-      return;
+      // 成功完成 - 返回 usage（API 未返回时用启发式估算兜底）
+      if (!capturedUsage) {
+        const inputText = messages.map(m => m.content || '').join('');
+        capturedUsage = {
+          input: estimateTokens(inputText),
+          output: 0  // output 由调用方通过 fullResponse 长度估算
+        };
+      }
+      return capturedUsage;
       
     } catch (error) {
       retryCount++;
@@ -129,4 +165,4 @@ async function* streamChat(messages) {
   }
 }
 
-export { streamChat };
+export { streamChat, estimateTokens };

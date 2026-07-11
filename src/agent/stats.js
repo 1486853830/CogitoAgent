@@ -13,7 +13,13 @@ let sessionStats = {
   totalThinkingTime: 0,
   todaySessions: 0,
   todayMessages: 0,
-  todayToolCalls: 0
+  todayToolCalls: 0,
+  totalInputTokens: 0,
+  totalOutputTokens: 0,
+  totalTokens: 0,
+  todayInputTokens: 0,
+  todayOutputTokens: 0,
+  todayTokens: 0
 };
 
 function initStats() {
@@ -35,7 +41,16 @@ async function loadStats() {
     const data = await fs.readFile(STATS_FILE, 'utf-8');
     const parsed = JSON.parse(data);
     toolStats = parsed.toolStats || {};
-    sessionStats = parsed.sessionStats || sessionStats;
+    // 合并旧数据，确保新增的 token 字段存在（向后兼容旧 stats.json）
+    const loaded = parsed.sessionStats || {};
+    sessionStats = { ...sessionStats, ...loaded };
+    const tokenFields = [
+      'totalInputTokens', 'totalOutputTokens', 'totalTokens',
+      'todayInputTokens', 'todayOutputTokens', 'todayTokens'
+    ];
+    for (const k of tokenFields) {
+      if (typeof sessionStats[k] !== 'number') sessionStats[k] = 0;
+    }
   } catch {
     initStats();
   }
@@ -122,6 +137,39 @@ function recordThinkingTime(duration) {
   saveStats();
 }
 
+/**
+ * 记录 token 用量
+ * @param {number} inputTokens 输入 token 数
+ * @param {number} outputTokens 输出 token 数
+ */
+function recordTokenUsage(inputTokens, outputTokens) {
+  const input = Number(inputTokens) || 0;
+  const output = Number(outputTokens) || 0;
+  const total = input + output;
+
+  sessionStats.totalInputTokens += input;
+  sessionStats.totalOutputTokens += output;
+  sessionStats.totalTokens += total;
+
+  const today = new Date().toISOString().split('T')[0];
+  if (sessionStats.lastDate !== today) {
+    sessionStats.lastDate = today;
+    sessionStats.todayInputTokens = input;
+    sessionStats.todayOutputTokens = output;
+    sessionStats.todayTokens = total;
+    // 跨天时同步重置其他 today 计数器
+    sessionStats.todaySessions = 0;
+    sessionStats.todayMessages = 0;
+    sessionStats.todayToolCalls = 0;
+  } else {
+    sessionStats.todayInputTokens += input;
+    sessionStats.todayOutputTokens += output;
+    sessionStats.todayTokens += total;
+  }
+
+  saveStats();
+}
+
 function getToolStats() {
   return { ...toolStats };
 }
@@ -173,6 +221,12 @@ function resetStats() {
     todaySessions: 0,
     todayMessages: 0,
     todayToolCalls: 0,
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    totalTokens: 0,
+    todayInputTokens: 0,
+    todayOutputTokens: 0,
+    todayTokens: 0,
     lastDate: new Date().toISOString().split('T')[0]
   };
   saveStats();
@@ -186,6 +240,7 @@ export {
   recordSession,
   recordMessage,
   recordThinkingTime,
+  recordTokenUsage,
   getToolStats,
   getSessionStats,
   getToolUsageByCategory,
