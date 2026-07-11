@@ -1,44 +1,22 @@
 /**
  * Monitor 渲染进程 - 独立监控面板
  * 展示: 思维链 / 工具统计 / 智能体集群
+ * 使用共享组件：WindowControls / PanelToggle / SharedUtils
  */
 
 // ============================================================
-// 窗口控制
+// 窗口控制 - 使用公共 WindowControls
 // ============================================================
-document.getElementById('btnMinimize')?.addEventListener('click', () => {
-  window.electronAPI?.minimizeWindow();
-});
-document.getElementById('btnClose')?.addEventListener('click', () => {
-  window.electronAPI?.closeWindow();
-});
+WindowControls.init();
 
 // ============================================================
-// 面板折叠切换
+// 面板折叠切换 - 使用公共 PanelToggle
 // ============================================================
-function initPanelToggles() {
-  const toggles = [
-    { btnId: 'toggleThoughtPanel', bodyId: 'thoughtPanelBody' },
-    { btnId: 'toggleStatsPanel', bodyId: 'statsPanelBody' },
-    { btnId: 'toggleClusterPanel', bodyId: 'clusterPanelBody' },
-  ];
-
-  toggles.forEach(({ btnId, bodyId }) => {
-    const btn = document.getElementById(btnId);
-    const body = document.getElementById(bodyId);
-    if (!btn || !body) return;
-
-    btn.addEventListener('click', () => {
-      body.classList.toggle('collapsed');
-      const svgPath = btn.querySelector('svg path');
-      if (body.classList.contains('collapsed')) {
-        svgPath?.setAttribute('d', 'M12 8l6 6 1.41-1.41L12 5.17 4.59 12.59 6 14z');
-      } else {
-        svgPath?.setAttribute('d', 'M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z');
-      }
-    });
-  });
-}
+PanelToggle.init([
+  { btnId: 'toggleThoughtPanel', bodyId: 'thoughtPanelBody' },
+  { btnId: 'toggleStatsPanel', bodyId: 'statsPanelBody' },
+  { btnId: 'toggleClusterPanel', bodyId: 'clusterPanelBody' },
+]);
 
 // ============================================================
 // 思维链管理
@@ -84,8 +62,8 @@ const ThoughtManager = {
       return `
         <div class="thought-step ${step.status}">
           <div class="thought-step-content">
-            <div class="thought-step-name">${escapeHtml(step.name)}</div>
-            ${detailsText || argsText ? `<div class="thought-step-details">${escapeHtml(detailsText || argsText)}</div>` : ''}
+            <div class="thought-step-name">${SharedUtils.escapeHtml(step.name)}</div>
+            ${detailsText || argsText ? `<div class="thought-step-details">${SharedUtils.escapeHtml(detailsText || argsText)}</div>` : ''}
             <div class="thought-step-meta">
               ${step.duration > 0 ? `<span class="thought-step-duration">${step.duration}s</span>` : ''}
               <span class="thought-step-status ${step.status}">${step.status === 'running' ? '运行中' : step.status === 'completed' ? '完成' : '失败'}</span>
@@ -96,7 +74,7 @@ const ThoughtManager = {
     }).join('');
 
     el.scrollTop = el.scrollHeight;
-  }
+  },
 };
 
 // ============================================================
@@ -205,7 +183,7 @@ const StatsManager = {
         : 0;
       rateEl.textContent = rate + '%';
     }
-  }
+  },
 };
 
 // ============================================================
@@ -250,13 +228,13 @@ const ClusterManager = {
       return `
         <div class="cluster-agent-card">
           <div class="cluster-agent-header">
-            <span class="cluster-agent-name">${icon} ${escapeHtml(agent.name)}</span>
+            <span class="cluster-agent-name">${icon} ${SharedUtils.escapeHtml(agent.name)}</span>
             <span class="cluster-agent-state ${agent.state}">${agent.state}</span>
           </div>
           <div class="cluster-agent-details">
             <span class="cluster-agent-detail">
               <span class="cluster-agent-detail-label">Persona:</span>
-              <span class="cluster-agent-detail-value">${escapeHtml(agent.persona)}</span>
+              <span class="cluster-agent-detail-value">${SharedUtils.escapeHtml(agent.persona)}</span>
             </span>
             <span class="cluster-agent-detail">
               <span class="cluster-agent-detail-label">工具:</span>
@@ -271,7 +249,7 @@ const ClusterManager = {
             <span>ID: ${agent.id}</span>
             <span>${timeStr}</span>
           </div>
-          ${agent.hasError ? `<div style="font-size:10px;color:#f87171;margin-top:2px;">错误: ${escapeHtml(agent.error)}</div>` : ''}
+          ${agent.hasError ? `<div style="font-size:10px;color:#f87171;margin-top:2px;">错误: ${SharedUtils.escapeHtml(agent.error)}</div>` : ''}
         </div>
       `;
     }).join('');
@@ -373,24 +351,14 @@ const ClusterManager = {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText(label, x, y + size / 2 + 4);
-  }
+  },
 };
-
-// ============================================================
-// 工具函数
-// ============================================================
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
 
 // ============================================================
 // 应用入口
 // ============================================================
 function init() {
   console.log('[Monitor] 初始化...');
-  initPanelToggles();
   ThoughtManager.init();
   StatsManager.init();
   ClusterManager.init();
