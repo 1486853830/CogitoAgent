@@ -77,6 +77,27 @@
         <!-- 会话列表动态渲染 -->
       </div>
 
+      <!-- Token 用量面板 -->
+      <div class="token-panel" id="tokenPanel">
+        <div class="token-panel-header">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+          </svg>
+          <span>Token 用量</span>
+        </div>
+        <div class="token-panel-body">
+          <div class="token-row">
+            <span class="token-label">今日</span>
+            <span class="token-value" id="tokenToday">0</span>
+          </div>
+          <div class="token-row">
+            <span class="token-label">累计</span>
+            <span class="token-value" id="tokenTotal">0</span>
+          </div>
+          <div class="token-detail" id="tokenDetail">输入 0 / 输出 0</div>
+        </div>
+      </div>
+
       <!-- 底部关于我们 -->
       <div class="user-profile">
         <div class="about-link" id="aboutLink" title="关于 CogitoAgent">

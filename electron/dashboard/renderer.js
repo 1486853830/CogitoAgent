@@ -229,6 +229,83 @@ const ToastManager = {
 };
 
 // ============================================================
+// Token 用量监控模块
+// ============================================================
+const TokenManager = {
+  todayEl: null,
+  totalEl: null,
+  detailEl: null,
+
+  init() {
+    this.todayEl = document.getElementById('tokenToday');
+    this.totalEl = document.getElementById('tokenTotal');
+    this.detailEl = document.getElementById('tokenDetail');
+
+    // 监听 WS 推送的 token 用量
+    if (window.electronAPI?.onTokenUsage) {
+      window.electronAPI.onTokenUsage((data) => this.update(data));
+    }
+
+    // 启动时主动拉取一次
+    this.requestInitial();
+
+    console.log('[TokenManager] 初始化完成');
+  },
+
+  async requestInitial() {
+    try {
+      if (window.electronAPI?.sendStatsRequest) {
+        window.electronAPI.sendStatsRequest({ type: 'tokens' });
+      }
+      if (window.electronAPI?.on) {
+        window.electronAPI.on('stats-response', (msg) => {
+          const payload = msg?.data || msg?.payload;
+          if (payload && (payload.totalTokens !== undefined || payload.todayTokens !== undefined)) {
+            this.update(payload);
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('[TokenManager] 初始拉取失败:', e);
+    }
+  },
+
+  formatNum(n) {
+    const num = Number(n) || 0;
+    if (num >= 10000) return (num / 10000).toFixed(1) + 'w';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+    return num.toString();
+  },
+
+  update(data) {
+    if (!data) return;
+    // WS 推送格式：{ input, output, total, session: {...sessionStats} }
+    // stats-response 格式：{ totalInputTokens, todayTokens, ... }
+    const s = data.session || data;
+
+    const today = Number(s.todayTokens) || 0;
+    const total = Number(s.totalTokens) || 0;
+    const todayIn = Number(s.todayInputTokens) || 0;
+    const todayOut = Number(s.todayOutputTokens) || 0;
+
+    if (this.todayEl) this.todayEl.textContent = this.formatNum(today);
+    if (this.totalEl) this.totalEl.textContent = this.formatNum(total);
+    if (this.detailEl) {
+      this.detailEl.textContent = `输入 ${this.formatNum(todayIn)} / 输出 ${this.formatNum(todayOut)}`;
+    }
+
+    // 本轮用量闪烁提示（仅 WS 推送时触发）
+    if (data.input !== undefined && data.output !== undefined) {
+      const panel = document.getElementById('tokenPanel');
+      if (panel) {
+        panel.classList.add('token-flash');
+        setTimeout(() => panel.classList.remove('token-flash'), 800);
+      }
+    }
+  },
+};
+
+// ============================================================
 // Persona 形象管理模块 - 复用公共 PersonaManager
 // ============================================================
 const PersonaUIManager = {
@@ -1191,6 +1268,12 @@ function initApp() {
     WindowManager.init();
   } catch (e) {
     console.error('[WindowManager] 初始化失败:', e);
+  }
+
+  try {
+    TokenManager.init();
+  } catch (e) {
+    console.error('[TokenManager] 初始化失败:', e);
   }
 
   try {

@@ -12,6 +12,7 @@ import * as tools from './tools/index.js';
 import { listSessions, getCurrentSession, createNewSession, switchSession, deleteSession, renameSession, resetConversation } from './session.js';
 import { orchestrator } from './orchestrator.js';
 import { manualLoginWechat, manualLogoutWechat, getWechatStatus } from './wechat-manager.js';
+import { getSessionStats } from './stats.js';
 
 // 命令帮助文本
 const HELP_TEXT = `
@@ -281,7 +282,7 @@ function printHelp() {
 function printStatus() {
   const cfg = loadConfig();
   const toolNames = getToolNames();
-  
+
   println('');
   printDivider('=', 'cyan');
   println('  CogitoAgent 当前状态', 'cyan');
@@ -302,6 +303,14 @@ function printStatus() {
       .map(([s, c]) => `${s}: ${c}`).join(', ');
     println(`  智能体集群: ${clusterStatus.totalAgents} 个活跃 (${byState})`, 'white');
   }
+
+  // Token 用量统计
+  const s = getSessionStats();
+  println('');
+  printDivider('-', 'gray');
+  println('  Token 用量', 'cyan');
+  println(`    累计: 输入 ${s.totalInputTokens.toLocaleString()} / 输出 ${s.totalOutputTokens.toLocaleString()} / 总计 ${s.totalTokens.toLocaleString()}`, 'white');
+  println(`    今日: 输入 ${s.todayInputTokens.toLocaleString()} / 输出 ${s.todayOutputTokens.toLocaleString()} / 总计 ${s.todayTokens.toLocaleString()}`, 'white');
 
   println('');
   printDivider('=', 'cyan');
