@@ -9,13 +9,13 @@
  * - 会话管理拆分到 session.js
  */
 
-import { streamChat } from '../api/client.js';
+import { streamChat, estimateTokens } from '../api/client.js';
 import * as tools from './tools/index.js';
 import { getMessages, addUserMessage, addAssistantMessage, addToolResultMessage, shouldCompress, compressHistory, initializeSession } from './session.js';
 import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.js';
 import { loadConfig } from '../config.js';
 import { startWsServer, broadcast, onMessage, onStatsRequest } from '../io/ws-server.js';
-import { recordToolCall, recordSession, recordMessage, getToolStats, getSessionStats, getToolUsageByCategory, getTopUsedTools } from './stats.js';
+import { recordToolCall, recordSession, recordMessage, recordTokenUsage, getToolStats, getSessionStats, getToolUsageByCategory, getTopUsedTools } from './stats.js';
 
 // 导入拆分出去的模块
 import { STATE, getState, setState, isThinking, isAwaitingInput, isAwaitingConfirmation, getPendingConfirmation, setPendingConfirmation, requestConfirmation, resolveConfirmation, state } from './state.js';
@@ -657,7 +657,16 @@ async function thinkCycle() {
     // 追踪：发送请求到 AI
     const requestStep = traceStep('发送请求到 AI', { messageCount: messages.length }, 'running');
 
-    for await (const chunk of streamChat(messages)) {
+    // 使用手动迭代器模式以捕获 generator 的 return value（usage）
+    const stream = streamChat(messages);
+    let usage = null;
+    while (true) {
+      const iterResult = await stream.next();
+      if (iterResult.done) {
+        usage = iterResult.value;  // streamChat 返回的 { input, output } 或 null
+        break;
+      }
+      const chunk = iterResult.value;
       if (shouldStop) {
         shouldStop = false;
         printBlank();
@@ -668,18 +677,42 @@ async function thinkCycle() {
       }
       if (chunk.content) {
         let cleanChunk = chunk.content;
-        cleanChunk = cleanChunk.split('\n').filter(line => 
-          !line.trim().startsWith('[工具结果]:') && 
+        cleanChunk = cleanChunk.split('\n').filter(line =>
+          !line.trim().startsWith('[工具结果]:') &&
           !line.trim().startsWith('[工具错误]:')
         ).join('\n');
-        
+
         fullResponse += chunk.content;
         cleanFullResponse += cleanChunk;
-        
+
         if (cleanChunk.trim()) {
           broadcast('agent-reply', { type: 'chunk', content: cleanChunk, full: cleanFullResponse });
         }
       }
+    }
+
+    // 记录 token 用量（API 返回 usage 时直接使用，否则启发式估算兜底）
+    try {
+      if (!usage) {
+        const inputText = messages.map(m => m.content || '').join('');
+        usage = {
+          input: estimateTokens(inputText),
+          output: estimateTokens(fullResponse)
+        };
+      } else if (!usage.output) {
+        // API 未返回 output 时，用 fullResponse 估算
+        usage.output = estimateTokens(fullResponse);
+      }
+      recordTokenUsage(usage.input, usage.output);
+      println(`[Token] 输入:${usage.input} 输出:${usage.output} 总计:${usage.input + usage.output}`, 'gray');
+      broadcast('token-usage', {
+        input: usage.input,
+        output: usage.output,
+        total: usage.input + usage.output,
+        session: getSessionStats()
+      });
+    } catch (e) {
+      console.error('[Token] 统计失败:', e.message);
     }
 
     // 追踪：AI 响应完成
@@ -893,6 +926,18 @@ async function start() {
           return { data: getThoughtTrace() };
         } else if (payload?.type === 'cluster') {
           return { data: orchestrator.getClusterStatus() };
+        } else if (payload?.type === 'tokens') {
+          const s = getSessionStats();
+          return {
+            data: {
+              totalInputTokens: s.totalInputTokens,
+              totalOutputTokens: s.totalOutputTokens,
+              totalTokens: s.totalTokens,
+              todayInputTokens: s.todayInputTokens,
+              todayOutputTokens: s.todayOutputTokens,
+              todayTokens: s.todayTokens
+            }
+          };
         }
         return {
           toolUsage: getToolUsageByCategory(),

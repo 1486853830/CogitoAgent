@@ -132,4 +132,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onWechatLoginStatus: (callback) => {
     ipcRenderer.on('wechat-login-status', (_event, data) => callback(data));
   },
+
+  // ===== Token 用量相关 IPC =====
+  // 监听 token 用量推送（每轮 AI 回复后推送）
+  onTokenUsage: (callback) => {
+    ipcRenderer.on('token-usage', (_event, data) => callback(data));
+  },
 });
