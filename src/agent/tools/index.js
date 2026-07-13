@@ -150,6 +150,19 @@ import {
   getWechatStatus,
   generateWechatQRCode
 } from './wechat.js';
+import {
+  convertCoord,
+  calcDistance,
+  calcArea,
+  calcCenter,
+  pointInPolygon,
+  isInChina,
+  readGeoJSON,
+  queryGeoJSON,
+  geoJSONStats,
+  geoJSONToCSV,
+  geoJSONToKML
+} from './gis.js';
 
 export {
   getBasePath,
@@ -297,7 +310,18 @@ export {
   sendWechatMessage,
   sendWechatImage,
   getWechatStatus,
-  generateWechatQRCode
+  generateWechatQRCode,
+  convertCoord,
+  calcDistance,
+  calcArea,
+  calcCenter,
+  pointInPolygon,
+  isInChina,
+  readGeoJSON,
+  queryGeoJSON,
+  geoJSONStats,
+  geoJSONToCSV,
+  geoJSONToKML
 };
 
 // ============================================
@@ -478,6 +502,19 @@ const TOOL_METADATA = {
   sendWechatImage: { argCount: 2 },
   getWechatStatus: { argCount: 0 },
   generateWechatQRCode: { argCount: 0 },
+
+  // GIS 地理信息
+  convertCoord: { argCount: 4 },
+  calcDistance: { argCount: 5 },
+  calcArea: { argCount: 1, customArgs: true },
+  calcCenter: { argCount: 1, customArgs: true },
+  pointInPolygon: { argCount: 3, customArgs: true },
+  isInChina: { argCount: 2 },
+  readGeoJSON: { argCount: 1 },
+  queryGeoJSON: { argCount: 2, customArgs: true },
+  geoJSONStats: { argCount: 1 },
+  geoJSONToCSV: { argCount: 2 },
+  geoJSONToKML: { argCount: 2 },
 };
 
 // 导出工具元数据（供 registry.js 参考）
