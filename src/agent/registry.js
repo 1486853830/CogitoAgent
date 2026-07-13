@@ -26,7 +26,8 @@ const TOOL_CATEGORIES = {
   vision: '视觉分析',
   office: 'Office文档',
   cluster: '集群管理',
-  wechat: '微信消息'
+  wechat: '微信消息',
+  gis: '地理信息'
 };
 
 // 工具注册表
@@ -201,6 +202,19 @@ const TOOL_REGISTRY = {
   sendWechatImage: { fn: tools.sendWechatImage, argCount: 2, category: 'wechat' },
   getWechatStatus: { fn: tools.getWechatStatus, argCount: 0, category: 'wechat' },
   generateWechatQRCode: { fn: tools.generateWechatQRCode, argCount: 0, category: 'wechat' },
+
+  // GIS 地理信息
+  convertCoord: { fn: tools.convertCoord, argCount: 4, category: 'gis' },
+  calcDistance: { fn: tools.calcDistance, argCount: 5, category: 'gis' },
+  calcArea: { fn: tools.calcArea, argCount: 1, category: 'gis', customArgs: true },
+  calcCenter: { fn: tools.calcCenter, argCount: 1, category: 'gis', customArgs: true },
+  pointInPolygon: { fn: tools.pointInPolygon, argCount: 3, category: 'gis', customArgs: true },
+  isInChina: { fn: tools.isInChina, argCount: 2, category: 'gis' },
+  readGeoJSON: { fn: tools.readGeoJSON, argCount: 1, category: 'gis' },
+  queryGeoJSON: { fn: tools.queryGeoJSON, argCount: 2, category: 'gis', customArgs: true },
+  geoJSONStats: { fn: tools.geoJSONStats, argCount: 1, category: 'gis' },
+  geoJSONToCSV: { fn: tools.geoJSONToCSV, argCount: 2, category: 'gis' },
+  geoJSONToKML: { fn: tools.geoJSONToKML, argCount: 2, category: 'gis' },
 };
 
 // 危险操作列表
@@ -279,7 +293,8 @@ function getToolsByCategory() {
     vision: ['vision', 'visionFromUrl'],
     office: ['createPpt', 'createWord', 'createExcel', 'readExcel'],
     cluster: ['spawnAgent', 'delegateTask', 'getClusterStatus', 'stopAgent', 'stopAllAgents', 'parallelExecute', 'getAgent', 'panelDiscussion', 'pipeline', 'voting'],
-    wechat: ['loginWechat', 'logoutWechat', 'sendWechatMessage', 'sendWechatImage', 'getWechatStatus', 'generateWechatQRCode']
+    wechat: ['loginWechat', 'logoutWechat', 'sendWechatMessage', 'sendWechatImage', 'getWechatStatus', 'generateWechatQRCode'],
+    gis: ['convertCoord', 'calcDistance', 'calcArea', 'calcCenter', 'pointInPolygon', 'isInChina', 'readGeoJSON', 'queryGeoJSON', 'geoJSONStats', 'geoJSONToCSV', 'geoJSONToKML']
   };
 }
 

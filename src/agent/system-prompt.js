@@ -233,6 +233,29 @@ function buildToolList() {
 
 `;
         break;
+      case 'gis':
+        toolList += `### 地理信息工具（GIS）
+- convertCoord(lng, lat, from, to) - 坐标系统转换（WGS84/GCJ02/BD09 互转）
+- calcDistance(lng1, lat1, lng2, lat2, unit) - 计算两点间距离（Haversine 公式）
+- calcArea(coordinates) - 计算多边形面积（Shoelace 公式）
+- calcCenter(coordinates) - 计算多边形/多点质心
+- pointInPolygon(lng, lat, polygon) - 判断点是否在多边形内（射线法）
+- isInChina(lng, lat) - 判断坐标是否在中国大陆范围内
+- readGeoJSON(filePath) - 读取 GeoJSON 文件并返回统计概览
+- queryGeoJSON(filePath, filter) - 按属性查询 GeoJSON 要素
+- geoJSONStats(filePath) - GeoJSON 详细统计信息
+- geoJSONToCSV(geojsonPath, csvPath) - GeoJSON 属性表导出为 CSV
+- geoJSONToKML(geojsonPath, kmlPath) - GeoJSON 转换为 KML 格式
+
+【使用说明】
+1. 坐标转换支持 wgs84（GPS原始坐标）、gcj02（火星坐标系）、bd09（百度坐标系）
+2. calcDistance 的 unit 参数可选 'km'（千米，默认）或 'm'（米）
+3. 多边形坐标使用 [[lng,lat], ...] 格式，可通过 JSON 字符串传入
+4. GeoJSON 操作支持 Point、Polygon、MultiPolygon 等常见几何类型
+5. filter 参数为 JSON 对象，如 {"name": "北京"}，精确匹配属性值
+
+`;
+        break;
     }
   }
 
