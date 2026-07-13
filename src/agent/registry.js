@@ -29,7 +29,10 @@ const TOOL_CATEGORIES = {
   wechat: '微信消息',
   gis: '地理信息',
   bio: '生命科学',
-  med: '医学'
+  med: '医学',
+  chem: '化学',
+  finance: '金融',
+  math: '数学/统计'
 };
 
 // 工具注册表
@@ -253,6 +256,44 @@ const TOOL_REGISTRY = {
   oxygenIndex: { fn: tools.oxygenIndex, argCount: 2, category: 'med' },
   parseVitalSigns: { fn: tools.parseVitalSigns, argCount: 1, category: 'med' },
   vitalsReport: { fn: tools.vitalsReport, argCount: 1, category: 'med' },
+
+  // 化学
+  elementInfo: { fn: tools.elementInfo, argCount: 1, category: 'chem' },
+  molWeight: { fn: tools.molWeight, argCount: 1, category: 'chem', customArgs: true },
+  elementComposition: { fn: tools.elementComposition, argCount: 1, category: 'chem', customArgs: true },
+  molarity: { fn: tools.molarity, argCount: 2, category: 'chem' },
+  dilution: { fn: tools.dilution, argCount: 4, category: 'chem' },
+  phFromH: { fn: tools.phFromH, argCount: 1, category: 'chem' },
+  phToH: { fn: tools.phToH, argCount: 1, category: 'chem' },
+  idealGasLaw: { fn: tools.idealGasLaw, argCount: 4, category: 'chem' },
+  gasDensity: { fn: tools.gasDensity, argCount: 3, category: 'chem' },
+
+  // 金融
+  compoundInterest: { fn: tools.compoundInterest, argCount: 4, category: 'finance' },
+  presentValue: { fn: tools.presentValue, argCount: 3, category: 'finance' },
+  futureValueAnnuity: { fn: tools.futureValueAnnuity, argCount: 3, category: 'finance' },
+  npv: { fn: tools.npv, argCount: 2, category: 'finance', customArgs: true },
+  irr: { fn: tools.irr, argCount: 1, category: 'finance', customArgs: true },
+  paybackPeriod: { fn: tools.paybackPeriod, argCount: 1, category: 'finance', customArgs: true },
+  roi: { fn: tools.roi, argCount: 2, category: 'finance' },
+  loanPayment: { fn: tools.loanPayment, argCount: 3, category: 'finance' },
+  amortizationSchedule: { fn: tools.amortizationSchedule, argCount: 3, category: 'finance' },
+  totalInterest: { fn: tools.totalInterest, argCount: 3, category: 'finance' },
+  movingAverage: { fn: tools.movingAverage, argCount: 2, category: 'finance', customArgs: true },
+  volatility: { fn: tools.volatility, argCount: 1, category: 'finance', customArgs: true },
+
+  // 数学/统计
+  describe: { fn: tools.describe, argCount: 1, category: 'math', customArgs: true },
+  correlation: { fn: tools.correlation, argCount: 2, category: 'math', customArgs: true },
+  linearRegression: { fn: tools.linearRegression, argCount: 2, category: 'math', customArgs: true },
+  matrixMultiply: { fn: tools.matrixMultiply, argCount: 2, category: 'math', customArgs: true },
+  matrixDeterminant: { fn: tools.matrixDeterminant, argCount: 1, category: 'math', customArgs: true },
+  matrixInverse: { fn: tools.matrixInverse, argCount: 1, category: 'math', customArgs: true },
+  solveQuadratic: { fn: tools.solveQuadratic, argCount: 3, category: 'math' },
+  factorial: { fn: tools.factorial, argCount: 1, category: 'math' },
+  combination: { fn: tools.combination, argCount: 2, category: 'math' },
+  permutation: { fn: tools.permutation, argCount: 2, category: 'math' },
+  siConvert: { fn: tools.siConvert, argCount: 3, category: 'math' },
 };
 
 // 危险操作列表
@@ -334,7 +375,10 @@ function getToolsByCategory() {
     wechat: ['loginWechat', 'logoutWechat', 'sendWechatMessage', 'sendWechatImage', 'getWechatStatus', 'generateWechatQRCode'],
     gis: ['convertCoord', 'calcDistance', 'calcArea', 'calcCenter', 'pointInPolygon', 'isInChina', 'readGeoJSON', 'queryGeoJSON', 'geoJSONStats', 'geoJSONToCSV', 'geoJSONToKML'],
     bio: ['dnaComplement', 'dnaReverseComplement', 'rnaTranscribe', 'translate', 'gcContent', 'molecularWeight', 'hammingDistance', 'levenshteinDistance', 'tmEstimate', 'hairpinCheck', 'parseFASTA', 'parseFASTQ', 'fastaToCSV', 'codonUsage', 'randomSeq'],
-    med: ['bmi', 'bsa', 'egfr', 'crcl', 'childPugh', 'calculateDose', 'bsaDose', 'infusionRate', 'idealBodyWeight', 'convertUnit', 'temperatureConvert', 'meanArterialPressure', 'anionGap', 'correctedCalcium', 'oxygenIndex', 'parseVitalSigns', 'vitalsReport']
+    med: ['bmi', 'bsa', 'egfr', 'crcl', 'childPugh', 'calculateDose', 'bsaDose', 'infusionRate', 'idealBodyWeight', 'convertUnit', 'temperatureConvert', 'meanArterialPressure', 'anionGap', 'correctedCalcium', 'oxygenIndex', 'parseVitalSigns', 'vitalsReport'],
+    chem: ['elementInfo', 'molWeight', 'elementComposition', 'molarity', 'dilution', 'phFromH', 'phToH', 'idealGasLaw', 'gasDensity'],
+    finance: ['compoundInterest', 'presentValue', 'futureValueAnnuity', 'npv', 'irr', 'paybackPeriod', 'roi', 'loanPayment', 'amortizationSchedule', 'totalInterest', 'movingAverage', 'volatility'],
+    math: ['describe', 'correlation', 'linearRegression', 'matrixMultiply', 'matrixDeterminant', 'matrixInverse', 'solveQuadratic', 'factorial', 'combination', 'permutation', 'siConvert']
   };
 }
 

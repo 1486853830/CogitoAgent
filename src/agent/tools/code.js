@@ -1,4 +1,4 @@
-import { execFile, exec } from 'child_process';
+import { execFile, execFileSync, exec } from 'child_process';
 import vm from 'vm';
 import fs from 'fs/promises';
 import fsSync from 'fs';
@@ -27,6 +27,35 @@ function generateSecureTmpPath(ext) {
   const tmpDir = os.tmpdir();
   const randomName = `cogito_${crypto.randomUUID()}_${Date.now()}`;
   return path.join(tmpDir, `${randomName}.${ext}`);
+}
+
+/**
+ * 查找可用的 Python 可执行文件
+ */
+function findPythonExecutable() {
+  const candidates = ['python', 'python3', 'python.exe', 'python3.exe'];
+  
+  for (const candidate of candidates) {
+    try {
+      const env = Object.create(process.env);
+      delete env.PYTHONPATH;
+      delete env.PYTHONHOME;
+      
+      const result = execFileSync(candidate, ['--version'], {
+        env,
+        stdio: ['ignore', 'ignore', 'ignore'],
+        timeout: 5000
+      });
+      
+      if (result) {
+        return candidate;
+      }
+    } catch {
+      continue;
+    }
+  }
+  
+  return 'python';
 }
 
 /**
@@ -65,29 +94,7 @@ async function writeSecureTmpFile(filePath, content) {
 function createSandbox() {
   // 使用 Object.create(null) 创建没有原型的对象，防止原型链逃逸
   const sandbox = Object.create(null);
-
-  sandbox.console = {
-    log: (...args) => {
-      console.log(args.map(a =>
-        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-      ).join(' '));
-    },
-    error: (...args) => {
-      console.error(args.map(a =>
-        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-      ).join(' '));
-    },
-    warn: (...args) => {
-      console.warn(args.map(a =>
-        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-      ).join(' '));
-    },
-    info: (...args) => {
-      console.info(args.map(a =>
-        typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-      ).join(' '));
-    }
-  };
+  const consoleOutput = [];
 
   // 禁止危险对象
   sandbox.setTimeout = undefined;
@@ -125,7 +132,23 @@ function createSandbox() {
   sandbox.encodeURIComponent = encodeURIComponent;
   sandbox.decodeURIComponent = decodeURIComponent;
 
-  return { sandbox, context: vm.createContext(sandbox) };
+  // 添加自定义 console 对象来捕获输出
+  sandbox.console = {
+    log: (...args) => consoleOutput.push(args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+    ).join(' ')),
+    info: (...args) => consoleOutput.push('[INFO] ' + args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+    ).join(' ')),
+    warn: (...args) => consoleOutput.push('[WARN] ' + args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+    ).join(' ')),
+    error: (...args) => consoleOutput.push('[ERROR] ' + args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+    ).join(' '))
+  };
+
+  return { sandbox, context: vm.createContext(sandbox), consoleOutput };
 }
 
 /**
@@ -143,7 +166,7 @@ async function runJavaScript(code) {
     }, maxExecutionTime);
 
     try {
-      const { context } = createSandbox();
+      const { context, consoleOutput } = createSandbox();
 
       const wrappedCode = `
         (function() {
@@ -163,13 +186,20 @@ async function runJavaScript(code) {
       clearTimeout(timeoutId);
 
       if (result.success) {
-        let output;
-        if (result.result === undefined) {
+        let output = '';
+        
+        if (consoleOutput.length > 0) {
+          output = consoleOutput.join('\n') + '\n';
+        }
+
+        if (result.result !== undefined) {
+          if (typeof result.result === 'object') {
+            output += JSON.stringify(result.result, null, 2);
+          } else {
+            output += String(result.result);
+          }
+        } else if (consoleOutput.length === 0) {
           output = '执行完成，无返回值';
-        } else if (typeof result.result === 'object') {
-          output = JSON.stringify(result.result, null, 2);
-        } else {
-          output = String(result.result);
         }
 
         if (output.length > maxOutputSize) {
@@ -301,8 +331,7 @@ async function runPython(code) {
         PYTHONNOUSERSITE: '1',           // 禁止加载用户站点包
         PYTHONDONTWRITEBYTECODE: '1',    // 不生成 .pyc 文件
         PYTHONHASHSEED: '0',             // 固定哈希种子
-        // 限制 PATH，只允许访问系统标准路径
-        PATH: process.env.PATH?.split(path.delimiter).slice(0, 3).join(path.delimiter) || '',
+        PATH: process.env.PATH || '',
       };
 
       // 只在 secureEnv 副本中删除危险变量，不影响全局 process.env
@@ -312,7 +341,9 @@ async function runPython(code) {
       delete secureEnv.PYTHONRC;
       delete secureEnv.VIRTUAL_ENV;
 
-      execFile('python', [tmpPath], {
+      const pythonExec = findPythonExecutable();
+
+      execFile(pythonExec, [tmpPath], {
         timeout: maxExecutionTime,
         encoding: 'utf8',
         env: secureEnv,
