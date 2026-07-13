@@ -28,7 +28,8 @@ const TOOL_CATEGORIES = {
   cluster: '集群管理',
   wechat: '微信消息',
   gis: '地理信息',
-  bio: '生命科学'
+  bio: '生命科学',
+  med: '医学'
 };
 
 // 工具注册表
@@ -233,6 +234,25 @@ const TOOL_REGISTRY = {
   fastaToCSV: { fn: tools.fastaToCSV, argCount: 2, category: 'bio' },
   codonUsage: { fn: tools.codonUsage, argCount: 1, category: 'bio' },
   randomSeq: { fn: tools.randomSeq, argCount: 2, category: 'bio' },
+
+  // 医学
+  bmi: { fn: tools.bmi, argCount: 2, category: 'med' },
+  bsa: { fn: tools.bsa, argCount: 3, category: 'med' },
+  egfr: { fn: tools.egfr, argCount: 3, category: 'med' },
+  crcl: { fn: tools.crcl, argCount: 4, category: 'med' },
+  childPugh: { fn: tools.childPugh, argCount: 5, category: 'med' },
+  calculateDose: { fn: tools.calculateDose, argCount: 3, category: 'med' },
+  bsaDose: { fn: tools.bsaDose, argCount: 3, category: 'med' },
+  infusionRate: { fn: tools.infusionRate, argCount: 3, category: 'med' },
+  idealBodyWeight: { fn: tools.idealBodyWeight, argCount: 2, category: 'med' },
+  convertUnit: { fn: tools.convertUnit, argCount: 3, category: 'med' },
+  temperatureConvert: { fn: tools.temperatureConvert, argCount: 3, category: 'med' },
+  meanArterialPressure: { fn: tools.meanArterialPressure, argCount: 2, category: 'med' },
+  anionGap: { fn: tools.anionGap, argCount: 3, category: 'med' },
+  correctedCalcium: { fn: tools.correctedCalcium, argCount: 2, category: 'med' },
+  oxygenIndex: { fn: tools.oxygenIndex, argCount: 2, category: 'med' },
+  parseVitalSigns: { fn: tools.parseVitalSigns, argCount: 1, category: 'med' },
+  vitalsReport: { fn: tools.vitalsReport, argCount: 1, category: 'med' },
 };
 
 // 危险操作列表
@@ -313,7 +333,8 @@ function getToolsByCategory() {
     cluster: ['spawnAgent', 'delegateTask', 'getClusterStatus', 'stopAgent', 'stopAllAgents', 'parallelExecute', 'getAgent', 'panelDiscussion', 'pipeline', 'voting'],
     wechat: ['loginWechat', 'logoutWechat', 'sendWechatMessage', 'sendWechatImage', 'getWechatStatus', 'generateWechatQRCode'],
     gis: ['convertCoord', 'calcDistance', 'calcArea', 'calcCenter', 'pointInPolygon', 'isInChina', 'readGeoJSON', 'queryGeoJSON', 'geoJSONStats', 'geoJSONToCSV', 'geoJSONToKML'],
-    bio: ['dnaComplement', 'dnaReverseComplement', 'rnaTranscribe', 'translate', 'gcContent', 'molecularWeight', 'hammingDistance', 'levenshteinDistance', 'tmEstimate', 'hairpinCheck', 'parseFASTA', 'parseFASTQ', 'fastaToCSV', 'codonUsage', 'randomSeq']
+    bio: ['dnaComplement', 'dnaReverseComplement', 'rnaTranscribe', 'translate', 'gcContent', 'molecularWeight', 'hammingDistance', 'levenshteinDistance', 'tmEstimate', 'hairpinCheck', 'parseFASTA', 'parseFASTQ', 'fastaToCSV', 'codonUsage', 'randomSeq'],
+    med: ['bmi', 'bsa', 'egfr', 'crcl', 'childPugh', 'calculateDose', 'bsaDose', 'infusionRate', 'idealBodyWeight', 'convertUnit', 'temperatureConvert', 'meanArterialPressure', 'anionGap', 'correctedCalcium', 'oxygenIndex', 'parseVitalSigns', 'vitalsReport']
   };
 }
 
