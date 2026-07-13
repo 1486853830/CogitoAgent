@@ -283,6 +283,36 @@ function buildToolList() {
 
 `;
         break;
+      case 'med':
+        toolList += `### 医学工具（Medicine）
+- bmi(weight, height) - BMI 体重指数计算（含分类）
+- bsa(weight, height, formula) - 体表面积计算（Mosteller/Du Bois/Haycock）
+- egfr(creatinine, age, gender) - 估算肾小球滤过率（CKD-EPI 2021）
+- crcl(creatinine, age, weight, gender) - 肌酐清除率（Cockcroft-Gault）
+- childPugh(bilirubin, albumin, inr, ascites, encephalopathy) - Child-Pugh 肝功能分级
+- calculateDose(weight, dosePerKg, unit) - 按体重计算药物剂量
+- bsaDose(bsa, dosePerM2, unit) - 按体表面积计算剂量（化疗常用）
+- infusionRate(volume, time, timeUnit) - 输液速度计算
+- idealBodyWeight(height, gender) - 理想体重（Devine 公式）
+- convertUnit(value, from, to) - 医学单位换算（mg/dL↔mmol/L 等）
+- temperatureConvert(value, from, to) - 体温换算（℃↔℉↔K）
+- meanArterialPressure(sbp, dbp) - 平均动脉压 MAP
+- anionGap(na, cl, hco3) - 阴离子间隙
+- correctedCalcium(calcium, albumin) - 校正钙
+- oxygenIndex(pao2, fio2) - 氧合指数 PaO₂/FiO₂
+- parseVitalSigns(filePath) - 解析生命体征 CSV 记录
+- vitalsReport(filePath) - 生命体征统计报告（含均值、中位数、标准差）
+
+【使用说明】
+1. BMI 身高单位为米，体重单位为公斤
+2. BSA 公式可选 mosteller（默认）、dubois、haycock
+3. eGFR 使用 CKD-EPI 2021 公式，含 CKD 分期
+4. convertUnit 支持葡萄糖、肌酐、尿素氮、胆红素、钙、胆固醇、甘油三酯的 mg/dL↔mmol/L 互转，以及 mmHg↔kPa
+5. oxygenIndex 的 FiO2 支持百分比（如 50）或小数（如 0.5）
+6. 生命体征文件格式为 CSV，表头含 timestamp, bp_sys, bp_dia, hr, temp, rr, spo2 等
+
+`;
+        break;
     }
   }
 
