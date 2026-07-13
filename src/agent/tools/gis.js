@@ -140,6 +140,11 @@ async function isInChina(lng, lat) {
  */
 async function convertCoord(lng, lat, from, to) {
   try {
+    lng = Number(lng);
+    lat = Number(lat);
+    if (isNaN(lng) || isNaN(lat)) {
+      return { success: false, error: '经纬度必须为有效数字' };
+    }
     const fromNorm = from.toLowerCase().trim();
     const toNorm = to.toLowerCase().trim();
 

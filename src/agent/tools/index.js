@@ -199,6 +199,44 @@ import {
   parseVitalSigns,
   vitalsReport
 } from './med.js';
+import {
+  elementInfo,
+  molWeight,
+  elementComposition,
+  molarity,
+  dilution,
+  phFromH,
+  phToH,
+  idealGasLaw,
+  gasDensity
+} from './chem.js';
+import {
+  compoundInterest,
+  presentValue,
+  futureValueAnnuity,
+  npv,
+  irr,
+  paybackPeriod,
+  roi,
+  loanPayment,
+  amortizationSchedule,
+  totalInterest,
+  movingAverage,
+  volatility
+} from './finance.js';
+import {
+  describe,
+  correlation,
+  linearRegression,
+  matrixMultiply,
+  matrixDeterminant,
+  matrixInverse,
+  solveQuadratic,
+  factorial,
+  combination,
+  permutation,
+  siConvert
+} from './math.js';
 
 export {
   getBasePath,
@@ -389,7 +427,39 @@ export {
   correctedCalcium,
   oxygenIndex,
   parseVitalSigns,
-  vitalsReport
+  vitalsReport,
+  elementInfo,
+  molWeight,
+  elementComposition,
+  molarity,
+  dilution,
+  phFromH,
+  phToH,
+  idealGasLaw,
+  gasDensity,
+  compoundInterest,
+  presentValue,
+  futureValueAnnuity,
+  npv,
+  irr,
+  paybackPeriod,
+  roi,
+  loanPayment,
+  amortizationSchedule,
+  totalInterest,
+  movingAverage,
+  volatility,
+  describe,
+  correlation,
+  linearRegression,
+  matrixMultiply,
+  matrixDeterminant,
+  matrixInverse,
+  solveQuadratic,
+  factorial,
+  combination,
+  permutation,
+  siConvert
 };
 
 // ============================================
@@ -619,6 +689,44 @@ const TOOL_METADATA = {
   oxygenIndex: { argCount: 2 },
   parseVitalSigns: { argCount: 1 },
   vitalsReport: { argCount: 1 },
+
+  // 化学
+  elementInfo: { argCount: 1 },
+  molWeight: { argCount: 1, customArgs: true },
+  elementComposition: { argCount: 1, customArgs: true },
+  molarity: { argCount: 2 },
+  dilution: { argCount: 4 },
+  phFromH: { argCount: 1 },
+  phToH: { argCount: 1 },
+  idealGasLaw: { argCount: 4 },
+  gasDensity: { argCount: 3 },
+
+  // 金融
+  compoundInterest: { argCount: 4 },
+  presentValue: { argCount: 3 },
+  futureValueAnnuity: { argCount: 3 },
+  npv: { argCount: 2, customArgs: true },
+  irr: { argCount: 1, customArgs: true },
+  paybackPeriod: { argCount: 1, customArgs: true },
+  roi: { argCount: 2 },
+  loanPayment: { argCount: 3 },
+  amortizationSchedule: { argCount: 3 },
+  totalInterest: { argCount: 3 },
+  movingAverage: { argCount: 2, customArgs: true },
+  volatility: { argCount: 1, customArgs: true },
+
+  // 数学/统计
+  describe: { argCount: 1, customArgs: true },
+  correlation: { argCount: 2, customArgs: true },
+  linearRegression: { argCount: 2, customArgs: true },
+  matrixMultiply: { argCount: 2, customArgs: true },
+  matrixDeterminant: { argCount: 1, customArgs: true },
+  matrixInverse: { argCount: 1, customArgs: true },
+  solveQuadratic: { argCount: 3 },
+  factorial: { argCount: 1 },
+  combination: { argCount: 2 },
+  permutation: { argCount: 2 },
+  siConvert: { argCount: 3 },
 };
 
 // 导出工具元数据（供 registry.js 参考）
