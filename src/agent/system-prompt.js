@@ -256,6 +256,33 @@ function buildToolList() {
 
 `;
         break;
+      case 'bio':
+        toolList += `### 生命科学工具（Bioinformatics）
+- dnaComplement(seq) - DNA 互补链
+- dnaReverseComplement(seq) - DNA 反向互补
+- rnaTranscribe(seq) - DNA 转录为 RNA
+- translate(seq, readingFrame) - RNA 翻译为氨基酸序列（支持读码框 0/1/2）
+- gcContent(seq) - 核酸序列 GC 含量计算
+- molecularWeight(seq) - 氨基酸序列分子量估算
+- hammingDistance(seq1, seq2) - 等长序列 Hamming 距离
+- levenshteinDistance(seq1, seq2) - 编辑距离（不等长序列）
+- tmEstimate(seq) - 引物熔解温度估算（Wallace 规则）
+- hairpinCheck(seq) - 引物发夹结构检测
+- parseFASTA(filePath) - 解析 FASTA 文件
+- parseFASTQ(filePath) - 解析 FASTQ 文件（含质量值统计）
+- fastaToCSV(fastaPath, csvPath) - FASTA 转 CSV
+- codonUsage(seq) - 密码子使用频率统计
+- randomSeq(length, type) - 生成随机序列（dna/rna/protein）
+
+【使用说明】
+1. 序列大小写均可，工具会自动处理
+2. translate 使用标准遗传密码表，AUG 为起始密码子，UAA/UAG/UGA 为终止密码子
+3. tmEstimate 同时提供 Wallace 规则和修正公式两种估算
+4. parseFASTA 自动识别序列类型（DNA/蛋白质）
+5. randomSeq 的 type 参数可选 'dna'（默认）、'rna'、'protein'
+
+`;
+        break;
     }
   }
 
