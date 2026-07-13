@@ -98,6 +98,12 @@ flowchart LR
   Tools --> Office["📝 Office 文档"]
   Tools --> OCR["👁 OCR / 视觉"]
   Tools --> Wx["💬 微信集成"]
+  Tools --> GIS["🗺 GIS 地理信息"]
+  Tools --> Bio["🧬 生命科学"]
+  Tools --> Med["🏥 医学"]
+  Tools --> Chem["⚗️ 化学"]
+  Tools --> Fin["💰 金融"]
+  Tools --> Math["📐 数学统计"]
 ```
 
 | 分类 | 文件 | 主要函数 |
@@ -121,6 +127,12 @@ flowchart LR
 | 图像识别 | `ocr.js` | `ocr`, `ocrBatch` |
 | 视觉分析 | `vision.js` | `vision`, `visionFromUrl` |
 | Office 文档 | `office.js` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
+| GIS 地理信息 | `gis.js` | `convertCoord`, `calcDistance`, `calcArea`, `readGeoJSON`, `pointInPolygon`, `geoJSONToKML` |
+| 生命科学 | `bio.js` | `dnaComplement`, `translate`, `gcContent`, `parseFASTA`, `hammingDistance`, `codonUsage` |
+| 医学 | `med.js` | `bmi`, `egfr`, `childPugh`, `convertUnit`, `oxygenIndex`, `loanPayment`, `parseVitalSigns` |
+| 化学 | `chem.js` | `molWeight`, `elementInfo`, `phFromH`, `idealGasLaw`, `dilution`, `elementComposition` |
+| 金融 | `finance.js` | `compoundInterest`, `npv`, `irr`, `loanPayment`, `roi`, `volatility`, `movingAverage` |
+| 数学统计 | `math.js` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `solveQuadratic`, `factorial` |
 
 > 详细工具文档：注册机制、使用示例、最佳实践 → [introduction/tools.md](introduction/tools.md)
 
@@ -325,6 +337,15 @@ docker-compose up -d
 ---
 
 ## 更新日志
+
+### v2.3.2
+- 新增 6 个专业工具模块，共 75 个工具
+- GIS 地理信息：坐标转换、距离面积计算、GeoJSON 处理（11个工具）
+- 生命科学：DNA/RNA/蛋白质序列分析、FASTA/FASTQ 解析（15个工具）
+- 医学：临床评分、药物剂量、生理参数、单位换算（17个工具）
+- 化学：分子量、元素周期表、pH、气体定律（9个工具）
+- 金融：复利、NPV/IRR、贷款计算、波动率（12个工具）
+- 数学统计：描述统计、回归、矩阵运算、组合数学（11个工具）
 
 ### v2.3.1
 - 微信 iLink 协议集成，支持扫码登录、消息收发

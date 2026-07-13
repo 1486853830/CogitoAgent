@@ -98,6 +98,12 @@ flowchart LR
   Tools --> Office["📝 Office Documents"]
   Tools --> OCR["👁 OCR / Vision"]
   Tools --> Wx["💬 WeChat Integration"]
+  Tools --> GIS["🗺 GIS"]
+  Tools --> Bio["🧬 Life Science"]
+  Tools --> Med["🏥 Medicine"]
+  Tools --> Chem["⚗️ Chemistry"]
+  Tools --> Fin["💰 Finance"]
+  Tools --> Math["📐 Math/Stats"]
 ```
 
 | Category | File | Main Functions |
@@ -121,6 +127,12 @@ flowchart LR
 | Image Recognition | `ocr.js` | `ocr`, `ocrBatch` |
 | Vision Analysis | `vision.js` | `vision`, `visionFromUrl` |
 | Office Documents | `office.js` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
+| GIS | `gis.js` | `convertCoord`, `calcDistance`, `calcArea`, `readGeoJSON`, `pointInPolygon`, `geoJSONToKML` |
+| Life Science | `bio.js` | `dnaComplement`, `translate`, `gcContent`, `parseFASTA`, `hammingDistance`, `codonUsage` |
+| Medicine | `med.js` | `bmi`, `egfr`, `childPugh`, `convertUnit`, `oxygenIndex`, `parseVitalSigns` |
+| Chemistry | `chem.js` | `molWeight`, `elementInfo`, `phFromH`, `idealGasLaw`, `dilution`, `elementComposition` |
+| Finance | `finance.js` | `compoundInterest`, `npv`, `irr`, `loanPayment`, `roi`, `volatility`, `movingAverage` |
+| Math/Stats | `math.js` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `solveQuadratic`, `factorial` |
 
 > Detailed tool documentation: registration mechanism, usage examples, best practices → [introduction/tools.md](introduction/tools.md) (Chinese)
 
@@ -325,6 +337,15 @@ docker-compose up -d
 ---
 
 ## Changelog
+
+### v2.3.2
+- 6 new professional tool modules with 75 tools
+- GIS: coordinate conversion, distance/area calculation, GeoJSON processing (11 tools)
+- Life Science: DNA/RNA/protein sequence analysis, FASTA/FASTQ parsing (15 tools)
+- Medicine: clinical scoring, drug dosage, physiological parameters, unit conversion (17 tools)
+- Chemistry: molecular weight, periodic table, pH, gas laws (9 tools)
+- Finance: compound interest, NPV/IRR, loan calculation, volatility (12 tools)
+- Math/Stats: descriptive stats, regression, matrix operations, combinatorics (11 tools)
 
 ### v2.3.1
 - WeChat iLink protocol integration with QR code login and message sending/receiving

@@ -67,6 +67,11 @@ function buildToolList() {
 - runJavaScript(code) - 执行 JavaScript
 - runPython(code) - 执行 Python
 
+【⚠️ 安全警告】以上代码执行工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+\`\`\`
+COGITO_CONFIRM_DANGEROUS=false
+\`\`\`
+
 `;
         break;
       case 'git':
@@ -83,6 +88,11 @@ function buildToolList() {
 - gitBranchList(cwd) - 列出分支
 - gitCheckout(branch, cwd) - 切换分支
 
+【⚠️ 安全警告】gitPush、gitReset、gitBranchDelete 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+\`\`\`
+COGITO_CONFIRM_DANGEROUS=false
+\`\`\`
+
 `;
         break;
       case 'task':
@@ -94,6 +104,11 @@ function buildToolList() {
 - splitTask(id, subtasks) - 分解任务
 - getTaskStats() - 任务统计
 
+【⚠️ 安全警告】clearTasks 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+\`\`\`
+COGITO_CONFIRM_DANGEROUS=false
+\`\`\`
+
 `;
         break;
       case 'memory':
@@ -104,6 +119,11 @@ function buildToolList() {
 - updateMemory(id, updates) - 更新记忆
 - deleteMemory(id) - 删除记忆
 - getMemoryStats() - 记忆统计
+
+【⚠️ 安全警告】clearMemory 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+\`\`\`
+COGITO_CONFIRM_DANGEROUS=false
+\`\`\`
 
 `;
         break;
@@ -126,6 +146,11 @@ function buildToolList() {
 - update(table, data, conditions) - 更新数据
 - deleteData(table, conditions) - 删除数据
 - getTables() - 获取表列表
+
+【⚠️ 安全警告】deleteData、dropTable 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+\`\`\`
+COGITO_CONFIRM_DANGEROUS=false
+\`\`\`
 
 `;
         break;
@@ -153,6 +178,11 @@ function buildToolList() {
 - getScheduleTasks() - 获取定时任务列表
 - toggleScheduleTask(id) - 启用/禁用任务
 - removeScheduleTask(id) - 删除任务
+
+【⚠️ 安全警告】removeScheduleTask 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+\`\`\`
+COGITO_CONFIRM_DANGEROUS=false
+\`\`\`
 
 `;
         break;
@@ -310,6 +340,70 @@ function buildToolList() {
 4. convertUnit 支持葡萄糖、肌酐、尿素氮、胆红素、钙、胆固醇、甘油三酯的 mg/dL↔mmol/L 互转，以及 mmHg↔kPa
 5. oxygenIndex 的 FiO2 支持百分比（如 50）或小数（如 0.5）
 6. 生命体征文件格式为 CSV，表头含 timestamp, bp_sys, bp_dia, hr, temp, rr, spo2 等
+
+`;
+        break;
+      case 'chem':
+        toolList += `### 化学工具（Chemistry）
+- elementInfo(symbol) - 查询元素周期表信息
+- molWeight(formula) - 计算分子量
+- elementComposition(formula) - 元素百分比组成
+- molarity(moles, volume) - 摩尔浓度计算
+- dilution(c1, v1, c2, v2) - 稀释计算 C1V1=C2V2（已知任意3求1）
+- phFromH(h) - 由 H⁺ 浓度计算 pH
+- phToH(ph) - 由 pH 计算 H⁺ 浓度
+- idealGasLaw(P, V, n, T) - 理想气体状态方程 PV=nRT（已知3求1）
+- gasDensity(mw, T, P) - 气体密度计算
+
+【使用说明】
+1. 分子式支持括号和下标，如 H2SO4、Ca(OH)2、CuSO4·5H2O
+2. dilution 提供 C1+V1+C2 可求 V2，提供 C1+V1+V2 可求 C2，全提供可验证
+3. idealGasLaw 省略哪个参数就求哪个，R=0.082057 L·atm/(mol·K)
+
+`;
+        break;
+      case 'finance':
+        toolList += `### 金融工具（Finance）
+- compoundInterest(P, r, n, t) - 复利终值计算
+- presentValue(FV, r, n) - 现值计算
+- futureValueAnnuity(PMT, r, n) - 年金终值计算
+- npv(rate, cashflows) - 净现值 NPV
+- irr(cashflows) - 内部收益率 IRR（牛顿迭代法）
+- paybackPeriod(cashflows) - 投资回收期
+- roi(gain, cost) - 投资回报率
+- loanPayment(principal, annualRate, months) - 等额本息月供计算
+- amortizationSchedule(principal, annualRate, months) - 还款计划表
+- totalInterest(principal, annualRate, months) - 总利息
+- movingAverage(data, period) - 移动平均线
+- volatility(prices) - 波动率（年化）
+
+【使用说明】
+1. 利率使用小数，如 5% 写为 0.05
+2. cashflows 为 JSON 数组，第0项为初始投资（负值），如 [-1000, 300, 400, 500]
+3. loanPayment 结果含月供、总还款、总利息
+4. volatility 默认按 252 个交易日年化
+
+`;
+        break;
+      case 'math':
+        toolList += `### 数学/统计工具（Mathematics）
+- describe(data) - 描述性统计（均值、中位数、众数、标准差、偏度、四分位数）
+- correlation(x, y) - 皮尔逊相关系数
+- linearRegression(x, y) - 线性回归 y = ax + b（含 R²）
+- matrixMultiply(A, B) - 矩阵乘法
+- matrixDeterminant(A) - 矩阵行列式（2x2/3x3）
+- matrixInverse(A) - 矩阵逆（2x2/3x3）
+- solveQuadratic(a, b, c) - 一元二次方程求根
+- factorial(n) - 阶乘
+- combination(n, k) - 组合数 C(n, k)
+- permutation(n, k) - 排列数 P(n, k)
+- siConvert(value, from, to) - SI 单位制换算
+
+【使用说明】
+1. 数组参数可传 JSON 字符串，如 "[1,2,3,4,5]"
+2. 矩阵参数为二维数组 JSON，如 "[[1,2],[3,4]]"
+3. describe 含样本标准差、偏度、IQR 等完整统计量
+4. siConvert 支持 k/m/μ/n/G/M 等 SI 前缀，如 km→m、mg→g
 
 `;
         break;

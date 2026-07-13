@@ -29,6 +29,12 @@
 | 图像识别 | `ocr.js` | `ocr`, `ocrBatch` |
 | 视觉分析 | `vision.js` | `vision`, `visionFromUrl` |
 | Office 文档 | `office.js` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
+| GIS 地理信息 | `gis.js` | `convertCoord`, `calcDistance`, `calcArea`, `calcCenter`, `pointInPolygon`, `readGeoJSON`, `queryGeoJSON`, `geoJSONStats`, `geoJSONToCSV`, `geoJSONToKML`, `isInChina` |
+| 生命科学 | `bio.js` | `dnaComplement`, `dnaReverseComplement`, `rnaTranscribe`, `translate`, `gcContent`, `molecularWeight`, `hammingDistance`, `levenshteinDistance`, `tmEstimate`, `hairpinCheck`, `parseFASTA`, `parseFASTQ`, `fastaToCSV`, `codonUsage`, `randomSeq` |
+| 医学 | `med.js` | `bmi`, `bsa`, `egfr`, `crcl`, `childPugh`, `calculateDose`, `bsaDose`, `infusionRate`, `idealBodyWeight`, `convertUnit`, `temperatureConvert`, `meanArterialPressure`, `anionGap`, `correctedCalcium`, `oxygenIndex`, `parseVitalSigns`, `vitalsReport` |
+| 化学 | `chem.js` | `elementInfo`, `molWeight`, `elementComposition`, `molarity`, `dilution`, `phFromH`, `phToH`, `idealGasLaw`, `gasDensity` |
+| 金融 | `finance.js` | `compoundInterest`, `presentValue`, `futureValueAnnuity`, `npv`, `irr`, `paybackPeriod`, `roi`, `loanPayment`, `amortizationSchedule`, `totalInterest`, `movingAverage`, `volatility` |
+| 数学统计 | `math.js` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `matrixDeterminant`, `matrixInverse`, `solveQuadratic`, `factorial`, `combination`, `permutation`, `siConvert` |
 
 ### 工具注册机制
 
@@ -558,6 +564,213 @@ Office 文档工具支持创建 PPT 演示文稿、Word 文档和 Excel 表格�
 
 ---
 
+## GIS 地理信息工具详解
+
+GIS 工具提供坐标转换、空间计算、GeoJSON 处理等地理信息功能。
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `convertCoord` | 坐标系转换 | `lng`, `lat`, `from`, `to`（支持 wgs84/gcj02/bd09） |
+| `calcDistance` | 两点距离计算 | `lng1`, `lat1`, `lng2`, `lat2`, `unit`（可选） |
+| `calcArea` | 多边形面积计算 | `coordinates`（GeoJSON 坐标数组） |
+| `calcCenter` | 计算质心 | `coordinates` |
+| `pointInPolygon` | 点在多边形内判断 | `lng`, `lat`, `polygon`（坐标数组） |
+| `readGeoJSON` | 读取 GeoJSON 文件 | `filePath` |
+| `queryGeoJSON` | 查询 GeoJSON 属性 | `filePath`, `filter` |
+| `geoJSONStats` | GeoJSON 统计分析 | `filePath` |
+| `geoJSONToCSV` | GeoJSON 转 CSV | `geojsonPath`, `csvPath` |
+| `geoJSONToKML` | GeoJSON 转 KML | `geojsonPath`, `kmlPath` |
+| `isInChina` | 判断坐标是否在中国 | `lng`, `lat` |
+
+### 使用示例
+
+```javascript
+[TOOL] convertCoord(116.397428, 39.90923, "wgs84", "gcj02") [/TOOL]
+[TOOL] calcDistance(116.4, 39.9, 121.5, 31.2) [/TOOL]
+[TOOL] readGeoJSON("data/map.geojson") [/TOOL]
+[TOOL] pointInPolygon(116.4, 39.9, "[[116.3,39.8],[116.5,39.8],[116.5,40.0],[116.3,40.0],[116.3,39.8]]") [/TOOL]
+```
+
+---
+
+## 生命科学工具详解
+
+生命科学工具提供 DNA/RNA/蛋白质序列分析、引物设计辅助、FASTA/FASTQ 解析等功能。
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `dnaComplement` | DNA 互补链 | `seq` |
+| `dnaReverseComplement` | DNA 反向互补 | `seq` |
+| `rnaTranscribe` | DNA → RNA 转录 | `seq` |
+| `translate` | RNA → 氨基酸翻译 | `seq`, `readingFrame`（可选） |
+| `gcContent` | GC 含量计算 | `seq` |
+| `molecularWeight` | 蛋白质分子量 | `seq` |
+| `hammingDistance` | Hamming 距离 | `seq1`, `seq2` |
+| `levenshteinDistance` | Levenshtein 编辑距离 | `seq1`, `seq2` |
+| `tmEstimate` | 引物 Tm 值估算 | `seq` |
+| `hairpinCheck` | 引物发夹结构检测 | `seq` |
+| `parseFASTA` | 解析 FASTA 文件 | `filePath` |
+| `parseFASTQ` | 解析 FASTQ 文件 | `filePath` |
+| `fastaToCSV` | FASTA 转 CSV | `fastaPath`, `csvPath` |
+| `codonUsage` | 密码子使用频率 | `seq` |
+| `randomSeq` | 随机序列生成 | `length`, `type`（dna/rna/protein） |
+
+### 使用示例
+
+```javascript
+[TOOL] dnaReverseComplement("ATGCGTACG") [/TOOL]
+[TOOL] rnaTranscribe("ATGCGTACG") [/TOOL]
+[TOOL] translate("AUGCCUAGCUAG", 0) [/TOOL]
+[TOOL] gcContent("ATGCGCTAGCTAGCTAG") [/TOOL]
+[TOOL] parseFASTA("sequences.fasta") [/TOOL]
+[TOOL] hammingDistance("ATGC", "ATCC") [/TOOL]
+[TOOL] randomSeq(50, "dna") [/TOOL]
+```
+
+---
+
+## 医学工具详解
+
+医学工具提供临床评分计算、药物剂量、生理参数分析等功能。
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `bmi` | BMI 体重指数 | `weight`（kg）, `height`（m） |
+| `bsa` | 体表面积 | `weight`（kg）, `height`（cm）, `formula`（可选） |
+| `egfr` | 估算肾小球滤过率 | `creatinine`, `age`, `gender` |
+| `crcl` | 肌酐清除率 | `creatinine`, `age`, `weight`, `gender` |
+| `childPugh` | Child-Pugh 肝功能分级 | `bilirubin`, `albumin`, `inr`, `ascites`, `encephalopathy` |
+| `calculateDose` | 按体重计算剂量 | `weight`, `dosePerKg`, `unit`（可选） |
+| `bsaDose` | 按体表面积计算剂量 | `bsa`, `dosePerM2`, `unit`（可选） |
+| `infusionRate` | 输液速度计算 | `volume`, `time`, `timeUnit`（可选） |
+| `idealBodyWeight` | 理想体重 | `height`（cm）, `gender` |
+| `convertUnit` | 医学单位换算 | `value`, `from`, `to` |
+| `temperatureConvert` | 体温换算 | `value`, `from`, `to` |
+| `meanArterialPressure` | 平均动脉压 | `sbp`, `dbp` |
+| `anionGap` | 阴离子间隙 | `na`, `cl`, `hco3` |
+| `correctedCalcium` | 校正钙 | `calcium`, `albumin` |
+| `oxygenIndex` | 氧合指数 | `pao2`, `fio2` |
+| `parseVitalSigns` | 解析生命体征 CSV | `filePath` |
+| `vitalsReport` | 生命体征统计报告 | `filePath` |
+
+### 使用示例
+
+```javascript
+[TOOL] bmi(70, 1.75) [/TOOL]
+[TOOL] egfr(1.0, 45, "male") [/TOOL]
+[TOOL] childPugh(2.5, 3.0, 1.8, "mild", "none") [/TOOL]
+[TOOL] convertUnit(100, "mg/dL", "mmol/L") [/TOOL]
+[TOOL] oxygenIndex(80, 40) [/TOOL]
+[TOOL] parseVitalSigns("vitals.csv") [/TOOL]
+```
+
+---
+
+## 化学工具详解
+
+化学工具提供分子式解析、分子量计算、溶液计算、气体定律等功能。
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `elementInfo` | 查询元素周期表 | `symbol` |
+| `molWeight` | 计算分子量 | `formula`（如 H2SO4、Ca(OH)2） |
+| `elementComposition` | 元素百分比组成 | `formula` |
+| `molarity` | 摩尔浓度 | `moles`, `volume`（L） |
+| `dilution` | 稀释计算 | `c1`, `v1`, `c2`, `v2`（缺哪个求哪个） |
+| `phFromH` | H⁺ → pH | `h`（mol/L） |
+| `phToH` | pH → H⁺ | `ph` |
+| `idealGasLaw` | 理想气体状态方程 | `P`, `V`, `n`, `T`（缺哪个求哪个） |
+| `gasDensity` | 气体密度 | `mw`, `T`（K）, `P`（atm） |
+
+### 使用示例
+
+```javascript
+[TOOL] elementInfo("Fe") [/TOOL]
+[TOOL] molWeight("H2SO4") [/TOOL]
+[TOOL] elementComposition("Ca(OH)2") [/TOOL]
+[TOOL] dilution(10, 100, 1, null) [/TOOL]
+[TOOL] phFromH(1e-7) [/TOOL]
+[TOOL] idealGasLaw(null, 22.4, 1, 273) [/TOOL]
+```
+
+---
+
+## 金融工具详解
+
+金融工具提供复利计算、投资分析、贷款计算、统计指标等功能。
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `compoundInterest` | 复利终值 | `P`, `r`, `n`, `t` |
+| `presentValue` | 现值计算 | `FV`, `r`, `n` |
+| `futureValueAnnuity` | 年金终值 | `PMT`, `r`, `n` |
+| `npv` | 净现值 | `rate`, `cashflows`（JSON 数组） |
+| `irr` | 内部收益率 | `cashflows`（JSON 数组） |
+| `paybackPeriod` | 投资回收期 | `cashflows`（JSON 数组） |
+| `roi` | 投资回报率 | `gain`, `cost` |
+| `loanPayment` | 等额本息月供 | `principal`, `annualRate`, `months` |
+| `amortizationSchedule` | 还款计划表 | `principal`, `annualRate`, `months` |
+| `totalInterest` | 总利息 | `principal`, `annualRate`, `months` |
+| `movingAverage` | 移动平均线 | `data`（数组）, `period` |
+| `volatility` | 波动率 | `prices`（数组） |
+
+### 使用示例
+
+```javascript
+[TOOL] compoundInterest(10000, 0.05, 12, 5) [/TOOL]
+[TOOL] npv(0.1, "[-10000, 3000, 4000, 5000]") [/TOOL]
+[TOOL] irr("[-10000, 3000, 4000, 5000]") [/TOOL]
+[TOOL] loanPayment(100000, 0.042, 240) [/TOOL]
+[TOOL] roi(15000, 10000) [/TOOL]
+[TOOL] volatility("[100, 102, 98, 105, 103]") [/TOOL]
+```
+
+---
+
+## 数学统计工具详解
+
+数学统计工具提供描述性统计、相关性分析、线性回归、矩阵运算等功能。
+
+### 核心工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `describe` | 描述性统计 | `data`（数组） |
+| `correlation` | 皮尔逊相关系数 | `x`, `y`（数组） |
+| `linearRegression` | 线性回归 | `x`, `y`（数组） |
+| `matrixMultiply` | 矩阵乘法 | `A`, `B`（二维数组） |
+| `matrixDeterminant` | 矩阵行列式 | `A`（2x2/3x3 方阵） |
+| `matrixInverse` | 矩阵逆 | `A`（2x2/3x3 方阵） |
+| `solveQuadratic` | 一元二次方程求根 | `a`, `b`, `c` |
+| `factorial` | 阶乘 | `n` |
+| `combination` | 组合数 C(n,k) | `n`, `k` |
+| `permutation` | 排列数 P(n,k) | `n`, `k` |
+| `siConvert` | SI 单位换算 | `value`, `from`, `to` |
+
+### 使用示例
+
+```javascript
+[TOOL] describe("[1,2,3,4,5,6,7,8,9,10]") [/TOOL]
+[TOOL] correlation("[1,2,3,4,5]", "[2,4,6,8,10]") [/TOOL]
+[TOOL] linearRegression("[1,2,3,4,5]", "[2,4,5,7,8]") [/TOOL]
+[TOOL] matrixMultiply("[[1,2],[3,4]]", "[[5,6],[7,8]]") [/TOOL]
+[TOOL] solveQuadratic(1, -5, 6) [/TOOL]
+[TOOL] combination(5, 2) [/TOOL]
+[TOOL] siConvert(1000, "kg", "g") [/TOOL]
+```
+
+---
+
 ## 应用场景示例
 
 ### 文件探索
@@ -610,4 +823,58 @@ Office 文档工具支持创建 PPT 演示文稿、Word 文档和 Excel 表格�
 ```javascript
 [TOOL] createPpt("data/presentation.pptx", "项目汇报", "内容") [/TOOL]
 [TOOL] createExcel("data/sales.xlsx", "销售", [["产品", "销量"]]) [/TOOL]
+```
+
+### GIS 地理信息分析
+
+```javascript
+[TOOL] convertCoord(116.397428, 39.90923, "wgs84", "gcj02") [/TOOL]
+[TOOL] calcDistance(116.4, 39.9, 121.5, 31.2) [/TOOL]
+[TOOL] readGeoJSON("regions.geojson") [/TOOL]
+[TOOL] geoJSONStats("regions.geojson") [/TOOL]
+```
+
+### 生命科学序列分析
+
+```javascript
+[TOOL] dnaReverseComplement("ATGCGTACG") [/TOOL]
+[TOOL] gcContent("ATGCGCTAGCTAGCTAG") [/TOOL]
+[TOOL] parseFASTA("genome.fasta") [/TOOL]
+[TOOL] hammingDistance("ATGC", "ATCC") [/TOOL]
+```
+
+### 医学临床计算
+
+```javascript
+[TOOL] bmi(70, 1.75) [/TOOL]
+[TOOL] egfr(1.0, 45, "male") [/TOOL]
+[TOOL] childPugh(2.5, 3.0, 1.8, "mild", "none") [/TOOL]
+[TOOL] oxygenIndex(80, 40) [/TOOL]
+```
+
+### 化学计算
+
+```javascript
+[TOOL] molWeight("H2SO4") [/TOOL]
+[TOOL] elementInfo("Fe") [/TOOL]
+[TOOL] phFromH(1e-7) [/TOOL]
+[TOOL] idealGasLaw(null, 22.4, 1, 273) [/TOOL]
+```
+
+### 金融投资分析
+
+```javascript
+[TOOL] compoundInterest(10000, 0.05, 12, 5) [/TOOL]
+[TOOL] npv(0.1, "[-10000, 3000, 4000, 5000]") [/TOOL]
+[TOOL] irr("[-10000, 3000, 4000, 5000]") [/TOOL]
+[TOOL] loanPayment(100000, 0.042, 240) [/TOOL]
+```
+
+### 数学统计分析
+
+```javascript
+[TOOL] describe("[1,2,3,4,5,6,7,8,9,10]") [/TOOL]
+[TOOL] correlation("[1,2,3,4,5]", "[2,4,6,8,10]") [/TOOL]
+[TOOL] linearRegression("[1,2,3,4,5]", "[2,4,5,7,8]") [/TOOL]
+[TOOL] matrixMultiply("[[1,2],[3,4]]", "[[5,6],[7,8]]") [/TOOL]
 ```
