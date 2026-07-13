@@ -180,6 +180,25 @@ import {
   codonUsage,
   randomSeq
 } from './bio.js';
+import {
+  bmi,
+  bsa,
+  egfr,
+  crcl,
+  childPugh,
+  calculateDose,
+  bsaDose,
+  infusionRate,
+  idealBodyWeight,
+  convertUnit,
+  temperatureConvert,
+  meanArterialPressure,
+  anionGap,
+  correctedCalcium,
+  oxygenIndex,
+  parseVitalSigns,
+  vitalsReport
+} from './med.js';
 
 export {
   getBasePath,
@@ -353,7 +372,24 @@ export {
   parseFASTQ,
   fastaToCSV,
   codonUsage,
-  randomSeq
+  randomSeq,
+  bmi,
+  bsa,
+  egfr,
+  crcl,
+  childPugh,
+  calculateDose,
+  bsaDose,
+  infusionRate,
+  idealBodyWeight,
+  convertUnit,
+  temperatureConvert,
+  meanArterialPressure,
+  anionGap,
+  correctedCalcium,
+  oxygenIndex,
+  parseVitalSigns,
+  vitalsReport
 };
 
 // ============================================
@@ -564,6 +600,25 @@ const TOOL_METADATA = {
   fastaToCSV: { argCount: 2 },
   codonUsage: { argCount: 1 },
   randomSeq: { argCount: 2 },
+
+  // 医学
+  bmi: { argCount: 2 },
+  bsa: { argCount: 3 },
+  egfr: { argCount: 3 },
+  crcl: { argCount: 4 },
+  childPugh: { argCount: 5 },
+  calculateDose: { argCount: 3 },
+  bsaDose: { argCount: 3 },
+  infusionRate: { argCount: 3 },
+  idealBodyWeight: { argCount: 2 },
+  convertUnit: { argCount: 3 },
+  temperatureConvert: { argCount: 3 },
+  meanArterialPressure: { argCount: 2 },
+  anionGap: { argCount: 3 },
+  correctedCalcium: { argCount: 2 },
+  oxygenIndex: { argCount: 2 },
+  parseVitalSigns: { argCount: 1 },
+  vitalsReport: { argCount: 1 },
 };
 
 // 导出工具元数据（供 registry.js 参考）
