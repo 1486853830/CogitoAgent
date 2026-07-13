@@ -163,6 +163,23 @@ import {
   geoJSONToCSV,
   geoJSONToKML
 } from './gis.js';
+import {
+  dnaComplement,
+  dnaReverseComplement,
+  rnaTranscribe,
+  translate,
+  gcContent,
+  molecularWeight,
+  hammingDistance,
+  levenshteinDistance,
+  tmEstimate,
+  hairpinCheck,
+  parseFASTA,
+  parseFASTQ,
+  fastaToCSV,
+  codonUsage,
+  randomSeq
+} from './bio.js';
 
 export {
   getBasePath,
@@ -321,7 +338,22 @@ export {
   queryGeoJSON,
   geoJSONStats,
   geoJSONToCSV,
-  geoJSONToKML
+  geoJSONToKML,
+  dnaComplement,
+  dnaReverseComplement,
+  rnaTranscribe,
+  translate,
+  gcContent,
+  molecularWeight,
+  hammingDistance,
+  levenshteinDistance,
+  tmEstimate,
+  hairpinCheck,
+  parseFASTA,
+  parseFASTQ,
+  fastaToCSV,
+  codonUsage,
+  randomSeq
 };
 
 // ============================================
@@ -515,6 +547,23 @@ const TOOL_METADATA = {
   geoJSONStats: { argCount: 1 },
   geoJSONToCSV: { argCount: 2 },
   geoJSONToKML: { argCount: 2 },
+
+  // 生命科学
+  dnaComplement: { argCount: 1 },
+  dnaReverseComplement: { argCount: 1 },
+  rnaTranscribe: { argCount: 1 },
+  translate: { argCount: 2 },
+  gcContent: { argCount: 1 },
+  molecularWeight: { argCount: 1 },
+  hammingDistance: { argCount: 2 },
+  levenshteinDistance: { argCount: 2 },
+  tmEstimate: { argCount: 1 },
+  hairpinCheck: { argCount: 1 },
+  parseFASTA: { argCount: 1 },
+  parseFASTQ: { argCount: 1 },
+  fastaToCSV: { argCount: 2 },
+  codonUsage: { argCount: 1 },
+  randomSeq: { argCount: 2 },
 };
 
 // 导出工具元数据（供 registry.js 参考）
