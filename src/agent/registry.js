@@ -27,7 +27,8 @@ const TOOL_CATEGORIES = {
   office: 'Office文档',
   cluster: '集群管理',
   wechat: '微信消息',
-  gis: '地理信息'
+  gis: '地理信息',
+  bio: '生命科学'
 };
 
 // 工具注册表
@@ -215,6 +216,23 @@ const TOOL_REGISTRY = {
   geoJSONStats: { fn: tools.geoJSONStats, argCount: 1, category: 'gis' },
   geoJSONToCSV: { fn: tools.geoJSONToCSV, argCount: 2, category: 'gis' },
   geoJSONToKML: { fn: tools.geoJSONToKML, argCount: 2, category: 'gis' },
+
+  // 生命科学
+  dnaComplement: { fn: tools.dnaComplement, argCount: 1, category: 'bio' },
+  dnaReverseComplement: { fn: tools.dnaReverseComplement, argCount: 1, category: 'bio' },
+  rnaTranscribe: { fn: tools.rnaTranscribe, argCount: 1, category: 'bio' },
+  translate: { fn: tools.translate, argCount: 2, category: 'bio' },
+  gcContent: { fn: tools.gcContent, argCount: 1, category: 'bio' },
+  molecularWeight: { fn: tools.molecularWeight, argCount: 1, category: 'bio' },
+  hammingDistance: { fn: tools.hammingDistance, argCount: 2, category: 'bio' },
+  levenshteinDistance: { fn: tools.levenshteinDistance, argCount: 2, category: 'bio' },
+  tmEstimate: { fn: tools.tmEstimate, argCount: 1, category: 'bio' },
+  hairpinCheck: { fn: tools.hairpinCheck, argCount: 1, category: 'bio' },
+  parseFASTA: { fn: tools.parseFASTA, argCount: 1, category: 'bio' },
+  parseFASTQ: { fn: tools.parseFASTQ, argCount: 1, category: 'bio' },
+  fastaToCSV: { fn: tools.fastaToCSV, argCount: 2, category: 'bio' },
+  codonUsage: { fn: tools.codonUsage, argCount: 1, category: 'bio' },
+  randomSeq: { fn: tools.randomSeq, argCount: 2, category: 'bio' },
 };
 
 // 危险操作列表
@@ -294,7 +312,8 @@ function getToolsByCategory() {
     office: ['createPpt', 'createWord', 'createExcel', 'readExcel'],
     cluster: ['spawnAgent', 'delegateTask', 'getClusterStatus', 'stopAgent', 'stopAllAgents', 'parallelExecute', 'getAgent', 'panelDiscussion', 'pipeline', 'voting'],
     wechat: ['loginWechat', 'logoutWechat', 'sendWechatMessage', 'sendWechatImage', 'getWechatStatus', 'generateWechatQRCode'],
-    gis: ['convertCoord', 'calcDistance', 'calcArea', 'calcCenter', 'pointInPolygon', 'isInChina', 'readGeoJSON', 'queryGeoJSON', 'geoJSONStats', 'geoJSONToCSV', 'geoJSONToKML']
+    gis: ['convertCoord', 'calcDistance', 'calcArea', 'calcCenter', 'pointInPolygon', 'isInChina', 'readGeoJSON', 'queryGeoJSON', 'geoJSONStats', 'geoJSONToCSV', 'geoJSONToKML'],
+    bio: ['dnaComplement', 'dnaReverseComplement', 'rnaTranscribe', 'translate', 'gcContent', 'molecularWeight', 'hammingDistance', 'levenshteinDistance', 'tmEstimate', 'hairpinCheck', 'parseFASTA', 'parseFASTQ', 'fastaToCSV', 'codonUsage', 'randomSeq']
   };
 }
 
