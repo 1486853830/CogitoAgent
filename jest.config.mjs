@@ -8,5 +8,10 @@ export default {
   verbose: true,
   testTimeout: 60000,
   forceExit: true,
-  detectOpenHandles: true
+  detectOpenHandles: true,
+  moduleNameMapper: {
+    '^pptxgenjs$': '<rootDir>/tests/mocks/pptxgenjs.js',
+    '^docx$': '<rootDir>/tests/mocks/docx.js',
+    '^xlsx$': '<rootDir>/tests/mocks/xlsx.js'
+  }
 };
