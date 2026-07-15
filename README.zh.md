@@ -1,4 +1,4 @@
-# CogitoAgent
+﻿# CogitoAgent
 
 > **持续思考 · 自主行动 · 隐私优先**
 
@@ -11,7 +11,8 @@
 与传统聊天机器人不同，CogitoAgent 具备**持续思考**、**自主探索**和**工具执行**的能力，能够在后台主动发现和整理您的本地文件资产，并通过可扩展的工具集提供更多能力。
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/Version-2.3.0-764ba2?style=flat-square" alt="Version"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square" alt="Version"></a>
+  <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript" alt="TypeScript"></a>
   <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js" alt="Node"></a>
   <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=flat-square" alt="Status"></a>
@@ -23,6 +24,7 @@
 
 | 功能 | 描述 |
 |------|------|
+| **TypeScript 核心** | 全量 TypeScript 重构，类型安全，编译时错误检测 |
 | **隐私优先** | 用户工作文件保留在本地，仅通过 API 将必要上下文发送至你指定的模型服务商 |
 | **持续思考** | 每 3 秒自动触发一次思考循环（可配置） |
 | **工具执行** | 16+ 工具模块，100+ 工具，覆盖文件操作、代码执行、Git、数据库、OCR、Office 文档等 |
@@ -82,7 +84,7 @@ npm start
 
 ## 工具系统
 
-所有工具由 `registry.js` 管理，通过 `[TOOL] functionName(args) [/TOOL]` 格式调用。
+所有工具由 `registry.ts` 管理，通过 `[TOOL] functionName(args) [/TOOL]` 格式调用。
 
 ```mermaid
 flowchart LR
@@ -108,31 +110,31 @@ flowchart LR
 
 | 分类 | 文件 | 主要函数 |
 |------|------|----------|
-| 文件操作 | `file.js` | `ls`, `read`, `create`, `copy`, `mkdir` |
-| 路径工具 | `path.js` | `getBasePath` |
-| 网络工具 | `web.js` | `search`, `browse`, `fetchPage` |
-| 浏览器自动化 | `browser.js` | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile` |
-| 系统操作 | `system.js` | `listApps`, `openApp`, `closeApp` |
-| 代码执行 | `code.js` | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode` |
-| 安全沙箱 | `sandbox.js` | `createJavaScriptSandbox`, `runJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox` |
-| Git | `git.js` | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
-| 任务管理 | `task.js` | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks` |
-| 记忆系统 | `memory.js` | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory` |
-| 数据处理 | `data.js` | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData` |
-| 数据库 | `db.js` | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB` |
-| 邮件 | `email.js` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig` |
-| 系统监控 | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem` |
-| 定时任务 | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler` |
-| 存储 | `storage.js` | `FileStorage`, `createStorage` |
-| 图像识别 | `ocr.js` | `ocr`, `ocrBatch` |
-| 视觉分析 | `vision.js` | `vision`, `visionFromUrl` |
-| Office 文档 | `office.js` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
-| GIS 地理信息 | `gis.js` | `convertCoord`, `calcDistance`, `calcArea`, `readGeoJSON`, `pointInPolygon`, `geoJSONToKML` |
-| 生命科学 | `bio.js` | `dnaComplement`, `translate`, `gcContent`, `parseFASTA`, `hammingDistance`, `codonUsage` |
-| 医学 | `med.js` | `bmi`, `egfr`, `childPugh`, `convertUnit`, `oxygenIndex`, `loanPayment`, `parseVitalSigns` |
-| 化学 | `chem.js` | `molWeight`, `elementInfo`, `phFromH`, `idealGasLaw`, `dilution`, `elementComposition` |
-| 金融 | `finance.js` | `compoundInterest`, `npv`, `irr`, `loanPayment`, `roi`, `volatility`, `movingAverage` |
-| 数学统计 | `math.js` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `solveQuadratic`, `factorial` |
+| 文件操作 | `file.ts` | `ls`, `read`, `create`, `copy`, `mkdir` |
+| 路径工具 | `path.ts` | `getBasePath` |
+| 网络工具 | `web.ts` | `search`, `browse`, `fetchPage` |
+| 浏览器自动化 | `browser.ts` | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile` |
+| 系统操作 | `system.ts` | `listApps`, `openApp`, `closeApp` |
+| 代码执行 | `code.ts` | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode` |
+| 安全沙箱 | `sandbox.ts` | `createJavaScriptSandbox`, `runJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox` |
+| Git | `git.ts` | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
+| 任务管理 | `task.ts` | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks` |
+| 记忆系统 | `memory.ts` | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory` |
+| 数据处理 | `data.ts` | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData` |
+| 数据库 | `db.ts` | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB` |
+| 邮件 | `email.ts` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig` |
+| 系统监控 | `monitor.ts` | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem` |
+| 定时任务 | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler` |
+| 存储 | `storage.ts` | `FileStorage`, `createStorage` |
+| 图像识别 | `ocr.ts` | `ocr`, `ocrBatch` |
+| 视觉分析 | `vision.ts` | `vision`, `visionFromUrl` |
+| Office 文档 | `office.ts` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
+| GIS 地理信息 | `gis.ts` | `convertCoord`, `calcDistance`, `calcArea`, `readGeoJSON`, `pointInPolygon`, `geoJSONToKML` |
+| 生命科学 | `bio.ts` | `dnaComplement`, `translate`, `gcContent`, `parseFASTA`, `hammingDistance`, `codonUsage` |
+| 医学 | `med.ts` | `bmi`, `egfr`, `childPugh`, `convertUnit`, `oxygenIndex`, `loanPayment`, `parseVitalSigns` |
+| 化学 | `chem.ts` | `molWeight`, `elementInfo`, `phFromH`, `idealGasLaw`, `dilution`, `elementComposition` |
+| 金融 | `finance.ts` | `compoundInterest`, `npv`, `irr`, `loanPayment`, `roi`, `volatility`, `movingAverage` |
+| 数学统计 | `math.ts` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `solveQuadratic`, `factorial` |
 
 > 详细工具文档：注册机制、使用示例、最佳实践 → [introduction/tools.md](introduction/tools.md)
 
@@ -156,11 +158,11 @@ flowchart TB
     end
 
     subgraph Core["核心层"]
-        Agent["Agent.js<br/>思考循环 3s"]
-        State["state.js<br/>状态机"]
-        Session["session.js<br/>会话管理"]
-        Commands["commands.js<br/>命令处理"]
-        Registry["registry.js<br/>工具注册表"]
+        Agent["Agent.ts<br/>思考循环 3s"]
+        State["state.ts<br/>状态机"]
+        Session["session.ts<br/>会话管理"]
+        Commands["commands.ts<br/>命令处理"]
+        Registry["registry.ts<br/>工具注册表"]
     end
 
     subgraph Tools["工具层"]
@@ -198,19 +200,19 @@ flowchart TB
 
 | 组件 | 职责 |
 |------|------|
-| **Agent.js** | 思考循环 —— 每 3 秒自动触发 |
-| **state.js** | 状态机 —— THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
-| **registry.js** | 工具注册表 —— 集中管理所有工具模块 |
-| **session.js** | 会话管理 —— 多会话切换、上下文压缩 |
-| **commands.js** | 命令处理 —— /help, /status, /persona, /sessions 等 |
-| **sandbox.js** | 代码沙箱 —— isolated-vm 进程级隔离 |
-| **stats.js** | 统计 —— 工具使用追踪和指标 |
-| **tracing.js** | 追踪 —— 工具执行和 LLM 调用的轻量级可观测性 |
-| **retry.js** | 重试与熔断 —— 可靠的网络请求 |
-| **mcp.js** | MCP Server —— 将工具暴露为 MCP 协议 |
-| **plugin.js** | 插件系统 —— 动态加载自定义工具插件 |
-| **ws-server.js** | WebSocket —— 桌面模式通信（端口 9527） |
-| **wechat-manager.js** | 微信通道 —— iLink 协议集成、消息路由、会话同步 |
+| **Agent.ts** | 思考循环 —— 每 3 秒自动触发 |
+| **state.ts** | 状态机 —— THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
+| **registry.ts** | 工具注册表 —— 集中管理所有工具模块 |
+| **session.ts** | 会话管理 —— 多会话切换、上下文压缩 |
+| **commands.ts** | 命令处理 —— /help, /status, /persona, /sessions 等 |
+| **sandbox.ts** | 代码沙箱 —— isolated-vm 进程级隔离 |
+| **stats.ts** | 统计 —— 工具使用追踪和指标 |
+| **tracing.ts** | 追踪 —— 工具执行和 LLM 调用的轻量级可观测性 |
+| **retry.ts** | 重试与熔断 —— 可靠的网络请求 |
+| **mcp.ts** | MCP Server —— 将工具暴露为 MCP 协议 |
+| **plugin.ts** | 插件系统 —— 动态加载自定义工具插件 |
+| **ws-server.ts** | WebSocket —— 桌面模式通信（端口 9527） |
+| **wechat-manager.ts** | 微信通道 —— iLink 协议集成、消息路由、会话同步 |
 
 > 完整架构详情：思考循环图、工具调用流程、状态机、消息流、WebSocket → [introduction/architecture.md](introduction/architecture.md)
 
@@ -253,18 +255,19 @@ flowchart TB
 
 ```
 cogito-agent/
-├── src/                              # 源代码
+├── src/                              # 源代码（TypeScript）
 │   ├── agent/                        # 核心 agent 模块
-│   │   ├── Agent.js / state.js / registry.js
-│   │   ├── commands.js / session.js / stats.js
-│   │   ├── mcp.js / plugin.js / tracing.js / retry.js
-│   │   ├── wechat-manager.js         # 微信通道管理
+│   │   ├── Agent.ts / state.ts / registry.ts
+│   │   ├── commands.ts / session.ts / stats.ts
+│   │   ├── mcp.ts / plugin.ts / thought-trace.ts / retry.ts
+│   │   ├── wechat-manager.ts         # 微信通道管理
 │   │   └── tools/                    # 16+ 工具模块
 │   ├── api/                          # API 层（client, models, webSearch）
 │   ├── io/                           # Terminal, Logger, WebSocket
-│   ├── config.js                     # 配置管理
-│   └── index.js                      # 应用入口
-├── electron/                         # 桌面模式
+│   ├── config.ts                     # 配置管理
+│   ├── types/                        # TypeScript 类型定义
+│   └── index.ts                      # 应用入口
+├── electron/                         # 桌面模式（JS）
 │   ├── main.js / preload.cjs / agent-bridge.js
 │   ├── desktop/ / dashboard/ / monitor/ / setup/
 │   ├── shared/                       # 共享工具
@@ -272,6 +275,7 @@ cogito-agent/
 ├── personas/                         # 22 个预设角色（13 现代 + 9 古代）
 ├── tests/                            # 测试文件
 ├── data/                             # 运行时数据（自动创建）
+├── tsconfig.json                     # TypeScript 配置
 └── introduction/                     # 详细文档
     ├── tools.md                      # 工具系统详情
     ├── architecture.md               # 架构详情
@@ -339,6 +343,7 @@ docker-compose up -d
 ## 更新日志
 
 ### v2.3.2
+- **核心 TypeScript 化** — 全量 54 个 JS 文件迁移至 TypeScript，类型安全，编译时错误检测
 - 新增 6 个专业工具模块，共 75 个工具
 - GIS 地理信息：坐标转换、距离面积计算、GeoJSON 处理（11个工具）
 - 生命科学：DNA/RNA/蛋白质序列分析、FASTA/FASTQ 解析（15个工具）
@@ -346,6 +351,7 @@ docker-compose up -d
 - 化学：分子量、元素周期表、pH、气体定律（9个工具）
 - 金融：复利、NPV/IRR、贷款计算、波动率（12个工具）
 - 数学统计：描述统计、回归、矩阵运算、组合数学（11个工具）
+- CI/CD 流水线：GitHub Actions 和 Gitee 流水线双支持
 
 ### v2.3.1
 - 微信 iLink 协议集成，支持扫码登录、消息收发

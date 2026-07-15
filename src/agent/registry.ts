@@ -1,6 +1,6 @@
-import * as tools from './tools/index.js';
-import { loadConfig } from '../config.js';
-import type { ToolRegistryEntry, ToolCategory } from '../types/index.js';
+import * as tools from './tools/index.ts';
+import { loadConfig } from '../config.ts';
+import type { ToolRegistryEntry, ToolCategory } from '../types/index.ts';
 
 const TOOL_CATEGORIES: Record<ToolCategory, string> = {
   file: '文件操作',

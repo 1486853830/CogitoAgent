@@ -1,4 +1,4 @@
-import { broadcast } from '../io/ws-server.js';
+import { broadcast } from '../io/ws-server.ts';
 
 interface ThoughtTraceStep {
   id: string;
