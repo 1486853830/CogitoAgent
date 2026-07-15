@@ -11,13 +11,15 @@
     "electron": "chcp 65001 > nul && cross-env COGITO_MODE=dashboard electron .",
     "electron:desktop": "chcp 65001 > nul && cross-env COGITO_MODE=desktop electron .",
     "electron:dashboard": "chcp 65001 > nul && cross-env COGITO_MODE=dashboard electron .",
-    "cli": "chcp 65001 > nul && cross-env CLI_MODE=true DISABLE_WS=true node src/index.js",
+    "cli": "chcp 65001 > nul && cross-env CLI_MODE=true DISABLE_WS=true npx tsx src/index.ts",
+    "cli:js": "chcp 65001 > nul && cross-env CLI_MODE=true DISABLE_WS=true npx tsx src/index.ts",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/e2e",
     "test:e2e:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/e2e --watch",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
-    "build:nsis": "electron-builder --win --nsis"
+    "build:nsis": "electron-builder --win --nsis",
+    "typecheck": "npx tsc --noEmit"
   },
   "dependencies": {
     "@pawastation/ilink-bot-sdk": "^0.2.0",
@@ -39,9 +41,16 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz"
   },
   "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/nodemailer": "^8.0.1",
+    "@types/qrcode": "^1.5.6",
+    "@types/sql.js": "^1.4.11",
+    "@types/ws": "^8.18.1",
     "cross-env": "^7.0.3",
     "electron-builder": "^25.1.8",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3"
   },
   "overrides": {
     "js-yaml": "4.2.0"

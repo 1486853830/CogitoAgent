@@ -308,11 +308,12 @@ function startAgentProcess() {
     ELECTRON_MODE: 'true'
   };
 
-  agentProcess = spawn('node', ['src/index.js'], {
+  agentProcess = spawn('npx', ['tsx', 'src/index.ts'], {
     cwd: PROJECT_ROOT,
     env,
     stdio: ['pipe', 'pipe', 'pipe'],
     windowsHide: true,
+    shell: true,
   });
 
   return new Promise((resolve) => {
