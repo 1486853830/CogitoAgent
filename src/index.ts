@@ -1,17 +1,13 @@
 import 'dotenv/config';
 
 import { isConfigured } from './config.ts';
-import { runSetup } from './setup.js';
+import { runSetup } from './setup.ts';
 import { start } from './agent/Agent.ts';
 import { exec } from 'child_process';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 function openWelcomePage(): void {
-  const introPath = path.join(__dirname, '..', 'index.html');
+  const introPath = path.join(process.cwd(), 'index.html');
   const url = `file://${introPath}`;
 
   const isWindows = process.platform === 'win32';

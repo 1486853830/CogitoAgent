@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { buildSystemPrompt } from './system-prompt.js';
-import type { Message, SessionMeta, SessionInfo } from '../types/index.js';
+import { buildSystemPrompt } from './system-prompt.ts';
+import type { Message, SessionMeta, SessionInfo } from '../types/index.ts';
 
 const SESSIONS_DIR = path.resolve(process.cwd(), 'data', 'sessions');
 const META_FILE = path.join(SESSIONS_DIR, 'meta.json');

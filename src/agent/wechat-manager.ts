@@ -9,7 +9,7 @@ import {
   addWechatMessage,
   getWechatMessages,
   wechatState
-} from './tools/wechat.js';
+} from './tools/wechat.ts';
 import { handleUserInput, setReplyCallback } from './Agent.ts';
 import { getOrCreateWechatSession, switchSession, getCurrentSession, setConversationHistory } from './session.ts';
 import { broadcast } from '../io/ws-server.ts';

@@ -8,7 +8,7 @@ import path from 'path';
 import { println, printDivider, printTag } from '../io/terminal.ts';
 import { loadConfig } from '../config.ts';
 import { getToolNames, getToolsByCategory } from './registry.ts';
-import * as tools from './tools/index.js';
+import * as tools from './tools/index.ts';
 import { listSessions, getCurrentSession, createNewSession, switchSession, deleteSession, renameSession, resetConversation } from './session.ts';
 import { orchestrator } from './orchestrator.ts';
 import { manualLoginWechat, manualLogoutWechat, getWechatStatus } from './wechat-manager.ts';

@@ -5,7 +5,7 @@
 
 import { readFileSync } from 'fs';
 import path from 'path';
-import { getBasePath } from './tools/index.js';
+import { getBasePath } from './tools/index.ts';
 import { getEnabledCategories, getAllCategories, getToolsByCategory, TOOL_CATEGORIES } from './registry.ts';
 
 /**
