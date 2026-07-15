@@ -54,6 +54,8 @@
     "typescript": "^5.9.3"
   },
   "overrides": {
-    "js-yaml": "4.2.0"
+    "js-yaml": "4.2.0",
+    "tar": "^7.4.3",
+    "glob": "^10.4.5"
   }
 }
