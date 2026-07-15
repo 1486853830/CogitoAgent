@@ -12,7 +12,7 @@ let SQL: any = null;
 async function initSQL(): Promise<any> {
   if (SQL) return SQL;
   try {
-    const { pathname: modulePath } = new URL(import.meta.url);
+    const modulePath = path.join(process.cwd(), 'src', 'agent', 'tools', 'db.ts');
     const sqlJsDir = path.dirname(modulePath).replace(/\\/g, '/');
     SQL = await initSqlJs({
       locateFile: (file: string) => `file://${sqlJsDir}/../../../node_modules/sql.js/dist/${file}`

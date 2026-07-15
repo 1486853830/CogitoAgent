@@ -1,4 +1,4 @@
-# 扩展功能详解
+﻿# 扩展功能详解
 
 > 详细文档：插件系统、MCP 协议、追踪模块、重试机制、多模型支持、联网搜索。
 
@@ -72,7 +72,7 @@ MCP（Model Context Protocol）支持将工具暴露为 JSON-RPC 服务，供其
 
 ### 2.1 MCP Server
 
-`mcp.js` 实现了 MCP 协议，将工具注册表中的工具暴露为 MCP 服务。
+`mcp.ts` 实现了 MCP 协议，将工具注册表中的工具暴露为 MCP 服务。
 
 ### 2.2 启动方式
 
@@ -130,7 +130,7 @@ MCP 服务随 Agent 启动自动启用，默认监听端口配置在 `config.jso
 
 ### 3.3 启用追踪
 
-追踪模块在 `Agent.js` 中自动集成，通过配置开关启用：
+追踪模块在 `Agent.ts` 中自动集成，通过配置开关启用：
 
 ```json
 {
@@ -235,7 +235,7 @@ npm run cli -- --model claude-3-sonnet --baseURL https://api.anthropic.com/v1 --
 
 ### 6.1 搜索工具
 
-`web.js` 提供以下搜索相关工具：
+`web.ts` 提供以下搜索相关工具：
 
 | 工具 | 说明 | 参数 |
 |------|------|------|

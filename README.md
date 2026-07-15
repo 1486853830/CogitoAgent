@@ -11,7 +11,8 @@ Cogito, ergo sum — CogitoAgent is not just a tool; it is your autonomous think
 Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Continuously**, **Explore Autonomously**, and **Execute Tools**, capable of proactively discovering and organizing your local file assets in the background, with additional capabilities available through an extensible toolset.
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/Version-2.3.0-764ba2?style=flat-square" alt="Version"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square" alt="Version"></a>
+  <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript" alt="TypeScript"></a>
   <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js" alt="Node"></a>
   <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=flat-square" alt="Status"></a>
@@ -23,6 +24,7 @@ Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Contin
 
 | Feature | Description |
 |---------|-------------|
+| **TypeScript Core** | Full TypeScript migration with type safety and compile-time error detection |
 | **Privacy First** | Workspace files stay local; only conversation context is sent to the LLM API you specify |
 | **Continuous Thinking** | Automatically triggers a thinking cycle every 3 seconds (configurable) |
 | **Tool Execution** | 16+ tool modules with 100+ tools for file operations, code execution, Git, databases, OCR, Office documents, and more |
@@ -82,7 +84,7 @@ npm start
 
 ## Tool System
 
-All tools are managed by `registry.js` and invoked via `[TOOL] functionName(args) [/TOOL]`.
+All tools are managed by `registry.ts` and invoked via `[TOOL] functionName(args) [/TOOL]`.
 
 ```mermaid
 flowchart LR
@@ -108,31 +110,31 @@ flowchart LR
 
 | Category | File | Main Functions |
 |----------|------|----------------|
-| File Operations | `file.js` | `ls`, `read`, `create`, `copy`, `mkdir` |
-| Path Utilities | `path.js` | `getBasePath` |
-| Web Tools | `web.js` | `search`, `browse`, `fetchPage` |
-| Browser Automation | `browser.js` | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile` |
-| System Operations | `system.js` | `listApps`, `openApp`, `closeApp` |
-| Code Execution | `code.js` | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode` |
-| Security Sandbox | `sandbox.js` | `createJavaScriptSandbox`, `runJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox` |
-| Git | `git.js` | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
-| Task Management | `task.js` | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks` |
-| Memory System | `memory.js` | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory` |
-| Data Processing | `data.js` | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData` |
-| Database | `db.js` | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB` |
-| Email | `email.js` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig` |
-| System Monitoring | `monitor.js` | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem` |
-| Scheduled Tasks | `scheduler.js` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler` |
-| Storage | `storage.js` | `FileStorage`, `createStorage` |
-| Image Recognition | `ocr.js` | `ocr`, `ocrBatch` |
-| Vision Analysis | `vision.js` | `vision`, `visionFromUrl` |
-| Office Documents | `office.js` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
-| GIS | `gis.js` | `convertCoord`, `calcDistance`, `calcArea`, `readGeoJSON`, `pointInPolygon`, `geoJSONToKML` |
-| Life Science | `bio.js` | `dnaComplement`, `translate`, `gcContent`, `parseFASTA`, `hammingDistance`, `codonUsage` |
-| Medicine | `med.js` | `bmi`, `egfr`, `childPugh`, `convertUnit`, `oxygenIndex`, `parseVitalSigns` |
-| Chemistry | `chem.js` | `molWeight`, `elementInfo`, `phFromH`, `idealGasLaw`, `dilution`, `elementComposition` |
-| Finance | `finance.js` | `compoundInterest`, `npv`, `irr`, `loanPayment`, `roi`, `volatility`, `movingAverage` |
-| Math/Stats | `math.js` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `solveQuadratic`, `factorial` |
+| File Operations | `file.ts` | `ls`, `read`, `create`, `copy`, `mkdir` |
+| Path Utilities | `path.ts` | `getBasePath` |
+| Web Tools | `web.ts` | `search`, `browse`, `fetchPage` |
+| Browser Automation | `browser.ts` | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile` |
+| System Operations | `system.ts` | `listApps`, `openApp`, `closeApp` |
+| Code Execution | `code.ts` | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode` |
+| Security Sandbox | `sandbox.ts` | `createJavaScriptSandbox`, `runJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox` |
+| Git | `git.ts` | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
+| Task Management | `task.ts` | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks` |
+| Memory System | `memory.ts` | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory` |
+| Data Processing | `data.ts` | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData` |
+| Database | `db.ts` | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB` |
+| Email | `email.ts` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig` |
+| System Monitoring | `monitor.ts` | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem` |
+| Scheduled Tasks | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler` |
+| Storage | `storage.ts` | `FileStorage`, `createStorage` |
+| Image Recognition | `ocr.ts` | `ocr`, `ocrBatch` |
+| Vision Analysis | `vision.ts` | `vision`, `visionFromUrl` |
+| Office Documents | `office.ts` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
+| GIS | `gis.ts` | `convertCoord`, `calcDistance`, `calcArea`, `readGeoJSON`, `pointInPolygon`, `geoJSONToKML` |
+| Life Science | `bio.ts` | `dnaComplement`, `translate`, `gcContent`, `parseFASTA`, `hammingDistance`, `codonUsage` |
+| Medicine | `med.ts` | `bmi`, `egfr`, `childPugh`, `convertUnit`, `oxygenIndex`, `parseVitalSigns` |
+| Chemistry | `chem.ts` | `molWeight`, `elementInfo`, `phFromH`, `idealGasLaw`, `dilution`, `elementComposition` |
+| Finance | `finance.ts` | `compoundInterest`, `npv`, `irr`, `loanPayment`, `roi`, `volatility`, `movingAverage` |
+| Math/Stats | `math.ts` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `solveQuadratic`, `factorial` |
 
 > Detailed tool documentation: registration mechanism, usage examples, best practices → [introduction/tools.md](introduction/tools.md) (Chinese)
 
@@ -156,11 +158,11 @@ flowchart TB
     end
 
     subgraph Core["Core Layer"]
-        Agent["Agent.js<br/>Think Cycle 3s"]
-        State["state.js<br/>State Machine"]
-        Session["session.js<br/>Session Manager"]
-        Commands["commands.js<br/>Command Handler"]
-        Registry["registry.js<br/>Tool Registry"]
+        Agent["Agent.ts<br/>Think Cycle 3s"]
+        State["state.ts<br/>State Machine"]
+        Session["session.ts<br/>Session Manager"]
+        Commands["commands.ts<br/>Command Handler"]
+        Registry["registry.ts<br/>Tool Registry"]
     end
 
     subgraph Tools["Tool Layer"]
@@ -198,19 +200,19 @@ flowchart TB
 
 | Component | Responsibility |
 |-----------|----------------|
-| **Agent.js** | Thinking loop — automatically triggers every 3 seconds |
-| **state.js** | State machine — THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
-| **registry.js** | Tool registry — centralized management of all tool modules |
-| **session.js** | Session management — multi-session switching, context compression |
-| **commands.js** | Command handling — /help, /status, /persona, /sessions, etc. |
-| **sandbox.js** | Code sandbox — isolated-vm process-level isolation |
-| **stats.js** | Statistics — tool usage tracking and metrics |
-| **tracing.js** | Tracing — lightweight observability for tool executions and LLM calls |
-| **retry.js** | Retry & Circuit Breaker — reliable network requests |
-| **mcp.js** | MCP Server — expose tools as MCP protocol |
-| **plugin.js** | Plugin system — dynamic loading of custom tool plugins |
-| **ws-server.js** | WebSocket — desktop mode communication (port 9527) |
-| **wechat-manager.js** | WeChat Channel — iLink protocol integration, message routing, session sync |
+| **Agent.ts** | Thinking loop — automatically triggers every 3 seconds |
+| **state.ts** | State machine — THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
+| **registry.ts** | Tool registry — centralized management of all tool modules |
+| **session.ts** | Session management — multi-session switching, context compression |
+| **commands.ts** | Command handling — /help, /status, /persona, /sessions, etc. |
+| **sandbox.ts** | Code sandbox — isolated-vm process-level isolation |
+| **stats.ts** | Statistics — tool usage tracking and metrics |
+| **tracing.ts** | Tracing — lightweight observability for tool executions and LLM calls |
+| **retry.ts** | Retry & Circuit Breaker — reliable network requests |
+| **mcp.ts** | MCP Server — expose tools as MCP protocol |
+| **plugin.ts** | Plugin system — dynamic loading of custom tool plugins |
+| **ws-server.ts** | WebSocket — desktop mode communication (port 9527) |
+| **wechat-manager.ts** | WeChat Channel — iLink protocol integration, message routing, session sync |
 
 > Complete architecture details: think cycle diagrams, tool call flow, state machine, message flow, WebSocket → [introduction/architecture.md](introduction/architecture.md) (Chinese)
 
@@ -253,18 +255,19 @@ Configuration via `config.json` and environment variables (`.env`), with env var
 
 ```
 cogito-agent/
-├── src/                              # Source code
+├── src/                              # Source code (TypeScript)
 │   ├── agent/                        # Core agent module
-│   │   ├── Agent.js / state.js / registry.js
-│   │   ├── commands.js / session.js / stats.js
-│   │   ├── mcp.js / plugin.js / tracing.js / retry.js
-│   │   ├── wechat-manager.js         # WeChat channel management
+│   │   ├── Agent.ts / state.ts / registry.ts
+│   │   ├── commands.ts / session.ts / stats.ts
+│   │   ├── mcp.ts / plugin.ts / thought-trace.ts / retry.ts
+│   │   ├── wechat-manager.ts         # WeChat channel management
 │   │   └── tools/                    # 16+ tool modules
 │   ├── api/                          # API layer (client, models, webSearch)
 │   ├── io/                           # Terminal, Logger, WebSocket
-│   ├── config.js                     # Configuration management
-│   └── index.js                      # Application entry
-├── electron/                         # Desktop mode
+│   ├── config.ts                     # Configuration management
+│   ├── types/                        # TypeScript type definitions
+│   └── index.ts                      # Application entry
+├── electron/                         # Desktop mode (JS)
 │   ├── main.js / preload.cjs / agent-bridge.js
 │   ├── desktop/ / dashboard/ / monitor/ / setup/
 │   ├── shared/                       # Shared utilities
@@ -272,6 +275,7 @@ cogito-agent/
 ├── personas/                         # 22 preset personas (13 modern + 9 ancient)
 ├── tests/                            # Test files
 ├── data/                             # Runtime data (auto-created)
+├── tsconfig.json                     # TypeScript config
 └── introduction/                     # Detailed documentation
     ├── tools.md                      # Tool system details
     ├── architecture.md               # Architecture details
@@ -339,6 +343,7 @@ docker-compose up -d
 ## Changelog
 
 ### v2.3.2
+- **Full TypeScript migration** — 54 JS files migrated to TypeScript with type safety and compile-time error detection
 - 6 new professional tool modules with 75 tools
 - GIS: coordinate conversion, distance/area calculation, GeoJSON processing (11 tools)
 - Life Science: DNA/RNA/protein sequence analysis, FASTA/FASTQ parsing (15 tools)
@@ -346,6 +351,7 @@ docker-compose up -d
 - Chemistry: molecular weight, periodic table, pH, gas laws (9 tools)
 - Finance: compound interest, NPV/IRR, loan calculation, volatility (12 tools)
 - Math/Stats: descriptive stats, regression, matrix operations, combinatorics (11 tools)
+- CI/CD pipelines: GitHub Actions and Gitee Pipeline support
 
 ### v2.3.1
 - WeChat iLink protocol integration with QR code login and message sending/receiving

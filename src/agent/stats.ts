@@ -1,9 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const STATS_FILE = path.join(__dirname, '../../data/stats.json');
+const STATS_FILE = path.join(process.cwd(), 'data', 'stats.json');
 
 interface ToolCategoryStats {
   callCount: number;

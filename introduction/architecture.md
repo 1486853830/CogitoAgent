@@ -1,4 +1,4 @@
-# 架构设计详解
+﻿# 架构设计详解
 
 > 详细文档：核心组件、思考循环、工具调用流程、桌面模式架构与 WebSocket 通信。
 
@@ -8,18 +8,18 @@
 
 | 组件 | 文件 | 职责描述 |
 |------|------|---------|
-| **Agent 引擎** | `Agent.js` | 思考循环主控制器，负责任务编排、状态转换、LLM 交互调度 |
-| **状态管理** | `state.js` | 集中式状态管理，维护 Agent 生命周期状态（THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION） |
-| **工具注册中心** | `registry.js` | 工具注册与发现，管理所有可用工具的元数据、参数 schema 和执行句柄 |
-| **会话管理** | `session.js` | 多会话隔离，管理对话上下文、历史记录和配置持久化，支持自动压缩 |
-| **命令执行器** | `commands.js` | 将 Agent 决策转化为具体操作，执行工具调用并处理结果 |
-| **安全沙箱** | `sandbox.js` | 命令执行沙箱，提供安全的代码/命令执行环境，使用 `isolated-vm` 进程级隔离 |
-| **统计模块** | `stats.js` | 工具使用追踪和性能指标，记录调用次数、耗时等统计数据 |
-| **追踪模块** | `tracing.js` | 轻量级可观测性，记录工具执行和 LLM 调用的详细追踪信息 |
-| **重试与熔断** | `retry.js` | 可靠的网络请求，支持指数退避重试和熔断机制 |
-| **MCP Server** | `mcp.js` | 将工具暴露为 MCP 协议，支持与其他 AI 客户端集成 |
-| **插件系统** | `plugin.js` | 动态加载自定义工具插件，扩展 Agent 能力 |
-| **WebSocket 服务器** | `ws-server.js` | 实时双向通信层，为 Electron 客户端和其他 WS 客户端提供消息通道（端口 9527） |
+| **Agent 引擎** | `Agent.ts` | 思考循环主控制器，负责任务编排、状态转换、LLM 交互调度 |
+| **状态管理** | `state.ts` | 集中式状态管理，维护 Agent 生命周期状态（THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION） |
+| **工具注册中心** | `registry.ts` | 工具注册与发现，管理所有可用工具的元数据、参数 schema 和执行句柄 |
+| **会话管理** | `session.ts` | 多会话隔离，管理对话上下文、历史记录和配置持久化，支持自动压缩 |
+| **命令执行器** | `commands.ts` | 将 Agent 决策转化为具体操作，执行工具调用并处理结果 |
+| **安全沙箱** | `sandbox.ts` | 命令执行沙箱，提供安全的代码/命令执行环境，使用 `isolated-vm` 进程级隔离 |
+| **统计模块** | `stats.ts` | 工具使用追踪和性能指标，记录调用次数、耗时等统计数据 |
+| **追踪模块** | `tracing.ts` | 轻量级可观测性，记录工具执行和 LLM 调用的详细追踪信息 |
+| **重试与熔断** | `retry.ts` | 可靠的网络请求，支持指数退避重试和熔断机制 |
+| **MCP Server** | `mcp.ts` | 将工具暴露为 MCP 协议，支持与其他 AI 客户端集成 |
+| **插件系统** | `plugin.ts` | 动态加载自定义工具插件，扩展 Agent 能力 |
+| **WebSocket 服务器** | `ws-server.ts` | 实时双向通信层，为 Electron 客户端和其他 WS 客户端提供消息通道（端口 9527） |
 
 ---
 
@@ -31,21 +31,21 @@ flowchart TB
         Main["main.js<br/>窗口管理"]
         Preload["preload.cjs<br/>IPC 桥接"]
         Bridge["agent-bridge.js<br/>Agent 通信桥"]
-        WSServer["ws-server.js<br/>WebSocket 服务<br/>端口: 9527"]
+        WSServer["ws-server.ts<br/>WebSocket 服务<br/>端口: 9527"]
     end
 
     subgraph Subprocess["Agent 子进程"]
-        Agent["Agent.js<br/>思考循环"]
-        State["state.js<br/>状态管理"]
-        Registry["registry.js<br/>工具注册"]
-        Session["session.js<br/>会话管理"]
-        Commands["commands.js<br/>命令执行"]
-        Sandbox["sandbox.js<br/>安全沙箱"]
-        Stats["stats.js<br/>统计模块"]
-        Tracing["tracing.js<br/>追踪模块"]
-        Retry["retry.js<br/>重试熔断"]
-        MCP["mcp.js<br/>MCP Server"]
-        Plugin["plugin.js<br/>插件系统"]
+        Agent["Agent.ts<br/>思考循环"]
+        State["state.ts<br/>状态管理"]
+        Registry["registry.ts<br/>工具注册"]
+        Session["session.ts<br/>会话管理"]
+        Commands["commands.ts<br/>命令执行"]
+        Sandbox["sandbox.ts<br/>安全沙箱"]
+        Stats["stats.ts<br/>统计模块"]
+        Tracing["tracing.ts<br/>追踪模块"]
+        Retry["retry.ts<br/>重试熔断"]
+        MCP["mcp.ts<br/>MCP Server"]
+        Plugin["plugin.ts<br/>插件系统"]
     end
 
     subgraph External["外部接口"]
@@ -172,8 +172,8 @@ sequenceDiagram
     participant UI as Electron UI<br/>(Renderer)
     participant Bridge as preload.cjs<br/>IPC Bridge
     participant Main as main.js<br/>主进程
-    participant WS as ws-server.js<br/>WebSocket 服务
-    participant Agent as Agent.js<br/>子进程
+    participant WS as ws-server.ts<br/>WebSocket 服务
+    participant Agent as Agent.ts<br/>子进程
     participant AI as LLM API
 
     User->>UI: 输入消息 / 点击操作
@@ -255,7 +255,7 @@ flowchart TB
         MainJS["main.js<br/>• 窗口创建与生命周期<br/>• IPC 消息路由<br/>• 托盘与菜单"]
         Preload["preload.cjs<br/>• contextBridge<br/>• 安全 API 暴露"]
         AgentBridge["agent-bridge.js<br/>• 消息序列化/反序列化<br/>• 请求路由<br/>• 错误处理"]
-        WSServer["ws-server.js<br/>• WebSocket 服务端<br/>• 连接管理<br/>• 心跳检测"]
+        WSServer["ws-server.ts<br/>• WebSocket 服务端<br/>• 连接管理<br/>• 心跳检测"]
     end
 
     subgraph Subprocess["Subprocess"]
@@ -309,7 +309,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 - 请求超时管理、错误重试策略
 - 统一消息路由：将渲染进程请求转发至 WebSocket，并将响应回传
 
-#### `ws-server.js` — WebSocket 服务
+#### `ws-server.ts` — WebSocket 服务
 详见第 8 节。
 
 ### 7.4 窗口特性
@@ -327,7 +327,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 ### 8.1 WebSocket 服务器
 
-`ws-server.js` 是基于 `ws` 库构建的 WebSocket 服务端，作为 Agent 与外部客户端（Electron 主进程、自定义客户端）的实时通信桥梁，默认监听端口 **9527**。
+`ws-server.ts` 是基于 `ws` 库构建的 WebSocket 服务端，作为 Agent 与外部客户端（Electron 主进程、自定义客户端）的实时通信桥梁，默认监听端口 **9527**。
 
 #### 核心功能
 
@@ -572,11 +572,11 @@ client.connect();
 
 ```javascript
 const TOOL_CATEGORIES = {
-  file: ['file.js', 'path.js'],
-  web: ['web.js', 'browser.js'],
-  code: ['code.js', 'sandbox.js'],
-  git: ['git.js'],
-  database: ['db.js', 'data.js'],
+  file: ['file.ts', 'path.ts'],
+  web: ['web.ts', 'browser.ts'],
+  code: ['code.ts', 'sandbox.ts'],
+  git: ['git.ts'],
+  database: ['db.ts', 'data.ts'],
   // ...
 };
 ```

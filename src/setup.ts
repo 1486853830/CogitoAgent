@@ -6,11 +6,7 @@ import readline from 'readline';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { fileURLToPath } from 'url';
 import { DEFAULT_CONFIG, loadEnvConfig } from './config.ts';
-
-const __filename: string = fileURLToPath(import.meta.url);
-const __dirname: string = path.dirname(__filename);
 
 interface PersonaInfo {
   name: string;
@@ -224,7 +220,7 @@ function checkEnvConfig(): boolean {
  * 获取可用的人设列表
  */
 function getAvailablePersonas(): PersonaInfo[] {
-  const personasDir = path.join(__dirname, '..', 'personas');
+  const personasDir = path.join(process.cwd(), 'personas');
   const personas: PersonaInfo[] = [];
   
   try {
@@ -485,8 +481,8 @@ async function configureSecurity(rl: readline.Interface): Promise<SecuritySetupC
 function applyPersona(persona: PersonaInfo | null): boolean {
   if (!persona) return false;
   
-  const srcPath = path.join(__dirname, '..', 'personas', persona.filename);
-  const destPath = path.join(__dirname, '..', 'persona.md');
+  const srcPath = path.join(process.cwd(), 'personas', persona.filename);
+  const destPath = path.join(process.cwd(), 'persona.md');
   
   try {
     fs.copyFileSync(srcPath, destPath);
@@ -500,7 +496,7 @@ function applyPersona(persona: PersonaInfo | null): boolean {
  * 保存配置到 .env 文件
  */
 function saveEnvConfig(config: any): boolean {
-  const envPath = path.join(__dirname, '..', '.env');
+  const envPath = path.join(process.cwd(), '.env');
   
   const lines = [
     '# CogitoAgent 配置文件',
