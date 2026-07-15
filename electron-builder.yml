@@ -1,0 +1,37 @@
+appId: com.cogito.agent
+productName: CogitoAgent
+directories:
+  output: dist
+  buildResources: electron/assets
+files:
+  - electron/**/*
+  - src/**/*
+  - node_modules/**/*
+  - package.json
+  - .env.example
+  - personas/**/*
+  - introduction/**/*
+extraResources:
+  - from: src/
+    to: src
+extraFiles:
+  - from: .env.example
+    to: .env.example
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ${productName}-${version}-win32-${arch}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: CogitoAgent
+asar: true
+compression: maximum
+publish:
+  provider: generic
+  url: ""
