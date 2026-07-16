@@ -1,0 +1,123 @@
+name: 🐛 Bug 报告 / Bug Report
+description: 提交 Bug 帮助改进 CogitoAgent / Report a bug to help us improve
+title: "[Bug] "
+labels: ["bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 感谢你花时间报告这个 Bug！
+        Thanks for taking the time to fill out this bug report!
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: 运行环境 / Environment
+      description: 你在什么环境下运行？
+      options:
+        - Dashboard 模式 (npm run electron:dashboard)
+        - Desktop 桌宠模式 (npm run electron:desktop)
+        - CLI 终端模式 (npm run cli)
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本号 / Version
+      description: 运行 `npm list cogitoagent` 或查看 package.json 中的版本号
+      placeholder: "2.3.2"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统 / Operating System
+      placeholder: "e.g., Windows 11, macOS 14.5, Ubuntu 22.04"
+    validations:
+      required: true
+
+  - type: input
+    id: node_version
+    attributes:
+      label: Node.js 版本 / Node.js Version
+      placeholder: "e.g., 22.12.0"
+    validations:
+      required: true
+
+  - type: input
+    id: llm_model
+    attributes:
+      label: LLM 模型 / LLM Model
+      description: 你使用的 API 模型（如有）
+      placeholder: "e.g., gpt-4o, claude-3-sonnet, deepseek-chat"
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述 / Description
+      description: 请清晰简洁地描述这个 Bug 是什么
+      placeholder: "当执行 XX 操作时，出现..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤 / Steps to Reproduce
+      description: 如何复现这个行为？
+      placeholder: |
+        1. 打开 '...'
+        2. 执行 '...'
+        3. 看到错误
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为 / Expected Behavior
+      description: 你期望发生什么？
+    validations:
+      required: false
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为 / Actual Behavior
+      description: 实际发生了什么？
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / Logs
+      description: 请粘贴终端输出的相关日志（错误栈、警告等）
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图 / Screenshots
+      description: 如有截图，请粘贴到这里
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 自查清单 / Self-Check
+      description: 提交前请确认
+      options:
+        - label: 我已搜索现有 Issues，未找到相同问题 / I have searched existing issues and found no duplicates
+          required: true
+        - label: 我已提供完整复现步骤 / I have provided complete reproduction steps
+          required: true
+        - label: 我已提供相关日志和截图（如有）/ I have provided relevant logs and screenshots (if any)
+          required: false
