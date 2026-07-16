@@ -57,7 +57,7 @@ Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Contin
 ### Installation
 
 ```bash
-git clone https://gitee.com/cnt-code/cogito-agent.git
+git clone https://github.com/SnowLeopard-io/CogitoAgent.git
 cd cogito-agent
 npm install
 npm start
@@ -87,81 +87,55 @@ npm start
 All tools are managed by `registry.ts` and invoked via `[TOOL] functionName(args) [/TOOL]`.
 
 ```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10"}}}%%
-flowchart TD
-    subgraph CORE["Core Utilities"]
-        direction LR
-        FILE["FILE"]
-        WEB["WEB"]
-        CODE["CODE"]
-        GIT["GIT"]
-        DB["DB"]
-        SYS["SYS"]
+%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10", "secondaryColor": "#161b28", "tertiaryColor": "#1c2230"}}}%%
+flowchart LR
+    subgraph INVOCATION["Invocation Layer"]
+        LLM["LLM Response<br/>[TOOL] fn(args) [/TOOL]"]
+        PARSER["tool-parser.ts<br/>parseAllToolCalls()"]
+        EXECUTOR["Agent.ts<br/>executeTool()"]
     end
 
-    subgraph AI_CAP["AI Capabilities"]
-        direction LR
-        OCR["OCR"]
-        VISION["VIS"]
-        MEM["MEM"]
+    subgraph REGISTRY["Registry"]
+        REG["TOOL_REGISTRY<br/>Record<string, ToolEntry>"]
+        STATS["stats.ts<br/>recordToolCall()"]
+        TRACE["tracing.ts<br/>tool_exec event"]
     end
 
-    subgraph PROF["Professional"]
+    subgraph MODULES["28 Tool Modules"]
         direction LR
-        GIS["GIS"]
-        BIO["BIO"]
-        MED["MED"]
-        CHEM["CHEM"]
-        FIN["FIN"]
-        MATH["MATH"]
+        CORE1["file<br/>web<br/>code<br/>system<br/>browser"]
+        CORE2["git<br/>data<br/>db<br/>path<br/>storage"]
+        AI["memory<br/>ocr<br/>vision"]
+        COMM["wechat<br/>email<br/>cluster"]
+        AUTO["task<br/>scheduler<br/>monitor<br/>office"]
+        PROF["gis<br/>bio<br/>med<br/>chem<br/>finance<br/>math"]
     end
 
-    subgraph WORKFLOW["Workflow"]
-        direction LR
-        TASK["TASK"]
-        SCHED["CRON"]
-        EMAIL["MAIL"]
-        OFFICE["DOC"]
-        WX["WX"]
+    subgraph EXTENSION["Extension"]
+        PLUGIN["plugin.ts<br/>Dynamic Load"]
+        MCP["mcp.ts<br/>JSON-RPC 2.0"]
+        DANGER["DANGEROUS_OPERATIONS<br/>User Confirmation"]
     end
 
-    subgraph INFRA["Infrastructure"]
-        direction LR
-        MON["MON"]
-        TRACE["TRACE"]
-        RETRY["RETRY"]
-        MCP["MCP"]
-    end
+    LLM --> PARSER
+    PARSER --> EXECUTOR
+    EXECUTOR --> REG
+    REG --> MODULES
+    EXECUTOR --> STATS
+    EXECUTOR --> TRACE
+    EXECUTOR --> DANGER
+    PLUGIN --> REG
+    MCP --> REG
 
-    FILE -->|read| OCR
-    FILE -->|read| VISION
-    WEB -->|fetch| VISION
-    CODE -->|execute| BIO
-    CODE -->|execute| MED
-    CODE -->|execute| CHEM
-    CODE -->|execute| FIN
-    CODE -->|execute| MATH
-    DB -->|query| GIS
-    DB -->|query| FIN
-    MEM -->|store| CORE
-    TASK -->|manage| CORE
-    SCHED -->|trigger| WORKFLOW
-    MON -->|monitor| CORE
-    TRACE -->|trace| CORE
-    RETRY -->|retry| WEB
-    MCP -->|expose| CORE
-
-    classDef core fill:#161b28,stroke:#5eead4,color:#5eead4,font-weight:bold;
-    classDef ai fill:#161b28,stroke:#fbbf24,color:#fbbf24;
-    classDef prof fill:#161b28,stroke:#a78bfa,color:#a78bfa;
-    classDef workflow fill:#161b28,stroke:#38bdf8,color:#38bdf8;
-    classDef infra fill:#161b28,stroke:#94a3b8,color:#94a3b8;
+    classDef invocation fill:#161b28,stroke:#5eead4,color:#5eead4;
+    classDef registry fill:#161b28,stroke:#fbbf24,color:#fbbf24;
+    classDef modules fill:#161b28,stroke:#38bdf8,color:#38bdf8;
+    classDef extension fill:#161b28,stroke:#a78bfa,color:#a78bfa;
     
-    class FILE,WEB,CODE,GIT,DB,SYS core;
-    class OCR,VISION,MEM ai;
-    class GIS,BIO,MED,CHEM,FIN,MATH prof;
-    class TASK,SCHED,EMAIL,OFFICE,WX workflow;
-    class MON,TRACE,RETRY,MCP infra;
+    class LLM,PARSER,EXECUTOR invocation;
+    class REG,STATS,TRACE registry;
+    class CORE1,CORE2,AI,COMM,AUTO,PROF modules;
+    class PLUGIN,MCP,DANGER extension;
 ```
 
 | Category | File | Main Functions |
@@ -207,79 +181,120 @@ flowchart TD
 ## Architecture
 
 ```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10"}}}%%
+%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10", "secondaryColor": "#161b28", "tertiaryColor": "#1c2230"}}}%%
 flowchart TB
     subgraph TERMINAL["Terminal Layer"]
         direction LR
         CLI["CLI"]
-        DASHBOARD["DASHBOARD"]
-        DESKTOP["DESKTOP"]
+        DASHBOARD["Dashboard"]
+        DESKTOP["Desktop"]
+        MONITOR["Monitor"]
     end
 
-    subgraph CORE["Core Engine"]
-        direction LR
-        AGENT["AGENT"]
-        STATE["STATE"]
-        SESSION["SESSION"]
-        REGISTRY["REGISTRY"]
-        COMMANDS["CMDS"]
+    subgraph WS["WebSocket Bridge"]
+        WSS["ws-server.ts<br/>Port 9527"]
+        BRIDGE["agent-bridge.js<br/>Electron Main"]
     end
 
-    subgraph TOOLS["Tool Layer"]
+    subgraph INPUT["Input Processing"]
         direction LR
-        FILE_OPS["FILE"]
-        WEB_OPS["WEB"]
-        BROWSER["BROWSER"]
-        CODE_EXEC["CODE"]
-        GIT_OPS["GIT"]
-        MEMORY["MEMORY"]
-        DB_OPS["DB"]
+        CMDS["commands.ts<br/>/help /status /sessions"]
+        PARSER["tool-parser.ts<br/>[TOOL] extraction"]
+        PROMPT["system-prompt.ts<br/>Persona Loading"]
+    end
+
+    subgraph CORE["Think Cycle (Agent.ts)"]
+        direction LR
+        THINK["thinkCycle()<br/>3s interval"]
+        STREAM["streamChat()<br/>SSE to LLM"]
+        EXEC["executeTool()<br/>Registry Lookup"]
+        CYCLE["scheduleNextCycle()<br/>Loop Control"]
+    end
+
+    subgraph STATE["State Machine (state.ts)"]
+        AWAIT["AWAITING_INPUT"]
+        THINKING["THINKING"]
+        CONFIRM["AWAITING_CONFIRMATION"]
+    end
+
+    subgraph SESSION["Session (session.ts)"]
+        PERSIST["Persist: data/sessions/"]
+        COMPRESS["Auto-Compress<br/>150 turns / 100k tokens"]
+        HISTORY["History: messages[]"]
+    end
+
+    subgraph TOOLS["Tool Layer (registry.ts)"]
+        REG["TOOL_REGISTRY<br/>160+ tools, 28 categories"]
+        STATS["stats.ts<br/>Usage Tracking"]
+        TRACE["tracing.ts<br/>Observability"]
     end
 
     subgraph EXT["Extensions"]
-        direction LR
-        MCP["MCP"]
-        PLUGIN["PLUGIN"]
-        TRACE["TRACE"]
-        RETRY["RETRY"]
+        MCP["mcp.ts<br/>JSON-RPC :3001"]
+        PLUGIN["plugin.ts<br/>Dynamic Load"]
+        RETRY["retry.ts<br/>Circuit Breaker"]
+        CLUSTER["orchestrator.ts<br/>Sub-Agent Cluster"]
+        WECHAT["wechat-manager.ts<br/>iLink Protocol"]
     end
 
     subgraph API["API Layer"]
-        LLM["LLM API"]
+        LLM["client.ts<br/>OpenAI-Compatible"]
     end
 
-    CLI -- WebSocket --> AGENT
-    DASHBOARD -- WebSocket --> AGENT
-    DESKTOP -- WebSocket --> AGENT
-    
-    AGENT -- "3s Loop" --> STATE
-    AGENT -- "Context" --> SESSION
-    AGENT -- "Tool Call" --> REGISTRY
-    AGENT -- "Command" --> COMMANDS
-    AGENT -- "API Call" --> LLM
-    
-    REGISTRY -- "Load" --> TOOLS
-    REGISTRY -- "Register" --> PLUGIN
-    
-    TOOLS -- "Result" --> AGENT
-    TOOLS -- "Sandbox" --> CODE_EXEC
-    
-    EXT -- "Decorate" --> AGENT
-    PLUGIN -- "Extend" --> REGISTRY
-    RETRY -- "Retry" --> WEB_OPS
-    TRACE -- "Log" --> AGENT
-    MCP -- "Expose" --> AGENT
+    CLI --> WSS
+    DASHBOARD --> BRIDGE
+    DESKTOP --> BRIDGE
+    MONITOR --> BRIDGE
+    BRIDGE --> WSS
+    WSS --> INPUT
 
-    classDef terminal fill:#161b28,stroke:#5eead4,color:#5eead4,font-weight:bold;
-    classDef core fill:#161b28,stroke:#fbbf24,color:#fbbf24,font-weight:bold;
-    classDef tools fill:#161b28,stroke:#38bdf8,color:#38bdf8;
-    classDef ext fill:#161b28,stroke:#94a3b8,color:#94a3b8;
-    classDef api fill:#161b28,stroke:#a78bfa,color:#a78bfa;
+    INPUT --> CORE
+    CMDS --> THINK
+    PARSER --> EXEC
+
+    CORE --> STATE
+    STATE --> AWAIT
+    STATE --> THINKING
+    STATE --> CONFIRM
+
+    CORE --> SESSION
+    THINK --> STREAM
+    STREAM --> LLM
+    LLM --> PARSER
+    EXEC --> TOOLS
+    EXEC --> CONFIRM
+
+    TOOLS --> STATS
+    TOOLS --> TRACE
+    TOOLS --> EXT
+
+    EXT --> RETRY
+    EXT --> CLUSTER
+    EXT --> WECHAT
+    PLUGIN --> REG
+    MCP --> REG
     
-    class CLI,DASHBOARD,DESKTOP terminal;
-    class AGENT,STATE,SESSION,REGISTRY,COMMANDS core;
-    class FILE_OPS,WEB_OPS,BROWSER,CODE_EXEC,GIT_OPS,MEMORY,DB_OPS tools;
-    class MCP,PLUGIN,TRACE,RETRY ext;
+    THINK --> CYCLE
+    CYCLE --> THINK
+
+    classDef terminal fill:#161b28,stroke:#5eead4,color:#5eead4;
+    classDef ws fill:#161b28,stroke:#5eead4,color:#5eead4;
+    classDef input fill:#161b28,stroke:#fbbf24,color:#fbbf24;
+    classDef core fill:#161b28,stroke:#fbbf24,color:#fbbf24,font-weight:bold;
+    classDef state fill:#161b28,stroke:#f87171,color:#f87171;
+    classDef session fill:#161b28,stroke:#38bdf8,color:#38bdf8;
+    classDef tools fill:#161b28,stroke:#38bdf8,color:#38bdf8;
+    classDef ext fill:#161b28,stroke:#a78bfa,color:#a78bfa;
+    classDef api fill:#161b28,stroke:#94a3b8,color:#94a3b8;
+    
+    class CLI,DASHBOARD,DESKTOP,MONITOR terminal;
+    class WSS,BRIDGE ws;
+    class CMDS,PARSER,PROMPT input;
+    class THINK,STREAM,EXEC,CYCLE core;
+    class AWAIT,THINKING,CONFIRM state;
+    class PERSIST,COMPRESS,HISTORY session;
+    class REG,STATS,TRACE tools;
+    class MCP,PLUGIN,RETRY,CLUSTER,WECHAT ext;
     class LLM api;
 ```
 
@@ -377,68 +392,75 @@ cogito-agent/
 > See [introduction/systems.md](introduction/systems.md) (Chinese) for details
 
 ```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10"}}}%%
+%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10", "secondaryColor": "#161b28", "tertiaryColor": "#1c2230"}}}%%
 flowchart TD
-    CORE["CORE SYSTEMS"]
-
-    subgraph ENGINE["Engine"]
-        direction LR
-        AGENT["AGENT"]
-        STATE["STATE"]
-        SESSION["SESSION"]
+    subgraph ORCHESTRATION["Orchestration"]
+        AGENT["Agent.ts<br/>Think Cycle 3s"]
+        STATE["state.ts<br/>THINKING / AWAIT / CONFIRM"]
+        SESSION["session.ts<br/>Multi-Session + Persist"]
+        CMDS["commands.ts<br/>/help /status /sessions"]
     end
 
     subgraph COGNITION["Cognition"]
-        direction LR
-        MEMORY["MEMORY"]
-        PERSONA["PERSONA"]
-        THOUGHT["THOUGHT"]
+        MEMORY["memory.ts<br/>SQLite Storage + Semantic Search"]
+        PERSONA["system-prompt.ts<br/>22 Personas + Custom"]
+        THOUGHT["thought-trace.ts<br/>Real-Time Chain Visualization"]
     end
 
     subgraph EXECUTION["Execution"]
-        direction LR
-        SANDBOX["SANDBOX"]
-        TASK["TASK"]
-        CLUSTER["CLUSTER"]
+        REGISTRY["registry.ts<br/>160+ Tools, 28 Categories"]
+        SANDBOX["sandbox.ts<br/>isolated-vm + Python Subprocess"]
+        TASK["task.ts<br/>CRUD + Decomposition + Stats"]
+        CLUSTER["orchestrator.ts<br/>Sub-Agent Spawn + Delegate"]
     end
 
     subgraph OBSERVABILITY["Observability"]
-        direction LR
-        STATS["STATS"]
-        TRACE["TRACE"]
+        STATS["stats.ts<br/>Per-Category Usage + Metrics"]
+        TRACING["tracing.ts<br/>Event Logging + Duration"]
     end
 
-    AGENT -- "State" --> STATE
-    AGENT -- "Context" --> SESSION
-    AGENT -- "Memory" --> MEMORY
-    AGENT -- "Persona" --> PERSONA
-    AGENT -- "Chain" --> THOUGHT
-    AGENT -- "Execute" --> SANDBOX
-    AGENT -- "Manage" --> TASK
-    AGENT -- "Delegate" --> CLUSTER
-    AGENT -- "Record" --> STATS
-    AGENT -- "Trace" --> TRACE
-    
-    MEMORY -- "Recall" --> AGENT
-    PERSONA -- "Load" --> AGENT
-    THOUGHT -- "Render" --> AGENT
-    SANDBOX -- "Result" --> AGENT
-    TASK -- "Update" --> AGENT
-    CLUSTER -- "Status" --> AGENT
-    STATS -- "Metrics" --> AGENT
-    TRACE -- "Logs" --> AGENT
+    subgraph SECURITY["Security"]
+        DANGER["DANGEROUS_OPERATIONS<br/>User Confirmation Required"]
+        RETRY["retry.ts<br/>Circuit Breaker + Backoff"]
+    end
 
-    classDef title fill:#161b28,stroke:#5eead4,color:#5eead4,font-weight:bold;
-    classDef engine fill:#161b28,stroke:#fbbf24,color:#fbbf24,font-weight:bold;
+    subgraph INTEGRATION["Integration"]
+        MCP["mcp.ts<br/>JSON-RPC 2.0 on :3001"]
+        PLUGIN["plugin.ts<br/>Dynamic Tool Loading"]
+        WECHAT["wechat-manager.ts<br/>iLink QR Login + Routing"]
+    end
+
+    AGENT --> STATE
+    AGENT --> SESSION
+    AGENT --> CMDS
+    AGENT --> MEMORY
+    AGENT --> PERSONA
+    AGENT --> THOUGHT
+    AGENT --> REGISTRY
+    REGISTRY --> SANDBOX
+    REGISTRY --> TASK
+    REGISTRY --> CLUSTER
+    AGENT --> STATS
+    AGENT --> TRACING
+    AGENT --> DANGER
+    AGENT --> RETRY
+    AGENT --> MCP
+    AGENT --> PLUGIN
+    AGENT --> WECHAT
+
+    classDef orchestration fill:#161b28,stroke:#fbbf24,color:#fbbf24,font-weight:bold;
     classDef cognition fill:#161b28,stroke:#a78bfa,color:#a78bfa;
     classDef execution fill:#161b28,stroke:#38bdf8,color:#38bdf8;
     classDef obs fill:#161b28,stroke:#94a3b8,color:#94a3b8;
+    classDef security fill:#161b28,stroke:#f87171,color:#f87171;
+    classDef integration fill:#161b28,stroke:#5eead4,color:#5eead4;
     
-    class CORE title;
-    class AGENT,STATE,SESSION engine;
+    class AGENT,STATE,SESSION,CMDS orchestration;
     class MEMORY,PERSONA,THOUGHT cognition;
-    class SANDBOX,TASK,CLUSTER execution;
-    class STATS,TRACE obs;
+    class REGISTRY,SANDBOX,TASK,CLUSTER execution;
+    class STATS,TRACING obs;
+    class DANGER,RETRY security;
+    class MCP,PLUGIN,WECHAT integration;
 ```
 
 - **Memory System** — SQLite-based long-term storage and semantic retrieval
