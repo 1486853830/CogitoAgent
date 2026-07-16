@@ -4,23 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CogitoAgent Monitor</title>
+  <link rel="stylesheet" href="../shared/tokens.css">
   <link rel="stylesheet" href="../shared/common.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-container">
     <!-- 顶部标题栏（拖动区） -->
-    <div class="title-bar">
+    <div class="title-bar has-trace">
+      <div class="title-meta">
+        <span class="meta-tag">VIEW</span>
+        <span class="meta-value">MONITOR</span>
+      </div>
       <div class="drag-region"></div>
-      <div class="title-text">监控面板</div>
       <div class="window-controls">
         <button class="win-btn minimize" id="btnMinimize" title="最小化">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
             <path d="M19 13H5v-2h14v2z"/>
           </svg>
         </button>
         <button class="win-btn close" id="btnClose" title="关闭">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
           </svg>
         </button>
@@ -33,9 +37,9 @@
         <!-- 思维链面板 -->
         <div class="panel" id="thoughtPanel">
           <div class="panel-header">
-            <h3>🧠 思维链</h3>
+            <h3><span class="panel-mark">›</span> THOUGHT TRACE</h3>
             <button class="panel-toggle" id="toggleThoughtPanel">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
                 <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
               </svg>
             </button>
@@ -48,9 +52,9 @@
         <!-- 工具统计面板 -->
         <div class="panel" id="statsPanel">
           <div class="panel-header">
-            <h3>📊 工具统计</h3>
+            <h3><span class="panel-mark">›</span> TOOL STATS</h3>
             <button class="panel-toggle" id="toggleStatsPanel">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
                 <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
               </svg>
             </button>
@@ -77,16 +81,16 @@
       <div class="content-right">
         <div class="panel" id="clusterPanel">
           <div class="panel-header">
-            <h3>🤖 智能体集群</h3>
+            <h3><span class="panel-mark">›</span> AGENT CLUSTER</h3>
             <button class="panel-toggle" id="toggleClusterPanel">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
                 <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
               </svg>
             </button>
           </div>
           <div class="panel-body" id="clusterPanelBody">
             <div class="cluster-empty">
-              <span class="cluster-empty-text">暂无活跃智能体</span>
+              <span class="cluster-empty-text">NO ACTIVE AGENTS</span>
               <span class="cluster-empty-hint">使用 /spawn 命令创建子智能体</span>
             </div>
             <div class="cluster-topology" id="clusterTopology">

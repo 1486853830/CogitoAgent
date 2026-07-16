@@ -107,14 +107,16 @@ function setButtonState(state) {
   const svg = btnSend.querySelector('svg');
   if (state === 'stop') {
     btnSend.style.opacity = '1';
-    btnSend.style.background = 'rgba(255, 80, 80, 0.3)';
-    btnSend.style.color = '#ff8888';
+    btnSend.style.background = 'rgba(248, 113, 113, 0.18)';
+    btnSend.style.color = '#f87171';
+    btnSend.style.borderColor = '#f87171';
     btnSend.title = '点击终止';
     svg.innerHTML = '<rect x="4" y="4" width="16" height="16" rx="2"/>';
   } else {
     btnSend.style.opacity = '1';
-    btnSend.style.background = 'rgba(99, 140, 255, 0.3)';
-    btnSend.style.color = '#a0c0ff';
+    btnSend.style.background = 'rgba(94, 234, 212, 0.12)';
+    btnSend.style.color = '#5eead4';
+    btnSend.style.borderColor = '#5eead4';
     btnSend.title = '等待发送';
     svg.innerHTML = '<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
   }

@@ -3,15 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CogitoAgent - 首次配置</title>
+  <title>COGITO/AGENT · 配置向导</title>
+  <link rel="stylesheet" href="../shared/tokens.css">
   <link rel="stylesheet" href="setup-style.css">
 </head>
 <body>
   <div class="setup-container">
     <!-- 顶部 Banner -->
-    <div class="setup-banner">
-      <h1>CogitoAgent</h1>
-      <p>首次配置向导</p>
+    <div class="setup-banner has-trace">
+      <div class="banner-logo">
+        <span class="logo-mark">▣</span>
+        <strong>COGITO</strong>
+        <span class="logo-suffix">/AGENT</span>
+      </div>
+      <div class="banner-meta">
+        <span class="meta-tag">MODE</span>
+        <span class="meta-value">SETUP</span>
+      </div>
+      <p class="banner-sub">首次配置向导 · INITIAL CONFIGURATION</p>
     </div>
 
     <!-- 进度指示器 -->
@@ -20,12 +29,12 @@
         <div class="progress-fill" id="progressFill"></div>
       </div>
       <div class="progress-steps">
-        <span class="step active" data-step="1">API</span>
-        <span class="step" data-step="2">密钥</span>
-        <span class="step" data-step="3">模型</span>
-        <span class="step" data-step="4">工作区</span>
-        <span class="step" data-step="5">人设</span>
-        <span class="step" data-step="6">高级</span>
+        <span class="step active" data-step="1"><span class="step-idx">01</span><span class="step-name">API</span></span>
+        <span class="step" data-step="2"><span class="step-idx">02</span><span class="step-name">密钥</span></span>
+        <span class="step" data-step="3"><span class="step-idx">03</span><span class="step-name">模型</span></span>
+        <span class="step" data-step="4"><span class="step-idx">04</span><span class="step-name">工作区</span></span>
+        <span class="step" data-step="5"><span class="step-idx">05</span><span class="step-name">人设</span></span>
+        <span class="step" data-step="6"><span class="step-idx">06</span><span class="step-name">高级</span></span>
       </div>
     </div>
 
@@ -33,6 +42,7 @@
     <div class="setup-form" id="setupForm">
       <!-- Step 1: API Base URL -->
       <div class="form-step active" data-step="1">
+        <div class="step-eyebrow"><span class="panel-mark">›</span> ENDPOINT</div>
         <h2>设置 API Base URL</h2>
         <p class="step-desc">请输入 AI 服务提供商的 API 地址</p>
         <div class="input-group">
@@ -49,6 +59,7 @@
 
       <!-- Step 2: API Key -->
       <div class="form-step" data-step="2">
+        <div class="step-eyebrow"><span class="panel-mark">›</span> AUTHENTICATION</div>
         <h2>输入 API 密钥</h2>
         <p class="step-desc">您的 API Key，用于访问 AI 服务</p>
         <div class="input-group">
@@ -59,6 +70,7 @@
 
       <!-- Step 3: Model -->
       <div class="form-step" data-step="3">
+        <div class="step-eyebrow"><span class="panel-mark">›</span> MODEL</div>
         <h2>选择模型</h2>
         <p class="step-desc">请输入要使用的模型名称</p>
         <div class="input-group">
@@ -75,17 +87,24 @@
 
       <!-- Step 4: Workspace -->
       <div class="form-step" data-step="4">
+        <div class="step-eyebrow"><span class="panel-mark">›</span> WORKSPACE</div>
         <h2>设置工作区</h2>
         <p class="step-desc">AI 可以访问和操作的目录范围</p>
         <div class="input-group">
           <input type="text" id="workspace" placeholder="C:\Users\YourName" autocomplete="off">
           <span class="hint">默认为用户主目录</span>
         </div>
-        <button class="browse-btn" id="browseBtn">浏览...</button>
+        <button class="browse-btn" id="browseBtn">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+          </svg>
+          <span>浏览目录...</span>
+        </button>
       </div>
 
       <!-- Step 5: Persona -->
       <div class="form-step" data-step="5">
+        <div class="step-eyebrow"><span class="panel-mark">›</span> PERSONA</div>
         <h2>选择人设（可选）</h2>
         <p class="step-desc">为 AI 分配一个性格角色</p>
         <div class="persona-grid" id="personaGrid">
@@ -95,9 +114,10 @@
 
       <!-- Step 6: Advanced Config -->
       <div class="form-step" data-step="6">
+        <div class="step-eyebrow"><span class="panel-mark">›</span> ADVANCED</div>
         <h2>高级配置（可选）</h2>
         <p class="step-desc">配置思考间隔、启动模式、邮件服务、OCR、视觉分析等</p>
-        
+
         <!-- Thinking Interval -->
         <div class="input-group">
           <label>思考间隔（毫秒）</label>
@@ -118,9 +138,10 @@
         <!-- Email Config Section -->
         <div class="config-section">
           <div class="section-header" onclick="toggleSection('emailSection')">
-            <span class="section-icon">📧</span>
-            <span>邮件配置</span>
-            <span class="section-toggle">▼</span>
+            <span class="section-mark">›</span>
+            <span class="section-label">邮件配置</span>
+            <span class="section-tag">EMAIL</span>
+            <span class="section-toggle">+</span>
           </div>
           <div class="section-content" id="emailSection">
             <div class="input-group">
@@ -149,9 +170,10 @@
         <!-- OCR Config Section -->
         <div class="config-section">
           <div class="section-header" onclick="toggleSection('ocrSection')">
-            <span class="section-icon">📷</span>
-            <span>OCR 图像文字识别</span>
-            <span class="section-toggle">▼</span>
+            <span class="section-mark">›</span>
+            <span class="section-label">OCR 图像文字识别</span>
+            <span class="section-tag">OCR</span>
+            <span class="section-toggle">+</span>
           </div>
           <div class="section-content" id="ocrSection">
             <div class="input-group">
@@ -176,9 +198,10 @@
         <!-- Vision Config Section -->
         <div class="config-section">
           <div class="section-header" onclick="toggleSection('visionSection')">
-            <span class="section-icon">👁️</span>
-            <span>视觉分析</span>
-            <span class="section-toggle">▼</span>
+            <span class="section-mark">›</span>
+            <span class="section-label">视觉分析</span>
+            <span class="section-tag">VISION</span>
+            <span class="section-toggle">+</span>
           </div>
           <div class="section-content" id="visionSection">
             <div class="input-group">
@@ -199,9 +222,10 @@
         <!-- Code Execution Config Section -->
         <div class="config-section">
           <div class="section-header" onclick="toggleSection('codeSection')">
-            <span class="section-icon">💻</span>
-            <span>代码执行</span>
-            <span class="section-toggle">▼</span>
+            <span class="section-mark">›</span>
+            <span class="section-label">代码执行</span>
+            <span class="section-tag">CODE</span>
+            <span class="section-toggle">+</span>
           </div>
           <div class="section-content" id="codeSection">
             <div class="input-group">
@@ -218,9 +242,10 @@
         <!-- Security Config Section -->
         <div class="config-section">
           <div class="section-header" onclick="toggleSection('securitySection')">
-            <span class="section-icon">🔒</span>
-            <span>安全设置</span>
-            <span class="section-toggle">▼</span>
+            <span class="section-mark">›</span>
+            <span class="section-label">安全设置</span>
+            <span class="section-tag">SECURITY</span>
+            <span class="section-toggle">+</span>
           </div>
           <div class="section-content" id="securitySection">
             <div class="input-group">
@@ -244,12 +269,15 @@
           function toggleSection(id) {
             const section = document.getElementById(id);
             const toggle = section.parentElement.querySelector('.section-toggle');
+            const header = section.parentElement.querySelector('.section-header');
             if (section.style.display === 'none') {
               section.style.display = 'block';
-              toggle.textContent = '▼';
+              toggle.textContent = '−';
+              header.classList.add('expanded');
             } else {
               section.style.display = 'none';
-              toggle.textContent = '▶';
+              toggle.textContent = '+';
+              header.classList.remove('expanded');
             }
           }
           document.querySelectorAll('.section-content').forEach(el => el.style.display = 'none');
@@ -259,8 +287,12 @@
 
     <!-- 完成页面 -->
     <div class="setup-complete" id="setupComplete" style="display: none;">
-      <div class="complete-icon">✓</div>
-      <h2>配置完成！</h2>
+      <div class="complete-mark">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6L9 17l-5-5"/>
+        </svg>
+      </div>
+      <h2>配置完成</h2>
       <p>正在启动 CogitoAgent...</p>
       <div class="loading-dots">
         <span></span><span></span><span></span>

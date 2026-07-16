@@ -16,103 +16,103 @@ const TOOL_CATEGORIES = [
   {
     id: 'file',
     name: '文件操作',
-    icon: '📁',
+    code: 'FILE',
     tools: ['ls', 'read', 'copy', 'mkdir', 'create']
   },
   {
     id: 'web',
     name: '网络工具',
-    icon: '🌐',
+    code: 'WEB',
     tools: ['search', 'browse', 'fetchPage']
   },
   {
     id: 'system',
     name: '系统操作',
-    icon: '⚙️',
+    code: 'SYS',
     tools: ['listApps', 'openApp', 'closeApp']
   },
   {
     id: 'browser',
     name: '浏览器自动化',
-    icon: '🧭',
+    code: 'BROW',
     tools: ['initBrowser', 'clickElement', 'fillField', 'selectOption', 'viewChanges', 'getPageContent', 'takeScreenshot', 'closeBrowser', 'searchOnPage', 'findElements', 'searchOnEngine', 'downloadFile']
   },
   {
     id: 'code',
     name: '代码执行',
-    icon: '💻',
+    code: 'CODE',
     tools: ['executeCode', 'executeFile', 'runJavaScript', 'runPython', 'formatCode']
   },
   {
     id: 'git',
     name: 'Git 版本控制',
-    icon: '🔀',
+    code: 'GIT',
     tools: ['gitInit', 'gitClone', 'gitAdd', 'gitCommit', 'gitPush', 'gitPull', 'gitStatus', 'gitLog', 'gitBranchCreate', 'gitBranchDelete', 'gitCheckout', 'gitCheckoutNew', 'gitMerge', 'gitDiff', 'gitRemoteAdd', 'gitRemoteList', 'gitConfigUser', 'gitReset', 'gitStash', 'gitStashPop']
   },
   {
     id: 'task',
     name: '任务管理',
-    icon: '📋',
+    code: 'TASK',
     tools: ['createTask', 'getTasks', 'getTask', 'updateTask', 'deleteTask', 'completeTask', 'splitTask', 'getTaskStats', 'clearTasks']
   },
   {
     id: 'memory',
     name: '记忆系统',
-    icon: '🧠',
+    code: 'MEM',
     tools: ['addMemory', 'searchMemory', 'getAllMemories', 'getMemory', 'updateMemory', 'deleteMemory', 'getMemoryStats', 'getRelatedMemories', 'clearMemory']
   },
   {
     id: 'data',
     name: '数据处理',
-    icon: '📊',
+    code: 'DATA',
     tools: ['readCSV', 'writeCSV', 'readJSON', 'writeJSON', 'csvToJSON', 'jsonToCSV', 'queryData', 'analyzeData', 'sortData']
   },
   {
     id: 'db',
     name: '数据库',
-    icon: '🗄️',
+    code: 'DB',
     tools: ['executeSQL', 'query', 'insert', 'update', 'deleteData', 'createTable', 'dropTable', 'getTables', 'getTableSchema', 'executeTransaction', 'closeDB']
   },
   {
     id: 'email',
     name: '邮件功能',
-    icon: '📧',
+    code: 'MAIL',
     tools: ['sendEmail', 'sendTextEmail', 'sendHtmlEmail', 'sendTemplateEmail', 'sendEmailWithAttachments', 'checkEmailConfig']
   },
   {
     id: 'monitor',
     name: '系统监控',
-    icon: '📈',
+    code: 'MON',
     tools: ['getCPUInfo', 'getMemoryInfo', 'getDiskInfo', 'getNetworkInfo', 'getProcesses', 'getSystemInfo', 'getCurrentProcess', 'getSystemLoad', 'monitorSystem']
   },
   {
     id: 'scheduler',
     name: '定时任务',
-    icon: '⏰',
+    code: 'CRON',
     tools: ['addScheduleTask', 'getScheduleTasks', 'getScheduleTask', 'updateScheduleTask', 'toggleScheduleTask', 'removeScheduleTask', 'startScheduler', 'stopScheduler']
   },
   {
     id: 'ocr',
     name: '图像文字识别',
-    icon: '🔍',
+    code: 'OCR',
     tools: ['ocr', 'ocrBatch']
   },
   {
     id: 'vision',
     name: '视觉分析',
-    icon: '👁️',
+    code: 'VIS',
     tools: ['vision', 'visionFromUrl']
   },
   {
     id: 'office',
     name: 'Office 文档',
-    icon: '📄',
+    code: 'DOC',
     tools: ['createPpt', 'createWord', 'createExcel', 'readExcel']
   },
   {
     id: 'cluster',
     name: '集群管理',
-    icon: '🤖',
+    code: 'NODE',
     tools: ['spawnAgent', 'delegateTask', 'getClusterStatus', 'stopAgent', 'stopAllAgents', 'parallelExecute', 'getAgent']
   }
 ];
@@ -250,10 +250,21 @@ const NavManager = {
       });
     }
 
-    // 快捷功能卡片
-    document.querySelectorAll('.func-card').forEach(card => {
+    // 仓库源链接 — 欢迎页双仓库标识条
+    document.querySelectorAll('.repo-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const url = link.dataset.url;
+        if (url) {
+          window.electronAPI?.openExternal(url);
+        }
+      });
+    });
+
+    // 快捷功能卡片 — 支持 .func-card (旧) 与 .module-entry (新, 带 data-func)
+    document.querySelectorAll('.func-card, .module-entry').forEach(card => {
       card.addEventListener('click', () => {
-        const funcName = card.textContent.trim();
+        const funcName = card.dataset.func || card.textContent.trim();
         this.handleQuickFunction(funcName);
       });
     });
@@ -282,7 +293,16 @@ const NavManager = {
             <span>暂无会话</span>
           </div>
         `;
+        // 同步更新欢迎页状态条
+        const countEl = document.getElementById('welcomeSessionCount');
+        if (countEl) countEl.textContent = '00';
         return;
+      }
+
+      // 同步更新欢迎页状态条会话计数
+      const countEl = document.getElementById('welcomeSessionCount');
+      if (countEl) {
+        countEl.textContent = String(sessions.length).padStart(2, '0');
       }
 
       // 按最后活跃时间排序（最新的在前）
@@ -621,19 +641,49 @@ const SkillsManager = {
   render() {
     if (!this.gridEl) return;
 
+    // 概览统计
+    const totalCategories = TOOL_CATEGORIES.length;
+    const totalTools = TOOL_CATEGORIES.reduce((sum, c) => sum + (c.tools ? c.tools.length : 0), 0);
+    const dangerTools = new Set(DANGEROUS_TOOLS);
+    const totalDanger = [...dangerTools].filter(t =>
+      TOOL_CATEGORIES.some(c => c.tools && c.tools.includes(t))
+    ).length;
+
+    const statsEl = document.getElementById('skillsStats');
+    if (statsEl) {
+      statsEl.innerHTML = `
+        <div class="stat-item">
+          <span class="stat-val">${totalCategories}</span>
+          <span class="stat-label">CATEGORIES</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-val">${totalTools}</span>
+          <span class="stat-label">TOOLS</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item critical">
+          <span class="stat-val">${totalDanger}</span>
+          <span class="stat-label">CRITICAL</span>
+        </div>
+      `;
+    }
+
     this.gridEl.innerHTML = TOOL_CATEGORIES.map(cat => {
       const isExpanded = this._expandedCategories.has(cat.id);
       const catTools = cat.tools || [];
-      const dangerTools = new Set(DANGEROUS_TOOLS);
+      const catDangerCount = catTools.filter(t => dangerTools.has(t)).length;
 
       return `
         <div class="skill-category-card" data-category="${cat.id}">
           <div class="skill-category-header">
-            <div class="skill-category-icon">${cat.icon}</div>
-            <div class="skill-category-name">${cat.name}</div>
-            <div class="skill-category-count">${catTools.length} 个工具</div>
+            <div class="skill-category-code">${cat.code || cat.id.toUpperCase()}</div>
+            <div class="skill-category-info">
+              <div class="skill-category-name">${cat.name}</div>
+              <div class="skill-category-meta">${catTools.length} TOOLS${catDangerCount ? ` · ${catDangerCount} CRITICAL` : ''}</div>
+            </div>
             <div class="skill-category-expand ${isExpanded ? 'expanded' : ''}">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                 <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
               </svg>
             </div>
@@ -641,7 +691,7 @@ const SkillsManager = {
           <div class="skill-tool-list ${isExpanded ? '' : 'collapsed'}">
             ${catTools.map(tool => {
               const isDanger = dangerTools.has(tool);
-              return `<span class="skill-tool-chip ${isDanger ? 'danger' : ''}">${isDanger ? '⚠️ ' : ''}${tool}</span>`;
+              return `<span class="skill-tool-chip ${isDanger ? 'danger' : ''}">${tool}</span>`;
             }).join('')}
           </div>
         </div>
@@ -1093,6 +1143,37 @@ const ChatManager = {
 };
 
 // ============================================================
+// 欢迎页遥测模块 — 实时时间 / Uptime
+// ============================================================
+const WelcomeTelemetryManager = {
+  _startTime: Date.now(),
+  _timer: null,
+
+  init() {
+    this._tick();
+    this._timer = setInterval(() => this._tick(), 1000);
+    console.log('[WelcomeTelemetryManager] 初始化完成');
+  },
+
+  _tick() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const hh = pad(now.getHours());
+    const mm = pad(now.getMinutes());
+    const ss = pad(now.getSeconds());
+
+    const timeEl = document.getElementById('welcomeTime');
+    if (timeEl) timeEl.textContent = `${hh}:${mm}:${ss}`;
+
+    const uptimeEl = document.getElementById('welcomeUptime');
+    if (uptimeEl) {
+      const elapsed = Math.floor((Date.now() - this._startTime) / 1000);
+      uptimeEl.textContent = `${pad(Math.floor(elapsed / 60))}:${pad(elapsed % 60)}`;
+    }
+  },
+};
+
+// ============================================================
 // 应用入口
 // ============================================================
 function initApp() {
@@ -1132,6 +1213,12 @@ function initApp() {
     ChatManager.init();
   } catch (e) {
     console.error('[ChatManager] 初始化失败:', e);
+  }
+
+  try {
+    WelcomeTelemetryManager.init();
+  } catch (e) {
+    console.error('[WelcomeTelemetryManager] 初始化失败:', e);
   }
 
   // 初始化输入框高度

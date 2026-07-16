@@ -107,7 +107,7 @@ const MessageRenderer = {
 
     const icon = document.createElement('div');
     icon.className = 'tool-call-icon';
-    icon.textContent = '⚡';
+    icon.textContent = '»';
 
     const name = document.createElement('div');
     name.className = 'tool-call-name';
@@ -125,7 +125,7 @@ const MessageRenderer = {
     content.className = 'tool-call-content';
 
     const pre = document.createElement('pre');
-    pre.textContent = `🔧 ${toolName}(${argsStr})`;
+    pre.textContent = `${toolName}(${argsStr})`;
     content.appendChild(pre);
 
     card.appendChild(header);
@@ -144,7 +144,7 @@ const MessageRenderer = {
     if (this.options.layout === 'dashboard' && this.options.showAvatar) {
       const avatar = document.createElement('div');
       avatar.className = 'message-avatar';
-      avatar.textContent = '⚙';
+      avatar.textContent = 'TC';
 
       const contentDiv = document.createElement('div');
       contentDiv.className = 'message-content';
@@ -183,7 +183,7 @@ const MessageRenderer = {
 
     const icon = document.createElement('div');
     icon.className = 'tool-icon';
-    icon.textContent = success ? '✓' : '✕';
+    icon.textContent = success ? 'OK' : 'ERR';
 
     const name = document.createElement('div');
     name.className = 'tool-name';
@@ -191,7 +191,7 @@ const MessageRenderer = {
 
     const status = document.createElement('div');
     status.className = `tool-status ${success ? 'success' : 'error'}`;
-    status.textContent = success ? '成功' : '失败';
+    status.textContent = success ? 'OK' : 'FAIL';
 
     header.appendChild(icon);
     header.appendChild(name);
@@ -222,7 +222,7 @@ const MessageRenderer = {
     if (this.options.layout === 'dashboard' && this.options.showAvatar) {
       const avatar = document.createElement('div');
       avatar.className = 'message-avatar';
-      avatar.textContent = '⚙';
+      avatar.textContent = 'TR';
 
       const contentDiv = document.createElement('div');
       contentDiv.className = 'message-content';

@@ -4,50 +4,54 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CogitoAgent Dashboard</title>
+  <link rel="stylesheet" href="../shared/tokens.css">
   <link rel="stylesheet" href="../shared/common.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-container">
-    <!-- 左侧边栏 -->
+  <div class="app-container dashboard-layout">
+    <!-- 左侧边栏 — 控制台 -->
     <aside class="sidebar">
-      <!-- Logo -->
+      <!-- 仪器标识 -->
       <div class="sidebar-logo">
-        <strong>CogitoAgent</strong>
+        <span class="logo-mark">▣</span>
+        <strong>COGITO</strong>
+        <span class="logo-suffix">/AGENT</span>
       </div>
 
       <!-- 快速操作 -->
       <div class="quick-actions">
         <button class="action-btn primary" id="newTaskBtn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
           </svg>
-          新建任务
+          <span>新建任务</span>
+          <span class="kbd">N</span>
         </button>
 
         <button class="action-btn" id="skillsBtn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
           </svg>
-          技能
+          <span>技能</span>
         </button>
 
         <button class="action-btn" id="desktopModeBtn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/>
           </svg>
-          桌宠模式
+          <span>桌宠模式</span>
         </button>
 
         <button class="action-btn" id="monitorBtn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M15 3H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12H5V5h10v10zM3 19h18v2H3v-2z"/>
           </svg>
-          监控面板
+          <span>监控面板</span>
         </button>
 
         <button class="action-btn" id="wechatBtn" title="连接微信">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.04-.177l-.322-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.269-.03-.407-.032zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/>
           </svg>
           <span id="wechatBtnLabel">连接微信</span>
@@ -65,9 +69,9 @@
 
       <!-- 任务列表 -->
       <div class="section-header">
-        <span class="section-title">会话列表</span>
+        <span class="section-title">SESSIONS</span>
         <button class="icon-btn" id="newSessionBtn" title="新建会话">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
           </svg>
         </button>
@@ -80,10 +84,10 @@
       <!-- Token 用量面板 -->
       <div class="token-panel" id="tokenPanel">
         <div class="token-panel-header">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
           </svg>
-          <span>Token 用量</span>
+          <span>TOKEN USAGE</span>
         </div>
         <div class="token-panel-body">
           <div class="token-row">
@@ -94,17 +98,17 @@
             <span class="token-label">累计</span>
             <span class="token-value" id="tokenTotal">0</span>
           </div>
-          <div class="token-detail" id="tokenDetail">输入 0 / 输出 0</div>
+          <div class="token-detail" id="tokenDetail">IN 0 / OUT 0</div>
         </div>
       </div>
 
       <!-- 底部关于我们 -->
       <div class="user-profile">
         <div class="about-link" id="aboutLink" title="关于 CogitoAgent">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
           </svg>
-          <span>关于我们</span>
+          <span>关于</span>
         </div>
       </div>
     </aside>
@@ -112,21 +116,25 @@
     <!-- 主内容区 -->
     <main class="main-content">
       <!-- 顶部标题栏（自定义拖动区） -->
-      <div class="title-bar">
+      <div class="title-bar has-trace">
+        <div class="title-meta">
+          <span class="meta-tag">MODE</span>
+          <span class="meta-value" id="modeIndicator">DASHBOARD</span>
+        </div>
         <div class="drag-region"></div>
         <div class="window-controls">
           <button class="win-btn minimize" id="btnMinimize" title="最小化">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
               <path d="M19 13H5v-2h14v2z"/>
             </svg>
           </button>
           <button class="win-btn maximize" id="btnMaximize" title="最大化">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
               <path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
             </svg>
           </button>
           <button class="win-btn close" id="btnClose" title="关闭">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
               <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
             </svg>
           </button>
@@ -135,62 +143,204 @@
 
       <!-- 中间工作区 -->
       <div class="workspace" id="workspace">
-        <!-- 欢迎界面 -->
+        <!-- 环境粒子层（背景氛围） -->
+        <div class="ambient-particles" id="ambientParticles" aria-hidden="true"></div>
+
+        <!-- 欢迎界面 — 非对称仪器面板布局 -->
         <div class="welcome-view" id="welcomeView">
-          <div class="welcome-content">
-            <div class="welcome-icon">
-              <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
-                <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>
-              </svg>
-            </div>
-            <h1 class="welcome-title">Work with CogitoAgent</h1>
-            <p class="welcome-desc">🔥CogitoAgent — 云端驱动、本地执行的自主AI智能体。持续思考、自动分析，集成文件管理、代码执行、网页搜索、数据库等实工具，安全高效。</p>
+          <div class="welcome-grid">
 
-            <!-- 输入框 -->
-            <div class="chat-input-container">
-            <div class="chat-input-wrapper">
-              <textarea
-                id="chatInput"
-                class="chat-input"
-                placeholder="输入消息..."
-                rows="1"
-              ></textarea>
+            <!-- 左：主控面板 -->
+            <section class="welcome-hero">
+              <!-- 顶部状态条 — 运行时遥测 -->
+              <div class="status-line">
+                <span class="status-dot"></span>
+                <span class="status-text">ONLINE</span>
+                <span class="status-sep">·</span>
+                <span class="status-key">SESSION</span>
+                <span class="status-val" id="welcomeSessionCount">00</span>
+                <span class="status-sep">·</span>
+                <span class="status-key">MODE</span>
+                <span class="status-val">DASHBOARD</span>
+                <span class="status-spacer"></span>
+                <span class="status-key">BUILD</span>
+                <span class="status-val" id="welcomeBuild">2.0.0</span>
+              </div>
 
-              <button class="send-btn" id="sendBtn">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                </svg>
-              </button>
-            </div>
-          </div>
+              <!-- 仪器面板顶部标识条 -->
+              <div class="hero-rail">
+                <span class="hero-rail-mark">▸</span>
+                <span class="hero-rail-label">COMMAND PANEL</span>
+                <span class="hero-rail-spacer"></span>
+                <span class="hero-rail-id">PNL-01</span>
+              </div>
 
-            <!-- 快捷功能入口 -->
-            <div class="quick-functions">
-              <button class="func-card">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                </svg>
-                网页读取
-              </button>
-              <button class="func-card">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                </svg>
-                调研分析
-              </button>
-              <button class="func-card">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                </svg>
-                数据挖掘
-              </button>
-              <button class="func-card">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/>
-                </svg>
-                文件管理
-              </button>
-            </div>
+              <!-- 示波器签名 hero -->
+              <div class="oscilloscope" aria-hidden="true">
+                <div class="osc-screen">
+                  <div class="osc-graticule"></div>
+                  <div class="osc-traces">
+                    <div class="trace trace-3"></div>
+                    <div class="trace trace-2"></div>
+                    <div class="trace trace-1"></div>
+                  </div>
+                  <div class="osc-cursor"></div>
+                  <div class="osc-glow"></div>
+                  <div class="osc-vignette"></div>
+                </div>
+                <div class="osc-readout">
+                  <span class="osc-readout-item">
+                    <span class="osc-readout-tag">CH1</span>
+                    <span class="osc-readout-val">50mV/DIV</span>
+                  </span>
+                  <span class="osc-readout-center">COGITO/AGENT · LIVE</span>
+                  <span class="osc-readout-item">
+                    <span class="osc-readout-tag">TIME</span>
+                    <span class="osc-readout-val">5ms/DIV</span>
+                  </span>
+                </div>
+              </div>
+
+              <h1 class="welcome-title display">CogitoAgent</h1>
+              <p class="welcome-tagline">CLOUD-DRIVEN · LOCAL-EXECUTING · AUTONOMOUS</p>
+              <p class="welcome-desc">持续思考的自主 AI 智能体。集成文件管理、代码执行、网页搜索、数据库等实工具，云端推理、本地执行，安全高效。</p>
+
+              <!-- 仓库源标识条 -->
+              <div class="repo-bar">
+                <span class="repo-label">SOURCE</span>
+                <span class="repo-divider"></span>
+                <a class="repo-link" data-url="https://github.com/SnowLeopard-io/CogitoAgent" title="在浏览器中打开 GitHub 仓库">
+                  <span class="repo-mark">▸</span>
+                  <span class="repo-host">github</span>
+                  <span class="repo-path">/SnowLeopard-io/CogitoAgent</span>
+                </a>
+                <a class="repo-link" data-url="https://gitee.com/cnt-code/cogito-agent" title="在浏览器中打开 Gitee 仓库">
+                  <span class="repo-mark">▸</span>
+                  <span class="repo-host">gitee</span>
+                  <span class="repo-path">/cnt-code/cogito-agent</span>
+                </a>
+              </div>
+
+              <!-- 输入框 -->
+              <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                  <span class="input-prefix">›</span>
+                  <textarea
+                    id="chatInput"
+                    class="chat-input"
+                    placeholder="输入指令..."
+                    rows="1"
+                  ></textarea>
+
+                  <button class="send-btn" id="sendBtn">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 底部快捷键提示条 -->
+              <div class="hint-line">
+                <span class="hint-label">KEYS</span>
+                <span class="hint-sep">›</span>
+                <span class="hint-key">N</span>
+                <span class="hint-desc">新建会话</span>
+                <span class="hint-sep">·</span>
+                <span class="hint-key">/help</span>
+                <span class="hint-desc">命令列表</span>
+                <span class="hint-sep">·</span>
+                <span class="hint-key">/sessions</span>
+                <span class="hint-desc">多会话</span>
+                <span class="hint-sep">·</span>
+                <span class="hint-key">↵</span>
+                <span class="hint-desc">发送</span>
+              </div>
+            </section>
+
+            <!-- 右：仪器副面板 — 模块入口 + 遥测 -->
+            <aside class="welcome-side">
+
+              <!-- 模块入口列表 -->
+              <div class="module-panel">
+                <div class="panel-rail">
+                  <span class="panel-rail-label">MODULES</span>
+                  <span class="panel-rail-spacer"></span>
+                  <span class="panel-rail-count">04</span>
+                </div>
+
+                <div class="module-list">
+                  <button class="module-entry" data-func="网页读取">
+                    <span class="module-no">01</span>
+                    <span class="module-code">WEB</span>
+                    <div class="module-info">
+                      <span class="module-name">网页读取</span>
+                      <span class="module-desc">抓取页面内容并解析</span>
+                    </div>
+                    <span class="module-arrow">›</span>
+                  </button>
+
+                  <button class="module-entry" data-func="调研分析">
+                    <span class="module-no">02</span>
+                    <span class="module-code">RCH</span>
+                    <div class="module-info">
+                      <span class="module-name">调研分析</span>
+                      <span class="module-desc">深度主题研究分析</span>
+                    </div>
+                    <span class="module-arrow">›</span>
+                  </button>
+
+                  <button class="module-entry" data-func="数据挖掘">
+                    <span class="module-no">03</span>
+                    <span class="module-code">DAT</span>
+                    <div class="module-info">
+                      <span class="module-name">数据挖掘</span>
+                      <span class="module-desc">数据清洗与模式发现</span>
+                    </div>
+                    <span class="module-arrow">›</span>
+                  </button>
+
+                  <button class="module-entry" data-func="文件管理">
+                    <span class="module-no">04</span>
+                    <span class="module-code">FS</span>
+                    <div class="module-info">
+                      <span class="module-name">文件管理</span>
+                      <span class="module-desc">文件操作与目录组织</span>
+                    </div>
+                    <span class="module-arrow">›</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 遥测面板 -->
+              <div class="telemetry-panel">
+                <div class="panel-rail">
+                  <span class="panel-rail-label">TELEMETRY</span>
+                  <span class="panel-rail-spacer"></span>
+                  <span class="panel-rail-dot"></span>
+                </div>
+                <div class="telemetry-body">
+                  <div class="telemetry-row">
+                    <span class="telemetry-key">VERSION</span>
+                    <span class="telemetry-val" id="welcomeVersion">2.0.0</span>
+                  </div>
+                  <div class="telemetry-row">
+                    <span class="telemetry-key">STATUS</span>
+                    <span class="telemetry-val telemetry-ok">READY</span>
+                  </div>
+                  <div class="telemetry-row">
+                    <span class="telemetry-key">UPTIME</span>
+                    <span class="telemetry-val" id="welcomeUptime">00:00</span>
+                  </div>
+                  <div class="telemetry-row">
+                    <span class="telemetry-key">TIME</span>
+                    <span class="telemetry-val" id="welcomeTime">--:--:--</span>
+                  </div>
+                </div>
+              </div>
+
+            </aside>
+
           </div>
         </div>
 
@@ -198,19 +348,22 @@
         <div class="skills-view" id="skillsView" style="display: none;">
           <div class="skills-content">
             <div class="skills-header">
+              <span class="skills-eyebrow">CAPABILITIES</span>
               <h2 class="skills-title">技能与工具</h2>
-              <p class="skills-desc">CogitoAgent 支持以下分类的所有工具能力，可供你组合使用</p>
+              <p class="skills-desc">CogitoAgent 支持以下分类的所有工具能力，可供组合使用</p>
+              <div class="skills-stats" id="skillsStats"></div>
             </div>
             <div class="skills-grid" id="skillsGrid"></div>
           </div>
         </div>
+
         <!-- 对话视图（默认隐藏） -->
         <div class="chat-view" id="chatView" style="display: none;">
           <div class="chat-layout">
             <div class="chat-messages" id="chatMessages">
               <div class="empty-hint">
-                <div class="hint-icon">Cogito Agent</div>
-                <div class="hint-text">有什么可以帮你的？</div>
+                <div class="hint-icon">COGITO/AGENT</div>
+                <div class="hint-text">待命中 · 输入指令开始对话</div>
               </div>
             </div>
 
@@ -223,14 +376,15 @@
           <div class="chat-footer">
             <div class="chat-input-container in-chat">
               <div class="chat-input-wrapper">
+                <span class="input-prefix">›</span>
                 <textarea
                   id="chatInputBottom"
                   class="chat-input"
-                  placeholder="输入消息..."
+                  placeholder="输入指令..."
                   rows="1"
                 ></textarea>
                 <button class="send-btn" id="sendBtnBottom">
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                     <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                   </svg>
                 </button>
@@ -247,7 +401,7 @@
     <div class="wechat-qr-box">
       <div class="wechat-qr-header">
         <span>微信扫码登录</span>
-        <button class="wechat-qr-close" id="wechatQrClose" title="关闭">✕</button>
+        <button class="wechat-qr-close" id="wechatQrClose" title="关闭">×</button>
       </div>
       <div class="wechat-qr-body">
         <img id="wechatQrImage" src="" alt="二维码加载中..." class="wechat-qr-image" />
@@ -264,6 +418,29 @@
   <script src="../shared/token-manager.js"></script>
   <script src="../../node_modules/marked/lib/marked.umd.js"></script>
   <script src="../../node_modules/dompurify/dist/purify.min.js"></script>
+  <script>
+    // 环境粒子生成 — 背景氛围（磷光浮点）
+    (function() {
+      const container = document.getElementById('ambientParticles');
+      if (!container) return;
+      const PARTICLE_COUNT = 28;
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const p = document.createElement('span');
+        p.className = 'particle';
+        const size = (1 + Math.random() * 2.2).toFixed(2);
+        p.style.left = (Math.random() * 100).toFixed(2) + '%';
+        p.style.top = (Math.random() * 100).toFixed(2) + '%';
+        p.style.width = size + 'px';
+        p.style.height = size + 'px';
+        p.style.animationDelay = (Math.random() * -14).toFixed(2) + 's';
+        p.style.animationDuration = (10 + Math.random() * 12).toFixed(2) + 's';
+        p.style.setProperty('--particle-opacity', (0.15 + Math.random() * 0.4).toFixed(2));
+        frag.appendChild(p);
+      }
+      container.appendChild(frag);
+    })();
+  </script>
   <script src="renderer.js"></script>
 </body>
 </html>
