@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CogitoAgent Desktop</title>
+  <link rel="stylesheet" href="../shared/tokens.css">
   <link rel="stylesheet" href="../shared/common.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -18,38 +19,39 @@
   <!-- 对话面板 -->
   <div class="panel" id="panel">
     <!-- 顶部拖拽区域 -->
-    <div class="drag-bar">
-      <span class="title">CogitoAgent</span>
+    <div class="drag-bar has-trace">
+      <span class="title">COGITO/AGENT</span>
       <div class="controls">
         <button class="btn-icon" id="btnDashboard" title="工作台模式">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/>
           </svg>
         </button>
-        <button class="btn-icon" id="btnMinimize" title="最小化">─</button>
-        <button class="btn-icon" id="btnClose" title="关闭">✕</button>
+        <button class="btn-icon" id="btnMinimize" title="最小化">−</button>
+        <button class="btn-icon" id="btnClose" title="关闭">×</button>
       </div>
     </div>
 
     <!-- 消息列表 -->
     <div class="messages" id="messages">
       <div class="empty-hint">
-        <div class="hint-icon">Cogito Agent</div>
-        <div class="hint-text">有什么可以帮你的？</div>
+        <div class="hint-icon">COGITO/AGENT</div>
+        <div class="hint-text">待命中 · 输入指令开始对话</div>
       </div>
     </div>
 
     <!-- 输入区域 -->
     <div class="input-area">
+      <div class="input-prompt">›</div>
       <div class="input-wrapper">
         <input
           type="text"
           id="userInput"
-          placeholder="输入你想说的..."
+          placeholder="输入指令..."
           autocomplete="off"
         />
         <button class="btn-send" id="btnSend" title="发送">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
           </svg>
         </button>

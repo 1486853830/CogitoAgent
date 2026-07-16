@@ -1,4 +1,4 @@
-﻿# CogitoAgent
+# CogitoAgent
 
 > **持续思考 · 自主行动 · 隐私优先**
 
@@ -87,25 +87,81 @@ npm start
 所有工具由 `registry.ts` 管理，通过 `[TOOL] functionName(args) [/TOOL]` 格式调用。
 
 ```mermaid
-flowchart LR
-  Tools["🛠 工具系统"]
-  Tools --> File["📁 文件操作"]
-  Tools --> Web["🌐 网络工具"]
-  Tools --> Browser["🖥 浏览器自动化"]
-  Tools --> Code["💻 代码执行"]
-  Tools --> Git["🔀 Git 操作"]
-  Tools --> Task["📋 任务管理"]
-  Tools --> Memory["🧠 记忆系统"]
-  Tools --> Data["📊 数据处理"]
-  Tools --> Office["📝 Office 文档"]
-  Tools --> OCR["👁 OCR / 视觉"]
-  Tools --> Wx["💬 微信集成"]
-  Tools --> GIS["🗺 GIS 地理信息"]
-  Tools --> Bio["🧬 生命科学"]
-  Tools --> Med["🏥 医学"]
-  Tools --> Chem["⚗️ 化学"]
-  Tools --> Fin["💰 金融"]
-  Tools --> Math["📐 数学统计"]
+%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10"}}}%%
+flowchart TD
+    subgraph CORE["基础工具"]
+        direction LR
+        FILE["FILE"]
+        WEB["WEB"]
+        CODE["CODE"]
+        GIT["GIT"]
+        DB["DB"]
+        SYS["SYS"]
+    end
+
+    subgraph AI_CAP["AI 能力"]
+        direction LR
+        OCR["OCR"]
+        VISION["VIS"]
+        MEM["MEM"]
+    end
+
+    subgraph PROF["专业领域"]
+        direction LR
+        GIS["GIS"]
+        BIO["BIO"]
+        MED["MED"]
+        CHEM["CHEM"]
+        FIN["FIN"]
+        MATH["MATH"]
+    end
+
+    subgraph WORKFLOW["工作流"]
+        direction LR
+        TASK["TASK"]
+        SCHED["CRON"]
+        EMAIL["MAIL"]
+        OFFICE["DOC"]
+        WX["WX"]
+    end
+
+    subgraph INFRA["基础设施"]
+        direction LR
+        MON["MON"]
+        TRACE["TRACE"]
+        RETRY["RETRY"]
+        MCP["MCP"]
+    end
+
+    FILE -->|读取| OCR
+    FILE -->|读取| VISION
+    WEB -->|获取| VISION
+    CODE -->|执行| BIO
+    CODE -->|执行| MED
+    CODE -->|执行| CHEM
+    CODE -->|执行| FIN
+    CODE -->|执行| MATH
+    DB -->|查询| GIS
+    DB -->|查询| FIN
+    MEM -->|存储| CORE
+    TASK -->|管理| CORE
+    SCHED -->|触发| WORKFLOW
+    MON -->|监控| CORE
+    TRACE -->|追踪| CORE
+    RETRY -->|重试| WEB
+    MCP -->|暴露| CORE
+
+    classDef core fill:#161b28,stroke:#5eead4,color:#5eead4,font-weight:bold;
+    classDef ai fill:#161b28,stroke:#fbbf24,color:#fbbf24;
+    classDef prof fill:#161b28,stroke:#a78bfa,color:#a78bfa;
+    classDef workflow fill:#161b28,stroke:#38bdf8,color:#38bdf8;
+    classDef infra fill:#161b28,stroke:#94a3b8,color:#94a3b8;
+    
+    class FILE,WEB,CODE,GIT,DB,SYS core;
+    class OCR,VISION,MEM ai;
+    class GIS,BIO,MED,CHEM,FIN,MATH prof;
+    class TASK,SCHED,EMAIL,OFFICE,WX workflow;
+    class MON,TRACE,RETRY,MCP infra;
 ```
 
 | 分类 | 文件 | 主要函数 |
@@ -139,11 +195,11 @@ flowchart LR
 > 详细工具文档：注册机制、使用示例、最佳实践 → [introduction/tools.md](introduction/tools.md)
 
 <p align="center">
-  <img src="introduction/file.png" width="280" alt="文件操作">
-  <img src="introduction/web.png" width="280" alt="网络搜索">
-  <img src="introduction/wechat.png" width="280" alt="微信集成">
+  <img src="introduction/file.png" width="280" alt="图像视觉分析">
+  <img src="introduction/web.png" width="280" alt="搜索与浏览器自动化">
+  <!-- <img src="introduction/wechat.png" width="280" alt="微信集成"> -->
   <br>
-  <em>文件操作 · 网络搜索 · 微信集成</em>
+  <em>图像视觉 · 搜索与浏览器 · 自动化</em>
 </p>
 
 ---
@@ -151,51 +207,80 @@ flowchart LR
 ## 架构
 
 ```mermaid
+%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10"}}}%%
 flowchart TB
-    subgraph Terminal["终端层"]
-        CLI["CLI 终端<br/>交互入口"]
-        Dashboard["Electron Dashboard<br/>仪表盘窗口"]
+    subgraph TERMINAL["终端层"]
+        direction LR
+        CLI["CLI"]
+        DASHBOARD["DASHBOARD"]
+        DESKTOP["DESKTOP"]
     end
 
-    subgraph Core["核心层"]
-        Agent["Agent.ts<br/>思考循环 3s"]
-        State["state.ts<br/>状态机"]
-        Session["session.ts<br/>会话管理"]
-        Commands["commands.ts<br/>命令处理"]
-        Registry["registry.ts<br/>工具注册表"]
+    subgraph CORE["核心引擎"]
+        direction LR
+        AGENT["AGENT"]
+        STATE["STATE"]
+        SESSION["SESSION"]
+        REGISTRY["REGISTRY"]
+        COMMANDS["CMDS"]
     end
 
-    subgraph Tools["工具层"]
-        File["文件操作"]
-        Web["网络工具"]
-        Browser["浏览器自动化"]
-        Code["代码执行沙箱"]
-        Git["Git 操作"]
-        Task["任务管理"]
-        Memory["记忆系统"]
-        Wx["微信通道"]
+    subgraph TOOLS["工具层"]
+        direction LR
+        FILE_OPS["FILE"]
+        WEB_OPS["WEB"]
+        BROWSER["BROWSER"]
+        CODE_EXEC["CODE"]
+        GIT_OPS["GIT"]
+        MEMORY["MEMORY"]
+        DB_OPS["DB"]
     end
 
-    subgraph Ext["扩展层"]
-        MCP["MCP 协议"]
-        Plugin["插件系统"]
-        Retry["重试与熔断"]
-        Tracing["追踪系统"]
+    subgraph EXT["扩展"]
+        direction LR
+        MCP["MCP"]
+        PLUGIN["PLUGIN"]
+        TRACE["TRACE"]
+        RETRY["RETRY"]
     end
 
     subgraph API["API 层"]
-        LLM["LLM API<br/>OpenAI / Claude / 兼容"]
+        LLM["LLM API"]
     end
 
-    Terminal -->|WebSocket| Agent
-    Agent --> State
-    Agent --> Session
-    Agent --> Commands
-    Agent --> Registry
-    Registry --> Tools
-    Tools --> Code
-    Agent --> LLM
-    Agent --> Ext
+    CLI -- WebSocket --> AGENT
+    DASHBOARD -- WebSocket --> AGENT
+    DESKTOP -- WebSocket --> AGENT
+    
+    AGENT -- "3s 循环" --> STATE
+    AGENT -- "上下文" --> SESSION
+    AGENT -- "工具调用" --> REGISTRY
+    AGENT -- "命令" --> COMMANDS
+    AGENT -- "API 调用" --> LLM
+    
+    REGISTRY -- "加载" --> TOOLS
+    REGISTRY -- "注册" --> PLUGIN
+    
+    TOOLS -- "结果" --> AGENT
+    TOOLS -- "沙箱" --> CODE_EXEC
+    
+    EXT -- "装饰" --> AGENT
+    PLUGIN -- "扩展" --> REGISTRY
+    RETRY -- "重试" --> WEB_OPS
+    TRACE -- "日志" --> AGENT
+    MCP -- "暴露" --> AGENT
+
+    classDef terminal fill:#161b28,stroke:#5eead4,color:#5eead4,font-weight:bold;
+    classDef core fill:#161b28,stroke:#fbbf24,color:#fbbf24,font-weight:bold;
+    classDef tools fill:#161b28,stroke:#38bdf8,color:#38bdf8;
+    classDef ext fill:#161b28,stroke:#94a3b8,color:#94a3b8;
+    classDef api fill:#161b28,stroke:#a78bfa,color:#a78bfa;
+    
+    class CLI,DASHBOARD,DESKTOP terminal;
+    class AGENT,STATE,SESSION,REGISTRY,COMMANDS core;
+    class FILE_OPS,WEB_OPS,BROWSER,CODE_EXEC,GIT_OPS,MEMORY,DB_OPS tools;
+    class MCP,PLUGIN,TRACE,RETRY ext;
+    class LLM api;
 ```
 
 | 组件 | 职责 |
@@ -292,16 +377,68 @@ cogito-agent/
 > 详见 [introduction/systems.md](introduction/systems.md)
 
 ```mermaid
-flowchart LR
-  Core["⚙️ 核心系统"]
-  Core --> Memory["🧠 记忆系统"]
-  Core --> Task["📋 任务管理"]
-  Core --> Sandbox["🔒 代码沙箱"]
-  Core --> Persona["👤 角色系统"]
-  Core --> Session["💬 会话管理"]
-  Core --> Cluster["🔗 Agent 集群"]
-  Core --> Stats["📊 统计与追踪"]
-  Core --> Thought["💭 思维链可视化"]
+%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10"}}}%%
+flowchart TD
+    CORE["核心系统"]
+
+    subgraph ENGINE["引擎"]
+        direction LR
+        AGENT["AGENT"]
+        STATE["STATE"]
+        SESSION["SESSION"]
+    end
+
+    subgraph COGNITION["认知"]
+        direction LR
+        MEMORY["MEMORY"]
+        PERSONA["PERSONA"]
+        THOUGHT["THOUGHT"]
+    end
+
+    subgraph EXECUTION["执行"]
+        direction LR
+        SANDBOX["SANDBOX"]
+        TASK["TASK"]
+        CLUSTER["CLUSTER"]
+    end
+
+    subgraph OBSERVABILITY["观测"]
+        direction LR
+        STATS["STATS"]
+        TRACE["TRACE"]
+    end
+
+    AGENT -- "状态" --> STATE
+    AGENT -- "上下文" --> SESSION
+    AGENT -- "记忆" --> MEMORY
+    AGENT -- "角色" --> PERSONA
+    AGENT -- "链" --> THOUGHT
+    AGENT -- "执行" --> SANDBOX
+    AGENT -- "管理" --> TASK
+    AGENT -- "委派" --> CLUSTER
+    AGENT -- "记录" --> STATS
+    AGENT -- "追踪" --> TRACE
+    
+    MEMORY -- "回忆" --> AGENT
+    PERSONA -- "加载" --> AGENT
+    THOUGHT -- "渲染" --> AGENT
+    SANDBOX -- "结果" --> AGENT
+    TASK -- "更新" --> AGENT
+    CLUSTER -- "状态" --> AGENT
+    STATS -- "指标" --> AGENT
+    TRACE -- "日志" --> AGENT
+
+    classDef title fill:#161b28,stroke:#5eead4,color:#5eead4,font-weight:bold;
+    classDef engine fill:#161b28,stroke:#fbbf24,color:#fbbf24,font-weight:bold;
+    classDef cognition fill:#161b28,stroke:#a78bfa,color:#a78bfa;
+    classDef execution fill:#161b28,stroke:#38bdf8,color:#38bdf8;
+    classDef obs fill:#161b28,stroke:#94a3b8,color:#94a3b8;
+    
+    class CORE title;
+    class AGENT,STATE,SESSION engine;
+    class MEMORY,PERSONA,THOUGHT cognition;
+    class SANDBOX,TASK,CLUSTER execution;
+    class STATS,TRACE obs;
 ```
 
 - **记忆系统** —— 基于 SQLite 的长期存储和语义检索
