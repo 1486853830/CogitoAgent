@@ -1,0 +1,321 @@
+/* ============================================================
+ *  CogitoAgent Design Tokens
+ *  仪器面板美学 — 科学仪器/示波器视觉语言
+ *  所有页面必须首先加载此文件
+ * ============================================================ */
+
+:root {
+  /* ---- 表面层级 (Surface) ----
+   * ink 是最底层的"仪器黑"，panel 是抬升面板，panel-2 是凹陷区
+   * 新增 panel-top-highlight 用于面板顶部高光（增加深度）
+   */
+  --ink: #0b0e14;
+  --ink-2: #070a0f;
+  --ink-3: #05070c;
+  --panel: #11151f;
+  --panel-2: #161b28;
+  --panel-3: #1c2230;
+  --panel-elevated: #1a2030;
+  --overlay: rgba(11, 14, 20, 0.72);
+
+  /* ---- 玻璃质感渐变 ----
+   * 用于面板背景，增加深度层次（替代纯色）
+   */
+  --panel-gradient: linear-gradient(180deg, var(--panel-2) 0%, var(--panel) 100%);
+  --panel-glass: linear-gradient(180deg, rgba(28, 34, 48, 0.55) 0%, rgba(17, 21, 31, 0.85) 100%);
+  --panel-recessed: linear-gradient(180deg, var(--ink-3) 0%, var(--ink-2) 100%);
+
+  /* ---- 发丝线 (Hairlines) ----
+   * 极细的"蚀刻"分隔线，仪器面板质感
+   * 新增 line-top 用于顶部高光线
+   */
+  --line: rgba(180, 200, 230, 0.08);
+  --line-strong: rgba(180, 200, 230, 0.16);
+  --line-phosphor: rgba(94, 234, 212, 0.24);
+  --line-phosphor-strong: rgba(94, 234, 212, 0.45);
+  --line-top: rgba(255, 255, 255, 0.04);
+
+  /* ---- 签名色 (Signature) ----
+   * phosphor 青绿 — CRT 磷光，代表 agent "活着"
+   * amber — 示波器轨迹，代表思考中
+   * crimson — 错误
+   */
+  --phosphor: #5eead4;
+  --phosphor-dim: #2dd4bf;
+  --phosphor-bright: #7ff5dd;
+  --phosphor-glow: rgba(94, 234, 212, 0.35);
+  --phosphor-soft: rgba(94, 234, 212, 0.10);
+  --phosphor-deep: rgba(94, 234, 212, 0.18);
+
+  --amber: #fbbf24;
+  --amber-dim: #f59e0b;
+  --amber-soft: rgba(251, 191, 36, 0.10);
+
+  --crimson: #f87171;
+  --crimson-dim: #ef4444;
+  --crimson-soft: rgba(248, 113, 113, 0.10);
+
+  /* ---- 冷银辅助色 (Silver Neutral) ----
+   * 中性冷银灰，用于次要数据、刻度、辅助信息
+   * 形成"phosphor 青绿主调 + 冷银辅助 + amber/crimson 情绪色"的三段层次
+   */
+  --silver: #c4cdd9;
+  --silver-dim: #8b95a5;
+  --silver-faint: #5a6473;
+  --silver-soft: rgba(196, 205, 217, 0.06);
+  --silver-line: rgba(196, 205, 217, 0.12);
+
+  /* ---- 文本层级 ----
+   * 新增 type-highlight 用于关键数据/数字的最高对比度强调
+   */
+  --type: #cbd5e1;
+  --type-bright: #f1f5f9;
+  --type-highlight: #ffffff;
+  --type-dim: #64748b;
+  --type-faint: #475569;
+
+  /* ---- 语义别名 ---- */
+  --accent: var(--phosphor);
+  --accent-soft: var(--phosphor-soft);
+  --accent-glow: var(--phosphor-glow);
+  --success: var(--phosphor);
+  --warning: var(--amber);
+  --error: var(--crimson);
+  --text-primary: var(--type-bright);
+  --text-secondary: var(--type);
+  --text-muted: var(--type-dim);
+  --border-color: var(--line);
+  --border-subtle: var(--line);
+  --bg-dark: var(--ink);
+  --bg-primary: var(--panel);
+  --bg-card: var(--panel-2);
+  --bg-card-hover: var(--panel-3);
+  --sidebar-bg: var(--ink);
+  --sidebar-hover: var(--panel-2);
+
+  /* ---- 字体 ----
+   * Space Grotesk — 性格化显示字体，几何但有温度，工程仪器感
+   * Inter — 屏幕优化正文，极致可读性
+   * JetBrains Mono — 数据/工具名/时间戳
+   */
+  --font-display: 'Space Grotesk', 'IBM Plex Sans', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-sans: 'Inter', 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'SF Mono', 'Consolas', 'Courier New', monospace;
+
+  /* ---- 间距尺度 ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ---- 圆角 ----
+   * 仪器风格偏小圆角，避免消费级"圆胖"
+   */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  /* ---- 阴影 ----
+   * 多层阴影：基础阴影 + phosphor 染色环境光 + 顶部高光
+   */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 0 var(--line-top) inset;
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5), 0 1px 0 var(--line-top) inset;
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.4), 0 1px 0 var(--line-top) inset, 0 0 0 1px var(--line);
+  --glow-phosphor: 0 0 0 1px var(--line-phosphor), 0 0 16px rgba(94, 234, 212, 0.12);
+  --glow-phosphor-strong: 0 0 0 1px var(--phosphor), 0 0 24px rgba(94, 234, 212, 0.28), 0 0 48px rgba(94, 234, 212, 0.12);
+  --glow-amber: 0 0 0 1px rgba(251, 191, 36, 0.3), 0 0 16px rgba(251, 191, 36, 0.15);
+  --shadow-panel-ambient: 0 0 0 1px var(--line), 0 1px 0 var(--line-top) inset, 0 8px 24px rgba(0, 0, 0, 0.32);
+
+  /* ---- 字号尺度 ---- */
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --text-3xl: 40px;
+  --text-display: 56px;
+
+  /* ---- 字距 ----
+   * 显示字体负字距紧凑，telemetry 标签宽字距
+   */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.08em;
+  --tracking-wider: 0.14em;
+  --tracking-widest: 0.22em;
+
+  /* ---- 动效 ---- */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 0.15s;
+  --dur: 0.25s;
+  --dur-slow: 0.4s;
+  --dur-slower: 0.6s;
+
+  /* ---- 噪点纹理 ----
+   * SVG data URI 细噪点，赋予面板"物质感"
+   */
+  --noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.7 0 0 0 0 0.85 0 0 0 0 0.9 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+ *  字体加载 (Google Fonts)
+ *  Space Grotesk + Inter + JetBrains Mono
+ *  离线时优雅降级到系统字体
+ * ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ============================================================
+ *  全局重置与基础排版
+ * ============================================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--type);
+  background: var(--ink);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01', 'cv02', 'cv03';
+  font-variant-numeric: 'tabular-nums';
+  letter-spacing: -0.005em;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+}
+
+textarea, input, select {
+  font-family: inherit;
+  outline: none;
+  border: none;
+  resize: none;
+}
+
+/* 滚动条 — 仪器风格：极细、暗色 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(180, 200, 230, 0.14);
+  border-radius: 3px;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--line-phosphor);
+}
+
+/* ============================================================
+ *  Phosphor Trace — 签名元素
+ *  极细的扫描线，代表 agent "活着"
+ *  仅用于 .has-trace 元素的顶部
+ * ============================================================ */
+.has-trace {
+  position: relative;
+  overflow: hidden;
+}
+
+.has-trace::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--phosphor) 50%,
+    transparent 100%
+  );
+  opacity: 0.45;
+  animation: phosphor-scan 4s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes phosphor-scan {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  10%  { opacity: 0.5; }
+  50%  { opacity: 0.7; }
+  90%  { opacity: 0.5; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+/* ============================================================
+ *  Telemetry 标签 — 小写字母 + 字距 + 颜色编码
+ *  仪器面板上的"刻度"感
+ * ============================================================ */
+.telemetry-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--type-faint);
+}
+
+/* ============================================================
+ *  Display 标题 — 使用 Space Grotesk
+ *  更具性格的显示字体，用于 hero / 大标题
+ * ============================================================ */
+.display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  font-feature-settings: 'ss01', 'ss03';
+}
+
+/* ============================================================
+ *  Focus ring — 磷光青绿
+ * ============================================================ */
+*:focus-visible {
+  outline: 1px solid var(--phosphor);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+ *  Reduced motion — 尊重系统设置
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

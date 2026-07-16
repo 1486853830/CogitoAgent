@@ -87,25 +87,81 @@ npm start
 All tools are managed by `registry.ts` and invoked via `[TOOL] functionName(args) [/TOOL]`.
 
 ```mermaid
-flowchart LR
-  Tools["🛠 Tool System"]
-  Tools --> File["📁 File Operations"]
-  Tools --> Web["🌐 Web Tools"]
-  Tools --> Browser["🖥 Browser Automation"]
-  Tools --> Code["💻 Code Execution"]
-  Tools --> Git["🔀 Git Operations"]
-  Tools --> Task["📋 Task Management"]
-  Tools --> Memory["🧠 Memory System"]
-  Tools --> Data["📊 Data Processing"]
-  Tools --> Office["📝 Office Documents"]
-  Tools --> OCR["👁 OCR / Vision"]
-  Tools --> Wx["💬 WeChat Integration"]
-  Tools --> GIS["🗺 GIS"]
-  Tools --> Bio["🧬 Life Science"]
-  Tools --> Med["🏥 Medicine"]
-  Tools --> Chem["⚗️ Chemistry"]
-  Tools --> Fin["💰 Finance"]
-  Tools --> Math["📐 Math/Stats"]
+%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10"}}}%%
+flowchart TD
+    subgraph CORE["Core Utilities"]
+        direction LR
+        FILE["FILE"]
+        WEB["WEB"]
+        CODE["CODE"]
+        GIT["GIT"]
+        DB["DB"]
+        SYS["SYS"]
+    end
+
+    subgraph AI_CAP["AI Capabilities"]
+        direction LR
+        OCR["OCR"]
+        VISION["VIS"]
+        MEM["MEM"]
+    end
+
+    subgraph PROF["Professional"]
+        direction LR
+        GIS["GIS"]
+        BIO["BIO"]
+        MED["MED"]
+        CHEM["CHEM"]
+        FIN["FIN"]
+        MATH["MATH"]
+    end
+
+    subgraph WORKFLOW["Workflow"]
+        direction LR
+        TASK["TASK"]
+        SCHED["CRON"]
+        EMAIL["MAIL"]
+        OFFICE["DOC"]
+        WX["WX"]
+    end
+
+    subgraph INFRA["Infrastructure"]
+        direction LR
+        MON["MON"]
+        TRACE["TRACE"]
+        RETRY["RETRY"]
+        MCP["MCP"]
+    end
+
+    FILE -->|read| OCR
+    FILE -->|read| VISION
+    WEB -->|fetch| VISION
+    CODE -->|execute| BIO
+    CODE -->|execute| MED
+    CODE -->|execute| CHEM
+    CODE -->|execute| FIN
+    CODE -->|execute| MATH
+    DB -->|query| GIS
+    DB -->|query| FIN
+    MEM -->|store| CORE
+    TASK -->|manage| CORE
+    SCHED -->|trigger| WORKFLOW
+    MON -->|monitor| CORE
+    TRACE -->|trace| CORE
+    RETRY -->|retry| WEB
+    MCP -->|expose| CORE
+
+    classDef core fill:#161b28,stroke:#5eead4,color:#5eead4,font-weight:bold;
+    classDef ai fill:#161b28,stroke:#fbbf24,color:#fbbf24;
+    classDef prof fill:#161b28,stroke:#a78bfa,color:#a78bfa;
+    classDef workflow fill:#161b28,stroke:#38bdf8,color:#38bdf8;
+    classDef infra fill:#161b28,stroke:#94a3b8,color:#94a3b8;
+    
+    class FILE,WEB,CODE,GIT,DB,SYS core;
+    class OCR,VISION,MEM ai;
+    class GIS,BIO,MED,CHEM,FIN,MATH prof;
+    class TASK,SCHED,EMAIL,OFFICE,WX workflow;
+    class MON,TRACE,RETRY,MCP infra;
 ```
 
 | Category | File | Main Functions |
@@ -139,11 +195,11 @@ flowchart LR
 > Detailed tool documentation: registration mechanism, usage examples, best practices → [introduction/tools.md](introduction/tools.md) (Chinese)
 
 <p align="center">
-  <img src="introduction/file.png" width="280" alt="File Operations">
-  <img src="introduction/web.png" width="280" alt="Web Search">
-  <img src="introduction/wechat.png" width="280" alt="WeChat Integration">
+  <img src="introduction/file.png" width="280" alt="Image Vision Analysis">
+  <img src="introduction/web.png" width="280" alt="Web Search & Browser Automation">
+  <!-- <img src="introduction/wechat.png" width="280" alt="WeChat Integration"> -->
   <br>
-  <em>File Operations · Web Search · WeChat Integration</em>
+  <em>Image Vision · Web Search · Browser Automation</em>
 </p>
 
 ---
@@ -151,51 +207,80 @@ flowchart LR
 ## Architecture
 
 ```mermaid
+%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10"}}}%%
 flowchart TB
-    subgraph Terminal["Terminal Layer"]
-        CLI["CLI Terminal<br/>Input Entry"]
-        Dashboard["Electron Dashboard<br/>GUI Window"]
+    subgraph TERMINAL["Terminal Layer"]
+        direction LR
+        CLI["CLI"]
+        DASHBOARD["DASHBOARD"]
+        DESKTOP["DESKTOP"]
     end
 
-    subgraph Core["Core Layer"]
-        Agent["Agent.ts<br/>Think Cycle 3s"]
-        State["state.ts<br/>State Machine"]
-        Session["session.ts<br/>Session Manager"]
-        Commands["commands.ts<br/>Command Handler"]
-        Registry["registry.ts<br/>Tool Registry"]
+    subgraph CORE["Core Engine"]
+        direction LR
+        AGENT["AGENT"]
+        STATE["STATE"]
+        SESSION["SESSION"]
+        REGISTRY["REGISTRY"]
+        COMMANDS["CMDS"]
     end
 
-    subgraph Tools["Tool Layer"]
-        File["File Operations"]
-        Web["Web Tools"]
-        Browser["Browser Automation"]
-        Code["Code Sandbox"]
-        Git["Git Operations"]
-        Task["Task Management"]
-        Memory["Memory System"]
-        Wx["WeChat Channel"]
+    subgraph TOOLS["Tool Layer"]
+        direction LR
+        FILE_OPS["FILE"]
+        WEB_OPS["WEB"]
+        BROWSER["BROWSER"]
+        CODE_EXEC["CODE"]
+        GIT_OPS["GIT"]
+        MEMORY["MEMORY"]
+        DB_OPS["DB"]
     end
 
-    subgraph Ext["Extension Layer"]
-        MCP["MCP Protocol"]
-        Plugin["Plugin System"]
-        Retry["Retry & Breaker"]
-        Tracing["Tracing"]
+    subgraph EXT["Extensions"]
+        direction LR
+        MCP["MCP"]
+        PLUGIN["PLUGIN"]
+        TRACE["TRACE"]
+        RETRY["RETRY"]
     end
 
     subgraph API["API Layer"]
-        LLM["LLM API<br/>OpenAI / Claude / Compatible"]
+        LLM["LLM API"]
     end
 
-    Terminal -->|WebSocket| Agent
-    Agent --> State
-    Agent --> Session
-    Agent --> Commands
-    Agent --> Registry
-    Registry --> Tools
-    Tools --> Code
-    Agent --> LLM
-    Agent --> Ext
+    CLI -- WebSocket --> AGENT
+    DASHBOARD -- WebSocket --> AGENT
+    DESKTOP -- WebSocket --> AGENT
+    
+    AGENT -- "3s Loop" --> STATE
+    AGENT -- "Context" --> SESSION
+    AGENT -- "Tool Call" --> REGISTRY
+    AGENT -- "Command" --> COMMANDS
+    AGENT -- "API Call" --> LLM
+    
+    REGISTRY -- "Load" --> TOOLS
+    REGISTRY -- "Register" --> PLUGIN
+    
+    TOOLS -- "Result" --> AGENT
+    TOOLS -- "Sandbox" --> CODE_EXEC
+    
+    EXT -- "Decorate" --> AGENT
+    PLUGIN -- "Extend" --> REGISTRY
+    RETRY -- "Retry" --> WEB_OPS
+    TRACE -- "Log" --> AGENT
+    MCP -- "Expose" --> AGENT
+
+    classDef terminal fill:#161b28,stroke:#5eead4,color:#5eead4,font-weight:bold;
+    classDef core fill:#161b28,stroke:#fbbf24,color:#fbbf24,font-weight:bold;
+    classDef tools fill:#161b28,stroke:#38bdf8,color:#38bdf8;
+    classDef ext fill:#161b28,stroke:#94a3b8,color:#94a3b8;
+    classDef api fill:#161b28,stroke:#a78bfa,color:#a78bfa;
+    
+    class CLI,DASHBOARD,DESKTOP terminal;
+    class AGENT,STATE,SESSION,REGISTRY,COMMANDS core;
+    class FILE_OPS,WEB_OPS,BROWSER,CODE_EXEC,GIT_OPS,MEMORY,DB_OPS tools;
+    class MCP,PLUGIN,TRACE,RETRY ext;
+    class LLM api;
 ```
 
 | Component | Responsibility |
@@ -292,16 +377,68 @@ cogito-agent/
 > See [introduction/systems.md](introduction/systems.md) (Chinese) for details
 
 ```mermaid
-flowchart LR
-  Core["⚙️ Core Systems"]
-  Core --> Memory["🧠 Memory System"]
-  Core --> Task["📋 Task Management"]
-  Core --> Sandbox["🔒 Code Sandbox"]
-  Core --> Persona["👤 Personas"]
-  Core --> Session["💬 Session Management"]
-  Core --> Cluster["🔗 Agent Cluster"]
-  Core --> Stats["📊 Statistics & Tracing"]
-  Core --> Thought["💭 Thought Chain Vis"]
+%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10"}}}%%
+flowchart TD
+    CORE["CORE SYSTEMS"]
+
+    subgraph ENGINE["Engine"]
+        direction LR
+        AGENT["AGENT"]
+        STATE["STATE"]
+        SESSION["SESSION"]
+    end
+
+    subgraph COGNITION["Cognition"]
+        direction LR
+        MEMORY["MEMORY"]
+        PERSONA["PERSONA"]
+        THOUGHT["THOUGHT"]
+    end
+
+    subgraph EXECUTION["Execution"]
+        direction LR
+        SANDBOX["SANDBOX"]
+        TASK["TASK"]
+        CLUSTER["CLUSTER"]
+    end
+
+    subgraph OBSERVABILITY["Observability"]
+        direction LR
+        STATS["STATS"]
+        TRACE["TRACE"]
+    end
+
+    AGENT -- "State" --> STATE
+    AGENT -- "Context" --> SESSION
+    AGENT -- "Memory" --> MEMORY
+    AGENT -- "Persona" --> PERSONA
+    AGENT -- "Chain" --> THOUGHT
+    AGENT -- "Execute" --> SANDBOX
+    AGENT -- "Manage" --> TASK
+    AGENT -- "Delegate" --> CLUSTER
+    AGENT -- "Record" --> STATS
+    AGENT -- "Trace" --> TRACE
+    
+    MEMORY -- "Recall" --> AGENT
+    PERSONA -- "Load" --> AGENT
+    THOUGHT -- "Render" --> AGENT
+    SANDBOX -- "Result" --> AGENT
+    TASK -- "Update" --> AGENT
+    CLUSTER -- "Status" --> AGENT
+    STATS -- "Metrics" --> AGENT
+    TRACE -- "Logs" --> AGENT
+
+    classDef title fill:#161b28,stroke:#5eead4,color:#5eead4,font-weight:bold;
+    classDef engine fill:#161b28,stroke:#fbbf24,color:#fbbf24,font-weight:bold;
+    classDef cognition fill:#161b28,stroke:#a78bfa,color:#a78bfa;
+    classDef execution fill:#161b28,stroke:#38bdf8,color:#38bdf8;
+    classDef obs fill:#161b28,stroke:#94a3b8,color:#94a3b8;
+    
+    class CORE title;
+    class AGENT,STATE,SESSION engine;
+    class MEMORY,PERSONA,THOUGHT cognition;
+    class SANDBOX,TASK,CLUSTER execution;
+    class STATS,TRACE obs;
 ```
 
 - **Memory System** — SQLite-based long-term storage and semantic retrieval
