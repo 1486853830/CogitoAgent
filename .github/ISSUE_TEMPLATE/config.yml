@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 讨论 / Discussions
+    url: https://github.com/SnowLeopard-io/CogitoAgent/discussions
+    about: 提问、交流想法或寻求帮助 / Ask questions, share ideas, or get help
+  - name: 📖 文档 / Documentation
+    url: https://github.com/SnowLeopard-io/CogitoAgent/blob/main/README.md
+    about: 查阅项目 README 了解基本用法
