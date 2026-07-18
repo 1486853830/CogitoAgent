@@ -31,6 +31,8 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 const CONFIG_FILE = path.join(PROJECT_ROOT, 'config.json');
 const PERSONA_FILE = path.join(PROJECT_ROOT, 'persona.md');
 
+const CSP_HEADER = `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; media-src 'self' https:; connect-src 'self' http://localhost:9527; object-src 'none'; frame-src 'none';`;
+
 /**
  * 检查是否已配置
  */
@@ -216,6 +218,15 @@ function saveConfig(config) {
     ];
 
     fs.writeFileSync(envPath, envLines.join('\n'), 'utf-8');
+    try {
+      if (process.platform === 'win32') {
+        execSync(`icacls "${envPath}" /inheritance:r /grant:r "${os.userInfo().username}:R"`);
+      } else {
+        fs.chmodSync(envPath, 0o600);
+      }
+    } catch {
+      console.warn('[主进程] 无法设置 .env 文件权限');
+    }
     console.log('[主进程] 配置已保存到 .env');
 
     // 复制 persona 文件
@@ -390,10 +401,16 @@ function createSetupWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      sandbox: true,
     },
   });
 
   setupWindow.setMenuBarVisibility(false);
+  setupWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] } });
+  });
   setupWindow.loadFile(path.join(__dirname, 'setup', 'setup.html'));
 
   setupWindow.on('closed', () => {
@@ -424,12 +441,18 @@ function createMainWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      sandbox: true,
     },
   });
 
   if (process.platform === 'darwin') {
     mainWindow.setWindowButtonVisibility(false);
   }
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] } });
+  });
   mainWindow.loadFile(path.join(__dirname, 'desktop', 'index.html'));
 
   initAgentBridge(mainWindow);
@@ -463,10 +486,16 @@ function createDashboardWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      sandbox: true,
     },
   });
 
   dashboardWindow.setMenuBarVisibility(false);
+  dashboardWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] } });
+  });
   dashboardWindow.loadFile(path.join(__dirname, 'dashboard', 'index.html'));
 
   initAgentBridge(dashboardWindow);
@@ -506,10 +535,16 @@ function createMonitorWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      sandbox: true,
     },
   });
 
   monitorWindow.setMenuBarVisibility(false);
+  monitorWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] } });
+  });
   monitorWindow.loadFile(path.join(__dirname, 'monitor', 'index.html'));
 
   initAgentBridge(monitorWindow);
@@ -756,6 +791,13 @@ app.whenReady().then(async () => {
               messageCount: s.messageCount || 0
             }));
             fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
+            try {
+              if (process.platform === 'win32') {
+                execSync(`icacls "${metaPath}" /inheritance:r /grant:r "${os.userInfo().username}:R"`);
+              } else {
+                fs.chmodSync(metaPath, 0o600);
+              }
+            } catch {}
             console.log(`[主进程] 已从磁盘恢复 ${recovered.length} 个会话`);
           }
         } catch {
@@ -829,9 +871,19 @@ app.whenReady().then(async () => {
     return [];
   });
 
-  // 打开外部链接
   ipcMain.handle('open-external', async (_event, url) => {
-    shell.openExternal(url);
+    try {
+      const parsed = new URL(url);
+      if (!['http:', 'https:', 'mailto:', 'ftp:', 'file:'].includes(parsed.protocol)) {
+        throw new Error('不支持的协议');
+      }
+      if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+        throw new Error('不允许访问本地地址');
+      }
+      shell.openExternal(url);
+    } catch {
+      console.warn('[主进程] 拒绝打开无效或危险的 URL:', url);
+    }
   });
 
   // ===== IPC: 微信相关 =====

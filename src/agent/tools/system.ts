@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 
 function sanitizeAppName(appName: string): string {
   const sanitized = appName.trim();
@@ -17,8 +17,12 @@ function sanitizeAppName(appName: string): string {
 
 async function listApps(): Promise<any> {
   return new Promise((resolve) => {
-    exec(
-      `powershell -Command "Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Where-Object { $_.DisplayName } | Select-Object -ExpandProperty DisplayName | Sort-Object"`,
+    execFile(
+      'powershell',
+      [
+        '-Command',
+        'Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Where-Object { $_.DisplayName } | Select-Object -ExpandProperty DisplayName | Sort-Object'
+      ],
       { encoding: 'utf8' },
       (error, stdout) => {
         if (error) {
@@ -40,7 +44,7 @@ async function openApp(appName: string): Promise<any> {
   return new Promise((resolve) => {
     try {
       const sanitizedName = sanitizeAppName(appName);
-      exec(`start "" "${sanitizedName}"`, (error) => {
+      execFile('cmd', ['/c', 'start', '', sanitizedName], (error) => {
         if (error) {
           resolve({ success: false, error: `打开失败: ${error.message}` });
         } else {
@@ -58,7 +62,7 @@ async function closeApp(appName: string): Promise<any> {
     try {
       const sanitizedName = sanitizeAppName(appName);
       const processName = sanitizedName.replace('.exe', '');
-      exec(`taskkill /f /im "${processName}.exe"`, (error) => {
+      execFile('taskkill', ['/f', '/im', `${processName}.exe`], (error) => {
         if (error) {
           resolve({ success: false, error: `关闭失败: ${error.message}` });
         } else {

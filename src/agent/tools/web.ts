@@ -1,6 +1,15 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { search as webSearch } from '../../api/webSearch.ts';
 import * as cheerio from 'cheerio';
+
+function isValidUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ['http:', 'https:'].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * 联网搜索
@@ -11,13 +20,11 @@ async function search(query: string): Promise<any> {
   if (!result.success) {
     return result;
   }
-  // 将结果格式化为纯文本以便智能体理解
   const raw = result.data;
   let summary = `搜索关键词: ${query}\n\n`;
   try {
     if (raw && typeof raw === 'object') {
       const snippets: string[] = [];
-      // 尝试从常见字段提取标题/摘要
       if (raw.snippets || raw.results || raw.organic_results || raw.web) {
         const list = raw.snippets || raw.results || raw.organic_results || raw.web;
         if (Array.isArray(list)) {
@@ -33,7 +40,6 @@ async function search(query: string): Promise<any> {
       } else if (raw.summary) {
         summary += raw.summary;
       } else {
-        // fallback：JSON
         summary += JSON.stringify(raw, null, 2).slice(0, 3000);
       }
       if (snippets.length) {
@@ -51,8 +57,11 @@ async function search(query: string): Promise<any> {
  */
 async function browse(url: string): Promise<any> {
   return new Promise((resolve) => {
-    // Windows 下使用 start 命令打开默认浏览器
-    exec(`start "" "${url}"`, (error) => {
+    if (!isValidUrl(url)) {
+      resolve({ success: false, error: `无效的 URL: ${url}` });
+      return;
+    }
+    execFile('cmd', ['/c', 'start', '', url], (error) => {
       if (error) {
         resolve({ success: false, error: `打开链接失败: ${error.message}` });
       } else {
