@@ -1,5 +1,5 @@
 import os from 'os';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 
 /**
  * 获取 CPU 信息
@@ -51,7 +51,7 @@ function getMemoryInfo(): any {
  */
 async function getDiskInfoWindows(): Promise<any> {
   return new Promise((resolve) => {
-    exec('wmic logicaldisk get Size,FreeSpace,DeviceID,VolumeName', (error: any, stdout: string) => {
+    execFile('wmic', ['logicaldisk', 'get', 'Size,FreeSpace,DeviceID,VolumeName'], (error: any, stdout: string) => {
       if (error) {
         resolve({
           success: false,
@@ -99,7 +99,7 @@ async function getDiskInfoWindows(): Promise<any> {
  */
 async function getDiskInfoUnix(): Promise<any> {
   return new Promise((resolve) => {
-    exec('df -h', (error: any, stdout: string) => {
+    execFile('df', ['-h'], (error: any, stdout: string) => {
       if (error) {
         resolve({
           success: false,
@@ -202,7 +202,7 @@ function getNetworkInfo(): any[] {
  */
 async function getProcessesWindows(): Promise<any> {
   return new Promise((resolve) => {
-    exec('tasklist /fo csv /nh', { encoding: 'utf8' }, (error: any, stdout: string) => {
+    execFile('tasklist', ['/fo', 'csv', '/nh'], { encoding: 'utf8' }, (error: any, stdout: string) => {
       if (error) {
         resolve({
           success: false,
@@ -240,7 +240,7 @@ async function getProcessesWindows(): Promise<any> {
  */
 async function getProcessesUnix(): Promise<any> {
   return new Promise((resolve) => {
-    exec('ps aux --no-headers', { encoding: 'utf8' }, (error: any, stdout: string) => {
+    execFile('ps', ['aux', '--no-headers'], { encoding: 'utf8' }, (error: any, stdout: string) => {
       if (error) {
         resolve({
           success: false,
