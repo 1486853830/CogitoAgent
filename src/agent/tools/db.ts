@@ -6,9 +6,22 @@ import path from 'path';
 let db: any = null;
 let SQL: any = null;
 
-/**
- * 初始化 SQL.js
- */
+const DANGEROUS_STATEMENTS = [
+  'DROP TABLE',
+  'DROP INDEX',
+  'DROP VIEW',
+  'ALTER TABLE',
+  'TRUNCATE TABLE',
+  'ATTACH DATABASE',
+  'DETACH DATABASE',
+  'VACUUM',
+];
+
+function isDangerousSQL(sql: string): boolean {
+  const upperSql = sql.trim().toUpperCase();
+  return DANGEROUS_STATEMENTS.some(stmt => upperSql.startsWith(stmt));
+}
+
 async function initSQL(): Promise<any> {
   if (SQL) return SQL;
   try {
@@ -23,9 +36,6 @@ async function initSQL(): Promise<any> {
   return SQL;
 }
 
-/**
- * 获取数据库连接
- */
 async function getDB(): Promise<any> {
   if (db) return db;
 
@@ -64,9 +74,6 @@ async function getDB(): Promise<any> {
   return db;
 }
 
-/**
- * 保存数据库到文件
- */
 async function saveDB(): Promise<void> {
   if (!db) return;
 
@@ -81,10 +88,14 @@ async function saveDB(): Promise<void> {
   }
 }
 
-/**
- * 执行 SQL 查询
- */
 async function executeSQL(sql: string, params: any[] = []): Promise<any> {
+  if (isDangerousSQL(sql)) {
+    return {
+      success: false,
+      error: '不允许执行危险的 SQL 语句，请使用专用方法（query/insert/update/delete/createTable/dropTable）'
+    };
+  }
+
   try {
     const database = await getDB();
 
@@ -125,9 +136,6 @@ async function executeSQL(sql: string, params: any[] = []): Promise<any> {
   }
 }
 
-/**
- * 验证标识符（表名、列名）是否合法
- */
 function validateIdentifier(name: any): boolean {
   if (!name || typeof name !== 'string') {
     return false;
@@ -135,9 +143,6 @@ function validateIdentifier(name: any): boolean {
   return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
 }
 
-/**
- * 查询数据
- */
 async function query(table: string, conditions: any = {}, options: any = {}): Promise<any> {
   if (!validateIdentifier(table)) {
     return {
@@ -216,9 +221,6 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
   return await executeSQL(sql, params);
 }
 
-/**
- * 插入数据
- */
 async function insert(table: string, data: any): Promise<any> {
   if (!validateIdentifier(table)) {
     return {
@@ -242,12 +244,29 @@ async function insert(table: string, data: any): Promise<any> {
 
   const sql = `INSERT INTO \`${table}\` (${keys.map(k => `\`${k}\``).join(',')}) VALUES (${placeholders})`;
 
-  return await executeSQL(sql, values);
+  try {
+    const database = await getDB();
+    const stmt = database.prepare(sql);
+    stmt.bind(values);
+    while (stmt.step()) {}
+    stmt.free();
+    const changes = database.getRowsModified();
+    await saveDB();
+    return {
+      success: true,
+      data: {
+        changes: changes,
+        lastID: database.lastInsertRowid ? database.lastInsertRowid() : null
+      }
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: `SQL 执行失败: ${err.message}`
+    };
+  }
 }
 
-/**
- * 更新数据
- */
 async function update(table: string, data: any, conditions: any): Promise<any> {
   if (!validateIdentifier(table)) {
     return {
@@ -284,12 +303,28 @@ async function update(table: string, data: any, conditions: any): Promise<any> {
 
   const sql = `UPDATE \`${table}\` SET ${setClauses.join(',')} WHERE ${whereClauses.join(' AND ')}`;
 
-  return await executeSQL(sql, values);
+  try {
+    const database = await getDB();
+    const stmt = database.prepare(sql);
+    stmt.bind(values);
+    while (stmt.step()) {}
+    stmt.free();
+    const changes = database.getRowsModified();
+    await saveDB();
+    return {
+      success: true,
+      data: {
+        changes: changes
+      }
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: `SQL 执行失败: ${err.message}`
+    };
+  }
 }
 
-/**
- * 删除数据
- */
 async function deleteData(table: string, conditions: any): Promise<any> {
   if (!validateIdentifier(table)) {
     return {
@@ -314,12 +349,28 @@ async function deleteData(table: string, conditions: any): Promise<any> {
 
   const sql = `DELETE FROM \`${table}\` WHERE ${whereClauses.join(' AND ')}`;
 
-  return await executeSQL(sql, params);
+  try {
+    const database = await getDB();
+    const stmt = database.prepare(sql);
+    stmt.bind(params);
+    while (stmt.step()) {}
+    stmt.free();
+    const changes = database.getRowsModified();
+    await saveDB();
+    return {
+      success: true,
+      data: {
+        changes: changes
+      }
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: `SQL 执行失败: ${err.message}`
+    };
+  }
 }
 
-/**
- * 创建表
- */
 async function createTable(name: string, columns: any[]): Promise<any> {
   if (!validateIdentifier(name)) {
     return {
@@ -343,12 +394,19 @@ async function createTable(name: string, columns: any[]): Promise<any> {
 
   const sql = `CREATE TABLE IF NOT EXISTS \`${name}\` (${columnDefinitions})`;
 
-  return await executeSQL(sql);
+  try {
+    const database = await getDB();
+    database.run(sql);
+    await saveDB();
+    return { success: true, data: `表 ${name} 创建成功` };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: `SQL 执行失败: ${err.message}`
+    };
+  }
 }
 
-/**
- * 删除表
- */
 async function dropTable(name: string): Promise<any> {
   if (!validateIdentifier(name)) {
     return {
@@ -358,12 +416,20 @@ async function dropTable(name: string): Promise<any> {
   }
 
   const sql = `DROP TABLE IF EXISTS \`${name}\``;
-  return await executeSQL(sql);
+
+  try {
+    const database = await getDB();
+    database.run(sql);
+    await saveDB();
+    return { success: true, data: `表 ${name} 删除成功` };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: `SQL 执行失败: ${err.message}`
+    };
+  }
 }
 
-/**
- * 获取表列表
- */
 async function getTables(): Promise<any> {
   const sql = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name";
   const result = await executeSQL(sql);
@@ -375,9 +441,6 @@ async function getTables(): Promise<any> {
   return result;
 }
 
-/**
- * 获取表结构
- */
 async function getTableSchema(tableName: string): Promise<any> {
   if (!validateIdentifier(tableName)) {
     return {
@@ -387,13 +450,33 @@ async function getTableSchema(tableName: string): Promise<any> {
   }
 
   const sql = `PRAGMA table_info(\`${tableName}\`)`;
-  return await executeSQL(sql);
+  try {
+    const database = await getDB();
+    const results = [];
+    const stmt = database.prepare(sql);
+    while (stmt.step()) {
+      results.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return { success: true, data: results };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: `SQL 执行失败: ${err.message}`
+    };
+  }
 }
 
-/**
- * 执行事务
- */
 async function executeTransaction(sqlStatements: string[]): Promise<any> {
+  for (const sql of sqlStatements) {
+    if (isDangerousSQL(sql)) {
+      return {
+        success: false,
+        error: '事务中不允许执行危险的 SQL 语句'
+      };
+    }
+  }
+
   try {
     const database = await getDB();
 
@@ -416,7 +499,6 @@ async function executeTransaction(sqlStatements: string[]): Promise<any> {
         db.run('ROLLBACK');
       }
     } catch {
-      // 忽略回滚错误
     }
     return {
       success: false,
@@ -425,9 +507,6 @@ async function executeTransaction(sqlStatements: string[]): Promise<any> {
   }
 }
 
-/**
- * 关闭数据库连接
- */
 async function closeDB(): Promise<void> {
   if (db) {
     try {

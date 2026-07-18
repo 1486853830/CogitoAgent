@@ -6,11 +6,8 @@ import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 import { loadConfig } from '../../config.ts';
+import { resolveInWorkspace } from './path.ts';
 
-/**
- * 从配置读取代码执行限制
- * 支持 .env 中 COGITO_CODE_TIMEOUT / COGITO_CODE_MAX_OUTPUT 配置
- */
 function getCodeLimits(): { maxExecutionTime: number; maxOutputSize: number } {
   const cfg: any = loadConfig();
   return {
@@ -19,19 +16,12 @@ function getCodeLimits(): { maxExecutionTime: number; maxOutputSize: number } {
   };
 }
 
-/**
- * 生成安全的临时文件路径
- * 使用随机 UUID 避免符号链接攻击
- */
 function generateSecureTmpPath(ext: string): string {
   const tmpDir = os.tmpdir();
   const randomName = `cogito_${crypto.randomUUID()}_${Date.now()}`;
   return path.join(tmpDir, `${randomName}.${ext}`);
 }
 
-/**
- * 查找可用的 Python 可执行文件
- */
 function findPythonExecutable(): string {
   const candidates = ['python', 'python3', 'python.exe', 'python3.exe'];
 
@@ -58,15 +48,9 @@ function findPythonExecutable(): string {
   return 'python';
 }
 
-/**
- * 安全写入临时文件
- * 使用 writeFile 的 exclusive 选项防止覆盖和符号链接攻击
- */
 async function writeSecureTmpFile(filePath: string, content: string): Promise<boolean | string> {
   try {
-    // 确保目录存在
     await fs.mkdir(path.dirname(filePath), { recursive: true });
-    // 使用 open 系统调用 with flags 'wx' (exclusive create)
     const fd = await fs.open(filePath, 'wx');
     try {
       await fd.writeFile(content, 'utf8');
@@ -75,7 +59,6 @@ async function writeSecureTmpFile(filePath: string, content: string): Promise<bo
     }
     return true;
   } catch (error: any) {
-    // 如果文件已存在，尝试删除后重试（使用唯一名称）
     if (error.code === 'EEXIST') {
       const newPath = generateSecureTmpPath(path.extname(filePath).slice(1) || 'tmp');
       await fs.writeFile(newPath, content, 'utf8');
@@ -85,18 +68,10 @@ async function writeSecureTmpFile(filePath: string, content: string): Promise<bo
   }
 }
 
-/**
- * 创建 JavaScript 沙箱环境
- *
- * 安全改进：使用 Object.create(null) 创建无原型链的对象，
- * 防止通过 ({}).constructor.constructor 等方式突破沙箱
- */
 function createSandbox(): { sandbox: any; context: vm.Context; consoleOutput: string[] } {
-  // 使用 Object.create(null) 创建没有原型的对象，防止原型链逃逸
   const sandbox: any = Object.create(null);
   const consoleOutput: string[] = [];
 
-  // 禁止危险对象
   sandbox.setTimeout = undefined;
   sandbox.setInterval = undefined;
   sandbox.setImmediate = undefined;
@@ -109,7 +84,6 @@ function createSandbox(): { sandbox: any; context: vm.Context; consoleOutput: st
   sandbox.global = undefined;
   sandbox.globalThis = undefined;
 
-  // 添加安全的基础对象（冻结原型防止原型链攻击）
   sandbox.JSON = Object.freeze(JSON);
   sandbox.Math = Object.freeze(Math);
   sandbox.Date = Object.freeze(Date);
@@ -132,7 +106,6 @@ function createSandbox(): { sandbox: any; context: vm.Context; consoleOutput: st
   sandbox.encodeURIComponent = encodeURIComponent;
   sandbox.decodeURIComponent = decodeURIComponent;
 
-  // 添加自定义 console 对象来捕获输出
   sandbox.console = {
     log: (...args: any[]) => consoleOutput.push(args.map(arg =>
       typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
@@ -151,10 +124,6 @@ function createSandbox(): { sandbox: any; context: vm.Context; consoleOutput: st
   return { sandbox, context: vm.createContext(sandbox), consoleOutput };
 }
 
-/**
- * 执行 JavaScript 代码
- * 使用 Node.js 原生 vm 模块提供沙箱隔离
- */
 async function runJavaScript(code: string): Promise<any> {
   return new Promise((resolve) => {
     const { maxExecutionTime, maxOutputSize } = getCodeLimits();
@@ -226,71 +195,48 @@ async function runJavaScript(code: string): Promise<any> {
   });
 }
 
-/**
- * 清理临时文件
- */
 async function cleanupTmpFile(tmpPath: string | null): Promise<void> {
   if (tmpPath) {
     try {
       await fs.unlink(tmpPath);
     } catch {
-      // 忽略删除失败
     }
   }
 }
 
-/**
- * 检测代码是否包含 GUI 阻塞调用
- * @param code Python 代码
- * @returns 是否包含 GUI 阻塞调用
- */
 function hasGuiBlockingCall(code: string): boolean {
   const guiPatterns = [
-    /\.mainloop\s*\(/,      // tkinter: root.mainloop()
-    /\.show\s*\(/,          // PyQt: widget.show()
-    /app\.exec\s*\(/,       // PyQt: app.exec()
-    /plt\.show\s*\(/,       // matplotlib: plt.show()
-    /turtle\.mainloop/,     // turtle: turtle.mainloop()
-    /\.wait_window\s*\(/,   // tkinter: wait_window
+    /\.mainloop\s*\(/,
+    /\.show\s*\(/,
+    /app\.exec\s*\(/,
+    /plt\.show\s*\(/,
+    /turtle\.mainloop/,
+    /\.wait_window\s*\(/,
   ];
 
   return guiPatterns.some(pattern => pattern.test(code));
 }
 
-/**
- * 为 GUI 代码注入超时退出机制
- * @param code Python 代码
- * @returns 处理后的代码
- */
 function injectGuiTimeout(code: string): string {
-  // 检测使用的 GUI 库类型
   const guiWrapper = `
 import sys
 import threading
 
-# GUI 超时退出机制（由 CogitoAgent 注入）
 def _gui_timeout_exit(delay=10):
-    """延迟后自动关闭 GUI"""
     import time
     time.sleep(delay)
     print("\\n[提示] GUI 窗口将在 10 秒后自动关闭...")
     sys.exit(0)
 
-# 启动超时线程
 _timeout_thread = threading.Thread(target=_gui_timeout_exit, daemon=True)
 _timeout_thread.start()
 
-# 用户原始代码
 ${code}
 `;
 
   return guiWrapper;
 }
 
-/**
- * 执行 Python 代码
- * 使用安全的环境配置，限制网络和系统访问
- */
 async function runPython(code: string): Promise<any> {
   return new Promise(async (resolve) => {
     let tmpPath: string | null = null;
@@ -299,7 +245,7 @@ async function runPython(code: string): Promise<any> {
 
     const timeoutId = setTimeout(async () => {
       timedOut = true;
-      await cleanupTmpFile(tmpPath);  // 超时时也清理临时文件
+      await cleanupTmpFile(tmpPath);
       resolve({
         success: false,
         error: `执行超时（超过${maxExecutionTime / 1000}秒）`
@@ -307,7 +253,6 @@ async function runPython(code: string): Promise<any> {
     }, maxExecutionTime);
 
     try {
-      // 检测 GUI 阻塞调用并注入超时机制
       let processedCode = code;
       const isGuiCode = hasGuiBlockingCall(code);
 
@@ -316,25 +261,20 @@ async function runPython(code: string): Promise<any> {
         console.log('[提示] 检测到 GUI 程序，已注入超时退出机制');
       }
 
-      // 使用安全的临时文件路径
       tmpPath = generateSecureTmpPath('py');
       await writeSecureTmpFile(tmpPath, processedCode);
 
-      // 安全环境配置：清理危险环境变量
       const secureEnv: Record<string, string | undefined> = {
-        // 保留必要的环境变量
         HOME: process.env.HOME || process.env.USERPROFILE || '',
         TMPDIR: os.tmpdir(),
         TEMP: os.tmpdir(),
-        // Python 安全配置
-        PYTHONUNBUFFERED: '1',           // 无缓冲输出
-        PYTHONNOUSERSITE: '1',           // 禁止加载用户站点包
-        PYTHONDONTWRITEBYTECODE: '1',    // 不生成 .pyc 文件
-        PYTHONHASHSEED: '0',             // 固定哈希种子
+        PYTHONUNBUFFERED: '1',
+        PYTHONNOUSERSITE: '1',
+        PYTHONDONTWRITEBYTECODE: '1',
+        PYTHONHASHSEED: '0',
         PATH: process.env.PATH || '',
       };
 
-      // 只在 secureEnv 副本中删除危险变量，不影响全局 process.env
       delete secureEnv.PYTHONPATH;
       delete secureEnv.PYTHONHOME;
       delete secureEnv.PYTHONSTARTUP;
@@ -347,11 +287,10 @@ async function runPython(code: string): Promise<any> {
         timeout: maxExecutionTime,
         encoding: 'utf8',
         env: secureEnv as any,
-        // 限制子进程权限（仅 UNIX）
         gid: (process as any).getgid ? (process as any).getgid() : undefined,
         uid: (process as any).getuid ? (process as any).getuid() : undefined
       }, async (error, stdout, stderr) => {
-        if (timedOut) return;  // 如果已经超时，忽略回调
+        if (timedOut) return;
 
         clearTimeout(timeoutId);
 
@@ -367,7 +306,6 @@ async function runPython(code: string): Promise<any> {
 
         let result = stdout || '执行完成，无输出';
 
-        // GUI 程序特殊提示
         if (isGuiCode) {
           result = '🖼️ [GUI 程序已执行]\n' +
                    '提示：窗口将在 10 秒后自动关闭\n' +
@@ -399,9 +337,6 @@ async function runPython(code: string): Promise<any> {
   });
 }
 
-/**
- * 执行代码（自动识别语言）
- */
 async function executeCode(code: string, language: string = 'javascript'): Promise<any> {
   const lang = language.toLowerCase();
 
@@ -417,15 +352,20 @@ async function executeCode(code: string, language: string = 'javascript'): Promi
   }
 }
 
-/**
- * 执行代码文件
- */
 async function executeFile(filePath: string, language: string | null = null): Promise<any> {
+  const resolvedPath = resolveInWorkspace(filePath);
+  if (!resolvedPath) {
+    return {
+      success: false,
+      error: '文件路径超出工作区范围'
+    };
+  }
+
   try {
-    const content = await fs.readFile(filePath, 'utf-8');
+    const content = await fs.readFile(resolvedPath, 'utf-8');
 
     if (!language) {
-      const ext = path.extname(filePath).toLowerCase();
+      const ext = path.extname(resolvedPath).toLowerCase();
       if (ext === '.py') language = 'python';
       else if (ext === '.js') language = 'javascript';
       else {
@@ -445,35 +385,22 @@ async function executeFile(filePath: string, language: string | null = null): Pr
   }
 }
 
-/**
- * 格式化代码
- */
 async function formatCode(code: string, language: string = 'javascript'): Promise<any> {
-  return new Promise((resolve) => {
-    if (language.toLowerCase() === 'python') {
-      exec(`python -m autopep8 --stdin-stdout`, {
+  if (language.toLowerCase() === 'python') {
+    try {
+      const pythonExec = findPythonExecutable();
+      const result = execFileSync(pythonExec, ['-m', 'autopep8', '--stdin-stdout'], {
         input: code,
-        encoding: 'utf8'
-      } as any, (error, stdout) => {
-        if (error) {
-          resolve({
-            success: false,
-            error: `格式化失败: ${error.message}`
-          });
-        } else {
-          resolve({
-            success: true,
-            data: stdout
-          });
-        }
+        encoding: 'utf8',
+        timeout: 30000
       });
-    } else {
-      resolve({
-        success: true,
-        data: code
-      });
+      return { success: true, data: result };
+    } catch {
+      return { success: true, data: code };
     }
-  });
+  } else {
+    return { success: true, data: code };
+  }
 }
 
 export {

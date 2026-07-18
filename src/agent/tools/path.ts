@@ -1,12 +1,25 @@
 import os from 'os';
+import path from 'path';
 import { loadConfig } from '../../config.ts';
 
-/**
- * 获取工作区根路径
- */
 function getBasePath(): string {
   const cfg: any = loadConfig();
   return cfg.workspace || os.homedir();
 }
 
-export { getBasePath };
+function resolveInWorkspace(targetPath: string): string | null {
+  const basePath = getBasePath();
+  const resolvedBase = path.resolve(basePath);
+  
+  const fullPath = path.isAbsolute(targetPath) 
+    ? path.resolve(targetPath) 
+    : path.resolve(resolvedBase, targetPath);
+  
+  if (!fullPath.startsWith(resolvedBase)) {
+    return null;
+  }
+  
+  return fullPath;
+}
+
+export { getBasePath, resolveInWorkspace };
