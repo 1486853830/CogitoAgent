@@ -959,7 +959,10 @@ const ChatManager = {
     const btns = [this.sendBtnTop, this.sendBtnBottom].filter(Boolean);
     btns.forEach(btn => {
       if (AppState.isProcessing) {
-        btn.style.background = '#e17055';
+        btn.style.background = '#dc2626';
+        btn.style.borderColor = '#f87171';
+        btn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.1)';
+        btn.style.color = '#fff';
         btn.title = '点击终止';
         const svg = btn.querySelector('svg path');
         if (svg) {
@@ -967,6 +970,9 @@ const ChatManager = {
         }
       } else {
         btn.style.background = '';
+        btn.style.borderColor = '';
+        btn.style.boxShadow = '';
+        btn.style.color = '';
         btn.title = '发送';
         const svg = btn.querySelector('svg path');
         if (svg) {

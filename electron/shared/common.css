@@ -383,7 +383,7 @@
 }
 
 .tool-icon {
-  width: 16px;
+  width: 24px;
   height: 16px;
   display: flex;
   align-items: center;
@@ -393,6 +393,7 @@
   font-weight: 600;
   font-family: var(--font-mono);
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .tool-result-card:not(.tool-error) .tool-icon {
