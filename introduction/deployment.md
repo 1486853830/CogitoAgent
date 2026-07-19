@@ -1,4 +1,4 @@
-﻿# 部署与开发
+# 部署与开发
 
 > 详细文档：Docker 部署、开发指南、测试与贡献指南。
 
@@ -28,11 +28,11 @@ docker compose ps
 | 变量名 | 说明 | 默认值 | 是否必填 |
 |--------|------|--------|----------|
 | `NODE_ENV` | 运行环境 | `production` | 否 |
-| `API_BASE_URL` | LLM API 基础地址 | — | 是 |
-| `API_KEY` | LLM API 密钥 | — | 是 |
-| `MODEL_NAME` | 默认模型名称 | `gpt-4o` | 否 |
-| `WORKSPACE` | 工作目录路径 | `./workspace` | 否 |
-| `LOG_LEVEL` | 日志级别 | `info` | 否 |
+| `COGITO_API_BASE_URL` | LLM API 基础地址 | — | 是 |
+| `COGITO_API_KEY` | LLM API 密钥 | — | 是 |
+| `COGITO_MODEL` | 默认模型名称 | `gpt-4o` | 否 |
+| `COGITO_WORKSPACE` | 工作目录路径 | `./workspace` | 否 |
+| `COGITO_LOG_LEVEL` | 日志级别 | `info` | 否 |
 
 ### Docker Compose 配置
 
@@ -50,10 +50,10 @@ services:
       - ./workspace:/app/workspace
     environment:
       - NODE_ENV=production
-      - API_BASE_URL=${API_BASE_URL}
-      - API_KEY=${API_KEY}
-      - MODEL_NAME=${MODEL_NAME:-gpt-4o}
-      - WORKSPACE=/app/workspace
+      - COGITO_API_BASE_URL=${COGITO_API_BASE_URL}
+      - COGITO_API_KEY=${COGITO_API_KEY}
+      - COGITO_MODEL=${COGITO_MODEL:-gpt-4o}
+      - COGITO_WORKSPACE=/app/workspace
     restart: unless-stopped
 ```
 
@@ -66,9 +66,9 @@ docker run -d \
   --name cogito-agent \
   -v $(pwd)/data:/app/data \
   -v $(pwd)/workspace:/app/workspace \
-  -e API_BASE_URL="https://api.openai.com/v1" \
-  -e API_KEY="your-api-key" \
-  -e MODEL_NAME="gpt-4o" \
+  -e COGITO_API_BASE_URL="https://api.openai.com/v1" \
+  -e COGITO_API_KEY="your-api-key" \
+  -e COGITO_MODEL="gpt-4o" \
   cogito-agent:latest
 ```
 
@@ -104,23 +104,24 @@ npm run electron:build
 cogito-agent/
 ├── src/
 │   ├── agent/              # 核心 Agent 逻辑
-│   │   ├── Agent.js        # 思考循环
-│   │   ├── state.js        # 状态机
-│   │   ├── registry.js     # 工具注册
-│   │   ├── session.js      # 会话管理
-│   │   ├── commands.js     # 命令处理
+│   │   ├── Agent.ts        # 思考循环
+│   │   ├── state.ts        # 状态机
+│   │   ├── registry.ts     # 工具注册
+│   │   ├── session.ts      # 会话管理
+│   │   ├── commands.ts     # 命令处理
 │   │   ├── tools/          # 工具模块
 │   │   └── ...
 │   ├── api/                # API 层
-│   │   ├── client.js       # LLM 客户端
-│   │   ├── models.js       # 模型管理
-│   │   └── webSearch.js    # 网络搜索
+│   │   ├── client.ts       # LLM 客户端
+│   │   ├── models.ts       # 模型管理
+│   │   └── webSearch.ts    # 网络搜索
 │   ├── io/                 # 输入输出
-│   │   ├── terminal.js     # 终端交互
-│   │   ├── logger.js       # 日志
-│   │   └── ws-server.js    # WebSocket
-│   ├── config.js           # 配置管理
-│   └── index.js            # 应用入口
+│   │   ├── terminal.ts     # 终端交互
+│   │   ├── logger.ts       # 日志
+│   │   └── ws-server.ts    # WebSocket
+│   ├── config.ts           # 配置管理
+│   ├── types/              # TypeScript 类型定义
+│   └── index.ts            # 应用入口
 ├── electron/               # Electron 桌面应用
 ├── personas/               # 预设角色
 ├── tests/                  # 测试文件
@@ -194,9 +195,9 @@ npm test
 
 ### 代码规范
 
-- **语言**：使用 JavaScript（ES6+）
+- **语言**：使用 TypeScript（ES6+）
 - **格式化**：使用 Prettier，提交前运行 `npm run format`
-- **Lint**：使用 ESLint，提交前运行 `npm run lint`
+- **Lint**：使用 ESLint + TypeScript ESLint，提交前运行 `npm run lint`
 - **命名**：
   - 变量/函数：`camelCase`
   - 类：`PascalCase`

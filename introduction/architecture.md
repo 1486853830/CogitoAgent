@@ -1,4 +1,4 @@
-﻿# 架构设计详解
+# 架构设计详解
 
 > 详细文档：核心组件、思考循环、工具调用流程、桌面模式架构与 WebSocket 通信。
 
@@ -16,7 +16,7 @@
 | **安全沙箱** | `sandbox.ts` | 命令执行沙箱，提供安全的代码/命令执行环境，使用 `isolated-vm` 进程级隔离 |
 | **统计模块** | `stats.ts` | 工具使用追踪和性能指标，记录调用次数、耗时等统计数据 |
 | **追踪模块** | `tracing.ts` | 轻量级可观测性，记录工具执行和 LLM 调用的详细追踪信息 |
-| **重试与熔断** | `retry.ts` | 可靠的网络请求，支持指数退避重试和熔断机制 |
+| **集群命令** | `cluster-commands.ts` | 子智能体管理，支持创建、委派、停止子智能体 |
 | **MCP Server** | `mcp.ts` | 将工具暴露为 MCP 协议，支持与其他 AI 客户端集成 |
 | **插件系统** | `plugin.ts` | 动态加载自定义工具插件，扩展 Agent 能力 |
 | **WebSocket 服务器** | `ws-server.ts` | 实时双向通信层，为 Electron 客户端和其他 WS 客户端提供消息通道（端口 9527） |
@@ -43,7 +43,7 @@ flowchart TB
         Sandbox["sandbox.ts<br/>安全沙箱"]
         Stats["stats.ts<br/>统计模块"]
         Tracing["tracing.ts<br/>追踪模块"]
-        Retry["retry.ts<br/>重试熔断"]
+        Cluster["cluster-commands.ts<br/>集群命令"]
         MCP["mcp.ts<br/>MCP Server"]
         Plugin["plugin.ts<br/>插件系统"]
     end
@@ -66,7 +66,7 @@ flowchart TB
     Agent --> Stats
     Agent --> Tracing
     Commands --> Sandbox
-    Commands --> Retry
+    Agent --> Cluster
     Registry --> Plugin
     Agent --> MCP
 
