@@ -6,11 +6,18 @@
 
 import { ipcMain } from 'electron';
 import WebSocket from 'ws';
+import fs from 'fs';
+import path from 'path';
 
 const WS_URL = 'ws://localhost:9527';
 let ws = null;
 let reconnectTimer = null;
 const connectedWindows = new Set();
+let USER_DATA_DIR = '';
+
+function setUserDataDir(dir) {
+  USER_DATA_DIR = dir;
+}
 
 /**
  * 连接 WebSocket 服务
@@ -32,7 +39,31 @@ function connect() {
   ws.on('message', (raw) => {
     try {
       const msg = JSON.parse(raw.toString());
-      // 向所有已注册的窗口转发消息
+      
+      if (msg.type === 'session-meta-update') {
+        if (USER_DATA_DIR) {
+          const metaPath = path.join(USER_DATA_DIR, 'data', 'sessions', 'meta.json');
+          try {
+            fs.mkdirSync(path.dirname(metaPath), { recursive: true });
+            const tempFile = metaPath + '.tmp';
+            fs.writeFileSync(tempFile, JSON.stringify(msg.meta, null, 2), 'utf-8');
+            if (fs.existsSync(metaPath)) {
+              fs.unlinkSync(metaPath);
+            }
+            fs.renameSync(tempFile, metaPath);
+            console.log('[AgentBridge] 会话元数据已更新');
+            connectedWindows.forEach(win => {
+              if (!win.isDestroyed()) {
+                win.webContents.send('session-updated');
+              }
+            });
+          } catch (e) {
+            console.error('[AgentBridge] 会话元数据保存失败:', e.message);
+          }
+        }
+        return;
+      }
+      
       connectedWindows.forEach(win => {
         if (!win.isDestroyed()) {
           if (msg.type === 'agent-state') {
@@ -162,4 +193,4 @@ function sendToAgent(text) {
   return false;
 }
 
-export { initAgentBridge, sendToAgent };
+export { initAgentBridge, sendToAgent, setUserDataDir };

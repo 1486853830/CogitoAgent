@@ -312,14 +312,14 @@ async function configureMode(rl: readline.Interface): Promise<string> {
   println('');
   println(COLORS.white + '  1 - desktop（桌面宠物模式）' + COLORS.reset);
   println(COLORS.white + '  2 - dashboard（工作台模式）' + COLORS.reset);
-  println(COLORS.dim + '  按回车使用默认值: desktop' + COLORS.reset);
+  println(COLORS.dim + '  按回车使用默认值: dashboard' + COLORS.reset);
   println('');
   
   const answer = await question(rl, COLORS.yellow + '  请输入模式编号: ' + COLORS.reset);
   const trimmed = answer.trim();
   
   if (!trimmed) {
-    return 'desktop';
+    return 'dashboard';
   }
   
   if (trimmed === '1' || trimmed.toLowerCase() === 'desktop') {
@@ -496,7 +496,8 @@ function applyPersona(persona: PersonaInfo | null): boolean {
  * 保存配置到 .env 文件
  */
 function saveEnvConfig(config: any): boolean {
-  const envPath = path.join(process.cwd(), '.env');
+  const dataDir = process.env.COGITO_USER_DATA_DIR || process.cwd();
+  const envPath = path.join(dataDir, '.env');
   
   const lines = [
     '# CogitoAgent 配置文件',

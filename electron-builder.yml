@@ -32,6 +32,7 @@ nsis:
   shortcutName: CogitoAgent
 asar: true
 compression: maximum
+npmRebuild: false
 publish:
   provider: generic
   url: ""

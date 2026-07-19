@@ -3,8 +3,10 @@ import path from 'path';
 import crypto from 'crypto';
 import { buildSystemPrompt } from './system-prompt.ts';
 import type { Message, SessionMeta, SessionInfo } from '../types/index.ts';
+import { broadcast } from '../io/ws-server.ts';
 
-const SESSIONS_DIR = path.resolve(process.cwd(), 'data', 'sessions');
+const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
+const SESSIONS_DIR = path.resolve(DATA_DIR, 'data', 'sessions');
 const META_FILE = path.join(SESSIONS_DIR, 'meta.json');
 
 function generateId(): string {
@@ -32,10 +34,17 @@ function loadMeta(): SessionMeta {
 
 function saveMeta(meta: SessionMeta): void {
   try {
+    broadcast('session-meta-update', { meta });
+    console.log('[会话] 元数据已广播给主进程');
+  } catch (e) {
+    console.error(`[会话] 元数据广播失败: ${(e as Error).message}`);
+  }
+  
+  try {
     ensureDir();
     writeFileSync(META_FILE, JSON.stringify(meta, null, 2), 'utf-8');
   } catch (e) {
-    console.error(`[会话] 元数据保存失败: ${(e as Error).message}`);
+    console.warn(`[会话] 本地元数据保存失败（主进程会处理）: ${(e as Error).message}`);
   }
 }
 

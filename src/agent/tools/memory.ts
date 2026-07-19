@@ -1,7 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-const MEMORY_FILE = path.resolve(process.cwd(), 'data', 'memory.json');
+const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
+const MEMORY_FILE = path.resolve(DATA_DIR, 'data', 'memory.json');
 
 let memories: any[] = [];
 

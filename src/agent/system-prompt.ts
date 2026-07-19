@@ -425,7 +425,8 @@ function buildSystemPrompt(): string {
   // 读取 persona（支持热切换）
   let personaHeader = '';
   try {
-    const personaContent = readFileSync(path.resolve(process.cwd(), 'persona.md'), 'utf-8');
+    const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
+    const personaContent = readFileSync(path.resolve(DATA_DIR, 'persona.md'), 'utf-8');
     if (personaContent.trim()) {
       personaHeader = personaContent + '\n\n---\n\n';
     }
