@@ -1,4 +1,4 @@
-﻿# 核心系统详解
+# 核心系统详解
 
 > 详细文档：记忆系统、任务管理、代码执行沙箱、预设人设与会话管理。
 
@@ -6,7 +6,7 @@
 
 ## 1. 记忆系统（Memory System）
 
-记忆系统为 CogitoAgent 提供持久化存储和检索能力，支持标签分类和相关性排序。底层基于 JSON 文件存储。
+记忆系统为 CogitoAgent 提供持久化存储和检索能力，支持标签分类和相关性排序。底层基于 JSON 文件存储在用户数据目录。
 
 ### 核心操作
 
@@ -19,18 +19,18 @@
 
 ### 数据结构
 
-记忆条目在底层以 JSON 对象存储，对应的关系模型如下：
+记忆条目在底层以 JSON 对象存储，文件路径为 `~/.cogito-agent/data/memories.json`：
 
-```sql
-CREATE TABLE memories (
-    id          INTEGER PRIMARY KEY,      -- 时间戳毫秒数
-    content     TEXT NOT NULL,             -- 记忆内容
-    tags        TEXT[] DEFAULT '{}',       -- 标签数组（全部小写）
-    category    TEXT DEFAULT 'general',    -- 分类（全部小写）
-    created_at  TIMESTAMP NOT NULL,        -- 创建时间
-    accessed_at TIMESTAMP NOT NULL,        -- 最后访问时间
-    access_count INTEGER DEFAULT 0         -- 访问次数
-);
+```json
+{
+  "id": "timestamp-ms",
+  "content": "记忆内容",
+  "tags": ["标签1", "标签2"],
+  "category": "general",
+  "createdAt": "ISO 8601 时间戳",
+  "accessedAt": "ISO 8601 时间戳",
+  "accessCount": 0
+}
 ```
 
 ### 检索机制
@@ -54,18 +54,20 @@ CREATE TABLE memories (
 
 ### 数据结构
 
-```sql
-CREATE TABLE tasks (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    title       TEXT NOT NULL,             -- 任务标题
-    description TEXT DEFAULT '',           -- 任务描述
-    priority    TEXT DEFAULT 'medium',     -- 优先级: high / medium / low
-    status      TEXT DEFAULT 'pending',    -- 状态: pending / in_progress / completed
-    parent_id   INTEGER REFERENCES tasks(id),  -- 父任务 ID
-    children    TEXT[] DEFAULT '[]',       -- 子任务 ID 列表
-    created_at  TIMESTAMP NOT NULL,
-    updated_at  TIMESTAMP NOT NULL
-);
+任务数据存储在 JSON 文件 `~/.cogito-agent/data/tasks.json` 中：
+
+```json
+{
+  "id": "uuid",
+  "title": "任务标题",
+  "description": "任务描述",
+  "priority": "medium",
+  "status": "pending",
+  "parentId": "parent-uuid",
+  "children": ["child-uuid-1", "child-uuid-2"],
+  "createdAt": "ISO 8601 时间戳",
+  "updatedAt": "ISO 8601 时间戳"
+}
 ```
 
 ### 核心操作
@@ -107,9 +109,7 @@ CREATE TABLE tasks (
 
 ## 3. 代码执行沙箱（Code Execution Sandbox）
 
-![代码执行功能截图](runapp.png)
-
-沙箱提供安全的代码执行环境，支持 JavaScript 和 Python 两种语言。
+代码执行沙箱提供安全的代码执行环境，支持 JavaScript 和 Python 两种语言。
 
 ### JavaScript 执行
 
@@ -213,7 +213,7 @@ JavaScript 执行有三种模式，按优先级依次尝试：
 
 ### 可用人设
 
-**现代风（13 个）：**
+**现代风（14 个）：**
 
 | 角色 ID | 名称 | 说明 |
 |---------|------|------|
@@ -230,8 +230,9 @@ JavaScript 执行有三种模式，按优先级依次尝试：
 | Painter | 画师 | 以美为眼的艺术大师 |
 | Merchant | 商人 | 精打细算善于经营 |
 | Hermit | 隐士 | 淡泊明志洞悉世事 |
+| Monk | 僧人 | 清心寡欲禅定智慧 |
 
-**古风（9 个）：**
+**古风（11 个）：**
 
 | 角色 ID | 名称 | 说明 |
 |---------|------|------|
@@ -244,6 +245,8 @@ JavaScript 执行有三种模式，按优先级依次尝试：
 | Imperial-Critic | 谏官 | 直言不讳忠心耿耿 |
 | Doctor | 医师 | 仁心仁术悬壶济世 |
 | Athlete | 运动员 | 充满活力坚忍不拔 |
+| Monk | 僧人 | 清心寡欲禅定智慧 |
+| Taoist | 道士 | 道法自然清静无为 |
 
 ### 人设系统详解
 
@@ -315,12 +318,17 @@ JavaScript 执行有三种模式，按优先级依次尝试：
 ### 会话存储结构
 
 ```
-data/sessions/
+<用户数据目录>/data/sessions/
 ├── meta.json          # 会话元数据（列表 + 当前活跃会话 ID）
 ├── sess_xxx.json      # 每个会话的对话历史
 ├── sess_yyy.json
 └── sess_xxx_archive.json  # 自动归档的历史（最多 3 个归档）
 ```
+
+**用户数据目录**：
+- Windows: `C:\Users\<用户名>\AppData\Roaming\cogitoagent\data\sessions\`
+- macOS: `~/Library/Application Support/cogitoagent/data/sessions/`
+- Linux: `~/.config/cogitoagent/data/sessions/`
 
 ### 会话元数据结构
 

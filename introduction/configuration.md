@@ -1,4 +1,4 @@
-﻿# 配置指南
+# 配置指南
 
 > 详细文档：配置文件格式、环境变量完整列表、高级配置选项。
 
@@ -6,7 +6,12 @@
 
 ## 1. 配置文件 (config.json)
 
-配置文件位于项目根目录下的 `config.json`，使用 JSON 格式。所有字段均为可选，缺失字段将使用默认值。
+配置文件位于用户数据目录下的 `config.json`，使用 JSON 格式。所有字段均为可选，缺失字段将使用默认值。
+
+**存储路径**：
+- Windows: `C:\Users\<用户名>\AppData\Roaming\cogitoagent\config.json`
+- macOS: `~/Library/Application Support/cogitoagent/config.json`
+- Linux: `~/.config/cogitoagent/config.json`
 
 **完整示例：**
 
