@@ -148,11 +148,11 @@ jobs:
       - name: Install npm dependencies
         run: npm ci --ignore-scripts
 
-      - name: Build native modules
-        run: npm rebuild isolated-vm --target_platform=win32 --target_arch=x64
+      - name: Install electron-builder and electron-rebuild
+        run: npm install electron-builder electron-rebuild --save-dev
 
-      - name: Install electron-builder
-        run: npm install electron-builder --save-dev
+      - name: Rebuild native modules for Electron
+        run: npx electron-rebuild -f -w isolated-vm
 
       - name: Build Windows installer
         run: npm run build:nsis
