@@ -146,13 +146,10 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Install npm dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci
 
-      - name: Install electron-builder and electron-rebuild
-        run: npm install electron-builder electron-rebuild --save-dev
-
-      - name: Rebuild native modules for Electron
-        run: npx electron-rebuild -f -w isolated-vm
+      - name: Install electron-builder
+        run: npm install electron-builder --save-dev
 
       - name: Build Windows installer
         run: npm run build:nsis
