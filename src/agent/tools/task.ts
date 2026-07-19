@@ -1,7 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-const TASKS_FILE = path.resolve(process.cwd(), 'data', 'tasks.json');
+const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
+const TASKS_FILE = path.resolve(DATA_DIR, 'data', 'tasks.json');
 
 let tasks: any[] = [];
 let nextId = 1;

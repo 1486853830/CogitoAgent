@@ -8,7 +8,7 @@ import { app, BrowserWindow, ipcMain, screen, dialog, shell } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn, execSync } from 'child_process';
-import { initAgentBridge, sendToAgent } from './agent-bridge.js';
+import { initAgentBridge, sendToAgent, setUserDataDir } from './agent-bridge.js';
 import fs from 'fs';
 import os from 'os';
 
@@ -28,8 +28,10 @@ let currentPersona = '';  // 当前选中的 persona
 let currentMode = 'desktop';  // 当前模式: desktop / dashboard
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
-const CONFIG_FILE = path.join(PROJECT_ROOT, 'config.json');
-const PERSONA_FILE = path.join(PROJECT_ROOT, 'persona.md');
+const USER_DATA_DIR = app.getPath('userData');
+const CONFIG_FILE = path.join(USER_DATA_DIR, 'config.json');
+setUserDataDir(USER_DATA_DIR);
+const PERSONA_FILE = path.join(USER_DATA_DIR, 'persona.md');
 
 const CSP_HEADER = `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; media-src 'self' https:; connect-src 'self' http://localhost:9527; object-src 'none'; frame-src 'none';`;
 
@@ -38,7 +40,7 @@ const CSP_HEADER = `default-src 'self'; script-src 'self' 'unsafe-inline'; style
  */
 function isConfigured() {
   // 检查 .env 文件中的关键配置
-  const envPath = path.join(PROJECT_ROOT, '.env');
+  const envPath = path.join(USER_DATA_DIR, '.env');
   try {
     if (fs.existsSync(envPath)) {
       const envContent = fs.readFileSync(envPath, 'utf-8');
@@ -92,7 +94,7 @@ function saveConfig(config) {
     console.log('[主进程] 配置已保存到 config.json');
 
     // 保存 .env 文件
-    const envPath = path.join(PROJECT_ROOT, '.env');
+    const envPath = path.join(USER_DATA_DIR, '.env');
     const envLines = [
       '# CogitoAgent 配置文件',
       '# 由设置向导自动生成',
@@ -281,24 +283,30 @@ function killPortProcess(port = 9527) {
  * 从 .env 文件读取环境变量
  */
 function loadEnvFile() {
-  const envPath = path.join(PROJECT_ROOT, '.env');
+  const envPaths = [
+    path.join(USER_DATA_DIR, '.env'),
+    path.join(PROJECT_ROOT, '.env')
+  ];
   const envConfig = {};
 
-  if (fs.existsSync(envPath)) {
-    try {
-      const content = fs.readFileSync(envPath, 'utf-8');
-      const lines = content.split('\n');
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith('#')) {
-          const [key, value] = trimmed.split('=', 2);
-          if (key && value !== undefined) {
-            envConfig[key] = value;
+  for (const envPath of envPaths) {
+    if (fs.existsSync(envPath)) {
+      try {
+        const content = fs.readFileSync(envPath, 'utf-8');
+        const lines = content.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#')) {
+            const [key, value] = trimmed.split('=', 2);
+            if (key && value !== undefined) {
+              envConfig[key] = value;
+            }
           }
         }
+        break;
+      } catch (e) {
+        console.error('[主进程] 读取 .env 文件失败:', e.message);
       }
-    } catch (e) {
-      console.error('[主进程] 读取 .env 文件失败:', e.message);
     }
   }
 
@@ -309,23 +317,42 @@ function loadEnvFile() {
  * 启动终端 Agent 进程
  */
 function startAgentProcess() {
-  // 从 .env 文件重新读取环境变量，确保使用最新配置
   const fileEnv = loadEnvFile();
+
+  const isPackaged = app.isPackaged;
+  const workingDir = isPackaged ? process.resourcesPath : PROJECT_ROOT;
 
   const env = {
     ...process.env,
-    ...fileEnv,  // 用文件中的配置覆盖现有环境变量
+    ...fileEnv,
     ELECTRON_RUN_AS_NODE: undefined,
+    COGITO_USER_DATA_DIR: USER_DATA_DIR,
     ELECTRON_MODE: 'true'
   };
 
-  agentProcess = spawn('npx', ['tsx', 'src/index.ts'], {
-    cwd: PROJECT_ROOT,
-    env,
-    stdio: ['pipe', 'pipe', 'pipe'],
-    windowsHide: true,
-    shell: true,
-  });
+  let tsxPath;
+  if (isPackaged) {
+    try {
+      tsxPath = require.resolve('tsx');
+    } catch {
+      tsxPath = path.join(workingDir, 'node_modules', 'tsx', 'dist', 'bin.js');
+    }
+    agentProcess = spawn(process.execPath, [tsxPath, 'src/index.ts'], {
+      cwd: workingDir,
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+      shell: false,
+    });
+  } else {
+    agentProcess = spawn('npx', ['tsx', 'src/index.ts'], {
+      cwd: PROJECT_ROOT,
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+      shell: true,
+    });
+  }
 
   return new Promise((resolve) => {
     let resolved = false;
@@ -733,7 +760,7 @@ app.whenReady().then(async () => {
   // ===== 会话管理 IPC =====
   // 获取会话列表（从 meta.json 读取基本信息，从会话文件读取预览）
   ipcMain.handle('get-sessions', () => {
-    const sessionsDir = path.join(PROJECT_ROOT, 'data', 'sessions');
+    const sessionsDir = path.join(USER_DATA_DIR, 'data', 'sessions');
     const metaPath = path.join(sessionsDir, 'meta.json');
     try {
       let sessions = [];
@@ -837,7 +864,7 @@ app.whenReady().then(async () => {
 
   // 获取当前会话 ID
   ipcMain.handle('get-current-session', () => {
-    const metaPath = path.join(PROJECT_ROOT, 'data', 'sessions', 'meta.json');
+    const metaPath = path.join(USER_DATA_DIR, 'data', 'sessions', 'meta.json');
     try {
       if (fs.existsSync(metaPath)) {
         const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
@@ -851,7 +878,7 @@ app.whenReady().then(async () => {
 
   // 获取指定会话的历史消息（排除 system prompt 和系统注入的工具结果消息）
   ipcMain.handle('get-session-history', (_event, sessionId) => {
-    const sessionFile = path.join(PROJECT_ROOT, 'data', 'sessions', `${sessionId}.json`);
+    const sessionFile = path.join(USER_DATA_DIR, 'data', 'sessions', `${sessionId}.json`);
     try {
       if (fs.existsSync(sessionFile)) {
         const messages = JSON.parse(fs.readFileSync(sessionFile, 'utf-8'));
@@ -900,7 +927,7 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle('get-wechat-history', () => {
-    const wechatFile = path.join(PROJECT_ROOT, 'data', 'wechat', 'weichat.json');
+    const wechatFile = path.join(USER_DATA_DIR, 'data', 'wechat', 'weichat.json');
     try {
       if (fs.existsSync(wechatFile)) {
         const data = JSON.parse(fs.readFileSync(wechatFile, 'utf-8'));
@@ -992,7 +1019,7 @@ async function launchMainApp() {
 
   // 读取启动模式
   const envConfig = loadEnvFile();
-  const mode = envConfig['COGITO_MODE'] || process.env.COGITO_MODE || 'desktop';
+  const mode = envConfig['COGITO_MODE'] || process.env.COGITO_MODE || 'dashboard';
   currentMode = mode;
   console.log('[主进程] 启动模式:', mode);
 

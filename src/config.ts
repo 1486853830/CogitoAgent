@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import type { Config } from './types/index.ts';
 
-const CONFIG_DIR = process.cwd();
+const CONFIG_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const CONFIG_FILE = path.resolve(CONFIG_DIR, 'config.json');
 const ENV_FILE = path.resolve(CONFIG_DIR, '.env');
 

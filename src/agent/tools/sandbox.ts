@@ -409,6 +409,12 @@ async function runJavaScriptSandbox(code: string, timeout: number = 10000): Prom
     return runJavaScriptDirect(code);
   }
 
+  const ivm = await getIvm();
+  if (!ivm) {
+    console.warn('[sandbox] isolated-vm 不可用，使用原生 vm 模块');
+    return await runJavaScriptFallback(code, timeout);
+  }
+
   try {
     return await runJavaScriptIsolated(code, timeout);
   } catch (error: any) {
