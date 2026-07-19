@@ -1,10 +1,11 @@
 import { execFile } from 'child_process';
 import { search as webSearch } from '../../api/webSearch.ts';
 import * as cheerio from 'cheerio';
+import os from 'os';
 
 function isValidUrl(url: string): boolean {
   try {
-    const parsed = new URL(url);
+    const parsed = new URL(url.trim());
     return ['http:', 'https:'].includes(parsed.protocol);
   } catch {
     return false;
@@ -61,7 +62,22 @@ async function browse(url: string): Promise<any> {
       resolve({ success: false, error: `无效的 URL: ${url}` });
       return;
     }
-    execFile('cmd', ['/c', 'start', '', url], (error) => {
+    const platform = os.platform();
+    let command: string;
+    let args: string[];
+    
+    if (platform === 'win32') {
+      command = 'cmd';
+      args = ['/c', 'start', '', url.trim()];
+    } else if (platform === 'darwin') {
+      command = 'open';
+      args = [url.trim()];
+    } else {
+      command = 'xdg-open';
+      args = [url.trim()];
+    }
+    
+    execFile(command, args, (error) => {
       if (error) {
         resolve({ success: false, error: `打开链接失败: ${error.message}` });
       } else {
