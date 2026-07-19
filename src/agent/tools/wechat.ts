@@ -5,7 +5,8 @@ import QRCode from 'qrcode';
 import { loginWithQR, sendImage, bodyFromItemList, setContextToken, getContextToken } from '@pawastation/ilink-bot-sdk';
 import { broadcast } from '../../io/ws-server.ts';
 
-const STATE_DIR = path.resolve(process.cwd(), 'data', 'wechat');
+const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
+const STATE_DIR = path.resolve(DATA_DIR, 'data', 'wechat');
 const STATE_FILE = path.join(STATE_DIR, 'wechat-state.json');
 const MESSAGES_FILE = path.join(STATE_DIR, 'weichat.json');
 

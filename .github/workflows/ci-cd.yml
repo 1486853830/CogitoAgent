@@ -146,7 +146,11 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Install npm dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
+
+      - name: Try rebuild isolated-vm (continue on error)
+        run: npm rebuild isolated-vm --target_platform=win32 --target_arch=x64 2>&1 || echo "isolated-vm 编译失败，将在运行时降级到原生 vm"
+        continue-on-error: true
 
       - name: Install electron-builder
         run: npm install electron-builder --save-dev

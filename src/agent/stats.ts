@@ -1,7 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-const STATS_FILE = path.join(process.cwd(), 'data', 'stats.json');
+const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
+const STATS_FILE = path.join(DATA_DIR, 'data', 'stats.json');
 
 interface ToolCategoryStats {
   callCount: number;

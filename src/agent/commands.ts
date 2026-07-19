@@ -332,8 +332,9 @@ function printClearConfirm(): void {
  * 切换 Persona（将 persona 文件复制为 persona.md 并重置对话）
  */
 function switchPersona(personaName: string): void {
+  const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
   const personaPath = path.resolve(process.cwd(), 'personas', personaName, 'persona.md');
-  const targetPath = path.resolve(process.cwd(), 'persona.md');
+  const targetPath = path.resolve(DATA_DIR, 'persona.md');
 
   if (!existsSync(personaPath)) {
     println(`[错误] Persona "${personaName}" 不存在`, 'red');
