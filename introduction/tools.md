@@ -1,4 +1,4 @@
-﻿# 工具系统详解
+# 工具系统详解
 
 > 详细文档：工具注册机制、各分类工具使用说明与最佳实践。
 
@@ -29,6 +29,8 @@
 | 图像识别 | `ocr.ts` | `ocr`, `ocrBatch` |
 | 视觉分析 | `vision.ts` | `vision`, `visionFromUrl` |
 | Office 文档 | `office.ts` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
+| 集群管理 | `cluster.ts` | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting` |
+| 微信消息 | `wechat.ts` | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode` |
 | GIS 地理信息 | `gis.ts` | `convertCoord`, `calcDistance`, `calcArea`, `calcCenter`, `pointInPolygon`, `readGeoJSON`, `queryGeoJSON`, `geoJSONStats`, `geoJSONToCSV`, `geoJSONToKML`, `isInChina` |
 | 生命科学 | `bio.ts` | `dnaComplement`, `dnaReverseComplement`, `rnaTranscribe`, `translate`, `gcContent`, `molecularWeight`, `hammingDistance`, `levenshteinDistance`, `tmEstimate`, `hairpinCheck`, `parseFASTA`, `parseFASTQ`, `fastaToCSV`, `codonUsage`, `randomSeq` |
 | 医学 | `med.ts` | `bmi`, `bsa`, `egfr`, `crcl`, `childPugh`, `calculateDose`, `bsaDose`, `infusionRate`, `idealBodyWeight`, `convertUnit`, `temperatureConvert`, `meanArterialPressure`, `anionGap`, `correctedCalcium`, `oxygenIndex`, `parseVitalSigns`, `vitalsReport` |

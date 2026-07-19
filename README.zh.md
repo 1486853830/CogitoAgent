@@ -27,7 +27,7 @@
 | **TypeScript 核心** | 全量 TypeScript 重构，类型安全，编译时错误检测 |
 | **隐私优先** | 用户工作文件保留在本地，仅通过 API 将必要上下文发送至你指定的模型服务商 |
 | **持续思考** | 每 3 秒自动触发一次思考循环（可配置） |
-| **工具执行** | 16+ 工具模块，100+ 工具，覆盖文件操作、代码执行、Git、数据库、OCR、Office 文档等 |
+| **工具执行** | 28 工具模块，200+ 工具，覆盖文件操作、代码执行、Git、数据库、OCR、Office 文档、GIS、生物信息、医学、化学、金融等 |
 | **安全沙箱** | JavaScript 代码执行使用 `isolated-vm` 进行进程级隔离 |
 | **多会话管理** | 多个独立的对话会话，持久化存储，自动压缩 |
 | **桌面模式** | Electron 桌面窗口，通过 WebSocket 与终端 Agent 通信 |
@@ -140,8 +140,8 @@ flowchart LR
 
 | 分类 | 文件 | 主要函数 |
 |------|------|----------|
-| 文件操作 | `file.ts` | `ls`, `read`, `create`, `copy`, `mkdir` |
-| 路径工具 | `path.ts` | `getBasePath` |
+| 文件操作 | `file.ts` | `ls`, `read`, `create`, `copy`, `mkdir`, `write`, `append`, `move`, `rename`, `delete` |
+| 路径工具 | `path.ts` | `getBasePath`, `joinPath`, `resolvePath`, `normalizePath`, `getExtension`, `getFileName`, `getParentDir` |
 | 网络工具 | `web.ts` | `search`, `browse`, `fetchPage` |
 | 浏览器自动化 | `browser.ts` | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile` |
 | 系统操作 | `system.ts` | `listApps`, `openApp`, `closeApp` |
@@ -150,21 +150,23 @@ flowchart LR
 | Git | `git.ts` | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
 | 任务管理 | `task.ts` | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks` |
 | 记忆系统 | `memory.ts` | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory` |
-| 数据处理 | `data.ts` | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData` |
+| 数据处理 | `data.ts` | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`, `filterData`, `groupData`, `aggregateData` |
 | 数据库 | `db.ts` | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB` |
 | 邮件 | `email.ts` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig` |
 | 系统监控 | `monitor.ts` | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem` |
 | 定时任务 | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler` |
-| 存储 | `storage.ts` | `FileStorage`, `createStorage` |
+| 存储 | `storage.ts` | `FileStorage`, `createStorage`, `getStorage`, `clearStorage` |
 | 图像识别 | `ocr.ts` | `ocr`, `ocrBatch` |
 | 视觉分析 | `vision.ts` | `vision`, `visionFromUrl` |
 | Office 文档 | `office.ts` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
-| GIS 地理信息 | `gis.ts` | `convertCoord`, `calcDistance`, `calcArea`, `readGeoJSON`, `pointInPolygon`, `geoJSONToKML` |
-| 生命科学 | `bio.ts` | `dnaComplement`, `translate`, `gcContent`, `parseFASTA`, `hammingDistance`, `codonUsage` |
-| 医学 | `med.ts` | `bmi`, `egfr`, `childPugh`, `convertUnit`, `oxygenIndex`, `loanPayment`, `parseVitalSigns` |
-| 化学 | `chem.ts` | `molWeight`, `elementInfo`, `phFromH`, `idealGasLaw`, `dilution`, `elementComposition` |
-| 金融 | `finance.ts` | `compoundInterest`, `npv`, `irr`, `loanPayment`, `roi`, `volatility`, `movingAverage` |
-| 数学统计 | `math.ts` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `solveQuadratic`, `factorial` |
+| 集群管理 | `cluster.ts` | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting` |
+| 微信消息 | `wechat.ts` | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode` |
+| GIS 地理信息 | `gis.ts` | `convertCoord`, `calcDistance`, `calcArea`, `calcCenter`, `pointInPolygon`, `isInChina`, `readGeoJSON`, `queryGeoJSON`, `geoJSONStats`, `geoJSONToCSV`, `geoJSONToKML` |
+| 生命科学 | `bio.ts` | `dnaComplement`, `dnaReverseComplement`, `rnaTranscribe`, `translate`, `gcContent`, `molecularWeight`, `hammingDistance`, `levenshteinDistance`, `tmEstimate`, `hairpinCheck`, `parseFASTA`, `parseFASTQ`, `fastaToCSV`, `codonUsage`, `randomSeq` |
+| 医学 | `med.ts` | `bmi`, `bsa`, `egfr`, `crcl`, `childPugh`, `calculateDose`, `bsaDose`, `infusionRate`, `idealBodyWeight`, `convertUnit`, `temperatureConvert`, `meanArterialPressure`, `anionGap`, `correctedCalcium`, `oxygenIndex`, `parseVitalSigns`, `vitalsReport` |
+| 化学 | `chem.ts` | `elementInfo`, `molWeight`, `elementComposition`, `molarity`, `dilution`, `phFromH`, `phToH`, `idealGasLaw`, `gasDensity` |
+| 金融 | `finance.ts` | `compoundInterest`, `presentValue`, `futureValueAnnuity`, `npv`, `irr`, `paybackPeriod`, `roi`, `loanPayment`, `amortizationSchedule`, `totalInterest`, `movingAverage`, `volatility` |
+| 数学统计 | `math.ts` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `matrixDeterminant`, `matrixInverse`, `solveQuadratic`, `factorial`, `combination`, `permutation`, `siConvert` |
 
 > 详细工具文档：注册机制、使用示例、最佳实践 → [introduction/tools.md](introduction/tools.md)
 
@@ -335,9 +337,14 @@ flowchart TB
 | `/tools` | 列出所有可用工具 |
 | `/clear` | 清除对话历史 |
 | `/debug` | 切换调试模式 |
-| `/wechat` | 显示微信通道状态 |
-| `/wechat login` | 扫码登录微信 |
-| `/wechat logout` | 退出微信登录 |
+| `/wechat/status` | 显示微信通道状态 |
+| `/wechat/login` | 扫码登录微信 |
+| `/wechat/logout` | 退出微信登录 |
+| `/spawn <persona> <name> <instruction>` | 创建子智能体 |
+| `/agents` | 列出所有子智能体 |
+| `/delegate <agentId> <task>` | 向子智能体委派任务 |
+| `/stop-agent <agentId>` | 停止指定子智能体 |
+| `/stop-all-agents` | 停止所有子智能体 |
 | `ENTER` | 中断思考，进入输入模式 |
 | `exit` | 退出程序 |
 
@@ -463,10 +470,10 @@ flowchart TD
     class MCP,PLUGIN,WECHAT integration;
 ```
 
-- **记忆系统** —— 基于 SQLite 的长期存储和语义检索
+- **记忆系统** —— 基于 JSON 的长期存储和标签语义检索
 - **任务管理** —— 任务创建、分解和状态追踪
 - **代码沙箱** —— `isolated-vm` 进程级隔离，支持 JS 和 Python
-- **角色系统** —— 22 个预设角色，支持自定义和热切换
+- **角色系统** —— 25 个预设角色（14 现代 + 11 古风/地域），支持自定义和热切换
 - **会话管理** —— 独立上下文，自动压缩
 - **统计模块** —— 工具使用追踪和性能指标
 - **思维链可视化** —— 实时思考过程展示

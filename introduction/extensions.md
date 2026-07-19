@@ -1,4 +1,4 @@
-﻿# 扩展功能详解
+# 扩展功能详解
 
 > 详细文档：插件系统、MCP 协议、追踪模块、重试机制、多模型支持、联网搜索。
 
@@ -13,9 +13,9 @@
 ```
 plugins/
 ├── my-plugin/
-│   └── index.js          # 插件入口文件
+│   └── index.ts          # 插件入口文件
 └── another-plugin/
-    └── index.js
+    └── index.ts
 ```
 
 ### 1.2 插件开发
@@ -154,21 +154,22 @@ MCP 服务随 Agent 启动自动启用，默认监听端口配置在 `config.jso
 
 ## 四、重试机制
 
-重试模块提供可靠的网络请求支持，支持指数退避和错误类型过滤。
+重试逻辑集成在 API 客户端层，为网络请求提供可靠的重试支持，支持指数退避策略。
 
 ### 4.1 重试配置
 
-```javascript
-const { retry } = require('./retry');
+重试机制通过 `config.json` 中的 `api.retry` 配置项控制：
 
-const result = await retry(async () => {
-  return await fetch('https://api.example.com/data');
-}, {
-  maxAttempts: 3,
-  delay: 1000,
-  backoff: 'exponential',
-  retryOn: [Error, TimeoutError]
-});
+```json
+{
+  "api": {
+    "retry": {
+      "maxAttempts": 3,
+      "baseDelay": 1000,
+      "backoffFactor": 2
+    }
+  }
+}
 ```
 
 ### 4.2 重试选项
@@ -176,7 +177,7 @@ const result = await retry(async () => {
 | 选项 | 说明 | 默认值 |
 |------|------|--------|
 | `maxAttempts` | 最大重试次数 | 3 |
-| `delay` | 初始延迟（毫秒） | 1000 |
+| `baseDelay` | 初始延迟（毫秒） | 1000 |
 | `backoff` | 退避策略 | `exponential` |
 | `retryOn` | 需要重试的错误类型 | `[Error]` |
 | `onRetry` | 重试回调 | `null` |

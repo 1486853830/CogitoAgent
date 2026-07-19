@@ -27,7 +27,7 @@ Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Contin
 | **TypeScript Core** | Full TypeScript migration with type safety and compile-time error detection |
 | **Privacy First** | Workspace files stay local; only conversation context is sent to the LLM API you specify |
 | **Continuous Thinking** | Automatically triggers a thinking cycle every 3 seconds (configurable) |
-| **Tool Execution** | 16+ tool modules with 100+ tools for file operations, code execution, Git, databases, OCR, Office documents, and more |
+| **Tool Execution** | 28 tool modules with 200+ tools for file operations, code execution, Git, databases, OCR, Office documents, GIS, bioinformatics, medicine, chemistry, finance, and more |
 | **Security Sandbox** | JavaScript code execution uses `isolated-vm` for process-level isolation |
 | **Multi-Session Management** | Multiple independent conversation sessions with persistent storage and auto-compression |
 | **Desktop Mode** | Electron desktop window communicating via WebSocket with the terminal Agent |
@@ -140,8 +140,8 @@ flowchart LR
 
 | Category | File | Main Functions |
 |----------|------|----------------|
-| File Operations | `file.ts` | `ls`, `read`, `create`, `copy`, `mkdir` |
-| Path Utilities | `path.ts` | `getBasePath` |
+| File Operations | `file.ts` | `ls`, `read`, `create`, `copy`, `mkdir`, `write`, `append`, `move`, `rename`, `delete` |
+| Path Utilities | `path.ts` | `getBasePath`, `joinPath`, `resolvePath`, `normalizePath`, `getExtension`, `getFileName`, `getParentDir` |
 | Web Tools | `web.ts` | `search`, `browse`, `fetchPage` |
 | Browser Automation | `browser.ts` | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile` |
 | System Operations | `system.ts` | `listApps`, `openApp`, `closeApp` |
@@ -150,21 +150,23 @@ flowchart LR
 | Git | `git.ts` | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
 | Task Management | `task.ts` | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks` |
 | Memory System | `memory.ts` | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory` |
-| Data Processing | `data.ts` | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData` |
+| Data Processing | `data.ts` | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`, `filterData`, `groupData`, `aggregateData` |
 | Database | `db.ts` | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB` |
 | Email | `email.ts` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig` |
 | System Monitoring | `monitor.ts` | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem` |
 | Scheduled Tasks | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler` |
-| Storage | `storage.ts` | `FileStorage`, `createStorage` |
+| Storage | `storage.ts` | `FileStorage`, `createStorage`, `getStorage`, `clearStorage` |
 | Image Recognition | `ocr.ts` | `ocr`, `ocrBatch` |
 | Vision Analysis | `vision.ts` | `vision`, `visionFromUrl` |
 | Office Documents | `office.ts` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
-| GIS | `gis.ts` | `convertCoord`, `calcDistance`, `calcArea`, `readGeoJSON`, `pointInPolygon`, `geoJSONToKML` |
-| Life Science | `bio.ts` | `dnaComplement`, `translate`, `gcContent`, `parseFASTA`, `hammingDistance`, `codonUsage` |
-| Medicine | `med.ts` | `bmi`, `egfr`, `childPugh`, `convertUnit`, `oxygenIndex`, `parseVitalSigns` |
-| Chemistry | `chem.ts` | `molWeight`, `elementInfo`, `phFromH`, `idealGasLaw`, `dilution`, `elementComposition` |
-| Finance | `finance.ts` | `compoundInterest`, `npv`, `irr`, `loanPayment`, `roi`, `volatility`, `movingAverage` |
-| Math/Stats | `math.ts` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `solveQuadratic`, `factorial` |
+| Cluster | `cluster.ts` | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting` |
+| WeChat | `wechat.ts` | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode` |
+| GIS | `gis.ts` | `convertCoord`, `calcDistance`, `calcArea`, `calcCenter`, `pointInPolygon`, `isInChina`, `readGeoJSON`, `queryGeoJSON`, `geoJSONStats`, `geoJSONToCSV`, `geoJSONToKML` |
+| Life Science | `bio.ts` | `dnaComplement`, `dnaReverseComplement`, `rnaTranscribe`, `translate`, `gcContent`, `molecularWeight`, `hammingDistance`, `levenshteinDistance`, `tmEstimate`, `hairpinCheck`, `parseFASTA`, `parseFASTQ`, `fastaToCSV`, `codonUsage`, `randomSeq` |
+| Medicine | `med.ts` | `bmi`, `bsa`, `egfr`, `crcl`, `childPugh`, `calculateDose`, `bsaDose`, `infusionRate`, `idealBodyWeight`, `convertUnit`, `temperatureConvert`, `meanArterialPressure`, `anionGap`, `correctedCalcium`, `oxygenIndex`, `parseVitalSigns`, `vitalsReport` |
+| Chemistry | `chem.ts` | `elementInfo`, `molWeight`, `elementComposition`, `molarity`, `dilution`, `phFromH`, `phToH`, `idealGasLaw`, `gasDensity` |
+| Finance | `finance.ts` | `compoundInterest`, `presentValue`, `futureValueAnnuity`, `npv`, `irr`, `paybackPeriod`, `roi`, `loanPayment`, `amortizationSchedule`, `totalInterest`, `movingAverage`, `volatility` |
+| Math/Stats | `math.ts` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `matrixDeterminant`, `matrixInverse`, `solveQuadratic`, `factorial`, `combination`, `permutation`, `siConvert` |
 
 > Detailed tool documentation: registration mechanism, usage examples, best practices → [introduction/tools.md](introduction/tools.md) (Chinese)
 
@@ -308,7 +310,7 @@ flowchart TB
 | **sandbox.ts** | Code sandbox — isolated-vm process-level isolation |
 | **stats.ts** | Statistics — tool usage tracking and metrics |
 | **tracing.ts** | Tracing — lightweight observability for tool executions and LLM calls |
-| **retry.ts** | Retry & Circuit Breaker — reliable network requests |
+| **cluster-commands.ts** | Cluster commands — spawn, delegate, stop sub-agents |
 | **mcp.ts** | MCP Server — expose tools as MCP protocol |
 | **plugin.ts** | Plugin system — dynamic loading of custom tool plugins |
 | **ws-server.ts** | WebSocket — desktop mode communication (port 9527) |
@@ -335,9 +337,14 @@ flowchart TB
 | `/tools` | List all available tools |
 | `/clear` | Clear conversation history |
 | `/debug` | Toggle debug mode |
-| `/wechat` | Show WeChat channel status |
-| `/wechat login` | Login to WeChat via QR code |
-| `/wechat logout` | Logout from WeChat |
+| `/wechat/status` | Show WeChat channel status |
+| `/wechat/login` | Login to WeChat via QR code |
+| `/wechat/logout` | Logout from WeChat |
+| `/spawn <persona> <name> <instruction>` | Create a sub-agent |
+| `/agents` | List all sub-agents |
+| `/delegate <agentId> <task>` | Delegate task to sub-agent |
+| `/stop-agent <agentId>` | Stop a sub-agent |
+| `/stop-all-agents` | Stop all sub-agents |
 | `ENTER` | Interrupt thinking, enter input mode |
 | `exit` | Exit the program |
 
@@ -463,10 +470,10 @@ flowchart TD
     class MCP,PLUGIN,WECHAT integration;
 ```
 
-- **Memory System** — SQLite-based long-term storage and semantic retrieval
+- **Memory System** — JSON-based long-term storage with tag-based semantic retrieval
 - **Task Management** — Task creation, decomposition, and status tracking
 - **Code Sandbox** — `isolated-vm` process-level isolation for JS and Python
-- **Personas** — 22 preset roles with custom and hot-switch support
+- **Personas** — 25 preset roles (14 modern + 11 ancient/regional) with custom and hot-switch support
 - **Session Management** — Independent contexts with auto-compression
 - **Statistics** — Tool usage tracking and performance metrics
 - **Thought Chain Visualization** — Real-time thinking process display
@@ -511,6 +518,11 @@ docker-compose up -d
 - Finance: compound interest, NPV/IRR, loan calculation, volatility (12 tools)
 - Math/Stats: descriptive stats, regression, matrix operations, combinatorics (11 tools)
 - CI/CD pipelines: GitHub Actions and Gitee Pipeline support
+- **Security Hardening** — Content Security Policy (CSP), URL validation for `openExternal`, `execFile` replacement for `exec` to prevent command injection
+- **Session Management Fix** — Fixed session creation failure by routing metadata writes through Electron main process
+- **Configuration Persistence** — Session and config files now stored in user data directory for proper write permissions
+- **CI/CD Improvements** — Node.js 20 deprecation resolution, Docker build label fix, dependency installation optimization
+- **Electron Build** — Chinese mirror support for Electron binary download, NSIS installer configuration
 
 ### v2.3.1
 - WeChat iLink protocol integration with QR code login and message sending/receiving
