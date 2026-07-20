@@ -6,14 +6,16 @@ directories:
 files:
   - electron/**/*
   - src/**/*
-  - node_modules/**/*
   - package.json
   - .env.example
   - personas/**/*
-  - introduction/**/*
 extraResources:
   - from: src/
     to: src
+  - from: node_modules/
+    to: node_modules
+  - from: personas/
+    to: personas
 extraFiles:
   - from: .env.example
     to: .env.example

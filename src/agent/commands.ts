@@ -9,10 +9,11 @@ import { println, printDivider, printTag } from '../io/terminal.ts';
 import { loadConfig } from '../config.ts';
 import { getToolNames, getToolsByCategory } from './registry.ts';
 import * as tools from './tools/index.ts';
-import { listSessions, getCurrentSession, createNewSession, switchSession, deleteSession, renameSession, resetConversation } from './session.ts';
+import { listSessions, getCurrentSession, createNewSession, switchSession, deleteSession, renameSession, resetConversation, updateSystemPrompt } from './session.ts';
 import { orchestrator } from './orchestrator.ts';
 import { manualLoginWechat, manualLogoutWechat, getWechatStatus } from './wechat-manager.ts';
 import { getSessionStats } from './stats.ts';
+import { broadcast } from '../io/ws-server.ts';
 import { printClusterStatus, handleSpawnCommand, handleDelegateCommand } from './cluster-commands.ts';
 
 // 命令帮助文本
@@ -121,12 +122,25 @@ function handleCommand(input: string): boolean {
     return true;
   }
 
+  if (trimmed.startsWith('/new ')) {
+    const personaName = trimmed.slice(5).trim();
+    createNewSession(null, personaName);
+    // 创建后立即切换到指定人设
+    switchPersona(personaName);
+    println(`[提示] 已创建新会话，人设: ${personaName}`, 'green');
+    return true;
+  }
+
   if (trimmed.startsWith('/switch ')) {
     const sessionId = trimmed.slice(8).trim();
     if (sessionId) {
       const result = switchSession(sessionId);
       if (result.success) {
         println(`[提示] 已切换到会话: ${result.session?.name}`, 'green');
+        // 通知前端刷新人设媒体
+        try {
+          broadcast('persona-switched', { persona: result.session?.persona || '' });
+        } catch {}
       } else {
         println(`[错误] ${result.error}`, 'red');
       }
@@ -354,19 +368,7 @@ function switchPersona(personaName: string): void {
     return;
   }
 
-  // 检查 persona.md 是否已存在且内容相同，避免启动时误清空会话
-  let needsReset = true;
-  try {
-    if (existsSync(targetPath)) {
-      const existing = readFileSync(targetPath, 'utf-8');
-      if (existing === content) {
-        needsReset = false;
-      }
-    }
-  } catch {
-    // 读取出错则默认需要重置
-  }
-
+  // 写入 persona 文件
   try {
     writeFileSync(targetPath, content, 'utf-8');
   } catch (err: any) {
@@ -374,13 +376,16 @@ function switchPersona(personaName: string): void {
     return;
   }
 
-  if (needsReset) {
-    // 重置对话历史，让新 persona 生效
-    resetConversation();
-    println(`[成功] Persona 已切换为: ${printTag(personaName, 'bgGreen')}`, 'green');
-    println(`[提示] 对话历史已重置，新 Persona 已生效`, 'yellow');
-  } else {
-    println(`[提示] Persona 已切换为: ${printTag(personaName, 'bgGreen')}`, 'green');
+  // 更新当前对话的 system prompt，不重置对话历史
+  updateSystemPrompt();
+  println(`[成功] Persona 已切换为: ${printTag(personaName, 'bgGreen')}`, 'green');
+  println(`[提示] 新 Persona 已生效，对话历史保留`, 'yellow');
+
+  // 广播人设切换事件，通知前端更新媒体资源
+  try {
+    broadcast('persona-switched', { persona: personaName });
+  } catch {
+    // WebSocket 未就绪时忽略
   }
 }
 
@@ -503,7 +508,8 @@ function printSessions(): void {
 
   println('  会话命令:', 'yellow');
   println('    /sessions       - 显示会话列表', 'gray');
-  println('    /new            - 创建新会话', 'gray');
+  println('    /new           - 创建新会话', 'gray');
+  println('    /new <人设>    - 创建新会话并指定人设', 'gray');
   println('    /switch <id>    - 切换到指定会话', 'gray');
   println('    /delete <id>    - 删除指定会话', 'gray');
   println('    /rename <name>  - 重命名当前会话', 'gray');

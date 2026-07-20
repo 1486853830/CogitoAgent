@@ -39,22 +39,29 @@ const CSP_HEADER = `default-src 'self'; script-src 'self' 'unsafe-inline'; style
  * 检查是否已配置
  */
 function isConfigured() {
-  // 检查 .env 文件中的关键配置
-  const envPath = path.join(USER_DATA_DIR, '.env');
-  try {
-    if (fs.existsSync(envPath)) {
-      const envContent = fs.readFileSync(envPath, 'utf-8');
-      const hasApiKey = envContent.includes('COGITO_API_KEY=') &&
-        !envContent.match(/^COGITO_API_KEY=\s*$/m);
-      const hasBaseURL = envContent.includes('COGITO_API_BASE_URL=') &&
-        !envContent.match(/^COGITO_API_BASE_URL=\s*$/m);
-      const hasModel = envContent.includes('COGITO_MODEL=') &&
-        !envContent.match(/^COGITO_MODEL=\s*$/m);
+  // 检查 .env 文件中的关键配置（优先 USER_DATA_DIR，回退到 PROJECT_ROOT）
+  const envPaths = [
+    path.join(USER_DATA_DIR, '.env'),
+    path.join(PROJECT_ROOT, '.env')
+  ];
+  for (const envPath of envPaths) {
+    try {
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8');
+        const hasApiKey = envContent.includes('COGITO_API_KEY=') &&
+          !envContent.match(/^COGITO_API_KEY=\s*$/m);
+        const hasBaseURL = envContent.includes('COGITO_API_BASE_URL=') &&
+          !envContent.match(/^COGITO_API_BASE_URL=\s*$/m);
+        const hasModel = envContent.includes('COGITO_MODEL=') &&
+          !envContent.match(/^COGITO_MODEL=\s*$/m);
 
-      return !!(hasApiKey && hasBaseURL && hasModel);
+        if (hasApiKey && hasBaseURL && hasModel) {
+          return true;
+        }
+      }
+    } catch (e) {
+      console.error('[主进程] 配置检查失败:', e.message);
     }
-  } catch (e) {
-    console.error('[主进程] 配置检查失败:', e.message);
   }
   return false;
 }
@@ -320,14 +327,24 @@ function startAgentProcess() {
   const fileEnv = loadEnvFile();
 
   const isPackaged = app.isPackaged;
-  const workingDir = isPackaged ? process.resourcesPath : PROJECT_ROOT;
+  let workingDir;
+  let srcPath;
+  
+  if (isPackaged) {
+    workingDir = process.resourcesPath;
+    srcPath = path.join(workingDir, 'src');
+  } else {
+    workingDir = PROJECT_ROOT;
+    srcPath = path.join(workingDir, 'src');
+  }
 
   const env = {
     ...process.env,
     ...fileEnv,
     ELECTRON_RUN_AS_NODE: undefined,
     COGITO_USER_DATA_DIR: USER_DATA_DIR,
-    ELECTRON_MODE: 'true'
+    ELECTRON_MODE: 'true',
+    COGITO_SRC_PATH: srcPath
   };
 
   let tsxPath;
@@ -337,7 +354,7 @@ function startAgentProcess() {
     } catch {
       tsxPath = path.join(workingDir, 'node_modules', 'tsx', 'dist', 'bin.js');
     }
-    agentProcess = spawn(process.execPath, [tsxPath, 'src/index.ts'], {
+    agentProcess = spawn(process.execPath, [tsxPath, path.join(srcPath, 'index.ts')], {
       cwd: workingDir,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -735,22 +752,53 @@ app.whenReady().then(async () => {
 
   // 获取当前 persona 的媒体资源（优先视频，其次图片）
   ipcMain.handle('get-persona-media', () => {
-    if (!currentPersona) {
+    // 从 persona.md 文件实时读取，保证与 Agent 侧同步
+    let persona = '';
+    try {
+      if (fs.existsSync(PERSONA_FILE)) {
+        const content = fs.readFileSync(PERSONA_FILE, 'utf-8');
+        const firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim();
+        const match = firstLine.match(/\(([^)]+)\)$/);
+        if (match) {
+          // 将空格替换为连字符，匹配目录名（如 "Shaanbei Youth" → "Shaanbei-Youth"）
+          persona = match[1].trim().replace(/\s+/g, '-');
+        }
+      }
+    } catch (e) {
+      console.error('[主进程] 读取 persona.md 失败:', e.message);
+    }
+    
+    // 回退到 .env 配置
+    if (!persona) {
+      try {
+        const envConfig = loadEnvFile();
+        if (envConfig['COGITO_PERSONA']) {
+          persona = envConfig['COGITO_PERSONA'];
+        }
+      } catch (e) {}
+    }
+    
+    // 回退到内存缓存
+    if (!persona) {
+      persona = currentPersona;
+    }
+    
+    if (!persona) {
       return { type: 'video', path: 'default' };
     }
     
-    const personaDir = path.join(PROJECT_ROOT, 'personas', currentPersona);
+    const personaDir = path.join(PROJECT_ROOT, 'personas', persona);
     
     const videoPath = path.join(personaDir, 'video.mp4');
     if (fs.existsSync(videoPath)) {
-      return { type: 'video', path: `../../personas/${currentPersona}/video.mp4` };
+      return { type: 'video', path: `../../personas/${persona}/video.mp4` };
     }
     
     const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
     for (const ext of imageExtensions) {
       const imagePath = path.join(personaDir, `image.${ext}`);
       if (fs.existsSync(imagePath)) {
-        return { type: 'image', path: `../../personas/${currentPersona}/image.${ext}` };
+        return { type: 'image', path: `../../personas/${persona}/image.${ext}` };
       }
     }
     
@@ -758,6 +806,12 @@ app.whenReady().then(async () => {
   });
 
   // ===== 会话管理 IPC =====
+  // 更新当前 persona（在 Agent 侧切换人设时同步）
+  ipcMain.on('update-current-persona', (_event, personaName) => {
+    currentPersona = personaName;
+    console.log('[主进程] Persona 已同步:', personaName);
+  });
+
   // 获取会话列表（从 meta.json 读取基本信息，从会话文件读取预览）
   ipcMain.handle('get-sessions', () => {
     const sessionsDir = path.join(USER_DATA_DIR, 'data', 'sessions');

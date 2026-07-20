@@ -13,6 +13,8 @@ import { initWechatChannel } from './wechat-manager.ts';
 import { parseArgs, parseToolCall, parseAllToolCalls } from './tool-parser.ts';
 import { TOOL_OUTPUT_LIMITS, formatToolResult, formatLsResult, classifyToolError, formatToolError } from './tool-utils.ts';
 import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from './thought-trace.ts';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import path from 'path';
 
 let thinkingTimer: ReturnType<typeof setTimeout> | null = null;
 let shouldStop = false;
@@ -540,7 +542,19 @@ async function start(): Promise<void> {
 
   const envPersona = process.env.COGITO_PERSONA;
   if (envPersona) {
-    switchPersona(envPersona);
+    // 仅复制 persona 文件，不重置对话（避免清空已有会话历史）
+    const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
+    const personaPath = path.resolve(process.cwd(), 'personas', envPersona, 'persona.md');
+    const targetPath = path.resolve(DATA_DIR, 'persona.md');
+    try {
+      if (existsSync(personaPath)) {
+        const content = readFileSync(personaPath, 'utf-8');
+        writeFileSync(targetPath, content, 'utf-8');
+        console.log(`[Agent] Persona 文件已复制: ${envPersona}`);
+      }
+    } catch (err) {
+      console.error(`[Agent] Persona 文件复制失败:`, err);
+    }
   }
 
   if (process.env.DISABLE_WS !== 'true') {

@@ -410,6 +410,24 @@
     </div>
   </div>
 
+  <!-- 人设选择弹窗 -->
+  <div class="persona-modal-overlay" id="personaModal" style="display: none;">
+    <div class="persona-modal-box">
+      <div class="persona-modal-header">
+        <span class="persona-modal-title">选择人设</span>
+        <span class="persona-modal-subtitle">为新会话选择一个角色</span>
+        <button class="persona-modal-close" id="personaModalClose" title="关闭">×</button>
+      </div>
+      <div class="persona-modal-body">
+        <div class="persona-grid" id="personaModalGrid"></div>
+      </div>
+      <div class="persona-modal-footer">
+        <button class="persona-modal-btn secondary" id="personaModalCancel">取消</button>
+        <button class="persona-modal-btn primary" id="personaModalConfirm" disabled>创建会话</button>
+      </div>
+    </div>
+  </div>
+
   <script src="../shared/utils.js"></script>
   <script src="../shared/persona-manager.js"></script>
   <script src="../shared/message-renderer.js"></script>
