@@ -15,6 +15,16 @@ const TOOL_OUTPUT_LIMITS: Record<string, number> = {
   search: 10000,
   getProcesses: 15000,
   monitorSystem: 15000,
+  initBrowser: -1,
+  clickElement: -1,
+  fillField: -1,
+  getPageContent: -1,
+  takeScreenshot: -1,
+  closeBrowser: -1,
+  searchOnPage: -1,
+  findElements: -1,
+  viewChanges: -1,
+  downloadFile: -1,
   default: 10000,
 };
 
@@ -47,12 +57,6 @@ function formatToolResult(tool: string, data: unknown): string {
     result = JSON.stringify(data, null, 2);
   } else {
     result = String(data);
-  }
-
-  const limit = TOOL_OUTPUT_LIMITS[tool] || TOOL_OUTPUT_LIMITS.default;
-
-  if (result.length > limit) {
-    return result.slice(0, limit) + '\n\n... [输出内容过长，已截断]';
   }
 
   return result;
