@@ -2,11 +2,11 @@ name: CogitoAgent CI/CD
 
 on:
   push:
-    branches: [ main, project, develop ]
+    branches: [main, project, develop]
   pull_request:
-    branches: [ main, project, develop ]
+    branches: [main, project, develop]
   release:
-    types: [ created ]
+    types: [created]
   workflow_dispatch:
 
 env:
@@ -52,6 +52,9 @@ jobs:
           node --check electron/main.js
           node --check electron/preload.cjs
 
+      - name: ESLint
+        run: npm run lint
+
   test:
     name: Run Unit Tests
     runs-on: ubuntu-latest
@@ -81,7 +84,6 @@ jobs:
 
       - name: Run unit tests
         run: npm test
-        continue-on-error: true
 
   build-docker:
     name: Build Docker Image

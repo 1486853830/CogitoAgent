@@ -1,3 +1,5 @@
+import { safeParseJSON } from '../utils/llm-validator.ts';
+
 interface ToolCallResult {
   tool: string;
   args: unknown[] | { isJson: boolean; data: Record<string, unknown> };
@@ -27,7 +29,9 @@ function parseAllToolCalls(text: string): ToolCallResult[] {
   return results;
 }
 
-function parseArgs(argsStr: string): unknown[] | { isJson: boolean; data: Record<string, unknown> } {
+function parseArgs(
+  argsStr: string,
+): unknown[] | { isJson: boolean; data: Record<string, unknown> } {
   if (!argsStr || argsStr.trim() === '') {
     return [];
   }
@@ -35,11 +39,9 @@ function parseArgs(argsStr: string): unknown[] | { isJson: boolean; data: Record
   const trimmed = argsStr.trim();
 
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-    try {
-      const jsonObj = JSON.parse(trimmed);
-      return { isJson: true, data: jsonObj as Record<string, unknown> };
-    } catch {
-      // continue
+    const parsed = safeParseJSON<Record<string, unknown>>(trimmed);
+    if (parsed.success && parsed.data) {
+      return { isJson: true, data: parsed.data };
     }
   }
 
@@ -73,10 +75,9 @@ function parseArgs(argsStr: string): unknown[] | { isJson: boolean; data: Record
         args.push(current.trim());
       }
 
-      return args.map(arg => {
+      return args.map((arg) => {
         const p = arg.trim();
-        if ((p.startsWith('"') && p.endsWith('"')) ||
-            (p.startsWith("'") && p.endsWith("'"))) {
+        if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
           return p.slice(1, -1);
         }
         return p;
@@ -90,8 +91,7 @@ function parseArgs(argsStr: string): unknown[] | { isJson: boolean; data: Record
   const parts = trimmed.split(',');
   for (const part of parts) {
     const p = part.trim();
-    if ((p.startsWith('"') && p.endsWith('"')) ||
-        (p.startsWith("'") && p.endsWith("'"))) {
+    if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
       result.push(p.slice(1, -1));
     } else {
       result.push(p);
