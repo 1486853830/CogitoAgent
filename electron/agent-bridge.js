@@ -64,6 +64,16 @@ function connect() {
         return;
       }
       
+      if (msg.type === 'persona-switched') {
+        console.log('[AgentBridge] Persona 已切换:', msg.persona);
+        connectedWindows.forEach(win => {
+          if (!win.isDestroyed()) {
+            win.webContents.send('persona-switched', { persona: msg.persona });
+          }
+        });
+        return;
+      }
+      
       connectedWindows.forEach(win => {
         if (!win.isDestroyed()) {
           if (msg.type === 'agent-state') {

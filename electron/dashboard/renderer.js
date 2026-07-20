@@ -176,6 +176,100 @@ const PersonaUIManager = {
     });
 
     console.log('[PersonaUIManager] 初始化完成');
+
+    // 监听人设切换事件，自动更新媒体资源
+    window.electronAPI?.onPersonaSwitched?.((data) => {
+      console.log('[PersonaUIManager] Persona 已切换:', data.persona);
+      // 同步主进程的 currentPersona
+      window.electronAPI?.send('update-current-persona', data.persona);
+      PersonaManager.loadPersonaMedia();
+    });
+  },
+};
+
+// ============================================================
+// Persona 选择弹窗模块
+// ============================================================
+const PersonaSelectModal = {
+  callback: null,
+  selectedPersona: '',
+
+  async show(callback) {
+    this.callback = callback;
+    this.selectedPersona = '';
+    const modal = document.getElementById('personaModal');
+    const grid = document.getElementById('personaModalGrid');
+    const confirmBtn = document.getElementById('personaModalConfirm');
+    if (!modal || !grid) return;
+
+    // 重置状态
+    confirmBtn.disabled = true;
+    grid.innerHTML = '';
+
+    // 加载 personas
+    try {
+      const personas = await window.electronAPI.getPersonas();
+      
+      // 默认选项
+      const defaultCard = this._createCard('', '默认', '无特定性格');
+      grid.appendChild(defaultCard);
+      
+      for (const p of personas) {
+        const card = this._createCard(p.id, p.name, p.id);
+        grid.appendChild(card);
+      }
+    } catch (e) {
+      console.error('[PersonaSelectModal] 加载 personas 失败:', e);
+    }
+
+    // 绑定点击事件
+    grid.querySelectorAll('.persona-card').forEach(card => {
+      card.addEventListener('click', () => {
+        grid.querySelectorAll('.persona-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        this.selectedPersona = card.dataset.persona;
+        confirmBtn.disabled = false;
+      });
+    });
+
+    // 显示弹窗
+    modal.style.display = 'flex';
+
+    // 绑定按钮事件
+    document.getElementById('personaModalConfirm').onclick = () => this._confirm();
+    document.getElementById('personaModalCancel').onclick = () => this._cancel();
+    document.getElementById('personaModalClose').onclick = () => this._cancel();
+    modal.onclick = (e) => {
+      if (e.target === modal) this._cancel();
+    };
+  },
+
+  hide() {
+    const modal = document.getElementById('personaModal');
+    if (modal) modal.style.display = 'none';
+  },
+
+  _confirm() {
+    this.hide();
+    if (this.callback) {
+      this.callback(this.selectedPersona);
+    }
+  },
+
+  _cancel() {
+    this.hide();
+    // 取消则不创建会话
+  },
+
+  _createCard(id, name, desc) {
+    const card = document.createElement('div');
+    card.className = 'persona-card';
+    card.dataset.persona = id;
+    card.innerHTML = `
+      <div class="persona-name">${name}</div>
+      <div class="persona-desc">${desc}</div>
+    `;
+    return card;
   },
 };
 
@@ -414,6 +508,9 @@ const NavManager = {
     // 记录当前会话 ID
     AppState.currentSessionId = sessionId;
 
+    // 切换会话后刷新人设媒体资源
+    setTimeout(() => PersonaManager.loadPersonaMedia(), 600);
+
     // 重新加载列表以更新 active 状态
     setTimeout(() => this.loadSessions(), 500);
   },
@@ -427,22 +524,28 @@ const NavManager = {
       return;
     }
 
-    console.log('[NavManager] 创建新会话');
-    AppState.setProcessing(false);
-    AppState.currentAssistantBubble = null;
-    window.electronAPI?.sendMessage('/new');
-    
-    ChatManager.clearMessages();
-    ChatManager.enterChatView();
-    
-    const input = document.getElementById('chatInputBottom');
-    if (input) {
-      input.value = '';
-      Utils.autoResizeTextarea(input);
-      input.focus();
-    }
-    
-    setTimeout(() => this.loadSessions(), 500);
+    // 显示人设选择弹窗
+    PersonaSelectModal.show((persona) => {
+      console.log('[NavManager] 创建新会话, 人设:', persona || '默认');
+      AppState.setProcessing(false);
+      AppState.currentAssistantBubble = null;
+      
+      // 发送创建命令，携带人设参数
+      const cmd = persona ? `/new ${persona}` : '/new';
+      window.electronAPI?.sendMessage(cmd);
+      
+      ChatManager.clearMessages();
+      ChatManager.enterChatView();
+      
+      const input = document.getElementById('chatInputBottom');
+      if (input) {
+        input.value = '';
+        Utils.autoResizeTextarea(input);
+        input.focus();
+      }
+      
+      setTimeout(() => this.loadSessions(), 500);
+    });
   },
 
   /**
@@ -493,21 +596,25 @@ const NavManager = {
     SkillsManager.hide();
     AppState.setProcessing(false);
     AppState.currentAssistantBubble = null;
-    
-    window.electronAPI?.sendMessage('/new');
-    
-    ChatManager.clearMessages();
-    ChatManager.enterChatView();
-    
-    const input = document.getElementById('chatInputBottom');
-    if (input) {
-      input.value = '';
-      Utils.autoResizeTextarea(input);
-      input.focus();
-    }
-    
-    setTimeout(() => this.loadSessions(), 500);
-    console.log('[NavManager] 新建任务');
+
+    // 显示人设选择弹窗
+    PersonaSelectModal.show((persona) => {
+      const cmd = persona ? `/new ${persona}` : '/new';
+      window.electronAPI?.sendMessage(cmd);
+      
+      ChatManager.clearMessages();
+      ChatManager.enterChatView();
+      
+      const input = document.getElementById('chatInputBottom');
+      if (input) {
+        input.value = '';
+        Utils.autoResizeTextarea(input);
+        input.focus();
+      }
+      
+      setTimeout(() => this.loadSessions(), 500);
+      console.log('[NavManager] 新建任务, 人设:', persona || '默认');
+    });
   },
 
   handleQuickAction(label) {
