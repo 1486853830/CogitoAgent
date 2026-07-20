@@ -12,8 +12,8 @@ WORKDIR /app
 # 复制 package 文件
 COPY package*.json ./
 
-# 安装依赖
-RUN npm ci --production
+# 安装依赖（--ignore-scripts 跳过 husky prepare 脚本，生产环境不需要）
+RUN npm ci --production --ignore-scripts
 
 # 复制源代码
 COPY . .
