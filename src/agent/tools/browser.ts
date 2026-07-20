@@ -249,7 +249,24 @@ async function clickElement(selector: string, description: string = ''): Promise
       };
     }
 
-    await element.click();
+    try {
+      await element.click();
+    } catch (clickError) {
+      try {
+        await element.click({ force: true });
+      } catch (forceClickError) {
+        try {
+          await page.evaluate((el: any) => {
+            el.click();
+          }, element);
+        } catch (jsClickError) {
+          return {
+            success: false,
+            error: `点击元素失败：元素不可见或被遮挡，尝试了普通点击、强制点击和JS点击均失败`,
+          };
+        }
+      }
+    }
     await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
     const newState = await capturePageState();
