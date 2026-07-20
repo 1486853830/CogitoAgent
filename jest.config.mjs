@@ -9,8 +9,11 @@ export default {
   extensionsToTreatAsEsm: ['.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'mjs'],
   testMatch: ['**/tests/**/*.test.ts', '**/tests/**/*.test.js'],
-  collectCoverageFrom: ['src/**/*.ts'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/agent/tools/**/*.ts', '!src/io/**/*.ts'],
   coverageDirectory: 'coverage',
+  coverageThreshold: {
+    global: { branches: 15, functions: 10, lines: 15, statements: 15 }
+  },
   verbose: true,
   testTimeout: 60000,
   forceExit: true,

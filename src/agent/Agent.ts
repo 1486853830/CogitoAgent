@@ -1,18 +1,89 @@
 import { streamChat } from '../api/client.ts';
 import * as tools from './tools/index.ts';
-import { getMessages, addUserMessage, addAssistantMessage, addToolResultMessage, shouldCompress, compressHistory, initializeSession, estimateTokens } from './session.ts';
-import { init, println, printBlank, printBanner, printDivider, printTag, printReasoning, resetReasoningTag, closeReasoning, printContent, resetContentTag, printToolBlock, exit } from '../io/terminal.ts';
+import {
+  getMessages,
+  addUserMessage,
+  addAssistantMessage,
+  addToolResultMessage,
+  shouldCompress,
+  compressHistory,
+  initializeSession,
+  estimateTokens,
+} from './session.ts';
+import {
+  init,
+  println,
+  printBlank,
+  printBanner,
+  printDivider,
+  printTag,
+  printReasoning,
+  resetReasoningTag,
+  closeReasoning,
+  printContent,
+  resetContentTag,
+  printToolBlock,
+  exit,
+} from '../io/terminal.ts';
 import { loadConfig } from '../config.ts';
 import { startWsServer, broadcast, onMessage, onStatsRequest } from '../io/ws-server.ts';
-import { recordToolCall, recordSession, recordMessage, recordTokenUsage, getToolStats, getSessionStats, getToolUsageByCategory, getTopUsedTools } from './stats.ts';
-import { STATE, getState, setState, isThinking, isAwaitingInput, isAwaitingConfirmation, getPendingConfirmation, setPendingConfirmation, requestConfirmation, resolveConfirmation, state } from './state.ts';
-import { TOOL_REGISTRY, DANGEROUS_OPERATIONS, getToolNames, getToolRegistry, hasTool, isDangerousOperation, isConfirmEnabled, getToolsByCategory } from './registry.ts';
-import { handleCommand, printHelp, printStatus, printClearConfirm, switchPersona, listPersonas, listTools, printConfig, toggleDebug, printClusterStatus } from './commands.ts';
+import {
+  recordToolCall,
+  recordSession,
+  recordMessage,
+  recordTokenUsage,
+  getToolStats,
+  getSessionStats,
+  getToolUsageByCategory,
+  getTopUsedTools,
+} from './stats.ts';
+import {
+  STATE,
+  getState,
+  setState,
+  isThinking,
+  isAwaitingInput,
+  isAwaitingConfirmation,
+  getPendingConfirmation,
+  setPendingConfirmation,
+  requestConfirmation,
+  resolveConfirmation,
+  state,
+} from './state.ts';
+import {
+  TOOL_REGISTRY,
+  DANGEROUS_OPERATIONS,
+  getToolNames,
+  getToolRegistry,
+  hasTool,
+  isDangerousOperation,
+  isConfirmEnabled,
+  getToolsByCategory,
+} from './registry.ts';
+import {
+  handleCommand,
+  printHelp,
+  printStatus,
+  printClearConfirm,
+  switchPersona,
+  listPersonas,
+  listTools,
+  printConfig,
+  toggleDebug,
+  printClusterStatus,
+} from './commands.ts';
 import { orchestrator } from './orchestrator.ts';
 import { initWechatChannel } from './wechat-manager.ts';
 import { parseArgs, parseToolCall, parseAllToolCalls } from './tool-parser.ts';
-import { TOOL_OUTPUT_LIMITS, formatToolResult, formatLsResult, classifyToolError, formatToolError } from './tool-utils.ts';
+import {
+  TOOL_OUTPUT_LIMITS,
+  formatToolResult,
+  formatLsResult,
+  classifyToolError,
+  formatToolError,
+} from './tool-utils.ts';
 import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from './thought-trace.ts';
+import { safeParseJSON } from '../utils/llm-validator.ts';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import path from 'path';
 
@@ -33,9 +104,9 @@ function extractCleanReply(text: string): string {
   return text
     .replace(/\[TOOL\][\s\S]*?\[\/TOOL\]/g, '')
     .split('\n')
-    .filter(line =>
-      !line.trim().startsWith('[工具结果]:') &&
-      !line.trim().startsWith('[工具错误]:'))
+    .filter(
+      (line) => !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
+    )
     .join('\n')
     .trim();
 }
@@ -48,10 +119,13 @@ function parseAndPrintResponse(text: string): void {
   while ((match = regex.exec(text)) !== null) {
     const before = text.slice(lastIndex, match.index);
     if (before.trim()) {
-      const cleaned = before.split('\n').filter(line =>
-        !line.trim().startsWith('[工具结果]:') &&
-        !line.trim().startsWith('[工具错误]:')
-      ).join('\n');
+      const cleaned = before
+        .split('\n')
+        .filter(
+          (line) =>
+            !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
+        )
+        .join('\n');
       if (cleaned.trim()) {
         printContent(cleaned);
       }
@@ -65,10 +139,12 @@ function parseAndPrintResponse(text: string): void {
 
   const remaining = text.slice(lastIndex);
   if (remaining.trim()) {
-    const cleaned = remaining.split('\n').filter(line =>
-      !line.trim().startsWith('[工具结果]:') &&
-      !line.trim().startsWith('[工具错误]:')
-    ).join('\n');
+    const cleaned = remaining
+      .split('\n')
+      .filter(
+        (line) => !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
+      )
+      .join('\n');
     if (cleaned.trim()) {
       printContent(cleaned);
     }
@@ -87,15 +163,15 @@ interface ToolExecutionResult {
 async function executeTool(toolName: string, args: unknown): Promise<ToolExecutionResult> {
   const registry = TOOL_REGISTRY[toolName];
   const startTime = Date.now();
-  
+
   if (!registry) {
     const duration = (Date.now() - startTime) / 1000;
     recordToolCall(toolName, 'unknown', false, duration);
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: `未知工具：${toolName}`,
       toolName,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -104,11 +180,11 @@ async function executeTool(toolName: string, args: unknown): Promise<ToolExecuti
     if (!confirmed) {
       const duration = (Date.now() - startTime) / 1000;
       recordToolCall(toolName, registry.category, false, duration);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: '用户拒绝执行此危险操作',
         toolName,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
     state.current = STATE.THINKING;
@@ -117,7 +193,12 @@ async function executeTool(toolName: string, args: unknown): Promise<ToolExecuti
   const { fn, customArgs, parseJson, jsonParams, category } = registry;
   let processedArgs = args;
 
-  if (args && typeof args === 'object' && 'isJson' in args && (args as { isJson: boolean }).isJson === true) {
+  if (
+    args &&
+    typeof args === 'object' &&
+    'isJson' in args &&
+    (args as { isJson: boolean }).isJson === true
+  ) {
     const jsonData = (args as unknown as { data: Record<string, unknown> }).data;
     if (jsonParams) {
       processedArgs = jsonParams.map((paramName: string) => jsonData[paramName]);
@@ -132,11 +213,8 @@ async function executeTool(toolName: string, args: unknown): Promise<ToolExecuti
     } else if (parseJson) {
       processedArgs = args.map((arg, i) => {
         if (Array.isArray(parseJson) && parseJson[i] && typeof arg === 'string') {
-          try {
-            return JSON.parse(arg);
-          } catch {
-            return arg;
-          }
+          const parsed = safeParseJSON(arg);
+          return parsed.success && parsed.data !== null ? parsed.data : arg;
         }
         return arg;
       });
@@ -146,32 +224,32 @@ async function executeTool(toolName: string, args: unknown): Promise<ToolExecuti
   try {
     const result = await fn(...(processedArgs as unknown[]));
     const duration = (Date.now() - startTime) / 1000;
-    
+
     if (result === undefined || result === null) {
       recordToolCall(toolName, category, true, duration);
       return {
         success: true,
         data: '执行完成（无返回值）',
         toolName,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
-    
+
     if (typeof result === 'object' && 'success' in result) {
       recordToolCall(toolName, category, (result as { success: boolean }).success, duration);
       return {
         ...result,
         toolName,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
-    
+
     recordToolCall(toolName, category, true, duration);
     return {
       success: true,
       data: String(result),
       toolName,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   } catch (error) {
     const duration = (Date.now() - startTime) / 1000;
@@ -181,7 +259,7 @@ async function executeTool(toolName: string, args: unknown): Promise<ToolExecuti
       error: formatToolError(error as Error, toolName),
       toolName,
       errorType: classifyToolError(error as Error),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 }
@@ -197,7 +275,7 @@ function handleUserInput(input: string): void {
     exit();
     return;
   }
-  
+
   if (input.startsWith('/')) {
     if (input === '/stop') {
       shouldStop = true;
@@ -215,7 +293,7 @@ function handleUserInput(input: string): void {
 
   if (state.current === STATE.AWAITING_CONFIRMATION) {
     const response = input.toLowerCase().trim();
-    
+
     const pendingConf = getPendingConfirmation();
     if (pendingConf?.type === 'clearHistory') {
       if (response === 'y' || response === 'yes' || response === '确认') {
@@ -227,11 +305,14 @@ function handleUserInput(input: string): void {
         setPendingConfirmation(null);
         state.current = STATE.THINKING;
       } else {
-        println(`[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 取消`, 'yellow');
+        println(
+          `[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 取消`,
+          'yellow',
+        );
       }
       return;
     }
-    
+
     if (response === 'y' || response === 'yes' || response === '确认') {
       println('[确认] 用户同意执行危险操作', 'green');
       resolveConfirmation(true);
@@ -239,7 +320,10 @@ function handleUserInput(input: string): void {
       println('[拒绝] 用户拒绝执行危险操作', 'red');
       resolveConfirmation(false);
     } else {
-      println(`[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 拒绝`, 'yellow');
+      println(
+        `[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 拒绝`,
+        'yellow',
+      );
     }
     return;
   }
@@ -257,7 +341,7 @@ function handleUserInput(input: string): void {
   if (state.current === STATE.AWAITING_INPUT) {
     if (input) {
       const messages = getMessages();
-      const hasUserMessage = messages.some(m => m.role === 'user');
+      const hasUserMessage = messages.some((m) => m.role === 'user');
       let processedInput = input;
       if (!hasUserMessage) {
         processedInput = `${input}\n\n[WAIT]你需要学会使用这个标签，如果你说完了，需要等待用户回复就用这个标签`;
@@ -289,7 +373,7 @@ async function thinkCycle(): Promise<void> {
   if (isProcessing) {
     return;
   }
-  
+
   if (state.current !== STATE.THINKING) return;
 
   isProcessing = true;
@@ -329,10 +413,13 @@ async function thinkCycle(): Promise<void> {
       }
       if (chunk.content) {
         let cleanChunk = chunk.content;
-        cleanChunk = cleanChunk.split('\n').filter(line =>
-          !line.trim().startsWith('[工具结果]:') &&
-          !line.trim().startsWith('[工具错误]:')
-        ).join('\n');
+        cleanChunk = cleanChunk
+          .split('\n')
+          .filter(
+            (line) =>
+              !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
+          )
+          .join('\n');
 
         fullResponse += chunk.content;
         cleanFullResponse += cleanChunk;
@@ -345,27 +432,33 @@ async function thinkCycle(): Promise<void> {
 
     try {
       if (!usage) {
-        const inputText = messages.map(m => m.content || '').join('');
+        const inputText = messages.map((m) => m.content || '').join('');
         usage = {
           input: estimateTokens(inputText),
-          output: estimateTokens(fullResponse)
+          output: estimateTokens(fullResponse),
         };
       } else if (!usage.output) {
         usage.output = estimateTokens(fullResponse);
       }
       recordTokenUsage(usage.input, usage.output);
-      println(`[Token] 输入:${usage.input} 输出:${usage.output} 总计:${usage.input + usage.output}`, 'gray');
+      println(
+        `[Token] 输入:${usage.input} 输出:${usage.output} 总计:${usage.input + usage.output}`,
+        'gray',
+      );
       broadcast('token-usage', {
         input: usage.input,
         output: usage.output,
         total: usage.input + usage.output,
-        session: getSessionStats()
+        session: getSessionStats(),
       });
     } catch (e) {
       console.error('[Token] 统计失败:', (e as Error).message);
     }
 
-    updateTraceStep(requestStep.id, { status: 'completed', details: { responseLength: fullResponse.length } });
+    updateTraceStep(requestStep.id, {
+      status: 'completed',
+      details: { responseLength: fullResponse.length },
+    });
 
     closeReasoning();
     resetContentTag();
@@ -387,12 +480,17 @@ async function thinkCycle(): Promise<void> {
 
     const parseStep = traceStep('解析工具调用', {}, 'running');
     const toolCalls = parseAllToolCalls(fullResponse);
-    updateTraceStep(parseStep.id, { status: 'completed', details: { toolCallCount: toolCalls.length } });
+    updateTraceStep(parseStep.id, {
+      status: 'completed',
+      details: { toolCallCount: toolCalls.length },
+    });
 
-    let finalResponse = fullResponse.split('\n').filter(line =>
-      !line.trim().startsWith('[工具结果]:') &&
-      !line.trim().startsWith('[工具错误]:')
-    ).join('\n');
+    const finalResponse = fullResponse
+      .split('\n')
+      .filter(
+        (line) => !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
+      )
+      .join('\n');
 
     const toolResults: string[] = [];
 
@@ -405,12 +503,17 @@ async function thinkCycle(): Promise<void> {
 
         broadcast('agent-reply', { type: 'tool-start', tool: toolCall.tool, args: toolCall.args });
 
-        const toolStep = traceStep(`执行工具: ${toolCall.tool}`, { args: toolCall.args }, 'running');
-        
+        const toolStep = traceStep(
+          `执行工具: ${toolCall.tool}`,
+          { args: toolCall.args },
+          'running',
+        );
+
         const result = await executeTool(toolCall.tool, toolCall.args);
-        
+
         if (result.success) {
-          const isEmpty = !result.data ||
+          const isEmpty =
+            !result.data ||
             (typeof result.data === 'string' && result.data.trim() === '') ||
             (Array.isArray(result.data) && result.data.length === 0) ||
             (typeof result.data === 'object' && Object.keys(result.data).length === 0);
@@ -418,20 +521,45 @@ async function thinkCycle(): Promise<void> {
           if (isEmpty) {
             println(`[空结果] ${toolCall.tool} 返回空结果`, 'yellow');
             toolResults.push(`[工具结果]: [空结果] ${toolCall.tool} 返回空结果，未找到相关信息。`);
-            broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: '[空结果] 未找到相关信息', isEmpty: true });
-            updateTraceStep(toolStep.id, { status: 'completed', details: { success: true, isEmpty: true } });
+            broadcast('agent-reply', {
+              type: 'tool-result',
+              tool: toolCall.tool,
+              success: true,
+              data: '[空结果] 未找到相关信息',
+              isEmpty: true,
+            });
+            updateTraceStep(toolStep.id, {
+              status: 'completed',
+              details: { success: true, isEmpty: true },
+            });
           } else {
             const resultText = formatToolResult(toolCall.tool, result.data);
             printToolBlock(resultText, '工具结果');
             toolResults.push(`[工具结果]: ${resultText}`);
-            broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: true, data: resultText });
-            updateTraceStep(toolStep.id, { status: 'completed', details: { success: true, resultLength: resultText.length } });
+            broadcast('agent-reply', {
+              type: 'tool-result',
+              tool: toolCall.tool,
+              success: true,
+              data: resultText,
+            });
+            updateTraceStep(toolStep.id, {
+              status: 'completed',
+              details: { success: true, resultLength: resultText.length },
+            });
           }
         } else {
           println(`[失败] ${result.error}`, 'red');
           toolResults.push(`[工具错误]: ${result.error}`);
-          broadcast('agent-reply', { type: 'tool-result', tool: toolCall.tool, success: false, data: result.error });
-          updateTraceStep(toolStep.id, { status: 'failed', details: { success: false, error: result.errorType } });
+          broadcast('agent-reply', {
+            type: 'tool-result',
+            tool: toolCall.tool,
+            success: false,
+            data: result.error,
+          });
+          updateTraceStep(toolStep.id, {
+            status: 'failed',
+            details: { success: false, error: result.errorType },
+          });
         }
 
         if (shouldStop) {
@@ -460,9 +588,12 @@ async function thinkCycle(): Promise<void> {
       updateTraceStep(compressStep.id, { status: 'completed' });
     }
 
-    updateTraceStep(cycleStep.id, { status: 'completed', details: { 
-      nextAction: wantsToWait ? 'wait' : (toolCalls.length > 0 ? 'tools' : 'continue') 
-    }});
+    updateTraceStep(cycleStep.id, {
+      status: 'completed',
+      details: {
+        nextAction: wantsToWait ? 'wait' : toolCalls.length > 0 ? 'tools' : 'continue',
+      },
+    });
 
     if (wantsToWait || state.current !== STATE.THINKING) {
       state.current = STATE.AWAITING_INPUT;
@@ -510,9 +641,11 @@ async function thinkCycle(): Promise<void> {
         }
       }
     }
-
   } catch (error) {
-    updateTraceStep(cycleStep.id, { status: 'failed', details: { error: (error as Error).message } });
+    updateTraceStep(cycleStep.id, {
+      status: 'failed',
+      details: { error: (error as Error).message },
+    });
     _replyCallback = null;
     if (shouldStop) {
       shouldStop = false;
@@ -588,8 +721,8 @@ async function start(): Promise<void> {
               totalTokens: s.totalTokens,
               todayInputTokens: s.todayInputTokens,
               todayOutputTokens: s.todayOutputTokens,
-              todayTokens: s.todayTokens
-            }
+              todayTokens: s.todayTokens,
+            },
           };
         }
         return {
@@ -597,7 +730,7 @@ async function start(): Promise<void> {
           topTools: getTopUsedTools(10),
           session: getSessionStats(),
           thoughtTrace: getThoughtTrace(),
-          cluster: orchestrator.getClusterStatus()
+          cluster: orchestrator.getClusterStatus(),
         };
       });
     } catch (e) {
@@ -609,10 +742,29 @@ async function start(): Promise<void> {
 
   printBanner();
   printDivider('─', 'cyan');
-  println('  活动范围: ' + printTag(tools.getBasePath(), 'bgBlue') + '  思考间隔: ' + printTag(`${thoughtInterval / 1000}秒`, 'bgCyan'));
-  println('  输入 ' + printTag('/sessions', 'bgBlue') + ' 管理多会话，输入 ' + printTag('/help', 'bgBlue') + ' 查看所有命令\n', 'gray');
+  println(
+    '  活动范围: ' +
+      printTag(tools.getBasePath(), 'bgBlue') +
+      '  思考间隔: ' +
+      printTag(`${thoughtInterval / 1000}秒`, 'bgCyan'),
+  );
+  println(
+    '  输入 ' +
+      printTag('/sessions', 'bgBlue') +
+      ' 管理多会话，输入 ' +
+      printTag('/help', 'bgBlue') +
+      ' 查看所有命令\n',
+    'gray',
+  );
   printDivider('─', 'cyan');
-  println('  按 ' + printTag('Enter', 'bgBlue') + ' 打断思考，输入 ' + printTag('exit', 'bgBlue') + ' 退出\n', 'gray');
+  println(
+    '  按 ' +
+      printTag('Enter', 'bgBlue') +
+      ' 打断思考，输入 ' +
+      printTag('exit', 'bgBlue') +
+      ' 退出\n',
+    'gray',
+  );
 
   init(handleUserInput);
 
@@ -650,5 +802,5 @@ export {
   traceStep,
   updateTraceStep,
   clearThoughtTrace,
-  getThoughtTrace
+  getThoughtTrace,
 };
