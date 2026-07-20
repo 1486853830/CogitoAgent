@@ -5,7 +5,7 @@ import os from 'os';
 
 function isValidUrl(url: string): boolean {
   try {
-    const cleanedUrl = url.trim().replace(/^`|`$/g, '');
+    const cleanedUrl = url.trim().replace(/`/g, '');
     const parsed = new URL(cleanedUrl);
     return ['http:', 'https:'].includes(parsed.protocol);
   } catch {
@@ -59,7 +59,7 @@ async function search(query: string): Promise<any> {
  */
 async function browse(url: string): Promise<any> {
   return new Promise((resolve) => {
-    const cleanedUrl = url.trim().replace(/^`|`$/g, '');
+    const cleanedUrl = url.trim().replace(/`/g, '');
     if (!isValidUrl(cleanedUrl)) {
       resolve({ success: false, error: `无效的 URL: ${url}` });
       return;
