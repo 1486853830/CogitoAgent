@@ -213,7 +213,7 @@ function switchSession(sessionId: string): { success: boolean; error?: string; s
 
   // 如果会话绑定了人设，切换到对应人设
   if (session.persona) {
-    const personaSrc = path.resolve(process.cwd(), 'personas', session.persona, 'persona.md');
+    const personaSrc = path.resolve(process.cwd(), 'personas', session.persona as string, 'persona.md');
     const personaTarget = path.resolve(DATA_DIR, 'persona.md');
     try {
       if (existsSync(personaSrc)) {
