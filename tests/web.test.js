@@ -23,9 +23,9 @@ describe('Web 模块', () => {
         json: async () => ({
           results: [
             { title: '测试结果1', url: 'https://example.com/1', snippet: '描述1' },
-            { title: '测试结果2', url: 'https://example.com/2', snippet: '描述2' }
-          ]
-        })
+            { title: '测试结果2', url: 'https://example.com/2', snippet: '描述2' },
+          ],
+        }),
       });
 
       const result = await webModule.search('测试关键词');
@@ -38,7 +38,7 @@ describe('Web 模块', () => {
       fetch.mockResolvedValue({
         ok: false,
         status: 500,
-        statusText: 'Internal Server Error'
+        statusText: 'Internal Server Error',
       });
 
       const result = await webModule.search('测试');
@@ -60,7 +60,8 @@ describe('Web 模块', () => {
     it('应该正确抓取网页内容', async () => {
       fetch.mockResolvedValue({
         ok: true,
-        text: async () => '<html><head><title>测试页面</title></head><body><h1>测试页面</h1><p>内容</p></body></html>'
+        text: async () =>
+          '<html><head><title>测试页面</title></head><body><h1>测试页面</h1><p>内容</p></body></html>',
       });
 
       const result = await webModule.fetchPage('https://example.com');
@@ -74,7 +75,7 @@ describe('Web 模块', () => {
       fetch.mockResolvedValue({
         ok: false,
         status: 404,
-        statusText: 'Not Found'
+        statusText: 'Not Found',
       });
 
       const result = await webModule.fetchPage('https://example.com/nonexistent');
@@ -94,7 +95,13 @@ describe('Web 模块', () => {
       const result = await webModule.browse('https://example.com');
 
       expect(result.success).toBe(true);
-      expect(result.data).toContain('浏览器中打开');
+      expect(result.data).toContain('已在浏览器中打开');
+    });
+
+    it('应该处理无效 URL', async () => {
+      const result = await webModule.browse('invalid-url');
+
+      expect(result.success).toBe(false);
     });
   });
 });
