@@ -5,7 +5,8 @@ import os from 'os';
 
 function isValidUrl(url: string): boolean {
   try {
-    const parsed = new URL(url.trim());
+    const cleanedUrl = url.trim().replace(/^`|`$/g, '');
+    const parsed = new URL(cleanedUrl);
     return ['http:', 'https:'].includes(parsed.protocol);
   } catch {
     return false;
@@ -65,7 +66,7 @@ async function browse(url: string): Promise<any> {
     const platform = os.platform();
     let command: string;
     let args: string[];
-    
+
     if (platform === 'win32') {
       command = 'cmd';
       args = ['/c', 'start', '', url.trim()];
@@ -76,7 +77,7 @@ async function browse(url: string): Promise<any> {
       command = 'xdg-open';
       args = [url.trim()];
     }
-    
+
     execFile(command, args, (error) => {
       if (error) {
         resolve({ success: false, error: `打开链接失败: ${error.message}` });
@@ -94,8 +95,9 @@ async function fetchPage(url: string): Promise<any> {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
     });
     if (!response.ok) {
       return { success: false, error: `HTTP ${response.status}: ${response.statusText}` };
@@ -113,7 +115,7 @@ async function fetchPage(url: string): Promise<any> {
     let content = '';
     const article = $('article').first();
     const main = $('main').first();
-    const body = article.length ? article : (main.length ? main : $('body'));
+    const body = article.length ? article : main.length ? main : $('body');
 
     // 提取段落文本
     const paragraphs = body.find('p, h1, h2, h3, h4, h5, h6, li');
@@ -142,11 +144,17 @@ async function fetchPage(url: string): Promise<any> {
     });
 
     const result = `标题: ${title}\n\n`;
-    const truncated = content.length > 3000 ? content.slice(0, 3000) + '\n\n[内容过长已截断...]' : content;
+    const truncated =
+      content.length > 3000 ? content.slice(0, 3000) + '\n\n[内容过长已截断...]' : content;
 
     let output = result + '正文:\n' + truncated;
     if (links.length > 0) {
-      output += '\n\n相关链接:\n' + links.slice(0, 10).map((l: any) => `- ${l.text}: ${l.url}`).join('\n');
+      output +=
+        '\n\n相关链接:\n' +
+        links
+          .slice(0, 10)
+          .map((l: any) => `- ${l.text}: ${l.url}`)
+          .join('\n');
     }
 
     return { success: true, data: output };
