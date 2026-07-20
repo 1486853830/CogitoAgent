@@ -15,7 +15,7 @@ const TOOL_OUTPUT_LIMITS: Record<string, number> = {
   search: 10000,
   getProcesses: 15000,
   monitorSystem: 15000,
-  default: 10000
+  default: 10000,
 };
 
 interface LsItem {
@@ -24,15 +24,13 @@ interface LsItem {
 }
 
 function formatLsResult(data: LsItem[]): string {
-  const dirs = data.filter(i => i.type === 'dir').map(i => `  ${i.name}/`);
-  const files = data.filter(i => i.type === 'file').map(i => `  ${i.name}`);
+  const dirs = data.filter((i) => i.type === 'dir').map((i) => `  ${i.name}/`);
+  const files = data.filter((i) => i.type === 'file').map((i) => `  ${i.name}`);
   let lines: string[] = [];
   if (dirs.length) lines.push('  [目录]');
-  lines = lines.concat(dirs.slice(0, 20));
-  if (dirs.length > 20) lines.push(`  ... 还有 ${dirs.length - 20} 个目录`);
+  lines = lines.concat(dirs);
   if (files.length) lines.push('  [文件]');
-  lines = lines.concat(files.slice(0, 20));
-  if (files.length > 20) lines.push(`  ... 还有 ${files.length - 20} 个文件`);
+  lines = lines.concat(files);
   return lines.join('\n');
 }
 
@@ -61,17 +59,21 @@ function formatToolResult(tool: string, data: unknown): string {
 }
 
 function classifyToolError(error: Error & { code?: string }): string {
-  if (error.code === 'ENOTFOUND' ||
-      error.code === 'ECONNREFUSED' ||
-      error.code === 'ETIMEDOUT' ||
-      error.message?.includes('network')) {
+  if (
+    error.code === 'ENOTFOUND' ||
+    error.code === 'ECONNREFUSED' ||
+    error.code === 'ETIMEDOUT' ||
+    error.message?.includes('network')
+  ) {
     return 'network';
   }
 
-  if (error.code === 'ENOENT' ||
-      error.code === 'EACCES' ||
-      error.code === 'EPERM' ||
-      error.code === 'ENOTDIR') {
+  if (
+    error.code === 'ENOENT' ||
+    error.code === 'EACCES' ||
+    error.code === 'EPERM' ||
+    error.code === 'ENOTDIR'
+  ) {
     return 'filesystem';
   }
 
@@ -86,7 +88,10 @@ function classifyToolError(error: Error & { code?: string }): string {
   return 'unknown';
 }
 
-function formatToolError(error: Error & { code?: string; stack?: string }, toolName: string): string {
+function formatToolError(
+  error: Error & { code?: string; stack?: string },
+  toolName: string,
+): string {
   const errorType = classifyToolError(error);
 
   let message = '';
@@ -124,10 +129,4 @@ function formatToolError(error: Error & { code?: string; stack?: string }, toolN
   return fullMessage;
 }
 
-export {
-  TOOL_OUTPUT_LIMITS,
-  formatToolResult,
-  formatLsResult,
-  classifyToolError,
-  formatToolError
-};
+export { TOOL_OUTPUT_LIMITS, formatToolResult, formatLsResult, classifyToolError, formatToolError };
