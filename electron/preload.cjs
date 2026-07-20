@@ -91,6 +91,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 切换会话
   switchSession: (sessionId) => ipcRenderer.send('switch-session', sessionId),
 
+  // 通用 IPC 发送（用于更新主进程状态）
+  send: (channel, ...args) => ipcRenderer.send(channel, ...args),
+
   // 获取当前会话 ID
   getCurrentSession: () => ipcRenderer.invoke('get-current-session'),
 
@@ -131,6 +134,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 监听微信登录状态
   onWechatLoginStatus: (callback) => {
     ipcRenderer.on('wechat-login-status', (_event, data) => callback(data));
+  },
+
+  // 监听人设切换事件
+  onPersonaSwitched: (callback) => {
+    ipcRenderer.on('persona-switched', (_event, data) => callback(data));
   },
 
   // ===== Token 用量相关 IPC =====

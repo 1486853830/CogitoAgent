@@ -139,7 +139,7 @@ function getOrCreateWechatSession(): string {
   return id;
 }
 
-function createNewSession(name?: string | null) {
+function createNewSession(name?: string | null, persona?: string | null) {
   if (currentSessionId) {
     archiveCurrentSession();
   }
@@ -150,7 +150,8 @@ function createNewSession(name?: string | null) {
     id,
     name: name || `会话 ${meta.sessions.length + 1}`,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    persona: persona || undefined
   };
 
   meta.sessions.push(session);
@@ -209,6 +210,21 @@ function switchSession(sessionId: string): { success: boolean; error?: string; s
   meta.activeId = sessionId;
   session.lastActiveAt = new Date().toISOString();
   saveMeta(meta);
+
+  // 如果会话绑定了人设，切换到对应人设
+  if (session.persona) {
+    const personaSrc = path.resolve(process.cwd(), 'personas', session.persona, 'persona.md');
+    const personaTarget = path.resolve(DATA_DIR, 'persona.md');
+    try {
+      if (existsSync(personaSrc)) {
+        const content = readFileSync(personaSrc, 'utf-8');
+        writeFileSync(personaTarget, content, 'utf-8');
+        console.error(`[会话] 切换到人设: ${session.persona}`);
+      }
+    } catch (e) {
+      console.error(`[会话] 切换人设失败: ${e}`);
+    }
+  }
 
   const messages = loadSession(sessionId);
   conversationHistory = messages.length > 0 ? messages : [{ role: 'system', content: buildSystemPrompt() }];
@@ -474,6 +490,16 @@ function resetConversation(): void {
   }
 }
 
+function updateSystemPrompt(): void {
+  if (conversationHistory.length > 0 && conversationHistory[0].role === 'system') {
+    conversationHistory[0].content = buildSystemPrompt();
+    if (currentSessionId) {
+      saveSession(currentSessionId, conversationHistory);
+    }
+    console.log(`[会话] System prompt 已更新`);
+  }
+}
+
 function setConversationHistory(messages: Message[]): void {
   conversationHistory = [
     { role: 'system', content: buildSystemPrompt() },
@@ -502,6 +528,7 @@ export {
   compressHistory,
   getHistoryLength,
   resetConversation,
+  updateSystemPrompt,
   setConversationHistory,
   estimateTokens,
   getContextTokenEstimate,

@@ -32,6 +32,14 @@ function initApp() {
     defaultMediaPath: '../shared/video.mp4',
   });
 
+  // 监听人设切换事件，自动更新媒体资源
+  window.electronAPI?.onPersonaSwitched?.((data) => {
+    console.log('[Desktop] Persona 已切换:', data.persona);
+    // 同步主进程的 currentPersona
+    window.electronAPI?.send('update-current-persona', data.persona);
+    PersonaManager.loadPersonaMedia();
+  });
+
   // 使用公共窗口控制
   WindowControls.init();
 
