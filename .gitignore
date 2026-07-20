@@ -35,3 +35,7 @@ Thumbs.db
 .gitee/
 
 dist/
+
+# Test coverage
+coverage/
+.nyc_output/

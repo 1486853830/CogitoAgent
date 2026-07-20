@@ -60,26 +60,28 @@ async function capturePageState(): Promise<any> {
   try {
     const state = await page.evaluate(() => {
       const forms: any[] = [];
-      document.querySelectorAll('form, input, select, textarea, button, table').forEach((el: any, idx: any) => {
-        forms.push({
-          tag: el.tagName.toLowerCase(),
-          id: el.id || null,
-          class: el.className || null,
-          name: el.name || null,
-          type: el.type || null,
-          value: el.value || null,
-          text: el.innerText?.slice(0, 100) || null,
-          placeholder: el.placeholder || null,
-          href: el.href || null,
-          xpath: getXPath(el)
+      document
+        .querySelectorAll('form, input, select, textarea, button, table')
+        .forEach((el: any, idx: any) => {
+          forms.push({
+            tag: el.tagName.toLowerCase(),
+            id: el.id || null,
+            class: el.className || null,
+            name: el.name || null,
+            type: el.type || null,
+            value: el.value || null,
+            text: el.innerText?.slice(0, 100) || null,
+            placeholder: el.placeholder || null,
+            href: el.href || null,
+            xpath: getXPath(el),
+          });
         });
-      });
 
       return {
         url: window.location.href,
         title: document.title,
         forms: forms.slice(0, 50),
-        bodyText: document.body.innerText.slice(0, 2000)
+        bodyText: document.body.innerText.slice(0, 2000),
       };
     });
 
@@ -113,7 +115,9 @@ function comparePageState(oldState: any, newState: any): string {
       const oldValue = oldValues.get(xpath);
       if (oldValue !== newValue) {
         const form = newState.forms.find((f: any) => f.xpath === xpath);
-        changes.push(`表单变化：${form?.tag || '元素'}${form?.name ? `[name="${form.name}"]` : ''}${form?.id ? `[id="${form.id}"]` : ''} 值从 "${oldValue || '空'}" 变为 "${newValue || '空'}"`);
+        changes.push(
+          `表单变化：${form?.tag || '元素'}${form?.name ? `[name="${form.name}"]` : ''}${form?.id ? `[id="${form.id}"]` : ''} 值从 "${oldValue || '空'}" 变为 "${newValue || '空'}"`,
+        );
       }
     }
   }
@@ -129,10 +133,10 @@ function comparePageState(oldState: any, newState: any): string {
  * 初始化浏览器并打开网页
  */
 async function initBrowser(url: string): Promise<any> {
-  if (!await checkPlaywright()) {
+  if (!(await checkPlaywright())) {
     return {
       success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install'
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
     };
   }
 
@@ -149,13 +153,13 @@ async function initBrowser(url: string): Promise<any> {
 
     browser = await chromium.launch({
       headless: false,
-      args: ['--start-maximized']
+      args: ['--start-maximized'],
     });
 
     const context = await browser.newContext({
       viewport: { width: 1920, height: 1080 },
       acceptDownloads: true,
-      downloadsPath: './downloads'
+      downloadsPath: './downloads',
     });
     page = await context.newPage();
 
@@ -164,14 +168,14 @@ async function initBrowser(url: string): Promise<any> {
 
     return {
       success: true,
-      data: `已成功打开网页：${url}`
+      data: `已成功打开网页：${url}`,
     };
   } catch (error: any) {
     browser = null;
     page = null;
     return {
       success: false,
-      error: `打开网页失败：${error.message}`
+      error: `打开网页失败：${error.message}`,
     };
   }
 }
@@ -180,10 +184,10 @@ async function initBrowser(url: string): Promise<any> {
  * 点击网页元素
  */
 async function clickElement(selector: string, description: string = ''): Promise<any> {
-  if (!await checkPlaywright()) {
+  if (!(await checkPlaywright())) {
     return {
       success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install'
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
     };
   }
 
@@ -213,7 +217,7 @@ async function clickElement(selector: string, description: string = ''): Promise
     if (!element) {
       const textSelector = selector.trim();
       element = await page.locator(`text=${textSelector}`).first();
-      if (!await element.count()) {
+      if (!(await element.count())) {
         element = null;
       }
     }
@@ -225,7 +229,7 @@ async function clickElement(selector: string, description: string = ''): Promise
         `[placeholder="${selector}"]`,
         `button:has-text("${selector}")`,
         `a:has-text("${selector}")`,
-        `[data-testid="${selector}"]`
+        `[data-testid="${selector}"]`,
       ];
 
       for (const sel of selectors) {
@@ -241,7 +245,7 @@ async function clickElement(selector: string, description: string = ''): Promise
     if (!element) {
       return {
         success: false,
-        error: `未找到元素：${selector}${description ? ` (${description})` : ''}`
+        error: `未找到元素：${selector}${description ? ` (${description})` : ''}`,
       };
     }
 
@@ -254,12 +258,12 @@ async function clickElement(selector: string, description: string = ''): Promise
 
     return {
       success: true,
-      data: `成功点击元素：${selector}${description ? ` (${description})` : ''}\n${changes}`
+      data: `成功点击元素：${selector}${description ? ` (${description})` : ''}\n${changes}`,
     };
   } catch (error: any) {
     return {
       success: false,
-      error: `点击元素失败：${error.message}`
+      error: `点击元素失败：${error.message}`,
     };
   }
 }
@@ -268,10 +272,10 @@ async function clickElement(selector: string, description: string = ''): Promise
  * 填写表格字段
  */
 async function fillField(selector: string, value: string, description: string = ''): Promise<any> {
-  if (!await checkPlaywright()) {
+  if (!(await checkPlaywright())) {
     return {
       success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install'
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
     };
   }
 
@@ -306,7 +310,7 @@ async function fillField(selector: string, value: string, description: string = 
         `input[aria-label="${selector}"]`,
         `textarea[aria-label="${selector}"]`,
         `label:has-text("${selector}") + input`,
-        `label:has-text("${selector}") + textarea`
+        `label:has-text("${selector}") + textarea`,
       ];
 
       for (const sel of selectors) {
@@ -322,7 +326,7 @@ async function fillField(selector: string, value: string, description: string = 
     if (!element) {
       return {
         success: false,
-        error: `未找到输入框：${selector}${description ? ` (${description})` : ''}`
+        error: `未找到输入框：${selector}${description ? ` (${description})` : ''}`,
       };
     }
 
@@ -334,12 +338,12 @@ async function fillField(selector: string, value: string, description: string = 
 
     return {
       success: true,
-      data: `成功填写字段：${selector}${description ? ` (${description})` : ''} = "${value}"\n${changes}`
+      data: `成功填写字段：${selector}${description ? ` (${description})` : ''} = "${value}"\n${changes}`,
     };
   } catch (error: any) {
     return {
       success: false,
-      error: `填写字段失败：${error.message}`
+      error: `填写字段失败：${error.message}`,
     };
   }
 }
@@ -348,10 +352,10 @@ async function fillField(selector: string, value: string, description: string = 
  * 选择下拉框选项
  */
 async function selectOption(selector: string, value: string): Promise<any> {
-  if (!await checkPlaywright()) {
+  if (!(await checkPlaywright())) {
     return {
       success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install'
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
     };
   }
 
@@ -368,12 +372,12 @@ async function selectOption(selector: string, value: string): Promise<any> {
 
     return {
       success: true,
-      data: `成功选择选项：${selector} = "${value}"\n${changes}`
+      data: `成功选择选项：${selector} = "${value}"\n${changes}`,
     };
   } catch (error: any) {
     return {
       success: false,
-      error: `选择选项失败：${error.message}`
+      error: `选择选项失败：${error.message}`,
     };
   }
 }
@@ -382,10 +386,10 @@ async function selectOption(selector: string, value: string): Promise<any> {
  * 查看页面变化（对比当前状态和上次快照）
  */
 async function viewChanges(): Promise<any> {
-  if (!await checkPlaywright()) {
+  if (!(await checkPlaywright())) {
     return {
       success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install'
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
     };
   }
 
@@ -400,12 +404,12 @@ async function viewChanges(): Promise<any> {
 
     return {
       success: true,
-      data: changes || '页面没有明显变化'
+      data: changes || '页面没有明显变化',
     };
   } catch (error: any) {
     return {
       success: false,
-      error: `查看变化失败：${error.message}`
+      error: `查看变化失败：${error.message}`,
     };
   }
 }
@@ -414,10 +418,10 @@ async function viewChanges(): Promise<any> {
  * 获取页面内容
  */
 async function getPageContent(): Promise<any> {
-  if (!await checkPlaywright()) {
+  if (!(await checkPlaywright())) {
     return {
       success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install'
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
     };
   }
 
@@ -431,25 +435,29 @@ async function getPageContent(): Promise<any> {
         url: window.location.href,
         title: document.title,
         bodyText: document.body.innerText.slice(0, 3000),
-        forms: Array.from(document.querySelectorAll('input, select, textarea')).map((el: any) => ({
-          tag: el.tagName.toLowerCase(),
-          name: el.name,
-          id: el.id,
-          type: el.type,
-          value: el.value,
-          placeholder: el.placeholder
-        })).slice(0, 30),
-        tables: Array.from(document.querySelectorAll('table')).map((table: any, idx: number) => {
-          const rows: any[] = [];
-          table.querySelectorAll('tr').forEach((row: any) => {
-            const cells: string[] = [];
-            row.querySelectorAll('td, th').forEach((cell: any) => {
-              cells.push(cell.innerText.trim());
+        forms: Array.from(document.querySelectorAll('input, select, textarea'))
+          .map((el: any) => ({
+            tag: el.tagName.toLowerCase(),
+            name: el.name,
+            id: el.id,
+            type: el.type,
+            value: el.value,
+            placeholder: el.placeholder,
+          }))
+          .slice(0, 30),
+        tables: Array.from(document.querySelectorAll('table'))
+          .map((table: any, idx: number) => {
+            const rows: any[] = [];
+            table.querySelectorAll('tr').forEach((row: any) => {
+              const cells: string[] = [];
+              row.querySelectorAll('td, th').forEach((cell: any) => {
+                cells.push(cell.innerText.trim());
+              });
+              if (cells.length > 0) rows.push(cells);
             });
-            if (cells.length > 0) rows.push(cells);
-          });
-          return { index: idx, rows: rows.slice(0, 10) };
-        }).slice(0, 5)
+            return { index: idx, rows: rows.slice(0, 10) };
+          })
+          .slice(0, 5),
       };
     });
 
@@ -463,10 +471,10 @@ async function getPageContent(): Promise<any> {
  * 截图页面
  */
 async function takeScreenshot(name: string = 'screenshot'): Promise<any> {
-  if (!await checkPlaywright()) {
+  if (!(await checkPlaywright())) {
     return {
       success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install'
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
     };
   }
 
@@ -481,7 +489,7 @@ async function takeScreenshot(name: string = 'screenshot'): Promise<any> {
     await page.screenshot({ path: screenshotPath, fullPage: true });
     return {
       success: true,
-      data: `截图已保存：${screenshotPath}`
+      data: `截图已保存：${screenshotPath}`,
     };
   } catch (error: any) {
     return { success: false, error: `截图失败：${error.message}` };
@@ -515,21 +523,20 @@ async function closeBrowser(): Promise<any> {
 /**
  * 下载文件
  */
-async function downloadFile(urlOrSelector: string, description: string = '', options: any = {}): Promise<any> {
-  if (!await checkPlaywright()) {
+async function downloadFile(
+  urlOrSelector: string,
+  description: string = '',
+  options: any = {},
+): Promise<any> {
+  if (!(await checkPlaywright())) {
     return {
       success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install'
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
     };
   }
 
   try {
-    const {
-      savePath = './downloads',
-      fullPath,
-      timeout = 60000,
-      acceptDownloads = true
-    } = options;
+    const { savePath = './downloads', fullPath, timeout = 60000, acceptDownloads = true } = options;
 
     const fs = await import('fs');
     const path = await import('path');
@@ -539,7 +546,7 @@ async function downloadFile(urlOrSelector: string, description: string = '', opt
       fs.mkdirSync(downloadDir, { recursive: true });
     }
 
-    let needInit = !page;
+    const needInit = !page;
 
     if (needInit) {
       if (urlOrSelector.startsWith('http')) {
@@ -550,7 +557,7 @@ async function downloadFile(urlOrSelector: string, description: string = '', opt
       } else {
         return {
           success: false,
-          error: '请先使用 initBrowser 打开网页，或提供完整的下载页面 URL'
+          error: '请先使用 initBrowser 打开网页，或提供完整的下载页面 URL',
         };
       }
     } else {
@@ -597,13 +604,13 @@ async function downloadFile(urlOrSelector: string, description: string = '', opt
         '#download-btn',
         '#download-button',
         '[class*="download"]',
-        '[id*="download"]'
+        '[id*="download"]',
       ];
 
       for (const selector of downloadSelectors) {
         try {
           downloadElement = await page.$(selector);
-          if (downloadElement && await downloadElement.isVisible()) {
+          if (downloadElement && (await downloadElement.isVisible())) {
             usedSelector = selector;
             break;
           }
@@ -629,31 +636,35 @@ async function downloadFile(urlOrSelector: string, description: string = '', opt
     if (!downloadElement) {
       const pageInfo = await page.evaluate(() => {
         const links = Array.from(document.querySelectorAll('a[href]'));
-        const downloadLinks = links.filter((a: any) => {
-          const href = a.href || '';
-          const text = (a.innerText || a.textContent || '').toLowerCase();
-          return href.match(/\.(exe|zip|msi|dmg|pkg|deb|rpm|tar|gz|7z|rar)$/i) ||
-                 text.includes('下载') ||
-                 text.includes('download') ||
-                 text.includes('安装') ||
-                 text.includes('installer');
-        }).map((a: any) => ({
-          href: a.href,
-          text: (a.innerText || a.textContent || '').trim(),
-          id: a.id,
-          class: a.className
-        }));
+        const downloadLinks = links
+          .filter((a: any) => {
+            const href = a.href || '';
+            const text = (a.innerText || a.textContent || '').toLowerCase();
+            return (
+              href.match(/\.(exe|zip|msi|dmg|pkg|deb|rpm|tar|gz|7z|rar)$/i) ||
+              text.includes('下载') ||
+              text.includes('download') ||
+              text.includes('安装') ||
+              text.includes('installer')
+            );
+          })
+          .map((a: any) => ({
+            href: a.href,
+            text: (a.innerText || a.textContent || '').trim(),
+            id: a.id,
+            class: a.className,
+          }));
 
         return {
           url: window.location.href,
           title: document.title,
-          downloadLinks: downloadLinks.slice(0, 10)
+          downloadLinks: downloadLinks.slice(0, 10),
         };
       });
 
       return {
         success: false,
-        error: `未找到下载链接。页面信息：${pageInfo.title} (${pageInfo.url}), 可能的下载链接：${JSON.stringify(pageInfo.downloadLinks)}`
+        error: `未找到下载链接。页面信息：${pageInfo.title} (${pageInfo.url}), 可能的下载链接：${JSON.stringify(pageInfo.downloadLinks)}`,
       };
     }
 
@@ -662,7 +673,7 @@ async function downloadFile(urlOrSelector: string, description: string = '', opt
 
     const [download] = await Promise.all([
       page.waitForEvent('download', { timeout }),
-      downloadElement.click()
+      downloadElement.click(),
     ]);
 
     const suggestedFilename = download.suggestedFilename();
@@ -673,12 +684,12 @@ async function downloadFile(urlOrSelector: string, description: string = '', opt
 
     return {
       success: true,
-      data: `文件下载成功！\n文件名：${suggestedFilename}\n保存路径：${finalPath}\n来源：${text || href}\n使用选择器：${usedSelector || '自动检测'}`
+      data: `文件下载成功！\n文件名：${suggestedFilename}\n保存路径：${finalPath}\n来源：${text || href}\n使用选择器：${usedSelector || '自动检测'}`,
     };
   } catch (error: any) {
     return {
       success: false,
-      error: `下载失败：${error.message}`
+      error: `下载失败：${error.message}`,
     };
   }
 }
@@ -687,10 +698,10 @@ async function downloadFile(urlOrSelector: string, description: string = '', opt
  * 在页面内搜索文本内容
  */
 async function searchOnPage(text: string, description: string = ''): Promise<any> {
-  if (!await checkPlaywright()) {
+  if (!(await checkPlaywright())) {
     return {
       success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install'
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
     };
   }
 
@@ -723,12 +734,7 @@ async function searchOnPage(text: string, description: string = ''): Promise<any
 
       const matches: any[] = [];
 
-      const walker = document.createTreeWalker(
-        document.body,
-        NodeFilter.SHOW_TEXT,
-        null,
-        false
-      );
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
 
       let node;
       while ((node = walker.nextNode())) {
@@ -740,7 +746,7 @@ async function searchOnPage(text: string, description: string = ''): Promise<any
             text: textContent.trim().slice(0, 200),
             parentTag: parent?.tagName?.toLowerCase() || null,
             parentClass: parent?.className || null,
-            parentXPath: getXPathInternal(parent)
+            parentXPath: getXPathInternal(parent),
           });
         }
       }
@@ -748,8 +754,10 @@ async function searchOnPage(text: string, description: string = ''): Promise<any
       document.querySelectorAll('input, textarea').forEach((el: any) => {
         const value = el.value || '';
         const placeholder = el.placeholder || '';
-        if (value.toLowerCase().includes(searchText.toLowerCase()) ||
-            placeholder.toLowerCase().includes(searchText.toLowerCase())) {
+        if (
+          value.toLowerCase().includes(searchText.toLowerCase()) ||
+          placeholder.toLowerCase().includes(searchText.toLowerCase())
+        ) {
           matches.push({
             type: 'input',
             tag: el.tagName.toLowerCase(),
@@ -757,7 +765,7 @@ async function searchOnPage(text: string, description: string = ''): Promise<any
             name: el.name || null,
             value: value,
             placeholder: placeholder,
-            xpath: getXPathInternal(el)
+            xpath: getXPathInternal(el),
           });
         }
       });
@@ -771,7 +779,7 @@ async function searchOnPage(text: string, description: string = ''): Promise<any
             text: text.trim(),
             href: el.href || null,
             id: el.id || null,
-            xpath: getXPathInternal(el)
+            xpath: getXPathInternal(el),
           });
         }
       });
@@ -782,7 +790,7 @@ async function searchOnPage(text: string, description: string = ''): Promise<any
     if (results.length === 0) {
       return {
         success: true,
-        data: `未在页面中找到 "${text}"`
+        data: `未在页面中找到 "${text}"`,
       };
     }
 
@@ -793,7 +801,8 @@ async function searchOnPage(text: string, description: string = ''): Promise<any
       if (result.value) output += `   值：${result.value}\n`;
       if (result.placeholder) output += `   占位符：${result.placeholder}\n`;
       if (result.href) output += `   链接：${result.href}\n`;
-      if (result.parentTag) output += `   位置：${result.parentTag}${result.parentClass ? `(${result.parentClass})` : ''}\n`;
+      if (result.parentTag)
+        output += `   位置：${result.parentTag}${result.parentClass ? `(${result.parentClass})` : ''}\n`;
       if (result.xpath) output += `   XPath: ${result.xpath}\n`;
       output += '\n';
     });
@@ -808,10 +817,10 @@ async function searchOnPage(text: string, description: string = ''): Promise<any
  * 查找页面元素并返回详细信息
  */
 async function findElements(selector: string, description: string = ''): Promise<any> {
-  if (!await checkPlaywright()) {
+  if (!(await checkPlaywright())) {
     return {
       success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install'
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
     };
   }
 
@@ -843,7 +852,7 @@ async function findElements(selector: string, description: string = ''): Promise
       }
 
       const results: any[] = [];
-      let found = document.querySelectorAll(searchSelector);
+      const found = document.querySelectorAll(searchSelector);
 
       if (found.length === 0) {
         document.querySelectorAll('*').forEach((el: any) => {
@@ -854,7 +863,7 @@ async function findElements(selector: string, description: string = ''): Promise
               id: el.id || null,
               class: el.className || null,
               text: text.trim().slice(0, 100),
-              xpath: getXPathInternal(el)
+              xpath: getXPathInternal(el),
             });
           }
         });
@@ -865,7 +874,7 @@ async function findElements(selector: string, description: string = ''): Promise
             id: el.id || null,
             class: el.className || null,
             text: (el.innerText || el.textContent || '').trim().slice(0, 100),
-            xpath: getXPathInternal(el)
+            xpath: getXPathInternal(el),
           });
         });
       }
@@ -876,7 +885,7 @@ async function findElements(selector: string, description: string = ''): Promise
     if (elements.length === 0) {
       return {
         success: true,
-        data: `未找到匹配 "${selector}" 的元素${description ? ` (${description})` : ''}`
+        data: `未找到匹配 "${selector}" 的元素${description ? ` (${description})` : ''}`,
       };
     }
 
@@ -901,10 +910,10 @@ async function findElements(selector: string, description: string = ''): Promise
  * 在搜索引擎中搜索
  */
 async function searchOnEngine(query: string, engine: string = 'bing'): Promise<any> {
-  if (!await checkPlaywright()) {
+  if (!(await checkPlaywright())) {
     return {
       success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install'
+      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
     };
   }
 
@@ -914,11 +923,11 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
       searchUrl = engine;
     } else {
       const engines: Record<string, string> = {
-        'baidu': 'https://www.baidu.com',
-        'google': 'https://www.google.com',
-        'bing': 'https://www.bing.com',
-        'sogou': 'https://www.sogou.com',
-        '360': 'https://www.so.com'
+        baidu: 'https://www.baidu.com',
+        google: 'https://www.google.com',
+        bing: 'https://www.bing.com',
+        sogou: 'https://www.sogou.com',
+        '360': 'https://www.so.com',
       };
       searchUrl = engines[engine.toLowerCase()] || engines['baidu'];
     }
@@ -953,7 +962,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
       '.search-input',
       '.search-box input',
       'form input[type="text"]',
-      'form input[type="search"]'
+      'form input[type="search"]',
     ];
 
     let searchInput = null;
@@ -962,7 +971,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
     for (const selector of searchInputSelectors) {
       try {
         searchInput = await page.$(selector);
-        if (searchInput && await searchInput.isVisible()) {
+        if (searchInput && (await searchInput.isVisible())) {
           usedSelector = selector;
           break;
         }
@@ -984,10 +993,14 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
 
             const isSearchInput =
               (type === 'text' || type === 'search' || type === null) &&
-              (id?.includes('kw') || id?.includes('search') || id?.includes('q') ||
-               className?.includes('search') || className?.includes('input') ||
-               placeholder?.includes('搜索') || placeholder?.includes('search') ||
-               placeholder?.includes('百度'));
+              (id?.includes('kw') ||
+                id?.includes('search') ||
+                id?.includes('q') ||
+                className?.includes('search') ||
+                className?.includes('input') ||
+                placeholder?.includes('搜索') ||
+                placeholder?.includes('search') ||
+                placeholder?.includes('百度'));
 
             if (isSearchInput) {
               searchInput = input;
@@ -1026,51 +1039,69 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
           url: window.location.href,
           title: document.title,
           inputCount: inputs.length,
-          visibleInputs: inputs.filter((i: any) => i.offsetParent !== null).map((i: any) => ({
-            tag: i.tagName,
-            id: i.id,
-            name: i.name,
-            type: i.type,
-            class: i.className,
-            placeholder: i.placeholder
-          })).slice(0, 10)
+          visibleInputs: inputs
+            .filter((i: any) => i.offsetParent !== null)
+            .map((i: any) => ({
+              tag: i.tagName,
+              id: i.id,
+              name: i.name,
+              type: i.type,
+              class: i.className,
+              placeholder: i.placeholder,
+            }))
+            .slice(0, 10),
         };
       });
 
       return {
         success: false,
-        error: `未找到搜索框。页面信息：${pageInfo.title} (${pageInfo.url}), 输入框数量：${pageInfo.inputCount}, 可见输入框：${JSON.stringify(pageInfo.visibleInputs)}`
+        error: `未找到搜索框。页面信息：${pageInfo.title} (${pageInfo.url}), 输入框数量：${pageInfo.inputCount}, 可见输入框：${JSON.stringify(pageInfo.visibleInputs)}`,
       };
     }
 
     try {
-      await page.evaluate((selector: string, value: string) => {
-        let element: any = null;
+      await page.evaluate(
+        (selector: string, value: string) => {
+          let element: any = null;
 
-        try {
-          element = document.querySelector(selector);
-        } catch (e) {}
+          try {
+            element = document.querySelector(selector);
+          } catch (e) {}
 
-        if (!element && (selector.startsWith('//') || selector.startsWith('id('))) {
-          const result = document.evaluate(selector, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-          element = result.singleNodeValue;
-        }
+          if (!element && (selector.startsWith('//') || selector.startsWith('id('))) {
+            const result = document.evaluate(
+              selector,
+              document,
+              null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE,
+              null,
+            );
+            element = result.singleNodeValue;
+          }
 
-        if (!element && !selector.includes(' ') && !selector.startsWith('.') && !selector.startsWith('[')) {
-          element = document.getElementById(selector);
-        }
+          if (
+            !element &&
+            !selector.includes(' ') &&
+            !selector.startsWith('.') &&
+            !selector.startsWith('[')
+          ) {
+            element = document.getElementById(selector);
+          }
 
-        if (element) {
-          element.value = value;
-          element.dispatchEvent(new Event('input', { bubbles: true }));
-          element.dispatchEvent(new Event('change', { bubbles: true }));
-          element.dispatchEvent(new Event('focus', { bubbles: true }));
-          element.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
-          element.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true }));
-        } else {
-          throw new Error(`找不到元素：${selector}`);
-        }
-      }, usedSelector, query);
+          if (element) {
+            element.value = value;
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+            element.dispatchEvent(new Event('focus', { bubbles: true }));
+            element.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+            element.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true }));
+          } else {
+            throw new Error(`找不到元素：${selector}`);
+          }
+        },
+        usedSelector,
+        query,
+      );
     } catch (fillError: any) {
       try {
         await searchInput.evaluate((el: any, value: string) => {
@@ -1081,7 +1112,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
       } catch (e) {
         return {
           success: false,
-          error: `填写搜索框失败：${fillError.message}`
+          error: `填写搜索框失败：${fillError.message}`,
         };
       }
     }
@@ -1099,14 +1130,14 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
       'input[value*="Search"]',
       '.search-btn',
       '#search-btn',
-      'button.search-button'
+      'button.search-button',
     ];
 
     let submitButton = null;
     for (const selector of submitSelectors) {
       try {
         submitButton = await page.$(selector);
-        if (submitButton && await submitButton.isVisible()) {
+        if (submitButton && (await submitButton.isVisible())) {
           break;
         }
       } catch (e) {
@@ -1125,21 +1156,28 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
 
     const searchResults = await page.evaluate(() => {
       const results: any[] = [];
-      const resultContainers = document.querySelectorAll('#content_left, #search, .results, .search-results, [role="main"], #main');
+      const resultContainers = document.querySelectorAll(
+        '#content_left, #search, .results, .search-results, [role="main"], #main',
+      );
       const container = resultContainers[0] || document.body;
 
       container.querySelectorAll('a[href]').forEach((link: any) => {
         const href = link.href;
         const text = (link.innerText || link.textContent || '').trim();
 
-        if (href && text && text.length > 5 && text.length < 200 &&
-            !href.includes('javascript:') &&
-            !text.includes('登录') &&
-            !text.includes('注册') &&
-            !text.includes('广告')) {
+        if (
+          href &&
+          text &&
+          text.length > 5 &&
+          text.length < 200 &&
+          !href.includes('javascript:') &&
+          !text.includes('登录') &&
+          !text.includes('注册') &&
+          !text.includes('广告')
+        ) {
           results.push({
             title: text,
-            url: href
+            url: href,
           });
         }
       });
@@ -1190,5 +1228,5 @@ export {
   searchOnPage,
   findElements,
   searchOnEngine,
-  downloadFile
+  downloadFile,
 };
