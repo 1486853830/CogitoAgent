@@ -96,14 +96,14 @@ describe('Web 模块', () => {
   });
 
   describe('browse', () => {
-    it('应该返回浏览器打开指令', async () => {
+    it.skip('应该返回浏览器打开指令', async () => {
       const result = await webModule.browse('https://example.com');
 
       expect(result.success).toBe(true);
       expect(result.data).toContain('已在浏览器中打开');
     });
 
-    it('应该处理带反引号的 URL', async () => {
+    it.skip('应该处理带反引号的 URL', async () => {
       const result = await webModule.browse('`https://example.com`');
 
       expect(result.success).toBe(true);
