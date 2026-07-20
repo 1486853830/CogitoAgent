@@ -59,7 +59,8 @@ async function search(query: string): Promise<any> {
  */
 async function browse(url: string): Promise<any> {
   return new Promise((resolve) => {
-    if (!isValidUrl(url)) {
+    const cleanedUrl = url.trim().replace(/^`|`$/g, '');
+    if (!isValidUrl(cleanedUrl)) {
       resolve({ success: false, error: `无效的 URL: ${url}` });
       return;
     }
@@ -69,20 +70,20 @@ async function browse(url: string): Promise<any> {
 
     if (platform === 'win32') {
       command = 'cmd';
-      args = ['/c', 'start', '', url.trim()];
+      args = ['/c', 'start', '', cleanedUrl];
     } else if (platform === 'darwin') {
       command = 'open';
-      args = [url.trim()];
+      args = [cleanedUrl];
     } else {
       command = 'xdg-open';
-      args = [url.trim()];
+      args = [cleanedUrl];
     }
 
     execFile(command, args, (error) => {
       if (error) {
         resolve({ success: false, error: `打开链接失败: ${error.message}` });
       } else {
-        resolve({ success: true, data: `已在浏览器中打开: ${url}` });
+        resolve({ success: true, data: `已在浏览器中打开: ${cleanedUrl}` });
       }
     });
   });
