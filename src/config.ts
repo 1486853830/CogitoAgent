@@ -3,16 +3,28 @@ import path from 'path';
 import os from 'os';
 import type { Config } from './types/index.ts';
 
-const CONFIG_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
-const CONFIG_FILE = path.resolve(CONFIG_DIR, 'config.json');
-const ENV_FILE = path.resolve(CONFIG_DIR, '.env');
+function getConfigDir(): string {
+  return process.env.COGITO_USER_DATA_DIR || process.cwd();
+}
+
+function getConfigFile(): string {
+  return path.resolve(getConfigDir(), 'config.json');
+}
+
+function getEnvFile(): string {
+  return path.resolve(getConfigDir(), '.env');
+}
+
+const CONFIG_DIR = getConfigDir();
+const CONFIG_FILE = getConfigFile();
+const ENV_FILE = getEnvFile();
 
 const DEFAULT_CONFIG: Config = {
   api: {
     provider: '',
     baseURL: '',
     apiKey: '',
-    model: ''
+    model: '',
   },
   chat: {
     maxTokens: 131072,
@@ -20,69 +32,70 @@ const DEFAULT_CONFIG: Config = {
     topP: 0.7,
     topK: 50,
     frequencyPenalty: 1,
-    thinkingInterval: 3000
+    thinkingInterval: 3000,
   },
   search: {
     enabled: true,
     baseURL: '',
     recencyFilter: '',
-    siteFilter: ''
+    siteFilter: '',
   },
   ocr: {
     provider: '',
     baseURL: '',
     apiKey: '',
-    model: 'Qwen2.5-VL-32B-Instruct'
+    model: 'Qwen2.5-VL-32B-Instruct',
   },
   vision: {
     baseURL: '',
     apiKey: '',
-    model: 'Qwen2.5-VL-32B-Instruct'
+    model: 'Qwen2.5-VL-32B-Instruct',
   },
   workspace: os.homedir(),
   database: {
-    path: './data/example.db'
+    path: './data/example.db',
   },
   email: {
     smtpHost: '',
     smtpPort: 587,
     user: '',
     password: '',
-    from: ''
+    from: '',
   },
   models: {
     openai: {
       apiKey: '',
-      baseURL: 'https://api.openai.com/v1'
+      baseURL: 'https://api.openai.com/v1',
     },
     moark: {
       apiKey: '',
-      baseURL: 'https://api.moark.com/v1'
+      baseURL: 'https://api.moark.com/v1',
     },
     anthropic: {
       apiKey: '',
-      baseURL: 'https://api.anthropic.com/v1'
+      baseURL: 'https://api.anthropic.com/v1',
     },
     google: {
       apiKey: '',
-      baseURL: 'https://generativelanguage.googleapis.com/v1beta'
-    }
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta',
+    },
   },
   code: {
     maxExecutionTime: 30000,
-    maxOutputSize: 100000
+    maxOutputSize: 100000,
   },
   scheduler: {
-    enabled: true
-  }
+    enabled: true,
+  },
 };
 
 let config: Config | null = null;
 
 function loadEnvFile(): void {
-  if (existsSync(ENV_FILE)) {
+  const envFile = getEnvFile();
+  if (existsSync(envFile)) {
     try {
-      const content = readFileSync(ENV_FILE, 'utf-8');
+      const content = readFileSync(envFile, 'utf-8');
       const lines = content.split('\n');
       for (const line of lines) {
         const trimmed = line.trim();
@@ -241,7 +254,8 @@ function loadEnvConfig(): Partial<Config> {
 
   const securityConfig: Partial<Config['security']> = {};
   if (process.env.COGITO_CONFIRM_DANGEROUS !== undefined) {
-    securityConfig.confirmDangerous = process.env.COGITO_CONFIRM_DANGEROUS.toLowerCase() !== 'false';
+    securityConfig.confirmDangerous =
+      process.env.COGITO_CONFIRM_DANGEROUS.toLowerCase() !== 'false';
   }
   if (process.env.COGITO_SANDBOX_MODE !== undefined) {
     securityConfig.sandboxMode = process.env.COGITO_SANDBOX_MODE.toLowerCase() !== 'false';
@@ -257,11 +271,17 @@ function loadEnvConfig(): Partial<Config> {
   return envConfig;
 }
 
-function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+function deepMerge(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): Record<string, unknown> {
   const result = { ...target };
   for (const key in source) {
     if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      result[key] = deepMerge((target[key] as Record<string, unknown>) || {}, source[key] as Record<string, unknown>);
+      result[key] = deepMerge(
+        (target[key] as Record<string, unknown>) || {},
+        source[key] as Record<string, unknown>,
+      );
     } else {
       result[key] = source[key];
     }
@@ -271,17 +291,27 @@ function deepMerge(target: Record<string, unknown>, source: Record<string, unkno
 
 function loadConfig(): Config {
   try {
-    if (existsSync(CONFIG_FILE)) {
-      const data = readFileSync(CONFIG_FILE, 'utf-8');
+    const configFile = getConfigFile();
+    if (existsSync(configFile)) {
+      const data = readFileSync(configFile, 'utf-8');
       const loaded = JSON.parse(data);
-      config = deepMerge(DEFAULT_CONFIG as unknown as Record<string, unknown>, loaded) as unknown as Config;
+      config = deepMerge(
+        DEFAULT_CONFIG as unknown as Record<string, unknown>,
+        loaded,
+      ) as unknown as Config;
       const envConfig = loadEnvConfig();
-      config = deepMerge(config as unknown as Record<string, unknown>, envConfig) as unknown as Config;
+      config = deepMerge(
+        config as unknown as Record<string, unknown>,
+        envConfig,
+      ) as unknown as Config;
       console.error('[配置] 已加载配置文件');
     } else {
       config = { ...DEFAULT_CONFIG };
       const envConfig = loadEnvConfig();
-      config = deepMerge(config as unknown as Record<string, unknown>, envConfig) as unknown as Config;
+      config = deepMerge(
+        config as unknown as Record<string, unknown>,
+        envConfig,
+      ) as unknown as Config;
     }
   } catch (e) {
     console.error(`[配置] 加载失败: ${(e as Error).message}`);
@@ -292,7 +322,10 @@ function loadConfig(): Config {
 }
 
 function sanitizeConfig(configInput: Config): Config {
-  const sanitized = deepMerge({}, configInput as unknown as Record<string, unknown>) as unknown as Config;
+  const sanitized = deepMerge(
+    {},
+    configInput as unknown as Record<string, unknown>,
+  ) as unknown as Config;
 
   if (sanitized.api && sanitized.api.apiKey) {
     delete (sanitized.api as { apiKey?: string }).apiKey;
@@ -325,7 +358,7 @@ function sanitizeConfig(configInput: Config): Config {
 function saveConfig(newConfig: Config): boolean {
   try {
     const sanitized = sanitizeConfig(newConfig);
-    writeFileSync(CONFIG_FILE, JSON.stringify(sanitized, null, 2), 'utf-8');
+    writeFileSync(getConfigFile(), JSON.stringify(sanitized, null, 2), 'utf-8');
     config = newConfig;
     console.error('[配置] 配置已保存（敏感信息已过滤）');
     return true;
@@ -347,5 +380,5 @@ export {
   isConfigured,
   deepMerge,
   CONFIG_FILE,
-  DEFAULT_CONFIG
+  DEFAULT_CONFIG,
 };
