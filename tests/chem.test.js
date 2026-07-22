@@ -60,7 +60,7 @@ describe('化学工具', () => {
     it('should convert pH to H+', async () => {
       const result = await chem.phToH(7);
       expect(result.success).toBe(true);
-      expect(result.data).toContain('1.0000e-7');
+      expect(result.data).toContain('1.0000e-07');
     });
   });
 

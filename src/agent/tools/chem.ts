@@ -8,44 +8,44 @@
 // 元素周期表（常用元素）
 // ============================================
 const ELEMENTS: any = {
-  H:  { z: 1,  mass: 1.008,   symbol: 'H',  name: '氢',   nameEn: 'Hydrogen',    period: 1, group: 1 },
-  He: { z: 2,  mass: 4.003,   symbol: 'He', name: '氦',   nameEn: 'Helium',      period: 1, group: 18 },
-  Li: { z: 3,  mass: 6.941,   symbol: 'Li', name: '锂',   nameEn: 'Lithium',     period: 2, group: 1 },
-  Be: { z: 4,  mass: 9.012,   symbol: 'Be', name: '铍',   nameEn: 'Beryllium',   period: 2, group: 2 },
-  B:  { z: 5,  mass: 10.81,   symbol: 'B',  name: '硼',   nameEn: 'Boron',       period: 2, group: 13 },
-  C:  { z: 6,  mass: 12.011,  symbol: 'C',  name: '碳',   nameEn: 'Carbon',      period: 2, group: 14 },
-  N:  { z: 7,  mass: 14.007,  symbol: 'N',  name: '氮',   nameEn: 'Nitrogen',    period: 2, group: 15 },
-  O:  { z: 8,  mass: 15.999,  symbol: 'O',  name: '氧',   nameEn: 'Oxygen',      period: 2, group: 16 },
-  F:  { z: 9,  mass: 18.998,  symbol: 'F',  name: '氟',   nameEn: 'Fluorine',    period: 2, group: 17 },
-  Ne: { z: 10, mass: 20.180,  symbol: 'Ne', name: '氖',   nameEn: 'Neon',        period: 2, group: 18 },
-  Na: { z: 11, mass: 22.990,  symbol: 'Na', name: '钠',   nameEn: 'Sodium',      period: 3, group: 1 },
-  Mg: { z: 12, mass: 24.305,  symbol: 'Mg', name: '镁',   nameEn: 'Magnesium',   period: 3, group: 2 },
-  Al: { z: 13, mass: 26.982,  symbol: 'Al', name: '铝',   nameEn: 'Aluminium',   period: 3, group: 13 },
-  Si: { z: 14, mass: 28.086,  symbol: 'Si', name: '硅',   nameEn: 'Silicon',     period: 3, group: 14 },
-  P:  { z: 15, mass: 30.974,  symbol: 'P',  name: '磷',   nameEn: 'Phosphorus',  period: 3, group: 15 },
-  S:  { z: 16, mass: 32.065,  symbol: 'S',  name: '硫',   nameEn: 'Sulfur',      period: 3, group: 16 },
-  Cl: { z: 17, mass: 35.453,  symbol: 'Cl', name: '氯',   nameEn: 'Chlorine',    period: 3, group: 17 },
-  Ar: { z: 18, mass: 39.948,  symbol: 'Ar', name: '氩',   nameEn: 'Argon',       period: 3, group: 18 },
-  K:  { z: 19, mass: 39.098,  symbol: 'K',  name: '钾',   nameEn: 'Potassium',   period: 4, group: 1 },
-  Ca: { z: 20, mass: 40.078,  symbol: 'Ca', name: '钙',   nameEn: 'Calcium',     period: 4, group: 2 },
-  Sc: { z: 21, mass: 44.956,  symbol: 'Sc', name: '钪',   nameEn: 'Scandium',    period: 4, group: 3 },
-  Ti: { z: 22, mass: 47.867,  symbol: 'Ti', name: '钛',   nameEn: 'Titanium',    period: 4, group: 4 },
-  V:  { z: 23, mass: 50.942,  symbol: 'V',  name: '钒',   nameEn: 'Vanadium',    period: 4, group: 5 },
-  Cr: { z: 24, mass: 51.996,  symbol: 'Cr', name: '铬',   nameEn: 'Chromium',    period: 4, group: 6 },
-  Mn: { z: 25, mass: 54.938,  symbol: 'Mn', name: '锰',   nameEn: 'Manganese',   period: 4, group: 7 },
-  Fe: { z: 26, mass: 55.845,  symbol: 'Fe', name: '铁',   nameEn: 'Iron',        period: 4, group: 8 },
-  Co: { z: 27, mass: 58.933,  symbol: 'Co', name: '钴',   nameEn: 'Cobalt',      period: 4, group: 9 },
-  Ni: { z: 28, mass: 58.693,  symbol: 'Ni', name: '镍',   nameEn: 'Nickel',      period: 4, group: 10 },
-  Cu: { z: 29, mass: 63.546,  symbol: 'Cu', name: '铜',   nameEn: 'Copper',      period: 4, group: 11 },
-  Zn: { z: 30, mass: 65.380,  symbol: 'Zn', name: '锌',   nameEn: 'Zinc',        period: 4, group: 12 },
-  Br: { z: 35, mass: 79.904,  symbol: 'Br', name: '溴',   nameEn: 'Bromine',     period: 4, group: 17 },
-  Ag: { z: 47, mass: 107.868, symbol: 'Ag', name: '银',   nameEn: 'Silver',      period: 5, group: 11 },
-  I:  { z: 53, mass: 126.904, symbol: 'I',  name: '碘',   nameEn: 'Iodine',      period: 5, group: 17 },
-  Ba: { z: 56, mass: 137.327, symbol: 'Ba', name: '钡',   nameEn: 'Barium',      period: 6, group: 2 },
-  Pt: { z: 78, mass: 195.084, symbol: 'Pt', name: '铂',   nameEn: 'Platinum',    period: 6, group: 10 },
-  Au: { z: 79, mass: 196.967, symbol: 'Au', name: '金',   nameEn: 'Gold',        period: 6, group: 11 },
-  Hg: { z: 80, mass: 200.590, symbol: 'Hg', name: '汞',   nameEn: 'Mercury',     period: 6, group: 12 },
-  Pb: { z: 82, mass: 207.200, symbol: 'Pb', name: '铅',   nameEn: 'Lead',        period: 6, group: 14 },
+  H: { z: 1, mass: 1.008, symbol: 'H', name: '氢', nameEn: 'Hydrogen', period: 1, group: 1 },
+  He: { z: 2, mass: 4.003, symbol: 'He', name: '氦', nameEn: 'Helium', period: 1, group: 18 },
+  Li: { z: 3, mass: 6.941, symbol: 'Li', name: '锂', nameEn: 'Lithium', period: 2, group: 1 },
+  Be: { z: 4, mass: 9.012, symbol: 'Be', name: '铍', nameEn: 'Beryllium', period: 2, group: 2 },
+  B: { z: 5, mass: 10.81, symbol: 'B', name: '硼', nameEn: 'Boron', period: 2, group: 13 },
+  C: { z: 6, mass: 12.011, symbol: 'C', name: '碳', nameEn: 'Carbon', period: 2, group: 14 },
+  N: { z: 7, mass: 14.007, symbol: 'N', name: '氮', nameEn: 'Nitrogen', period: 2, group: 15 },
+  O: { z: 8, mass: 15.999, symbol: 'O', name: '氧', nameEn: 'Oxygen', period: 2, group: 16 },
+  F: { z: 9, mass: 18.998, symbol: 'F', name: '氟', nameEn: 'Fluorine', period: 2, group: 17 },
+  Ne: { z: 10, mass: 20.18, symbol: 'Ne', name: '氖', nameEn: 'Neon', period: 2, group: 18 },
+  Na: { z: 11, mass: 22.99, symbol: 'Na', name: '钠', nameEn: 'Sodium', period: 3, group: 1 },
+  Mg: { z: 12, mass: 24.305, symbol: 'Mg', name: '镁', nameEn: 'Magnesium', period: 3, group: 2 },
+  Al: { z: 13, mass: 26.982, symbol: 'Al', name: '铝', nameEn: 'Aluminium', period: 3, group: 13 },
+  Si: { z: 14, mass: 28.086, symbol: 'Si', name: '硅', nameEn: 'Silicon', period: 3, group: 14 },
+  P: { z: 15, mass: 30.974, symbol: 'P', name: '磷', nameEn: 'Phosphorus', period: 3, group: 15 },
+  S: { z: 16, mass: 32.065, symbol: 'S', name: '硫', nameEn: 'Sulfur', period: 3, group: 16 },
+  Cl: { z: 17, mass: 35.453, symbol: 'Cl', name: '氯', nameEn: 'Chlorine', period: 3, group: 17 },
+  Ar: { z: 18, mass: 39.948, symbol: 'Ar', name: '氩', nameEn: 'Argon', period: 3, group: 18 },
+  K: { z: 19, mass: 39.098, symbol: 'K', name: '钾', nameEn: 'Potassium', period: 4, group: 1 },
+  Ca: { z: 20, mass: 40.078, symbol: 'Ca', name: '钙', nameEn: 'Calcium', period: 4, group: 2 },
+  Sc: { z: 21, mass: 44.956, symbol: 'Sc', name: '钪', nameEn: 'Scandium', period: 4, group: 3 },
+  Ti: { z: 22, mass: 47.867, symbol: 'Ti', name: '钛', nameEn: 'Titanium', period: 4, group: 4 },
+  V: { z: 23, mass: 50.942, symbol: 'V', name: '钒', nameEn: 'Vanadium', period: 4, group: 5 },
+  Cr: { z: 24, mass: 51.996, symbol: 'Cr', name: '铬', nameEn: 'Chromium', period: 4, group: 6 },
+  Mn: { z: 25, mass: 54.938, symbol: 'Mn', name: '锰', nameEn: 'Manganese', period: 4, group: 7 },
+  Fe: { z: 26, mass: 55.845, symbol: 'Fe', name: '铁', nameEn: 'Iron', period: 4, group: 8 },
+  Co: { z: 27, mass: 58.933, symbol: 'Co', name: '钴', nameEn: 'Cobalt', period: 4, group: 9 },
+  Ni: { z: 28, mass: 58.693, symbol: 'Ni', name: '镍', nameEn: 'Nickel', period: 4, group: 10 },
+  Cu: { z: 29, mass: 63.546, symbol: 'Cu', name: '铜', nameEn: 'Copper', period: 4, group: 11 },
+  Zn: { z: 30, mass: 65.38, symbol: 'Zn', name: '锌', nameEn: 'Zinc', period: 4, group: 12 },
+  Br: { z: 35, mass: 79.904, symbol: 'Br', name: '溴', nameEn: 'Bromine', period: 4, group: 17 },
+  Ag: { z: 47, mass: 107.868, symbol: 'Ag', name: '银', nameEn: 'Silver', period: 5, group: 11 },
+  I: { z: 53, mass: 126.904, symbol: 'I', name: '碘', nameEn: 'Iodine', period: 5, group: 17 },
+  Ba: { z: 56, mass: 137.327, symbol: 'Ba', name: '钡', nameEn: 'Barium', period: 6, group: 2 },
+  Pt: { z: 78, mass: 195.084, symbol: 'Pt', name: '铂', nameEn: 'Platinum', period: 6, group: 10 },
+  Au: { z: 79, mass: 196.967, symbol: 'Au', name: '金', nameEn: 'Gold', period: 6, group: 11 },
+  Hg: { z: 80, mass: 200.59, symbol: 'Hg', name: '汞', nameEn: 'Mercury', period: 6, group: 12 },
+  Pb: { z: 82, mass: 207.2, symbol: 'Pb', name: '铅', nameEn: 'Lead', period: 6, group: 14 },
 };
 
 // ============================================
@@ -77,7 +77,8 @@ function parseFormula(formula: string): any {
       }
       const multiplier = num ? parseInt(num) : 1;
       for (const [el, cnt] of Object.entries(top)) {
-        stack[stack.length - 1][el] = (stack[stack.length - 1][el] || 0) + (cnt as number) * multiplier;
+        stack[stack.length - 1][el] =
+          (stack[stack.length - 1][el] || 0) + (cnt as number) * multiplier;
       }
     } else if (ch === '.' && i + 1 < clean.length) {
       // 处理水合物分隔符，如 CuSO4·5H2O，跳过
@@ -132,7 +133,7 @@ async function elementInfo(symbol: string): Promise<any> {
     }
     return {
       success: true,
-      data: `${el.symbol} (${el.nameEn}) ${el.name}\n原子序数: ${el.z}\n原子量: ${el.mass} g/mol\n周期: ${el.period}，族: ${el.group}`
+      data: `${el.symbol} (${el.nameEn}) ${el.name}\n原子序数: ${el.z}\n原子量: ${el.mass} g/mol\n周期: ${el.period}，族: ${el.group}`,
     };
   } catch (error: any) {
     return { success: false, error: `查询失败: ${error.message}` };
@@ -158,7 +159,7 @@ async function molWeight(formula: string): Promise<any> {
 
     return {
       success: true,
-      data: `${formula} 分子量: ${total.toFixed(3)} g/mol\n${details.join('\n')}`
+      data: `${formula} 分子量: ${total.toFixed(3)} g/mol\n${details.join('\n')}`,
     };
   } catch (error: any) {
     return { success: false, error: `分子量计算失败: ${error.message}` };
@@ -184,7 +185,7 @@ async function elementComposition(formula: string): Promise<any> {
 
     const lines = [`${formula} 元素组成（总分子量: ${total.toFixed(3)} g/mol）:\n`];
     for (const [el, w] of Object.entries(weights)) {
-      const pct = ((w as number) / total * 100).toFixed(2);
+      const pct = (((w as number) / total) * 100).toFixed(2);
       lines.push(`  ${el}: ${ELEMENTS[el].name}  ${(w as number).toFixed(3)} g/mol (${pct}%)`);
     }
 
@@ -234,17 +235,23 @@ async function dilution(c1: any, v1: any, c2: any, v2: any): Promise<any> {
       const rhs = c2 * v2;
       return {
         success: true,
-        data: `验证: ${c1}×${v1} = ${lhs.toFixed(4)}，${c2}×${v2} = ${rhs.toFixed(4)}\n两者相差: ${Math.abs(lhs - rhs).toFixed(4)} (${Math.abs(lhs - rhs) < 0.001 ? '一致 ✓' : '不一致 ✗'})`
+        data: `验证: ${c1}×${v1} = ${lhs.toFixed(4)}，${c2}×${v2} = ${rhs.toFixed(4)}\n两者相差: ${Math.abs(lhs - rhs).toFixed(4)} (${Math.abs(lhs - rhs) < 0.001 ? '一致 ✓' : '不一致 ✗'})`,
       };
     } else if (c2Given) {
       if (c2 <= 0) return { success: false, error: '目标浓度必须为正数' };
       if (c2 >= c1) return { success: false, error: '目标浓度应小于初始浓度' };
-      const result = c1 * v1 / c2;
-      return { success: true, data: `需要最终体积: ${result.toFixed(4)} (${c1}×${v1} = ${c2}×${result.toFixed(4)})` };
+      const result = (c1 * v1) / c2;
+      return {
+        success: true,
+        data: `需要最终体积: ${result.toFixed(4)} (${c1}×${v1} = ${c2}×${result.toFixed(4)})`,
+      };
     } else if (v2Given) {
       if (v2 <= v1) return { success: false, error: '目标体积应大于初始体积' };
-      const result = c1 * v1 / v2;
-      return { success: true, data: `稀释后浓度: ${result.toFixed(4)} (${c1}×${v1} = ${result.toFixed(4)}×${v2})` };
+      const result = (c1 * v1) / v2;
+      return {
+        success: true,
+        data: `稀释后浓度: ${result.toFixed(4)} (${c1}×${v1} = ${result.toFixed(4)}×${v2})`,
+      };
     } else {
       return { success: false, error: '请至少提供 C2 或 V2 中的一个' };
     }
@@ -286,7 +293,9 @@ async function phToH(ph: any): Promise<any> {
     if (ph < 0 || ph > 14) return { success: false, error: 'pH 值应在 0-14 之间' };
 
     const h = Math.pow(10, -ph);
-    return { success: true, data: `[H⁺] = ${h.toExponential(4)} mol/L` };
+    const parts = h.toExponential(4).split('e');
+    const formatted = `${parts[0]}e${parseInt(parts[1]) < 0 ? '-' : '+'}${Math.abs(parseInt(parts[1])).toString().padStart(2, '0')}`;
+    return { success: true, data: `[H⁺] = ${formatted} mol/L` };
   } catch (error: any) {
     return { success: false, error: `H⁺ 计算失败: ${error.message}` };
   }
@@ -308,28 +317,37 @@ async function idealGasLaw(P: any, V: any, n: any, T: any): Promise<any> {
       { val: P, name: 'P', unit: 'atm' },
       { val: V, name: 'V', unit: 'L' },
       { val: n, name: 'n', unit: 'mol' },
-      { val: T, name: 'T', unit: 'K' }
+      { val: T, name: 'T', unit: 'K' },
     ];
 
-    const given = params.filter(p => p.val !== undefined && p.val !== null);
-    const missing = params.filter(p => p.val === undefined || p.val === null);
+    const given = params.filter((p) => p.val !== undefined && p.val !== null);
+    const missing = params.filter((p) => p.val === undefined || p.val === null);
 
     if (given.length < 3) {
       return { success: false, error: '至少需要提供 P、V、n、T 中的 3 个参数' };
     }
 
     if (missing.length === 1) {
-      const [Pv, Vv, nv, Tv] = [P, V, n, T].map(v => (v === undefined || v === null) ? null : v);
+      const [Pv, Vv, nv, Tv] = [P, V, n, T].map((v) => (v === undefined || v === null ? null : v));
       let result, unit;
 
-      if (Pv === null) { result = nv * R * Tv / Vv; unit = 'atm'; }
-      else if (Vv === null) { result = nv * R * Tv / Pv; unit = 'L'; }
-      else if (nv === null) { result = Pv * Vv / (R * Tv); unit = 'mol'; }
-      else { result = Pv * Vv / (nv * R); unit = 'K'; }
+      if (Pv === null) {
+        result = (nv * R * Tv) / Vv;
+        unit = 'atm';
+      } else if (Vv === null) {
+        result = (nv * R * Tv) / Pv;
+        unit = 'L';
+      } else if (nv === null) {
+        result = (Pv * Vv) / (R * Tv);
+        unit = 'mol';
+      } else {
+        result = (Pv * Vv) / (nv * R);
+        unit = 'K';
+      }
 
       return {
         success: true,
-        data: `PV = nRT\n${params.map(p => `${p.name} = ${p.val !== null && p.val !== undefined ? p.val : result.toFixed(4)} ${p.unit}`).join(', ')}`
+        data: `PV = nRT\n${params.map((p) => `${p.name} = ${p.val !== null && p.val !== undefined ? p.val : result.toFixed(4)} ${p.unit}`).join(', ')}`,
       };
     } else if (missing.length === 0) {
       // 验证
@@ -337,7 +355,7 @@ async function idealGasLaw(P: any, V: any, n: any, T: any): Promise<any> {
       const rhs = n * R * T;
       return {
         success: true,
-        data: `验证: PV = ${P}×${V} = ${lhs.toFixed(4)}\nnRT = ${n}×${R}×${T} = ${rhs.toFixed(4)}\n相差: ${Math.abs(lhs - rhs).toFixed(4)}`
+        data: `验证: PV = ${P}×${V} = ${lhs.toFixed(4)}\nnRT = ${n}×${R}×${T} = ${rhs.toFixed(4)}\n相差: ${Math.abs(lhs - rhs).toFixed(4)}`,
       };
     }
 
@@ -364,7 +382,7 @@ async function gasDensity(mw: any, T: any, P: any): Promise<any> {
     const density = (P * mw) / (R * T);
     return {
       success: true,
-      data: `气体密度: ${density.toFixed(4)} g/L (${(density * 1000).toFixed(4)} mg/L)\nT=${T}K, P=${P}atm, MW=${mw} g/mol`
+      data: `气体密度: ${density.toFixed(4)} g/L (${(density * 1000).toFixed(4)} mg/L)\nT=${T}K, P=${P}atm, MW=${mw} g/mol`,
     };
   } catch (error: any) {
     return { success: false, error: `气体密度计算失败: ${error.message}` };
@@ -380,5 +398,5 @@ export {
   phFromH,
   phToH,
   idealGasLaw,
-  gasDensity
+  gasDensity,
 };
