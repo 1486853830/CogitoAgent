@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import {
   getState,
   setState,
@@ -6,6 +7,10 @@ import {
   isAwaitingConfirmation,
   getPendingConfirmation,
   setPendingConfirmation,
+  requestConfirmation,
+  resolveConfirmation,
+  cancelConfirmation,
+  state,
   STATE,
 } from '../../src/agent/state.ts';
 
@@ -81,6 +86,148 @@ describe('state.ts', () => {
       expect(getPendingConfirmation()).toEqual(confirmation);
       setPendingConfirmation(null);
       expect(getPendingConfirmation()).toBe(null);
+    });
+  });
+
+  describe('requestConfirmation', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      setState(STATE.THINKING);
+      setPendingConfirmation(null);
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should set state to AWAITING_CONFIRMATION', async () => {
+      const promise = requestConfirmation('testTool', ['arg1']);
+      expect(getState()).toBe(STATE.AWAITING_CONFIRMATION);
+      resolveConfirmation(true);
+      await promise;
+    });
+
+    it('should store pending confirmation with toolName and args', async () => {
+      const promise = requestConfirmation('myTool', [1, 2, 3]);
+      const pending = getPendingConfirmation();
+      expect(pending).toEqual({ toolName: 'myTool', args: [1, 2, 3] });
+      resolveConfirmation(true);
+      await promise;
+    });
+
+    it('should resolve to false on timeout', async () => {
+      const promise = requestConfirmation('timeoutTool', []);
+      // Advance past the 5 minute timeout
+      jest.advanceTimersByTime(5 * 60 * 1000 + 1);
+      const result = await promise;
+      expect(result).toBe(false);
+    });
+
+    it('should reset state to THINKING after timeout', async () => {
+      const promise = requestConfirmation('timeoutTool', []);
+      jest.advanceTimersByTime(5 * 60 * 1000 + 1);
+      await promise;
+      expect(getState()).toBe(STATE.THINKING);
+    });
+
+    it('should clear pending confirmation after timeout', async () => {
+      const promise = requestConfirmation('timeoutTool', []);
+      jest.advanceTimersByTime(5 * 60 * 1000 + 1);
+      await promise;
+      expect(getPendingConfirmation()).toBe(null);
+    });
+  });
+
+  describe('resolveConfirmation', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      setState(STATE.THINKING);
+      setPendingConfirmation(null);
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should resolve the promise with true', async () => {
+      const promise = requestConfirmation('confirmTool', []);
+      resolveConfirmation(true);
+      const result = await promise;
+      expect(result).toBe(true);
+    });
+
+    it('should resolve the promise with false', async () => {
+      const promise = requestConfirmation('denyTool', []);
+      resolveConfirmation(false);
+      const result = await promise;
+      expect(result).toBe(false);
+    });
+
+    it('should clear pending confirmation after resolving', async () => {
+      const promise = requestConfirmation('clearTool', []);
+      resolveConfirmation(true);
+      await promise;
+      expect(getPendingConfirmation()).toBe(null);
+    });
+
+    it('should be a no-op when no confirmation is pending', () => {
+      expect(() => resolveConfirmation(true)).not.toThrow();
+      expect(getPendingConfirmation()).toBe(null);
+    });
+  });
+
+  describe('cancelConfirmation', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      setState(STATE.THINKING);
+      setPendingConfirmation(null);
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should resolve the pending promise with false', async () => {
+      const promise = requestConfirmation('cancelTool', []);
+      cancelConfirmation();
+      const result = await promise;
+      expect(result).toBe(false);
+    });
+
+    it('should clear pending confirmation', async () => {
+      const promise = requestConfirmation('cancelTool', []);
+      cancelConfirmation();
+      await promise;
+      expect(getPendingConfirmation()).toBe(null);
+    });
+
+    it('should be a no-op when no confirmation is pending', () => {
+      expect(() => cancelConfirmation()).not.toThrow();
+      expect(getPendingConfirmation()).toBe(null);
+    });
+  });
+
+  describe('state getter/setter', () => {
+    it('should return the current state via the getter', () => {
+      setState(STATE.THINKING);
+      expect(state.current).toBe(STATE.THINKING);
+    });
+
+    it('should set the state via the setter', () => {
+      state.current = STATE.AWAITING_INPUT;
+      expect(getState()).toBe(STATE.AWAITING_INPUT);
+      expect(state.current).toBe(STATE.AWAITING_INPUT);
+    });
+
+    it('should reject invalid state via the setter', () => {
+      setState(STATE.THINKING);
+      state.current = 'NOT_A_VALID_STATE';
+      expect(state.current).toBe(STATE.THINKING);
+    });
+
+    it('should reflect changes made through setState', () => {
+      setState(STATE.AWAITING_CONFIRMATION);
+      expect(state.current).toBe(STATE.AWAITING_CONFIRMATION);
     });
   });
 });
