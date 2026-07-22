@@ -22,21 +22,21 @@
 
 ## 核心功能
 
-| 功能 | 描述 |
-|------|------|
-| **TypeScript 核心** | 全量 TypeScript 重构，类型安全，编译时错误检测 |
-| **隐私优先** | 用户工作文件保留在本地，仅通过 API 将必要上下文发送至你指定的模型服务商 |
-| **持续思考** | 每 3 秒自动触发一次思考循环（可配置） |
-| **工具执行** | 28 工具模块，200+ 工具，覆盖文件操作、代码执行、Git、数据库、OCR、Office 文档、GIS、生物信息、医学、化学、金融等 |
-| **安全沙箱** | JavaScript 代码执行使用 `isolated-vm` 进行进程级隔离 |
-| **多会话管理** | 多个独立的对话会话，持久化存储，自动压缩 |
-| **桌面模式** | Electron 桌面窗口，通过 WebSocket 与终端 Agent 通信 |
-| **MCP 协议** | 将工具暴露为 MCP Server，支持与其他 AI 客户端集成 |
-| **插件系统** | 动态加载自定义工具插件 |
-| **思维链可视化** | 实时可视化思考过程和工具执行 |
-| **智能体集群** | 支持子智能体创建与任务委派，多智能体协作 |
-| **监控面板** | 独立窗口实时展示集群拓扑、思维链和工具统计 |
-| **微信集成** | 扫码登录、消息收发、专属会话、工具气泡展示 |
+| 功能                | 描述                                                                                                             |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **TypeScript 核心** | 全量 TypeScript 重构，类型安全，编译时错误检测                                                                   |
+| **隐私优先**        | 用户工作文件保留在本地，仅通过 API 将必要上下文发送至你指定的模型服务商                                          |
+| **持续思考**        | 每 3 秒自动触发一次思考循环（可配置）                                                                            |
+| **工具执行**        | 28 工具模块，200+ 工具，覆盖文件操作、代码执行、Git、数据库、OCR、Office 文档、GIS、生物信息、医学、化学、金融等 |
+| **安全沙箱**        | JavaScript 代码执行使用 `isolated-vm` 进行进程级隔离                                                             |
+| **多会话管理**      | 多个独立的对话会话，持久化存储，自动压缩                                                                         |
+| **桌面模式**        | Electron 桌面窗口，通过 WebSocket 与终端 Agent 通信                                                              |
+| **MCP 协议**        | 将工具暴露为 MCP Server，支持与其他 AI 客户端集成                                                                |
+| **插件系统**        | 动态加载自定义工具插件                                                                                           |
+| **思维链可视化**    | 实时可视化思考过程和工具执行                                                                                     |
+| **智能体集群**      | 支持子智能体创建与任务委派，多智能体协作                                                                         |
+| **监控面板**        | 独立窗口实时展示集群拓扑、思维链和工具统计                                                                       |
+| **微信集成**        | 扫码登录、消息收发、专属会话、工具气泡展示                                                                       |
 
 ---
 
@@ -49,6 +49,7 @@
 - **Python** 3.x（可选，用于 Python 代码执行）
 
 > **国内用户注意**：如果 `npm install` 下载 Electron 失败：
+>
 > ```bash
 > $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
 > npm install
@@ -73,12 +74,12 @@ npm start
 
 ### 使用模式
 
-| 命令 | 模式 | 描述 |
-|------|------|------|
-| `npm start` | 设置向导 | 首次配置或修改设置 |
-| `npm run electron:desktop` | 桌面模式 | Electron 悬浮窗口 + 终端 Agent（WebSocket 通信） |
-| `npm run electron:dashboard` | 仪表盘模式 | 全屏仪表盘，包含会话管理和工具可视化 |
-| `npm run cli` | CLI 模式 | 纯终端模式，无 Electron（适用于服务器/无头环境） |
+| 命令                         | 模式       | 描述                                             |
+| ---------------------------- | ---------- | ------------------------------------------------ |
+| `npm start`                  | 设置向导   | 首次配置或修改设置                               |
+| `npm run electron:desktop`   | 桌面模式   | Electron 悬浮窗口 + 终端 Agent（WebSocket 通信） |
+| `npm run electron:dashboard` | 仪表盘模式 | 全屏仪表盘，包含会话管理和工具可视化             |
+| `npm run cli`                | CLI 模式   | 纯终端模式，无 Electron（适用于服务器/无头环境） |
 
 ---
 
@@ -131,42 +132,42 @@ flowchart LR
     classDef registry fill:#161b28,stroke:#fbbf24,color:#fbbf24;
     classDef modules fill:#161b28,stroke:#38bdf8,color:#38bdf8;
     classDef extension fill:#161b28,stroke:#a78bfa,color:#a78bfa;
-    
+
     class LLM,PARSER,EXECUTOR invocation;
     class REG,STATS,TRACE registry;
     class CORE1,CORE2,AI,COMM,AUTO,PROF modules;
     class PLUGIN,MCP,DANGER extension;
 ```
 
-| 分类 | 文件 | 主要函数 |
-|------|------|----------|
-| 文件操作 | `file.ts` | `ls`, `read`, `create`, `copy`, `mkdir`, `write`, `append`, `move`, `rename`, `delete` |
-| 路径工具 | `path.ts` | `getBasePath`, `joinPath`, `resolvePath`, `normalizePath`, `getExtension`, `getFileName`, `getParentDir` |
-| 网络工具 | `web.ts` | `search`, `browse`, `fetchPage` |
-| 浏览器自动化 | `browser.ts` | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile` |
-| 系统操作 | `system.ts` | `listApps`, `openApp`, `closeApp` |
-| 代码执行 | `code.ts` | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode` |
-| 安全沙箱 | `sandbox.ts` | `createJavaScriptSandbox`, `runJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox` |
-| Git | `git.ts` | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
-| 任务管理 | `task.ts` | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks` |
-| 记忆系统 | `memory.ts` | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory` |
-| 数据处理 | `data.ts` | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`, `filterData`, `groupData`, `aggregateData` |
-| 数据库 | `db.ts` | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB` |
-| 邮件 | `email.ts` | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig` |
-| 系统监控 | `monitor.ts` | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem` |
-| 定时任务 | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler` |
-| 存储 | `storage.ts` | `FileStorage`, `createStorage`, `getStorage`, `clearStorage` |
-| 图像识别 | `ocr.ts` | `ocr`, `ocrBatch` |
-| 视觉分析 | `vision.ts` | `vision`, `visionFromUrl` |
-| Office 文档 | `office.ts` | `createPpt`, `createWord`, `createExcel`, `readExcel` |
-| 集群管理 | `cluster.ts` | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting` |
-| 微信消息 | `wechat.ts` | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode` |
-| GIS 地理信息 | `gis.ts` | `convertCoord`, `calcDistance`, `calcArea`, `calcCenter`, `pointInPolygon`, `isInChina`, `readGeoJSON`, `queryGeoJSON`, `geoJSONStats`, `geoJSONToCSV`, `geoJSONToKML` |
-| 生命科学 | `bio.ts` | `dnaComplement`, `dnaReverseComplement`, `rnaTranscribe`, `translate`, `gcContent`, `molecularWeight`, `hammingDistance`, `levenshteinDistance`, `tmEstimate`, `hairpinCheck`, `parseFASTA`, `parseFASTQ`, `fastaToCSV`, `codonUsage`, `randomSeq` |
-| 医学 | `med.ts` | `bmi`, `bsa`, `egfr`, `crcl`, `childPugh`, `calculateDose`, `bsaDose`, `infusionRate`, `idealBodyWeight`, `convertUnit`, `temperatureConvert`, `meanArterialPressure`, `anionGap`, `correctedCalcium`, `oxygenIndex`, `parseVitalSigns`, `vitalsReport` |
-| 化学 | `chem.ts` | `elementInfo`, `molWeight`, `elementComposition`, `molarity`, `dilution`, `phFromH`, `phToH`, `idealGasLaw`, `gasDensity` |
-| 金融 | `finance.ts` | `compoundInterest`, `presentValue`, `futureValueAnnuity`, `npv`, `irr`, `paybackPeriod`, `roi`, `loanPayment`, `amortizationSchedule`, `totalInterest`, `movingAverage`, `volatility` |
-| 数学统计 | `math.ts` | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `matrixDeterminant`, `matrixInverse`, `solveQuadratic`, `factorial`, `combination`, `permutation`, `siConvert` |
+| 分类         | 文件           | 主要函数                                                                                                                                                                                                                                                                                          |
+| ------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 文件操作     | `file.ts`      | `ls`, `read`, `create`, `copy`, `mkdir`, `write`, `append`, `move`, `rename`, `delete`                                                                                                                                                                                                            |
+| 路径工具     | `path.ts`      | `getBasePath`, `joinPath`, `resolvePath`, `normalizePath`, `getExtension`, `getFileName`, `getParentDir`                                                                                                                                                                                          |
+| 网络工具     | `web.ts`       | `search`, `browse`, `fetchPage`                                                                                                                                                                                                                                                                   |
+| 浏览器自动化 | `browser.ts`   | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile`                                                                                                   |
+| 系统操作     | `system.ts`    | `listApps`, `openApp`, `closeApp`                                                                                                                                                                                                                                                                 |
+| 代码执行     | `code.ts`      | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode`                                                                                                                                                                                                                          |
+| 安全沙箱     | `sandbox.ts`   | `createJavaScriptSandbox`, `runJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox`                                                                                                                                                                                                       |
+| Git          | `git.ts`       | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
+| 任务管理     | `task.ts`      | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks`                                                                                                                                                                        |
+| 记忆系统     | `memory.ts`    | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory`                                                                                                                                                 |
+| 数据处理     | `data.ts`      | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`, `filterData`, `groupData`, `aggregateData`                                                                                                                                      |
+| 数据库       | `db.ts`        | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB`                                                                                                                                               |
+| 邮件         | `email.ts`     | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig`                                                                                                                                                                                |
+| 系统监控     | `monitor.ts`   | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem`                                                                                                                                            |
+| 定时任务     | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler`                                                                                                                                     |
+| 存储         | `storage.ts`   | `FileStorage`, `createStorage`, `getStorage`, `clearStorage`                                                                                                                                                                                                                                      |
+| 图像识别     | `ocr.ts`       | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
+| 视觉分析     | `vision.ts`    | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
+| Office 文档  | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
+| 集群管理     | `cluster.ts`   | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting`                                                                                                                                                        |
+| 微信消息     | `wechat.ts`    | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode`                                                                                                                                                                                  |
+| GIS 地理信息 | `gis.ts`       | `convertCoord`, `calcDistance`, `calcArea`, `calcCenter`, `pointInPolygon`, `isInChina`, `readGeoJSON`, `queryGeoJSON`, `geoJSONStats`, `geoJSONToCSV`, `geoJSONToKML`                                                                                                                            |
+| 生命科学     | `bio.ts`       | `dnaComplement`, `dnaReverseComplement`, `rnaTranscribe`, `translate`, `gcContent`, `molecularWeight`, `hammingDistance`, `levenshteinDistance`, `tmEstimate`, `hairpinCheck`, `parseFASTA`, `parseFASTQ`, `fastaToCSV`, `codonUsage`, `randomSeq`                                                |
+| 医学         | `med.ts`       | `bmi`, `bsa`, `egfr`, `crcl`, `childPugh`, `calculateDose`, `bsaDose`, `infusionRate`, `idealBodyWeight`, `convertUnit`, `temperatureConvert`, `meanArterialPressure`, `anionGap`, `correctedCalcium`, `oxygenIndex`, `parseVitalSigns`, `vitalsReport`                                           |
+| 化学         | `chem.ts`      | `elementInfo`, `molWeight`, `elementComposition`, `molarity`, `dilution`, `phFromH`, `phToH`, `idealGasLaw`, `gasDensity`                                                                                                                                                                         |
+| 金融         | `finance.ts`   | `compoundInterest`, `presentValue`, `futureValueAnnuity`, `npv`, `irr`, `paybackPeriod`, `roi`, `loanPayment`, `amortizationSchedule`, `totalInterest`, `movingAverage`, `volatility`                                                                                                             |
+| 数学统计     | `math.ts`      | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `matrixDeterminant`, `matrixInverse`, `solveQuadratic`, `factorial`, `combination`, `permutation`, `siConvert`                                                                                                                   |
 
 > 详细工具文档：注册机制、使用示例、最佳实践 → [introduction/tools.md](introduction/tools.md)
 
@@ -275,7 +276,7 @@ flowchart TB
     EXT --> WECHAT
     PLUGIN --> REG
     MCP --> REG
-    
+
     THINK --> CYCLE
     CYCLE --> THINK
 
@@ -288,7 +289,7 @@ flowchart TB
     classDef tools fill:#161b28,stroke:#38bdf8,color:#38bdf8;
     classDef ext fill:#161b28,stroke:#a78bfa,color:#a78bfa;
     classDef api fill:#161b28,stroke:#94a3b8,color:#94a3b8;
-    
+
     class CLI,DASHBOARD,DESKTOP,MONITOR terminal;
     class WSS,BRIDGE ws;
     class CMDS,PARSER,PROMPT input;
@@ -300,21 +301,21 @@ flowchart TB
     class LLM api;
 ```
 
-| 组件 | 职责 |
-|------|------|
-| **Agent.ts** | 思考循环 —— 每 3 秒自动触发 |
-| **state.ts** | 状态机 —— THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
-| **registry.ts** | 工具注册表 —— 集中管理所有工具模块 |
-| **session.ts** | 会话管理 —— 多会话切换、上下文压缩 |
-| **commands.ts** | 命令处理 —— /help, /status, /persona, /sessions 等 |
-| **sandbox.ts** | 代码沙箱 —— isolated-vm 进程级隔离 |
-| **stats.ts** | 统计 —— 工具使用追踪和指标 |
-| **tracing.ts** | 追踪 —— 工具执行和 LLM 调用的轻量级可观测性 |
-| **retry.ts** | 重试与熔断 —— 可靠的网络请求 |
-| **mcp.ts** | MCP Server —— 将工具暴露为 MCP 协议 |
-| **plugin.ts** | 插件系统 —— 动态加载自定义工具插件 |
-| **ws-server.ts** | WebSocket —— 桌面模式通信（端口 9527） |
-| **wechat-manager.ts** | 微信通道 —— iLink 协议集成、消息路由、会话同步 |
+| 组件                  | 职责                                                        |
+| --------------------- | ----------------------------------------------------------- |
+| **Agent.ts**          | 思考循环 —— 每 3 秒自动触发                                 |
+| **state.ts**          | 状态机 —— THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
+| **registry.ts**       | 工具注册表 —— 集中管理所有工具模块                          |
+| **session.ts**        | 会话管理 —— 多会话切换、上下文压缩                          |
+| **commands.ts**       | 命令处理 —— /help, /status, /persona, /sessions 等          |
+| **sandbox.ts**        | 代码沙箱 —— isolated-vm 进程级隔离                          |
+| **stats.ts**          | 统计 —— 工具使用追踪和指标                                  |
+| **tracing.ts**        | 追踪 —— 工具执行和 LLM 调用的轻量级可观测性                 |
+| **retry.ts**          | 重试与熔断 —— 可靠的网络请求                                |
+| **mcp.ts**            | MCP Server —— 将工具暴露为 MCP 协议                         |
+| **plugin.ts**         | 插件系统 —— 动态加载自定义工具插件                          |
+| **ws-server.ts**      | WebSocket —— 桌面模式通信（端口 9527）                      |
+| **wechat-manager.ts** | 微信通道 —— iLink 协议集成、消息路由、会话同步              |
 
 > 完整架构详情：思考循环图、工具调用流程、状态机、消息流、WebSocket → [introduction/architecture.md](introduction/architecture.md)
 
@@ -322,31 +323,31 @@ flowchart TB
 
 ## 命令参考
 
-| 命令 | 描述 |
-|------|------|
-| `/sessions` | 列出所有会话 |
-| `/new` | 创建新会话 |
-| `/switch <id>` | 切换到指定会话 |
-| `/delete <id>` | 删除会话 |
-| `/rename <name>` | 重命名当前会话 |
-| `/help` | 显示帮助信息 |
-| `/status` | 显示当前状态 |
-| `/config` | 显示配置信息 |
-| `/persona <name>` | 切换角色 |
-| `/personas` | 列出所有可用角色 |
-| `/tools` | 列出所有可用工具 |
-| `/clear` | 清除对话历史 |
-| `/debug` | 切换调试模式 |
-| `/wechat/status` | 显示微信通道状态 |
-| `/wechat/login` | 扫码登录微信 |
-| `/wechat/logout` | 退出微信登录 |
-| `/spawn <persona> <name> <instruction>` | 创建子智能体 |
-| `/agents` | 列出所有子智能体 |
-| `/delegate <agentId> <task>` | 向子智能体委派任务 |
-| `/stop-agent <agentId>` | 停止指定子智能体 |
-| `/stop-all-agents` | 停止所有子智能体 |
-| `ENTER` | 中断思考，进入输入模式 |
-| `exit` | 退出程序 |
+| 命令                                    | 描述                   |
+| --------------------------------------- | ---------------------- |
+| `/sessions`                             | 列出所有会话           |
+| `/new`                                  | 创建新会话             |
+| `/switch <id>`                          | 切换到指定会话         |
+| `/delete <id>`                          | 删除会话               |
+| `/rename <name>`                        | 重命名当前会话         |
+| `/help`                                 | 显示帮助信息           |
+| `/status`                               | 显示当前状态           |
+| `/config`                               | 显示配置信息           |
+| `/persona <name>`                       | 切换角色               |
+| `/personas`                             | 列出所有可用角色       |
+| `/tools`                                | 列出所有可用工具       |
+| `/clear`                                | 清除对话历史           |
+| `/debug`                                | 切换调试模式           |
+| `/wechat/status`                        | 显示微信通道状态       |
+| `/wechat/login`                         | 扫码登录微信           |
+| `/wechat/logout`                        | 退出微信登录           |
+| `/spawn <persona> <name> <instruction>` | 创建子智能体           |
+| `/agents`                               | 列出所有子智能体       |
+| `/delegate <agentId> <task>`            | 向子智能体委派任务     |
+| `/stop-agent <agentId>`                 | 停止指定子智能体       |
+| `/stop-all-agents`                      | 停止所有子智能体       |
+| `ENTER`                                 | 中断思考，进入输入模式 |
+| `exit`                                  | 退出程序               |
 
 ---
 
@@ -461,7 +462,7 @@ flowchart TD
     classDef obs fill:#161b28,stroke:#94a3b8,color:#94a3b8;
     classDef security fill:#161b28,stroke:#f87171,color:#f87171;
     classDef integration fill:#161b28,stroke:#5eead4,color:#5eead4;
-    
+
     class AGENT,STATE,SESSION,CMDS orchestration;
     class MEMORY,PERSONA,THOUGHT cognition;
     class REGISTRY,SANDBOX,TASK,CLUSTER execution;
@@ -509,6 +510,7 @@ docker-compose up -d
 ## 更新日志
 
 ### v2.3.2
+
 - **核心 TypeScript 化** — 全量 54 个 JS 文件迁移至 TypeScript，类型安全，编译时错误检测
 - 新增 6 个专业工具模块，共 75 个工具
 - GIS 地理信息：坐标转换、距离面积计算、GeoJSON 处理（11个工具）
@@ -520,6 +522,7 @@ docker-compose up -d
 - CI/CD 流水线：GitHub Actions 和 Gitee 流水线双支持
 
 ### v2.3.1
+
 - 微信 iLink 协议集成，支持扫码登录、消息收发
 - 微信专属永久会话，点击"微信通道"自动连接并加载
 - 微信消息双写机制：同时存储到 `weichat.json` 和会话历史
@@ -527,6 +530,7 @@ docker-compose up -d
 - 修复 persona 切换时误清空会话历史的问题
 
 ### v2.3.0
+
 - 多会话管理、工具分类按需加载、自动上下文压缩
 - 沙箱升级 —— 内置对象深度冻结
 - 新增 tracing.js、retry.js、MCP 协议、插件系统
@@ -535,14 +539,42 @@ docker-compose up -d
 - 思维链可视化
 
 ### v2.2.0
+
 - Agent.js 模块化，logger.js 支持日志级别
 
 ### v2.1.0
+
 - 移除 vm2，切换为 Node.js 原生 vm 模块
 
 ### v2.0.0
+
 - 代码执行引擎、Git、任务管理、记忆系统
 - 数据处理、SQLite、邮件、监控、定时任务
+
+---
+
+## 贡献
+
+我们欢迎社区贡献！无论你想修复 bug、添加新功能，还是改进文档，你的帮助都非常宝贵。
+
+<a href="https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22"><img src="https://img.shields.io/badge/Good%20First%20Issue-help%20wanted-green?style=flat-square" alt="Good First Issue"></a>
+<a href="https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22"><img src="https://img.shields.io/badge/Help%20Wanted-contribute-blue?style=flat-square" alt="Help Wanted"></a>
+
+### 开始参与
+
+1. 阅读 [贡献指南](CONTRIBUTING.md) 获取详细说明
+2. 查看 [good first issues](https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) 开始入门
+3. 遵守 [行为准则](CODE_OF_CONDUCT.md)
+4. 通过 [SECURITY.md](SECURITY.md) 报告安全问题
+
+### 贡献方式
+
+- 🐛 报告 bug
+- ✨ 提出新功能建议
+- 📝 改进文档
+- 🧪 编写测试
+- 🔧 修复问题
+- 🎨 改进用户体验
 
 ---
 
