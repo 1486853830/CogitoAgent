@@ -86,7 +86,11 @@ describe('config.ts', () => {
     it('should merge two objects', () => {
       const target = { a: 1, b: { c: 2 } };
       const source = { b: { d: 3 }, e: 4 };
-      const result = deepMerge(target, source);
+      const result = deepMerge(target, source) as {
+        a: number;
+        b: { c: number; d: number };
+        e: number;
+      };
       expect(result.a).toBe(1);
       expect(result.b.c).toBe(2);
       expect(result.b.d).toBe(3);
