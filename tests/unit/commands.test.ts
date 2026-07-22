@@ -1,50 +1,83 @@
-import { handleCommand, printHelp, toggleDebug } from '../../src/agent/commands';
+import { jest } from '@jest/globals';
 
-jest.mock('../../src/io/terminal.ts', () => ({
-  println: jest.fn(),
-  printDivider: jest.fn(),
-  printTag: jest.fn((text: string) => `[${text}]`),
+const mockPrintln = jest.fn();
+const mockPrintDivider = jest.fn();
+const mockPrintTag = jest.fn((text: string) => `[${text}]`);
+const mockLoadConfig = jest.fn(() => ({
+  persona: 'default',
+  api: { model: 'gpt-4', baseURL: 'https://api.example.com', apiKey: 'sk-1234567890' },
+  chat: { thinkingInterval: 3000 },
+  workspace: './',
+  database: { path: './data' },
+  email: { smtpHost: 'smtp.example.com' },
+}));
+const mockGetToolNames = jest.fn(() => ['ls', 'read', 'search']);
+const mockGetToolsByCategory = jest.fn(() => ({
+  file: ['ls', 'read'],
+  web: ['search'],
+}));
+const mockGetBasePath = jest.fn(() => '/test/workspace');
+const mockListSessions = jest.fn(() => []);
+const mockGetCurrentSession = jest.fn(() => ({ id: 'test-id', name: 'test-session' }));
+const mockCreateNewSession = jest.fn(() => ({ id: 'new-session', name: 'new' }));
+const mockSwitchSession = jest.fn((id: string) => ({
+  success: id === 'valid',
+  session: id === 'valid' ? { name: 'valid-session', persona: 'test' } : null,
+  error: id === 'valid' ? undefined : '会话不存在',
+}));
+const mockDeleteSession = jest.fn((id: string) => ({ success: id === 'valid' }));
+const mockRenameSession = jest.fn((id: string, name: string) => ({ success: true }));
+const mockResetConversation = jest.fn();
+const mockUpdateSystemPrompt = jest.fn();
+const mockManualLoginWechat = jest.fn(() => Promise.resolve());
+const mockManualLogoutWechat = jest.fn(() => Promise.resolve());
+const mockGetWechatStatus = jest.fn(() =>
+  Promise.resolve({ success: true, data: { loggedIn: true, accountId: 'test@example.com' } }),
+);
+const mockGetSessionStats = jest.fn(() => ({
+  totalInputTokens: 1000,
+  totalOutputTokens: 2000,
+  totalTokens: 3000,
+  todayInputTokens: 100,
+  todayOutputTokens: 200,
+  todayTokens: 300,
+}));
+const mockBroadcast = jest.fn();
+const mockPrintClusterStatus = jest.fn();
+const mockHandleSpawnCommand = jest.fn();
+const mockHandleDelegateCommand = jest.fn();
+
+jest.unstable_mockModule('../../src/io/terminal', () => ({
+  println: mockPrintln,
+  printDivider: mockPrintDivider,
+  printTag: mockPrintTag,
 }));
 
-jest.mock('../../src/config.ts', () => ({
-  loadConfig: jest.fn(() => ({
-    persona: 'default',
-    api: { model: 'gpt-4', baseURL: 'https://api.example.com', apiKey: 'sk-1234567890' },
-    chat: { thinkingInterval: 3000 },
-    workspace: './',
-    database: { path: './data' },
-    email: { smtpHost: 'smtp.example.com' },
-  })),
+jest.unstable_mockModule('../../src/config', () => ({
+  loadConfig: mockLoadConfig,
 }));
 
-jest.mock('../../src/agent/registry.ts', () => ({
-  getToolNames: jest.fn(() => ['ls', 'read', 'search']),
-  getToolsByCategory: jest.fn(() => ({
-    file: ['ls', 'read'],
-    web: ['search'],
-  })),
+jest.unstable_mockModule('../../src/agent/registry', () => ({
+  getToolNames: mockGetToolNames,
+  getToolsByCategory: mockGetToolsByCategory,
 }));
 
-jest.mock('../../src/agent/tools/index.ts', () => ({
-  getBasePath: jest.fn(() => '/test/workspace'),
+jest.unstable_mockModule('../../src/agent/tools/index', () => ({
+  getBasePath: mockGetBasePath,
 }));
 
-jest.mock('../../src/agent/session.ts', () => ({
-  listSessions: jest.fn(() => []),
-  getCurrentSession: jest.fn(() => ({ id: 'test-id', name: 'test-session' })),
-  createNewSession: jest.fn(() => ({ id: 'new-session', name: 'new' })),
-  switchSession: jest.fn((id: string) => ({
-    success: id === 'valid',
-    session: id === 'valid' ? { name: 'valid-session', persona: 'test' } : null,
-    error: id === 'valid' ? undefined : '会话不存在',
-  })),
-  deleteSession: jest.fn((id: string) => ({ success: id === 'valid' })),
-  renameSession: jest.fn((id: string, name: string) => ({ success: true })),
-  resetConversation: jest.fn(),
-  updateSystemPrompt: jest.fn(),
+jest.unstable_mockModule('../../src/agent/session', () => ({
+  listSessions: mockListSessions,
+  getCurrentSession: mockGetCurrentSession,
+  createNewSession: mockCreateNewSession,
+  switchSession: mockSwitchSession,
+  deleteSession: mockDeleteSession,
+  renameSession: mockRenameSession,
+  resetConversation: mockResetConversation,
+  updateSystemPrompt: mockUpdateSystemPrompt,
 }));
 
-jest.mock('../../src/agent/orchestrator.ts', () => ({
+jest.unstable_mockModule('../../src/agent/orchestrator', () => ({
   orchestrator: {
     stopAgent: jest.fn((id: string) => ({
       success: id === 'valid',
@@ -56,43 +89,27 @@ jest.mock('../../src/agent/orchestrator.ts', () => ({
   },
 }));
 
-jest.mock('../../src/agent/wechat-manager.ts', () => ({
-  manualLoginWechat: jest.fn(() => Promise.resolve()),
-  manualLogoutWechat: jest.fn(() => Promise.resolve()),
-  getWechatStatus: jest.fn(() =>
-    Promise.resolve({ success: true, data: { loggedIn: true, accountId: 'test@example.com' } }),
-  ),
+jest.unstable_mockModule('../../src/agent/wechat-manager', () => ({
+  manualLoginWechat: mockManualLoginWechat,
+  manualLogoutWechat: mockManualLogoutWechat,
+  getWechatStatus: mockGetWechatStatus,
 }));
 
-jest.mock('../../src/agent/stats.ts', () => ({
-  getSessionStats: jest.fn(() => ({
-    totalInputTokens: 1000,
-    totalOutputTokens: 2000,
-    totalTokens: 3000,
-    todayInputTokens: 100,
-    todayOutputTokens: 200,
-    todayTokens: 300,
-  })),
+jest.unstable_mockModule('../../src/agent/stats', () => ({
+  getSessionStats: mockGetSessionStats,
 }));
 
-jest.mock('../../src/io/ws-server.ts', () => ({
-  broadcast: jest.fn(),
+jest.unstable_mockModule('../../src/io/ws-server', () => ({
+  broadcast: mockBroadcast,
 }));
 
-jest.mock('../../src/agent/cluster-commands.ts', () => ({
-  printClusterStatus: jest.fn(),
-  handleSpawnCommand: jest.fn(),
-  handleDelegateCommand: jest.fn(),
+jest.unstable_mockModule('../../src/agent/cluster-commands', () => ({
+  printClusterStatus: mockPrintClusterStatus,
+  handleSpawnCommand: mockHandleSpawnCommand,
+  handleDelegateCommand: mockHandleDelegateCommand,
 }));
 
-import { println, printDivider, printTag } from '../../src/io/terminal';
-import {
-  createNewSession,
-  switchSession,
-  deleteSession,
-  renameSession,
-} from '../../src/agent/session';
-import { broadcast } from '../../src/io/ws-server';
+const { handleCommand, printHelp, toggleDebug } = await import('../../src/agent/commands');
 
 describe('commands.ts', () => {
   beforeEach(() => {
@@ -158,26 +175,26 @@ describe('commands.ts', () => {
     it('should handle /new command', () => {
       const result = handleCommand('/new');
       expect(result).toBe(true);
-      expect(createNewSession).toHaveBeenCalled();
+      expect(mockCreateNewSession).toHaveBeenCalled();
     });
 
     it('should handle /new command with persona', () => {
       const result = handleCommand('/new test-persona');
       expect(result).toBe(true);
-      expect(createNewSession).toHaveBeenCalledWith(null, 'test-persona');
+      expect(mockCreateNewSession).toHaveBeenCalledWith(null, 'test-persona');
     });
 
     it('should handle /switch command with valid id', () => {
       const result = handleCommand('/switch valid');
       expect(result).toBe(true);
-      expect(switchSession).toHaveBeenCalledWith('valid');
-      expect(broadcast).toHaveBeenCalledWith('persona-switched', { persona: 'test' });
+      expect(mockSwitchSession).toHaveBeenCalledWith('valid');
+      expect(mockBroadcast).toHaveBeenCalledWith('persona-switched', { persona: 'test' });
     });
 
     it('should handle /switch command with invalid id', () => {
       const result = handleCommand('/switch invalid');
       expect(result).toBe(true);
-      expect(switchSession).toHaveBeenCalledWith('invalid');
+      expect(mockSwitchSession).toHaveBeenCalledWith('invalid');
     });
 
     it('should not handle /switch command without id (requires argument)', () => {
@@ -188,13 +205,13 @@ describe('commands.ts', () => {
     it('should handle /delete command with valid id', () => {
       const result = handleCommand('/delete valid');
       expect(result).toBe(true);
-      expect(deleteSession).toHaveBeenCalledWith('valid');
+      expect(mockDeleteSession).toHaveBeenCalledWith('valid');
     });
 
     it('should handle /delete command with invalid id', () => {
       const result = handleCommand('/delete invalid');
       expect(result).toBe(true);
-      expect(deleteSession).toHaveBeenCalledWith('invalid');
+      expect(mockDeleteSession).toHaveBeenCalledWith('invalid');
     });
 
     it('should not handle /delete command without id (requires argument)', () => {
@@ -205,7 +222,7 @@ describe('commands.ts', () => {
     it('should handle /rename command with name', () => {
       const result = handleCommand('/rename new-name');
       expect(result).toBe(true);
-      expect(renameSession).toHaveBeenCalled();
+      expect(mockRenameSession).toHaveBeenCalled();
     });
 
     it('should not handle /rename command without name (requires argument)', () => {
@@ -287,8 +304,8 @@ describe('commands.ts', () => {
   describe('printHelp', () => {
     it('should print help information', () => {
       printHelp();
-      expect(printDivider).toHaveBeenCalled();
-      expect(println).toHaveBeenCalled();
+      expect(mockPrintDivider).toHaveBeenCalled();
+      expect(mockPrintln).toHaveBeenCalled();
     });
   });
 
@@ -297,14 +314,14 @@ describe('commands.ts', () => {
       process.env.DEBUG = 'false';
       toggleDebug();
       expect(process.env.DEBUG).toBe('true');
-      expect(println).toHaveBeenCalledWith('[调试] 调试模式已开启', 'yellow');
+      expect(mockPrintln).toHaveBeenCalledWith('[调试] 调试模式已开启', 'yellow');
     });
 
     it('should toggle debug mode from on to off', () => {
       process.env.DEBUG = 'true';
       toggleDebug();
       expect(process.env.DEBUG).toBe('false');
-      expect(println).toHaveBeenCalledWith('[调试] 调试模式已关闭', 'yellow');
+      expect(mockPrintln).toHaveBeenCalledWith('[调试] 调试模式已关闭', 'yellow');
     });
   });
 });

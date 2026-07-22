@@ -6,7 +6,12 @@
 import { readFileSync } from 'fs';
 import path from 'path';
 import { getBasePath } from './tools/index.ts';
-import { getEnabledCategories, getAllCategories, getToolsByCategory, TOOL_CATEGORIES } from './registry.ts';
+import {
+  getEnabledCategories,
+  getAllCategories,
+  getToolsByCategory,
+  TOOL_CATEGORIES,
+} from './registry.ts';
 
 /**
  * 动态生成工具列表
@@ -420,7 +425,7 @@ function buildSystemPrompt(): string {
   const workspace = getBasePath();
   const enabledCategories = getEnabledCategories();
   const enabledCount = enabledCategories.length;
-  const totalCount = Object.keys(TOOL_CATEGORIES).length;
+  const totalCount = Object.keys(getAllCategories()).length;
 
   // 读取 persona（支持热切换）
   let personaHeader = '';
