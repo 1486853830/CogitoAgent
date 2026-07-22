@@ -8,15 +8,16 @@ const LOG_LEVELS: Record<string, number> = {
   DEBUG: 0,
   INFO: 1,
   WARN: 2,
-  ERROR: 3
+  ERROR: 3,
 };
 
 const envLogLevel = process.env.LOG_LEVEL;
-let currentLevel: number = process.env.DEBUG === 'true'
-  ? LOG_LEVELS.DEBUG
-  : envLogLevel
-    ? LOG_LEVELS[envLogLevel.toUpperCase()] || LOG_LEVELS.INFO
-    : LOG_LEVELS.INFO;
+let currentLevel: number =
+  process.env.DEBUG === 'true'
+    ? LOG_LEVELS.DEBUG
+    : envLogLevel
+      ? LOG_LEVELS[envLogLevel.toUpperCase()] || LOG_LEVELS.INFO
+      : LOG_LEVELS.INFO;
 
 // 日志前缀
 const PREFIX: Record<string, string> = {
@@ -26,7 +27,7 @@ const PREFIX: Record<string, string> = {
   ERROR: '[ERROR]',
   TOOL: '[TOOL]',
   AGENT: '[AGENT]',
-  SYSTEM: '[SYSTEM]'
+  SYSTEM: '[SYSTEM]',
 };
 
 /**
@@ -34,18 +35,20 @@ const PREFIX: Record<string, string> = {
  */
 function formatMessage(prefix: string, level: number, ...args: unknown[]): string {
   const timestamp = new Date().toISOString();
-  const message = args.map(arg => {
-    if (typeof arg === 'object' && arg !== null) {
-      try {
-        return JSON.stringify(arg, null, 2);
-      } catch {
-        return String(arg);
+  const message = args
+    .map((arg) => {
+      if (typeof arg === 'object' && arg !== null) {
+        try {
+          return JSON.stringify(arg, null, 2);
+        } catch {
+          return String(arg);
+        }
       }
-    }
-    return String(arg);
-  }).join(' ');
-  
-  return `${prefix} ${message}`;
+      return String(arg);
+    })
+    .join(' ');
+
+  return `[${timestamp}] ${prefix} ${message}`;
 }
 
 /**
@@ -55,9 +58,9 @@ function log(level: number, prefix: string, ...args: unknown[]): void {
   if (level < currentLevel) {
     return;
   }
-  
+
   const formattedMessage = formatMessage(prefix, level, ...args);
-  
+
   switch (level) {
     case LOG_LEVELS.DEBUG:
       console.log(formattedMessage);
@@ -106,7 +109,7 @@ function setLevel(level: string | number): void {
  * 获取当前日志级别
  */
 function getLevel(): string {
-  return Object.keys(LOG_LEVELS).find(key => LOG_LEVELS[key] === currentLevel) || 'INFO';
+  return Object.keys(LOG_LEVELS).find((key) => LOG_LEVELS[key] === currentLevel) || 'INFO';
 }
 
 export {
@@ -121,5 +124,5 @@ export {
   toolDebug,
   setLevel,
   getLevel,
-  LOG_LEVELS
+  LOG_LEVELS,
 };

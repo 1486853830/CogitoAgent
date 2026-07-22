@@ -94,23 +94,6 @@ function printDivider(char = '─', color: string | null = 'cyan'): void {
 }
 
 /**
- * 打印标题框
- */
-function printTitleBox(title: string, subtitle = ''): void {
-  const width = 60;
-  println(COLORS.cyan + COLORS.bold + '╔' + '═'.repeat(width) + '╗' + COLORS.reset);
-  
-  if (subtitle) {
-    const subPad = Math.max(0, width - subtitle.length - 2);
-    println(COLORS.cyan + '║ ' + COLORS.yellow + subtitle + ' '.repeat(subPad) + ' ║' + COLORS.reset);
-  }
-  
-  const titlePad = Math.max(0, width - title.length - 2);
-  println(COLORS.cyan + '║ ' + COLORS.bold + COLORS.white + title + ' '.repeat(titlePad) + ' ║' + COLORS.reset);
-  println(COLORS.cyan + '╚' + '═'.repeat(width) + '╝' + COLORS.reset);
-}
-
-/**
  * 打印步骤标题
  */
 function printStepTitle(stepNum: number, title: string): void {
@@ -181,26 +164,85 @@ ${COLORS.bold}╔═════════════════════
  */
 function printCompleteBanner(): void {
   println('');
-  println(COLORS.green + COLORS.bold + '╔══════════════════════════════════════════════════════════════╗' + COLORS.reset);
-  println(COLORS.green + '║' + COLORS.reset + '                                                              ' + COLORS.green + '║' + COLORS.reset);
-  println(COLORS.green + '║' + COLORS.reset + '     ' + COLORS.bold + COLORS.white + '🎉 设置完成！' + COLORS.reset + '                                      ' + COLORS.green + '║' + COLORS.reset);
-  println(COLORS.green + '║' + COLORS.reset + '                                                              ' + COLORS.green + '║' + COLORS.reset);
-  println(COLORS.green + '║' + COLORS.reset + '     ' + COLORS.cyan + '重新运行程序即可开始使用 CogitoAgent' + COLORS.reset + '              ' + COLORS.green + '║' + COLORS.reset);
-  println(COLORS.green + '║' + COLORS.reset + '                                                              ' + COLORS.green + '║' + COLORS.reset);
-  println(COLORS.green + COLORS.bold + '╚══════════════════════════════════════════════════════════════╝' + COLORS.reset);
+  println(
+    COLORS.green +
+      COLORS.bold +
+      '╔══════════════════════════════════════════════════════════════╗' +
+      COLORS.reset,
+  );
+  println(
+    COLORS.green +
+      '║' +
+      COLORS.reset +
+      '                                                              ' +
+      COLORS.green +
+      '║' +
+      COLORS.reset,
+  );
+  println(
+    COLORS.green +
+      '║' +
+      COLORS.reset +
+      '     ' +
+      COLORS.bold +
+      COLORS.white +
+      '🎉 设置完成！' +
+      COLORS.reset +
+      '                                      ' +
+      COLORS.green +
+      '║' +
+      COLORS.reset,
+  );
+  println(
+    COLORS.green +
+      '║' +
+      COLORS.reset +
+      '                                                              ' +
+      COLORS.green +
+      '║' +
+      COLORS.reset,
+  );
+  println(
+    COLORS.green +
+      '║' +
+      COLORS.reset +
+      '     ' +
+      COLORS.cyan +
+      '重新运行程序即可开始使用 CogitoAgent' +
+      COLORS.reset +
+      '              ' +
+      COLORS.green +
+      '║' +
+      COLORS.reset,
+  );
+  println(
+    COLORS.green +
+      '║' +
+      COLORS.reset +
+      '                                                              ' +
+      COLORS.green +
+      '║' +
+      COLORS.reset,
+  );
+  println(
+    COLORS.green +
+      COLORS.bold +
+      '╚══════════════════════════════════════════════════════════════╝' +
+      COLORS.reset,
+  );
   println('');
 }
 
 function createInterface(): readline.Interface {
   return readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
 }
 
 function question(rl: readline.Interface, text: string): Promise<string> {
-  return new Promise(resolve => {
-    rl.question(text, answer => {
+  return new Promise((resolve) => {
+    rl.question(text, (answer) => {
       resolve(answer);
     });
   });
@@ -211,8 +253,10 @@ function question(rl: readline.Interface, text: string): Promise<string> {
  */
 function checkEnvConfig(): boolean {
   const envConfig = loadEnvConfig();
-  const hasApiConfig = !!(envConfig.api && 
-    (envConfig.api.apiKey || envConfig.api.baseURL || envConfig.api.model));
+  const hasApiConfig = !!(
+    envConfig.api &&
+    (envConfig.api.apiKey || envConfig.api.baseURL || envConfig.api.model)
+  );
   return hasApiConfig;
 }
 
@@ -222,11 +266,12 @@ function checkEnvConfig(): boolean {
 function getAvailablePersonas(): PersonaInfo[] {
   const personasDir = path.join(process.cwd(), 'personas');
   const personas: PersonaInfo[] = [];
-  
+
   try {
-    const dirs = fs.readdirSync(personasDir, { withFileTypes: true })
-      .filter(dir => dir.isDirectory())
-      .map(dir => dir.name);
+    const dirs = fs
+      .readdirSync(personasDir, { withFileTypes: true })
+      .filter((dir) => dir.isDirectory())
+      .map((dir) => dir.name);
     for (const dir of dirs) {
       const personaPath = path.join(personasDir, dir, 'persona.md');
       if (fs.existsSync(personaPath)) {
@@ -238,43 +283,55 @@ function getAvailablePersonas(): PersonaInfo[] {
   } catch (e) {
     // 目录不存在，使用默认
   }
-  
+
   return personas;
 }
 
 /**
  * 选择人设
  */
-async function selectPersona(rl: readline.Interface, personas: PersonaInfo[]): Promise<PersonaInfo | null> {
+async function selectPersona(
+  rl: readline.Interface,
+  personas: PersonaInfo[],
+): Promise<PersonaInfo | null> {
   printStepTitle(5, '选择人设');
   println('');
   println(COLORS.dim + '  0 - 不使用人设（使用默认行为）' + COLORS.reset);
   println('');
-  
+
   personas.forEach((p, i) => {
-    println(COLORS.white + `  ${i + 1} - ` + COLORS.cyan + p.firstLine + COLORS.dim + ` (${p.name})` + COLORS.reset);
+    println(
+      COLORS.white +
+        `  ${i + 1} - ` +
+        COLORS.cyan +
+        p.firstLine +
+        COLORS.dim +
+        ` (${p.name})` +
+        COLORS.reset,
+    );
   });
   println('');
-  
+
   const answer = await question(rl, COLORS.yellow + '  请输入编号或名称: ' + COLORS.reset);
   const trimmed = answer.trim();
-  
+
   if (trimmed === '0' || trimmed === '') {
     return null;
   }
-  
+
   // 按编号选择
   const num = parseInt(trimmed);
   if (!isNaN(num) && num >= 1 && num <= personas.length) {
     return personas[num - 1];
   }
-  
+
   // 按名称选择
-  const found = personas.find(p => 
-    p.name.toLowerCase() === trimmed.toLowerCase() ||
-    p.firstLine.toLowerCase().includes(trimmed.toLowerCase())
+  const found = personas.find(
+    (p) =>
+      p.name.toLowerCase() === trimmed.toLowerCase() ||
+      p.firstLine.toLowerCase().includes(trimmed.toLowerCase()),
   );
-  
+
   return found || null;
 }
 
@@ -287,19 +344,19 @@ async function configureThinkingInterval(rl: readline.Interface): Promise<number
   printTip('AI 自动思考的时间间隔，单位毫秒，最小值 1000');
   println(COLORS.dim + '  按回车使用默认值: 3000' + COLORS.reset);
   println('');
-  
+
   const answer = await question(rl, COLORS.yellow + '  请输入思考间隔: ' + COLORS.reset);
   const trimmed = answer.trim();
-  
+
   if (!trimmed) {
     return 3000;
   }
-  
+
   const interval = parseInt(trimmed, 10);
   if (!isNaN(interval) && interval >= 1000) {
     return interval;
   }
-  
+
   printWarning('无效值，使用默认值 3000');
   return 3000;
 }
@@ -314,21 +371,21 @@ async function configureMode(rl: readline.Interface): Promise<string> {
   println(COLORS.white + '  2 - dashboard（工作台模式）' + COLORS.reset);
   println(COLORS.dim + '  按回车使用默认值: dashboard' + COLORS.reset);
   println('');
-  
+
   const answer = await question(rl, COLORS.yellow + '  请输入模式编号: ' + COLORS.reset);
   const trimmed = answer.trim();
-  
+
   if (!trimmed) {
     return 'dashboard';
   }
-  
+
   if (trimmed === '1' || trimmed.toLowerCase() === 'desktop') {
     return 'desktop';
   }
   if (trimmed === '2' || trimmed.toLowerCase() === 'dashboard') {
     return 'dashboard';
   }
-  
+
   printWarning('无效值，使用默认值 desktop');
   return 'desktop';
 }
@@ -341,27 +398,27 @@ async function configureEmail(rl: readline.Interface): Promise<EmailSetupConfig 
   println('');
   println(COLORS.dim + '  按回车跳过此配置（不配置邮件功能）' + COLORS.reset);
   println('');
-  
+
   const answer = await question(rl, COLORS.yellow + '  是否配置邮件服务？(y/n): ' + COLORS.reset);
   if (answer.trim().toLowerCase() !== 'y') {
     return null;
   }
-  
+
   println('');
   printTip('请输入邮件服务配置');
-  
+
   const host = await question(rl, COLORS.yellow + '  SMTP服务器地址: ' + COLORS.reset);
   const port = await question(rl, COLORS.yellow + '  SMTP端口: ' + COLORS.reset);
   const user = await question(rl, COLORS.yellow + '  邮箱用户名: ' + COLORS.reset);
   const password = await question(rl, COLORS.yellow + '  邮箱密码: ' + COLORS.reset);
   const from = await question(rl, COLORS.yellow + '  发件人地址: ' + COLORS.reset);
-  
+
   return {
     host: host.trim(),
     port: port.trim() ? parseInt(port.trim(), 10) : 587,
     user: user.trim(),
     password: password.trim(),
-    from: from.trim()
+    from: from.trim(),
   };
 }
 
@@ -373,25 +430,28 @@ async function configureOCR(rl: readline.Interface): Promise<OcrSetupConfig | nu
   println('');
   println(COLORS.dim + '  按回车跳过此配置（使用主 API Key）' + COLORS.reset);
   println('');
-  
-  const answer = await question(rl, COLORS.yellow + '  是否配置独立的 OCR 服务？(y/n): ' + COLORS.reset);
+
+  const answer = await question(
+    rl,
+    COLORS.yellow + '  是否配置独立的 OCR 服务？(y/n): ' + COLORS.reset,
+  );
   if (answer.trim().toLowerCase() !== 'y') {
     return null;
   }
-  
+
   println('');
   printTip('请输入 OCR 服务配置');
-  
+
   const apiKey = await question(rl, COLORS.yellow + '  OCR API Key: ' + COLORS.reset);
   const baseURL = await question(rl, COLORS.yellow + '  OCR API 地址: ' + COLORS.reset);
   const model = await question(rl, COLORS.yellow + '  OCR 模型名称: ' + COLORS.reset);
   const provider = await question(rl, COLORS.yellow + '  OCR 服务商: ' + COLORS.reset);
-  
+
   return {
     apiKey: apiKey.trim(),
     baseURL: baseURL.trim(),
     model: model.trim() || 'Qwen2.5-VL-32B-Instruct',
-    provider: provider.trim()
+    provider: provider.trim(),
   };
 }
 
@@ -403,23 +463,26 @@ async function configureVision(rl: readline.Interface): Promise<VisionSetupConfi
   println('');
   println(COLORS.dim + '  按回车跳过此配置（使用主 API Key）' + COLORS.reset);
   println('');
-  
-  const answer = await question(rl, COLORS.yellow + '  是否配置独立的视觉分析服务？(y/n): ' + COLORS.reset);
+
+  const answer = await question(
+    rl,
+    COLORS.yellow + '  是否配置独立的视觉分析服务？(y/n): ' + COLORS.reset,
+  );
   if (answer.trim().toLowerCase() !== 'y') {
     return null;
   }
-  
+
   println('');
   printTip('请输入视觉分析服务配置');
-  
+
   const apiKey = await question(rl, COLORS.yellow + '  Vision API Key: ' + COLORS.reset);
   const baseURL = await question(rl, COLORS.yellow + '  Vision API 地址: ' + COLORS.reset);
   const model = await question(rl, COLORS.yellow + '  Vision 模型名称: ' + COLORS.reset);
-  
+
   return {
     apiKey: apiKey.trim(),
     baseURL: baseURL.trim(),
-    model: model.trim() || 'Qwen2.5-VL-32B-Instruct'
+    model: model.trim() || 'Qwen2.5-VL-32B-Instruct',
   };
 }
 
@@ -431,21 +494,30 @@ async function configureCode(rl: readline.Interface): Promise<CodeSetupConfig | 
   println('');
   println(COLORS.dim + '  按回车跳过此配置（使用默认值）' + COLORS.reset);
   println('');
-  
-  const answer = await question(rl, COLORS.yellow + '  是否自定义代码执行配置？(y/n): ' + COLORS.reset);
+
+  const answer = await question(
+    rl,
+    COLORS.yellow + '  是否自定义代码执行配置？(y/n): ' + COLORS.reset,
+  );
   if (answer.trim().toLowerCase() !== 'y') {
     return null;
   }
-  
+
   println('');
   printTip('请输入代码执行配置');
-  
-  const timeout = await question(rl, COLORS.yellow + '  执行超时时间(毫秒，默认30000): ' + COLORS.reset);
-  const maxOutput = await question(rl, COLORS.yellow + '  最大输出大小(字符，默认100000): ' + COLORS.reset);
-  
+
+  const timeout = await question(
+    rl,
+    COLORS.yellow + '  执行超时时间(毫秒，默认30000): ' + COLORS.reset,
+  );
+  const maxOutput = await question(
+    rl,
+    COLORS.yellow + '  最大输出大小(字符，默认100000): ' + COLORS.reset,
+  );
+
   return {
     timeout: timeout.trim() ? parseInt(timeout.trim(), 10) : 30000,
-    maxOutput: maxOutput.trim() ? parseInt(maxOutput.trim(), 10) : 100000
+    maxOutput: maxOutput.trim() ? parseInt(maxOutput.trim(), 10) : 100000,
   };
 }
 
@@ -457,21 +529,27 @@ async function configureSecurity(rl: readline.Interface): Promise<SecuritySetupC
   println('');
   println(COLORS.dim + '  按回车跳过此配置（使用默认值）' + COLORS.reset);
   println('');
-  
+
   const answer = await question(rl, COLORS.yellow + '  是否自定义安全配置？(y/n): ' + COLORS.reset);
   if (answer.trim().toLowerCase() !== 'y') {
     return null;
   }
-  
+
   println('');
   printTip('请输入安全配置');
-  
-  const confirmDangerous = await question(rl, COLORS.yellow + '  危险操作确认(默认true，设为false跳过确认): ' + COLORS.reset);
-  const sandboxMode = await question(rl, COLORS.yellow + '  代码沙盒模式(默认true，设为false禁用沙盒): ' + COLORS.reset);
-  
+
+  const confirmDangerous = await question(
+    rl,
+    COLORS.yellow + '  危险操作确认(默认true，设为false跳过确认): ' + COLORS.reset,
+  );
+  const sandboxMode = await question(
+    rl,
+    COLORS.yellow + '  代码沙盒模式(默认true，设为false禁用沙盒): ' + COLORS.reset,
+  );
+
   return {
     confirmDangerous: confirmDangerous.trim().toLowerCase() !== 'false',
-    sandboxMode: sandboxMode.trim().toLowerCase() !== 'false'
+    sandboxMode: sandboxMode.trim().toLowerCase() !== 'false',
   };
 }
 
@@ -480,10 +558,10 @@ async function configureSecurity(rl: readline.Interface): Promise<SecuritySetupC
  */
 function applyPersona(persona: PersonaInfo | null): boolean {
   if (!persona) return false;
-  
+
   const srcPath = path.join(process.cwd(), 'personas', persona.filename);
   const destPath = path.join(process.cwd(), 'persona.md');
-  
+
   try {
     fs.copyFileSync(srcPath, destPath);
     return true;
@@ -498,7 +576,7 @@ function applyPersona(persona: PersonaInfo | null): boolean {
 function saveEnvConfig(config: any): boolean {
   const dataDir = process.env.COGITO_USER_DATA_DIR || process.cwd();
   const envPath = path.join(dataDir, '.env');
-  
+
   const lines = [
     '# CogitoAgent 配置文件',
     '# 由设置向导自动生成',
@@ -622,7 +700,7 @@ function saveEnvConfig(config: any): boolean {
     '# 人设名称（对应 personas/ 目录下的文件夹名称）',
     `COGITO_PERSONA=${config.persona || ''}`,
   ];
-  
+
   try {
     fs.writeFileSync(envPath, lines.join('\n'), 'utf-8');
     printSuccess('配置已保存到 .env 文件');
@@ -639,33 +717,40 @@ function saveEnvConfig(config: any): boolean {
  */
 async function runSetup(): Promise<any> {
   printSetupBanner();
-  
+
   // 检查环境变量配置
   const hasEnvConfig = checkEnvConfig();
-  
+
   if (hasEnvConfig) {
     printSuccess('已检测到 .env 环境变量配置！');
     printTip('配置将保存到 .env 文件');
     println('');
-    
+
     const rl = createInterface();
-    const choice = await question(rl, COLORS.yellow + '  是否跳过设置向导，直接使用环境变量？' + COLORS.dim + ' (y/n): ' + COLORS.reset);
+    const choice = await question(
+      rl,
+      COLORS.yellow +
+        '  是否跳过设置向导，直接使用环境变量？' +
+        COLORS.dim +
+        ' (y/n): ' +
+        COLORS.reset,
+    );
     rl.close();
-    
+
     if (choice.trim().toLowerCase() === 'y' || choice.trim() === '') {
       println('');
       printSuccess('将使用环境变量配置启动程序');
       printTip('如需修改配置，请编辑 .env 文件');
       println('');
-      
+
       // 加载环境变量配置并返回
       const config = {
         ...DEFAULT_CONFIG,
-        ...loadEnvConfig()
+        ...loadEnvConfig(),
       };
       return config;
     }
-    
+
     println('');
     printInfo('继续使用设置向导...');
     println('');
@@ -720,9 +805,10 @@ async function runSetup(): Promise<any> {
   const workspace = await question(rl, COLORS.yellow + '  请输入: ' + COLORS.reset);
   const workspacePath = workspace.trim() || os.homedir();
   // 确保路径以分隔符结尾
-  const normalizedWorkspace = workspacePath.endsWith(path.sep) || workspacePath.endsWith('/')
-    ? workspacePath
-    : workspacePath + path.sep;
+  const normalizedWorkspace =
+    workspacePath.endsWith(path.sep) || workspacePath.endsWith('/')
+      ? workspacePath
+      : workspacePath + path.sep;
   printInfo(`工作区: ${normalizedWorkspace}`);
   println('');
 
@@ -767,13 +853,13 @@ async function runSetup(): Promise<any> {
       provider: 'custom',
       baseURL: baseURL.trim(),
       apiKey: apiKey.trim(),
-      model: model.trim()
+      model: model.trim(),
     },
     search: {
       enabled: true,
       baseURL: '',
       recencyFilter: '',
-      siteFilter: ''
+      siteFilter: '',
     },
     workspace: normalizedWorkspace,
     thinkingInterval,
@@ -783,14 +869,14 @@ async function runSetup(): Promise<any> {
     vision: visionConfig,
     code: codeConfig,
     security: securityConfig,
-    persona: selectedPersona?.name || ''
+    persona: selectedPersona?.name || '',
   };
 
   // 保存到 .env 文件
   println('');
   printDivider('─', 'cyan');
   println('');
-  
+
   const saved = saveEnvConfig(config);
   if (saved) {
     // 应用人设
@@ -803,7 +889,7 @@ async function runSetup(): Promise<any> {
     } else {
       printInfo('未选择人设，使用默认行为');
     }
-    
+
     printCompleteBanner();
     printTip('如需修改配置，请编辑 .env 文件');
   } else {

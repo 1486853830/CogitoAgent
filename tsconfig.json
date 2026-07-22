@@ -24,11 +24,8 @@
     "src/**/*.ts",
     "src/**/*.js",
     "electron/**/*.ts",
-    "electron/**/*.js"
+    "electron/**/*.js",
+    "tests/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "coverage"
-  ]
+  "exclude": ["node_modules", "dist", "coverage"]
 }

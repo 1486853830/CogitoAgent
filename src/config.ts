@@ -15,9 +15,7 @@ function getEnvFile(): string {
   return path.resolve(getConfigDir(), '.env');
 }
 
-const CONFIG_DIR = getConfigDir();
 const CONFIG_FILE = getConfigFile();
-const ENV_FILE = getEnvFile();
 
 const DEFAULT_CONFIG: Config = {
   api: {
@@ -304,7 +302,7 @@ function loadConfig(): Config {
         config as unknown as Record<string, unknown>,
         envConfig,
       ) as unknown as Config;
-      console.error('[配置] 已加载配置文件');
+      console.log('[配置] 已加载配置文件');
     } else {
       config = { ...DEFAULT_CONFIG };
       const envConfig = loadEnvConfig();
@@ -314,7 +312,7 @@ function loadConfig(): Config {
       ) as unknown as Config;
     }
   } catch (e) {
-    console.error(`[配置] 加载失败: ${(e as Error).message}`);
+    console.warn(`[配置] 加载失败: ${(e as Error).message}`);
     config = { ...DEFAULT_CONFIG };
   }
 
@@ -360,7 +358,7 @@ function saveConfig(newConfig: Config): boolean {
     const sanitized = sanitizeConfig(newConfig);
     writeFileSync(getConfigFile(), JSON.stringify(sanitized, null, 2), 'utf-8');
     config = newConfig;
-    console.error('[配置] 配置已保存（敏感信息已过滤）');
+    console.log('[配置] 配置已保存（敏感信息已过滤）');
     return true;
   } catch (e) {
     console.error(`[配置] 保存失败: ${(e as Error).message}`);

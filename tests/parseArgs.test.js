@@ -15,7 +15,7 @@ function parseArgs(argsStr) {
     try {
       const jsonObj = JSON.parse(trimmed);
       return { isJson: true, data: jsonObj };
-    } catch (e) {
+    } catch {
       // JSON 解析失败，继续用逗号分隔方式
     }
   }
@@ -25,8 +25,7 @@ function parseArgs(argsStr) {
   const parts = trimmed.split(',');
   for (const part of parts) {
     const p = part.trim();
-    if ((p.startsWith('"') && p.endsWith('"')) ||
-        (p.startsWith("'") && p.endsWith("'"))) {
+    if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
       result.push(p.slice(1, -1));
     } else {
       result.push(p);

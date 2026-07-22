@@ -1,5 +1,16 @@
 import pptxgen from 'pptxgenjs';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, ImageRun } from 'docx';
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  HeadingLevel,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  ImageRun,
+} from 'docx';
 import XLSX from 'xlsx';
 import fs from 'fs/promises';
 import path from 'path';
@@ -8,7 +19,10 @@ import path from 'path';
 
 async function createPpt(options: any, ...rest: any[]): Promise<any> {
   try {
-    let outputPath, slides: any[] = [], title = 'Untitled', author = 'CogitoAgent';
+    let outputPath,
+      slides: any[] = [],
+      title = 'Untitled',
+      author = 'CogitoAgent';
 
     if (typeof options === 'object' && options !== null && !Array.isArray(options)) {
       outputPath = options.outputPath;
@@ -41,15 +55,27 @@ async function createPpt(options: any, ...rest: any[]): Promise<any> {
 
       if (slideData.title) {
         slide.addText(slideData.title, {
-          x: 0.5, y: 0.3, w: '90%', h: 0.8,
-          fontSize: 32, bold: true, color: '333333', align: 'left'
+          x: 0.5,
+          y: 0.3,
+          w: '90%',
+          h: 0.8,
+          fontSize: 32,
+          bold: true,
+          color: '333333',
+          align: 'left',
         });
       }
 
       if (slideData.content) {
         slide.addText(slideData.content, {
-          x: 0.5, y: slideData.title ? 1.3 : 0.5, w: '90%', h: '70%',
-          fontSize: 18, color: '666666', align: 'left', valign: 'top'
+          x: 0.5,
+          y: slideData.title ? 1.3 : 0.5,
+          w: '90%',
+          h: '70%',
+          fontSize: 18,
+          color: '666666',
+          align: 'left',
+          valign: 'top',
         });
       }
 
@@ -57,22 +83,30 @@ async function createPpt(options: any, ...rest: any[]): Promise<any> {
         try {
           await fs.access(slideData.image);
           slide.addImage({
-            x: 0.5, y: slideData.title ? 2.5 : 1.5, w: '80%', h: '50%',
-            path: slideData.image
+            x: 0.5,
+            y: slideData.title ? 2.5 : 1.5,
+            w: '80%',
+            h: '50%',
+            path: slideData.image,
           });
-        } catch (e) {}
+        } catch {}
       }
 
       if (slideData.bullets && Array.isArray(slideData.bullets)) {
         slide.addText(
           slideData.bullets.map((b: any, i: number) => ({
             text: b,
-            options: { bullet: true, breakLine: i < slideData.bullets.length - 1 }
+            options: { bullet: true, breakLine: i < slideData.bullets.length - 1 },
           })),
           {
-            x: 0.5, y: slideData.title ? 1.3 : 0.5, w: '90%', h: '60%',
-            fontSize: 16, color: '444444', valign: 'top'
-          }
+            x: 0.5,
+            y: slideData.title ? 1.3 : 0.5,
+            w: '90%',
+            h: '60%',
+            fontSize: 16,
+            color: '444444',
+            valign: 'top',
+          },
         );
       }
     }
@@ -91,7 +125,10 @@ async function createPpt(options: any, ...rest: any[]): Promise<any> {
 
 async function createWord(options: any, ...rest: any[]): Promise<any> {
   try {
-    let outputPath, paragraphs: any[] = [], title = 'Untitled', author = 'CogitoAgent';
+    let outputPath,
+      paragraphs: any[] = [],
+      title = 'Untitled',
+      author = 'CogitoAgent';
 
     if (typeof options === 'object' && options !== null && !Array.isArray(options)) {
       outputPath = options.outputPath;
@@ -104,7 +141,7 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
       const docContent = rest[1] || '';
       paragraphs = [
         { type: 'heading', text: docTitle, level: 1 },
-        { type: 'text', text: docContent }
+        { type: 'text', text: docContent },
       ];
       title = docTitle;
     }
@@ -124,21 +161,21 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
           3: HeadingLevel.HEADING_3,
           4: HeadingLevel.HEADING_4,
           5: HeadingLevel.HEADING_5,
-          6: HeadingLevel.HEADING_6
+          6: HeadingLevel.HEADING_6,
         };
         children.push(
           new Paragraph({
             text: para.text || '',
             heading: headingMap[level] || HeadingLevel.HEADING_1,
-            spacing: { before: 200, after: 200 }
-          })
+            spacing: { before: 200, after: 200 },
+          }),
         );
       } else if (para.type === 'text') {
         children.push(
           new Paragraph({
             children: [new TextRun(para.text || '')],
-            spacing: { after: 200 }
-          })
+            spacing: { after: 200 },
+          }),
         );
       } else if (para.type === 'list') {
         const items = para.items || [];
@@ -147,27 +184,29 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
             new Paragraph({
               children: [new TextRun(item)],
               bullet: { level: 0 },
-              spacing: { after: 100 }
-            })
+              spacing: { after: 100 },
+            }),
           );
         }
       } else if (para.type === 'table') {
         const rows = para.rows || [];
         if (rows.length > 0) {
-          const tableRows = rows.map((row: any) =>
-            new TableRow({
-              children: row.map((cell: any) =>
-                new TableCell({
-                  children: [new Paragraph({ children: [new TextRun(cell || '')] })],
-                  width: { size: 100 / (row.length || 1), type: WidthType.PERCENTAGE }
-                })
-              )
-            })
+          const tableRows = rows.map(
+            (row: any) =>
+              new TableRow({
+                children: row.map(
+                  (cell: any) =>
+                    new TableCell({
+                      children: [new Paragraph({ children: [new TextRun(cell || '')] })],
+                      width: { size: 100 / (row.length || 1), type: WidthType.PERCENTAGE },
+                    }),
+                ),
+              }),
           );
           children.push(
             new Paragraph({ spacing: { before: 200, after: 200 } }),
             new Table({ rows: tableRows, width: { size: 100, type: WidthType.PERCENTAGE } }),
-            new Paragraph({ spacing: { before: 200, after: 200 } })
+            new Paragraph({ spacing: { before: 200, after: 200 } }),
           );
         }
       } else if (para.type === 'image') {
@@ -179,13 +218,13 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
               children: [
                 new ImageRun({
                   data: imageBuffer,
-                  transformation: { width: para.width || 600, height: para.height || 400 }
-                } as any)
+                  transformation: { width: para.width || 600, height: para.height || 400 },
+                } as any),
               ],
-              spacing: { before: 200, after: 200 }
-            })
+              spacing: { before: 200, after: 200 },
+            }),
           );
-        } catch (e) {}
+        } catch {}
       }
     }
 
@@ -196,7 +235,7 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
     const doc = new Document({
       creator: author,
       title: title,
-      sections: [{ properties: {}, children }]
+      sections: [{ properties: {}, children }],
     });
 
     const dir = path.dirname(outputPath);
@@ -215,7 +254,8 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
 
 async function createExcel(options: any, ...rest: any[]): Promise<any> {
   try {
-    let outputPath, sheets: any[] = [];
+    let outputPath,
+      sheets: any[] = [];
 
     if (typeof options === 'object' && options !== null && !Array.isArray(options)) {
       outputPath = options.outputPath;
@@ -223,7 +263,11 @@ async function createExcel(options: any, ...rest: any[]): Promise<any> {
     } else if (typeof options === 'string') {
       outputPath = options;
       const sheetName = rest[0] || 'Sheet1';
-      const data = rest[1] ? (Array.isArray(rest[1]) ? rest[1] : [rest[1]]) : [['No content provided']];
+      const data = rest[1]
+        ? Array.isArray(rest[1])
+          ? rest[1]
+          : [rest[1]]
+        : [['No content provided']];
       sheets = [{ name: sheetName, data }];
     }
 
@@ -276,9 +320,4 @@ async function readExcel(filePath: string): Promise<any> {
   }
 }
 
-export {
-  createPpt,
-  createWord,
-  createExcel,
-  readExcel
-};
+export { createPpt, createWord, createExcel, readExcel };

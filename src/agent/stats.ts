@@ -9,7 +9,10 @@ interface ToolCategoryStats {
   successCount: number;
   failCount: number;
   totalTime: number;
-  tools: Record<string, { callCount: number; successCount: number; failCount: number; totalTime: number }>;
+  tools: Record<
+    string,
+    { callCount: number; successCount: number; failCount: number; totalTime: number }
+  >;
 }
 
 interface SessionStats {
@@ -44,19 +47,44 @@ let sessionStats: SessionStats = {
   totalTokens: 0,
   todayInputTokens: 0,
   todayOutputTokens: 0,
-  todayTokens: 0
+  todayTokens: 0,
 };
 
 function initStats(): void {
   toolStats = {};
-  const categories = ['file', 'web', 'system', 'browser', 'code', 'git', 'task', 'memory', 'data', 'db', 'email', 'monitor', 'scheduler', 'ocr', 'office', 'vision', 'cluster', 'wechat', 'gis', 'bio', 'med', 'chem', 'finance', 'math'];
+  const categories = [
+    'file',
+    'web',
+    'system',
+    'browser',
+    'code',
+    'git',
+    'task',
+    'memory',
+    'data',
+    'db',
+    'email',
+    'monitor',
+    'scheduler',
+    'ocr',
+    'office',
+    'vision',
+    'cluster',
+    'wechat',
+    'gis',
+    'bio',
+    'med',
+    'chem',
+    'finance',
+    'math',
+  ];
   for (const cat of categories) {
     toolStats[cat] = {
       callCount: 0,
       successCount: 0,
       failCount: 0,
       totalTime: 0,
-      tools: {}
+      tools: {},
     };
   }
 }
@@ -69,8 +97,12 @@ async function loadStats(): Promise<void> {
     const loaded = parsed.sessionStats || {};
     sessionStats = { ...sessionStats, ...loaded };
     const tokenFields = [
-      'totalInputTokens', 'totalOutputTokens', 'totalTokens',
-      'todayInputTokens', 'todayOutputTokens', 'todayTokens'
+      'totalInputTokens',
+      'totalOutputTokens',
+      'totalTokens',
+      'todayInputTokens',
+      'todayOutputTokens',
+      'todayTokens',
     ];
     for (const k of tokenFields) {
       if (typeof sessionStats[k] !== 'number') sessionStats[k] = 0;
@@ -90,37 +122,42 @@ async function saveStats(): Promise<void> {
   }
 }
 
-function recordToolCall(toolName: string, category: string, success: boolean, duration: number): void {
+function recordToolCall(
+  toolName: string,
+  category: string,
+  success: boolean,
+  duration: number,
+): void {
   if (!toolStats[category]) {
     toolStats[category] = { callCount: 0, successCount: 0, failCount: 0, totalTime: 0, tools: {} };
   }
-  
+
   const catStats = toolStats[category];
   catStats.callCount++;
   catStats.totalTime += duration;
-  
+
   if (success) {
     catStats.successCount++;
   } else {
     catStats.failCount++;
   }
-  
+
   if (!catStats.tools[toolName]) {
     catStats.tools[toolName] = { callCount: 0, successCount: 0, failCount: 0, totalTime: 0 };
   }
-  
+
   const toolStat = catStats.tools[toolName];
   toolStat.callCount++;
   toolStat.totalTime += duration;
-  
+
   if (success) {
     toolStat.successCount++;
   } else {
     toolStat.failCount++;
   }
-  
+
   sessionStats.totalToolCalls++;
-  
+
   const today = new Date().toISOString().split('T')[0];
   if (sessionStats.lastDate !== today) {
     sessionStats.lastDate = today;
@@ -128,7 +165,7 @@ function recordToolCall(toolName: string, category: string, success: boolean, du
   } else {
     sessionStats.todayToolCalls++;
   }
-  
+
   saveStats();
 }
 
@@ -218,8 +255,10 @@ function getToolUsageByCategory(): Array<{
       callCount: stats.callCount,
       successCount: stats.successCount,
       failCount: stats.failCount,
-      successRate: stats.callCount > 0 ? Math.round(stats.successCount / stats.callCount * 100) : 0,
-      avgTime: stats.callCount > 0 ? Math.round(stats.totalTime / stats.callCount * 100) / 100 : 0
+      successRate:
+        stats.callCount > 0 ? Math.round((stats.successCount / stats.callCount) * 100) : 0,
+      avgTime:
+        stats.callCount > 0 ? Math.round((stats.totalTime / stats.callCount) * 100) / 100 : 0,
     });
   }
   return result;
@@ -251,8 +290,10 @@ function getTopUsedTools(limit = 10): Array<{
         callCount: stats.callCount,
         successCount: stats.successCount,
         failCount: stats.failCount,
-        successRate: stats.callCount > 0 ? Math.round(stats.successCount / stats.callCount * 100) : 0,
-        avgTime: stats.callCount > 0 ? Math.round(stats.totalTime / stats.callCount * 100) / 100 : 0
+        successRate:
+          stats.callCount > 0 ? Math.round((stats.successCount / stats.callCount) * 100) : 0,
+        avgTime:
+          stats.callCount > 0 ? Math.round((stats.totalTime / stats.callCount) * 100) / 100 : 0,
       });
     }
   }
@@ -275,13 +316,13 @@ function resetStats(): void {
     todayInputTokens: 0,
     todayOutputTokens: 0,
     todayTokens: 0,
-    lastDate: new Date().toISOString().split('T')[0]
+    lastDate: new Date().toISOString().split('T')[0],
   };
   saveStats();
 }
 
 initStats();
-loadStats();
+await loadStats();
 
 export {
   recordToolCall,
@@ -293,5 +334,5 @@ export {
   getSessionStats,
   getToolUsageByCategory,
   getTopUsedTools,
-  resetStats
+  resetStats,
 };

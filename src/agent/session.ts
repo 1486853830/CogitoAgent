@@ -39,7 +39,7 @@ function saveMeta(meta: SessionMeta): void {
   } catch (e) {
     console.error(`[会话] 元数据广播失败: ${(e as Error).message}`);
   }
-  
+
   try {
     ensureDir();
     writeFileSync(META_FILE, JSON.stringify(meta, null, 2), 'utf-8');
@@ -85,12 +85,12 @@ function initializeSession(sessionId?: string | null): boolean {
   const meta = loadMeta();
 
   if (sessionId) {
-    if (!meta.sessions.find(s => s.id === sessionId)) {
+    if (!meta.sessions.find((s) => s.id === sessionId)) {
       console.error(`[会话] 会话 ${sessionId} 不存在`);
       return false;
     }
     currentSessionId = sessionId;
-  } else if (meta.activeId && meta.sessions.find(s => s.id === meta.activeId)) {
+  } else if (meta.activeId && meta.sessions.find((s) => s.id === meta.activeId)) {
     currentSessionId = meta.activeId;
   } else {
     createNewSession();
@@ -104,17 +104,17 @@ function initializeSession(sessionId?: string | null): boolean {
     conversationHistory[0] = { role: 'system', content: buildSystemPrompt() };
   }
 
-  turnCount = conversationHistory.filter(m => m.role !== 'system').length;
+  turnCount = conversationHistory.filter((m) => m.role !== 'system').length;
   meta.activeId = currentSessionId;
   saveMeta(meta);
 
-  console.error(`[会话] 已加载会话: ${currentSessionId} (${turnCount} 条消息)`);
+  console.log(`[会话] 已加载会话: ${currentSessionId} (${turnCount} 条消息)`);
   return true;
 }
 
 function getOrCreateWechatSession(): string {
   const meta = loadMeta();
-  const existing = meta.sessions.find(s => s.name === '微信通道');
+  const existing = meta.sessions.find((s) => s.name === '微信通道');
   if (existing) {
     return existing.id;
   }
@@ -124,7 +124,7 @@ function getOrCreateWechatSession(): string {
     id,
     name: '微信通道',
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
 
   meta.sessions.push(session);
@@ -151,7 +151,7 @@ function createNewSession(name?: string | null, persona?: string | null) {
     name: name || `会话 ${meta.sessions.length + 1}`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    persona: persona || undefined
+    persona: persona || undefined,
   };
 
   meta.sessions.push(session);
@@ -163,14 +163,14 @@ function createNewSession(name?: string | null, persona?: string | null) {
   turnCount = 0;
   saveSession(id, conversationHistory);
 
-  console.error(`[会话] 已创建新会话: ${session.name}`);
+  console.log(`[会话] 已创建新会话: ${session.name}`);
   return session;
 }
 
 function archiveCurrentSession(): void {
   if (!currentSessionId) return;
 
-  const messages = conversationHistory.filter(m => m.role !== 'system');
+  const messages = conversationHistory.filter((m) => m.role !== 'system');
   if (messages.length === 0) return;
 
   const archiveFile = path.join(SESSIONS_DIR, `${currentSessionId}${ARCHIVE_SUFFIX}.json`);
@@ -182,7 +182,7 @@ function archiveCurrentSession(): void {
 
     archives.push({
       timestamp: new Date().toISOString(),
-      messages: messages.slice(0, -KEEP_RECENT_TURNS)
+      messages: messages.slice(0, -KEEP_RECENT_TURNS),
     });
 
     if (archives.length > 3) {
@@ -195,9 +195,13 @@ function archiveCurrentSession(): void {
   }
 }
 
-function switchSession(sessionId: string): { success: boolean; error?: string; session?: SessionInfo } {
+function switchSession(sessionId: string): {
+  success: boolean;
+  error?: string;
+  session?: SessionInfo;
+} {
   const meta = loadMeta();
-  const session = meta.sessions.find(s => s.id === sessionId);
+  const session = meta.sessions.find((s) => s.id === sessionId);
 
   if (!session) {
     return { success: false, error: '会话不存在' };
@@ -213,13 +217,18 @@ function switchSession(sessionId: string): { success: boolean; error?: string; s
 
   // 如果会话绑定了人设，切换到对应人设
   if (session.persona) {
-    const personaSrc = path.resolve(process.cwd(), 'personas', session.persona as string, 'persona.md');
+    const personaSrc = path.resolve(
+      process.cwd(),
+      'personas',
+      session.persona as string,
+      'persona.md',
+    );
     const personaTarget = path.resolve(DATA_DIR, 'persona.md');
     try {
       if (existsSync(personaSrc)) {
         const content = readFileSync(personaSrc, 'utf-8');
         writeFileSync(personaTarget, content, 'utf-8');
-        console.error(`[会话] 切换到人设: ${session.persona}`);
+        console.log(`[会话] 切换到人设: ${session.persona}`);
       }
     } catch (e) {
       console.error(`[会话] 切换人设失败: ${e}`);
@@ -227,15 +236,16 @@ function switchSession(sessionId: string): { success: boolean; error?: string; s
   }
 
   const messages = loadSession(sessionId);
-  conversationHistory = messages.length > 0 ? messages : [{ role: 'system', content: buildSystemPrompt() }];
-  turnCount = conversationHistory.filter(m => m.role !== 'system').length;
+  conversationHistory =
+    messages.length > 0 ? messages : [{ role: 'system', content: buildSystemPrompt() }];
+  turnCount = conversationHistory.filter((m) => m.role !== 'system').length;
 
   return { success: true, session };
 }
 
 function deleteSession(sessionId: string): { success: boolean; error?: string } {
   const meta = loadMeta();
-  const index = meta.sessions.findIndex(s => s.id === sessionId);
+  const index = meta.sessions.findIndex((s) => s.id === sessionId);
 
   if (index === -1) {
     return { success: false, error: '会话不存在' };
@@ -246,7 +256,7 @@ function deleteSession(sessionId: string): { success: boolean; error?: string } 
   }
 
   if (currentSessionId === sessionId) {
-    const nextSession = meta.sessions.find(s => s.id !== sessionId);
+    const nextSession = meta.sessions.find((s) => s.id !== sessionId);
     if (nextSession) {
       switchSession(nextSession.id);
     }
@@ -272,9 +282,12 @@ function deleteSession(sessionId: string): { success: boolean; error?: string } 
   return { success: true };
 }
 
-function renameSession(sessionId: string, newName: string): { success: boolean; error?: string; session?: SessionInfo } {
+function renameSession(
+  sessionId: string,
+  newName: string,
+): { success: boolean; error?: string; session?: SessionInfo } {
   const meta = loadMeta();
-  const session = meta.sessions.find(s => s.id === sessionId);
+  const session = meta.sessions.find((s) => s.id === sessionId);
 
   if (!session) {
     return { success: false, error: '会话不存在' };
@@ -293,12 +306,12 @@ function listSessions() {
     recoverSessionsFromDisk(meta);
   }
 
-  return meta.sessions.map(s => ({
+  return meta.sessions.map((s) => ({
     id: s.id,
     name: s.name,
     createdAt: s.createdAt,
     lastActiveAt: s.lastActiveAt || s.createdAt,
-    isActive: s.id === currentSessionId
+    isActive: s.id === currentSessionId,
   }));
 }
 
@@ -312,17 +325,20 @@ function recoverSessionsFromDisk(meta: SessionMeta): void {
       const sessionId = file.replace('.json', '');
       try {
         const content = JSON.parse(readFileSync(path.join(SESSIONS_DIR, file), 'utf-8'));
-        const messageCount = Array.isArray(content) ? content.filter((m: Message) =>
-          m.role !== 'system' &&
-          !(m.role === 'user' && m.content.startsWith('[系统返回的工具执行结果]'))
-        ).length : 0;
+        const messageCount = Array.isArray(content)
+          ? content.filter(
+              (m: Message) =>
+                m.role !== 'system' &&
+                !(m.role === 'user' && m.content.startsWith('[系统返回的工具执行结果]')),
+            ).length
+          : 0;
         recovered.push({
           id: sessionId,
           name: `会话 ${recovered.length + 1}`,
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         });
-        console.error(`[会话] 已恢复会话: ${sessionId} (${messageCount} 条消息)`);
+        console.log(`[会话] 已恢复会话: ${sessionId} (${messageCount} 条消息)`);
       } catch {
         // 跳过损坏的文件
       }
@@ -330,14 +346,14 @@ function recoverSessionsFromDisk(meta: SessionMeta): void {
 
     if (recovered.length > 0) {
       meta.sessions = recovered;
-      if (!meta.activeId || !meta.sessions.find(s => s.id === meta.activeId)) {
+      if (!meta.activeId || !meta.sessions.find((s) => s.id === meta.activeId)) {
         meta.activeId = recovered[0].id;
       }
       if (!currentSessionId) {
         currentSessionId = meta.activeId;
       }
       saveMeta(meta);
-      console.error(`[会话] 已从磁盘恢复 ${recovered.length} 个会话`);
+      console.log(`[会话] 已从磁盘恢复 ${recovered.length} 个会话`);
     }
   } catch {
     // 目录不存在时忽略
@@ -347,7 +363,7 @@ function recoverSessionsFromDisk(meta: SessionMeta): void {
 function getCurrentSession(): SessionInfo | null {
   if (!currentSessionId) return null;
   const meta = loadMeta();
-  return meta.sessions.find(s => s.id === currentSessionId) || null;
+  return meta.sessions.find((s) => s.id === currentSessionId) || null;
 }
 
 function getMessages(): Message[] {
@@ -360,7 +376,7 @@ function addUserMessage(content: string): void {
   saveSession(currentSessionId!, conversationHistory);
 
   const meta = loadMeta();
-  const session = meta.sessions.find(s => s.id === currentSessionId);
+  const session = meta.sessions.find((s) => s.id === currentSessionId);
   if (session) {
     session.lastActiveAt = new Date().toISOString();
     session.messageCount = turnCount;
@@ -427,7 +443,7 @@ function getCompressionAdvice() {
 }
 
 function compressHistory(): void {
-  const nonSystemMessages = conversationHistory.filter(m => m.role !== 'system');
+  const nonSystemMessages = conversationHistory.filter((m) => m.role !== 'system');
 
   if (nonSystemMessages.length <= KEEP_RECENT_TURNS) {
     return;
@@ -444,7 +460,7 @@ function compressHistory(): void {
   conversationHistory = [
     { role: 'system', content: buildSystemPrompt() },
     { role: 'user', content: `[上下文摘要] ${summary}` },
-    ...recentMessages
+    ...recentMessages,
   ];
 
   turnCount = recentMessages.length;
@@ -481,9 +497,7 @@ function getHistoryLength(): number {
 }
 
 function resetConversation(): void {
-  conversationHistory = [
-    { role: 'system', content: buildSystemPrompt() }
-  ];
+  conversationHistory = [{ role: 'system', content: buildSystemPrompt() }];
   turnCount = 0;
   if (currentSessionId) {
     saveSession(currentSessionId, conversationHistory);
@@ -501,10 +515,7 @@ function updateSystemPrompt(): void {
 }
 
 function setConversationHistory(messages: Message[]): void {
-  conversationHistory = [
-    { role: 'system', content: buildSystemPrompt() },
-    ...messages
-  ];
+  conversationHistory = [{ role: 'system', content: buildSystemPrompt() }, ...messages];
   turnCount = messages.length;
   if (currentSessionId) {
     saveSession(currentSessionId, conversationHistory);
@@ -533,5 +544,5 @@ export {
   estimateTokens,
   getContextTokenEstimate,
   isApproachingLimit,
-  getCompressionAdvice
+  getCompressionAdvice,
 };
