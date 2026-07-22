@@ -1,8 +1,15 @@
-import { loadEnvConfig, deepMerge, DEFAULT_CONFIG } from '../../src/config';
+import {
+  loadConfig,
+  loadEnvConfig,
+  saveConfig,
+  isConfigured,
+  deepMerge,
+  DEFAULT_CONFIG,
+} from '../../src/config.ts';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { mkdirSync, rmdirSync, existsSync } from 'fs';
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -56,16 +63,13 @@ describe('config.ts', () => {
     envKeys.forEach((key) => {
       delete process.env[key];
     });
-    if (!existsSync(testConfigDir)) {
-      mkdirSync(testConfigDir, { recursive: true });
-    }
+    rmSync(testConfigDir, { recursive: true, force: true });
+    mkdirSync(testConfigDir, { recursive: true });
     process.env.COGITO_USER_DATA_DIR = testConfigDir;
   });
 
   afterEach(() => {
-    if (existsSync(testConfigDir)) {
-      rmdirSync(testConfigDir);
-    }
+    rmSync(testConfigDir, { recursive: true, force: true });
   });
 
   describe('DEFAULT_CONFIG', () => {
@@ -259,6 +263,134 @@ describe('config.ts', () => {
       const result = loadEnvConfig();
 
       expect(result).toEqual({});
+    });
+  });
+
+  describe('loadConfig', () => {
+    it('should return defaults merged with env when no config file', () => {
+      process.env.COGITO_API_KEY = 'env-key';
+      const cfg = loadConfig();
+      expect(cfg.api.apiKey).toBe('env-key');
+      expect(cfg.api.provider).toBe('');
+      expect(cfg.chat.maxTokens).toBe(131072);
+      expect(cfg.search.enabled).toBe(true);
+    });
+
+    it('should merge file config over defaults', () => {
+      writeFileSync(
+        path.join(testConfigDir, 'config.json'),
+        JSON.stringify({
+          api: { provider: 'openai', model: 'gpt-4' },
+          chat: { maxTokens: 8192 },
+        }),
+        'utf-8',
+      );
+      const cfg = loadConfig();
+      expect(cfg.api.provider).toBe('openai');
+      expect(cfg.api.model).toBe('gpt-4');
+      expect(cfg.api.apiKey).toBe('');
+      // defaults preserved
+      expect(cfg.chat.temperature).toBe(0.7);
+      expect(cfg.chat.maxTokens).toBe(8192);
+      expect(cfg.search.enabled).toBe(true);
+    });
+
+    it('should merge env config over file config', () => {
+      writeFileSync(
+        path.join(testConfigDir, 'config.json'),
+        JSON.stringify({ api: { provider: 'file-provider', apiKey: 'file-key' } }),
+        'utf-8',
+      );
+      process.env.COGITO_API_KEY = 'env-key';
+      const cfg = loadConfig();
+      // env overrides file
+      expect(cfg.api.apiKey).toBe('env-key');
+      expect(cfg.api.provider).toBe('file-provider');
+    });
+
+    it('should fall back to defaults on parse error', () => {
+      writeFileSync(path.join(testConfigDir, 'config.json'), 'invalid-json{', 'utf-8');
+      const cfg = loadConfig();
+      expect(cfg.api.provider).toBe('');
+      expect(cfg.chat.maxTokens).toBe(131072);
+    });
+  });
+
+  describe('isConfigured', () => {
+    it('should return false when api fields are empty', () => {
+      expect(isConfigured()).toBe(false);
+    });
+
+    it('should return true when all api fields are set via env', () => {
+      process.env.COGITO_API_KEY = 'key';
+      process.env.COGITO_API_BASE_URL = 'https://api.test.com';
+      process.env.COGITO_API_PROVIDER = 'openai';
+      process.env.COGITO_MODEL = 'gpt-4';
+      expect(isConfigured()).toBe(true);
+    });
+
+    it('should return false when some api fields missing', () => {
+      process.env.COGITO_API_KEY = 'key';
+      process.env.COGITO_API_PROVIDER = 'openai';
+      // baseURL and model not set
+      expect(isConfigured()).toBe(false);
+    });
+  });
+
+  describe('saveConfig', () => {
+    it('should write sanitized config to file and return true', () => {
+      const cfg = {
+        ...DEFAULT_CONFIG,
+        api: {
+          provider: 'openai',
+          baseURL: 'https://api.test.com',
+          apiKey: 'secret-key',
+          model: 'gpt-4',
+        },
+        email: { ...DEFAULT_CONFIG.email, password: 'email-pass' },
+        models: {
+          openai: { apiKey: 'oai-key', baseURL: 'https://api.openai.com/v1' },
+        },
+        ocr: { ...DEFAULT_CONFIG.ocr, apiKey: 'ocr-secret' },
+        vision: { ...DEFAULT_CONFIG.vision, apiKey: 'vision-secret' },
+      };
+      const result = saveConfig(cfg);
+      expect(result).toBe(true);
+
+      const written = JSON.parse(readFileSync(path.join(testConfigDir, 'config.json'), 'utf-8'));
+      // sensitive fields removed
+      expect(written.api.apiKey).toBeUndefined();
+      expect(written.email.password).toBeUndefined();
+      expect(written.models.openai.apiKey).toBeUndefined();
+      expect(written.ocr.apiKey).toBeUndefined();
+      expect(written.vision.apiKey).toBeUndefined();
+      // non-sensitive fields preserved
+      expect(written.api.provider).toBe('openai');
+      expect(written.api.model).toBe('gpt-4');
+      expect(written.models.openai.baseURL).toBe('https://api.openai.com/v1');
+    });
+
+    it('should not mutate the original config object', () => {
+      const cfg = {
+        ...DEFAULT_CONFIG,
+        api: {
+          provider: 'openai',
+          baseURL: 'https://api.test.com',
+          apiKey: 'secret-key',
+          model: 'gpt-4',
+        },
+      };
+      saveConfig(cfg);
+      // original still has the key
+      expect(cfg.api.apiKey).toBe('secret-key');
+    });
+
+    it('should return false when write fails', () => {
+      process.env.COGITO_USER_DATA_DIR = path.join(testConfigDir, 'nonexistent-subdir');
+      const result = saveConfig(DEFAULT_CONFIG);
+      expect(result).toBe(false);
+      // restore for subsequent cleanup
+      process.env.COGITO_USER_DATA_DIR = testConfigDir;
     });
   });
 });

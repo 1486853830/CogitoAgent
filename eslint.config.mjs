@@ -40,5 +40,18 @@ export default [
       "no-control-regex": "warn",
       "no-unassigned-vars": "warn"
     }
+  },
+  {
+    files: ["tests/**/*.{ts,js}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-unsafe-function-type": "off",
+      "@typescript-eslint/no-this-alias": "off",
+      "no-empty": "off",
+      "no-useless-assignment": "off",
+      "no-control-regex": "off",
+      "require-yield": "off"
+    }
   }
 ];

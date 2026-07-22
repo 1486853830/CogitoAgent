@@ -12,7 +12,7 @@ export default {
   collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: 'coverage',
   coverageThreshold: {
-    global: { branches: 8, functions: 5, lines: 8, statements: 8 }
+    global: { branches: 50, functions: 60, lines: 60, statements: 60 }
   },
   verbose: true,
   testTimeout: 60000,
