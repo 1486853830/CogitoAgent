@@ -1,23 +1,5 @@
-import { jest } from '@jest/globals';
-
-const TEST_TIMEOUT = 60000;
-
 describe('Agent Full Flow E2E', () => {
-  let mockAgent;
-  let mockWsServer;
-  let messageQueue;
-  let connectedClients;
-
-  beforeEach(() => {
-    messageQueue = [];
-    connectedClients = [];
-  });
-
-  afterEach(() => {
-    if (mockWsServer) {
-      mockWsServer.close();
-    }
-  });
+  beforeEach(() => {});
 
   describe('Agent Initialization', () => {
     test('should initialize with default config', async () => {
@@ -25,7 +7,7 @@ describe('Agent Full Flow E2E', () => {
         api: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' },
         workspace: './',
         thinkingInterval: 3000,
-        persona: 'explorer'
+        persona: 'explorer',
       };
 
       expect(config.api.baseUrl).toBe('https://api.openai.com/v1');
@@ -36,7 +18,7 @@ describe('Agent Full Flow E2E', () => {
     test('should load persona configuration', async () => {
       const personas = {
         explorer: { name: 'explorer', temperature: 0.7 },
-        scholar: { name: 'scholar', temperature: 0.5 }
+        scholar: { name: 'scholar', temperature: 0.5 },
       };
 
       const persona = personas.explorer;
@@ -46,9 +28,19 @@ describe('Agent Full Flow E2E', () => {
 
     test('should register all tool categories', async () => {
       const toolCategories = [
-        'file', 'web', 'browser', 'system', 'code',
-        'git', 'task', 'memory', 'data', 'db',
-        'email', 'monitor', 'scheduler'
+        'file',
+        'web',
+        'browser',
+        'system',
+        'code',
+        'git',
+        'task',
+        'memory',
+        'data',
+        'db',
+        'email',
+        'monitor',
+        'scheduler',
       ];
 
       expect(toolCategories).toHaveLength(13);
@@ -60,14 +52,13 @@ describe('Agent Full Flow E2E', () => {
 
   describe('Think Cycle', () => {
     test('should create think cycle with correct interval', async () => {
-      const thinkInterval = 3000;
       const cycleStates = [];
 
       const thinkCycle = setInterval(() => {
         cycleStates.push('thinking');
       }, 100);
 
-      await new Promise(resolve => setTimeout(resolve, 350));
+      await new Promise((resolve) => setTimeout(resolve, 350));
       clearInterval(thinkCycle);
 
       expect(cycleStates.length).toBeGreaterThanOrEqual(1);
@@ -77,7 +68,7 @@ describe('Agent Full Flow E2E', () => {
       const systemPrompt = 'You are a helpful assistant';
       const history = [
         { role: 'user', content: 'Hello' },
-        { role: 'assistant', content: 'Hi there!' }
+        { role: 'assistant', content: 'Hi there!' },
       ];
       const tools = ['ls', 'read', 'create'];
 
@@ -85,8 +76,8 @@ describe('Agent Full Flow E2E', () => {
         messages: [
           { role: 'system', content: systemPrompt },
           ...history,
-          { role: 'system', content: `Available tools: ${tools.join(', ')}` }
-        ]
+          { role: 'system', content: `Available tools: ${tools.join(', ')}` },
+        ],
       };
 
       // system + user + assistant + tools = 4 messages
@@ -110,12 +101,12 @@ describe('Agent Full Flow E2E', () => {
     test('should handle multiple tool calls in sequence', async () => {
       const toolCalls = [
         { name: 'ls', args: '"/project"', result: ['file1.js', 'file2.js'] },
-        { name: 'read', args: '"/project/file1.js"', result: 'file content' }
+        { name: 'read', args: '"/project/file1.js"', result: 'file content' },
       ];
 
       const results = [];
       for (const call of toolCalls) {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         results.push({ name: call.name, result: call.result });
       }
 
@@ -149,7 +140,7 @@ describe('Agent Full Flow E2E', () => {
     const State = {
       THINKING: 'THINKING',
       AWAITING_INPUT: 'AWAITING_INPUT',
-      AWAITING_CONFIRMATION: 'AWAITING_CONFIRMATION'
+      AWAITING_CONFIRMATION: 'AWAITING_CONFIRMATION',
     };
 
     test('should transition from THINKING to AWAITING_INPUT on interrupt', async () => {
@@ -190,7 +181,7 @@ describe('Agent Full Flow E2E', () => {
         { from: State.THINKING, event: 'interrupt', to: State.AWAITING_INPUT },
         { from: State.AWAITING_INPUT, event: 'send', to: State.THINKING },
         { from: State.THINKING, event: 'dangerous', to: State.AWAITING_CONFIRMATION },
-        { from: State.AWAITING_CONFIRMATION, event: 'confirm', to: State.THINKING }
+        { from: State.AWAITING_CONFIRMATION, event: 'confirm', to: State.THINKING },
       ];
 
       transitions.forEach(({ from, event, to }) => {
@@ -262,8 +253,11 @@ describe('Agent Full Flow E2E', () => {
         const keepCount = Math.floor(maxLen / 2);
         return [
           msgs[0],
-          ...msgs.slice(Math.floor(msgs.length / 2) - keepCount / 2, Math.floor(msgs.length / 2) + keepCount / 2),
-          msgs[msgs.length - 1]
+          ...msgs.slice(
+            Math.floor(msgs.length / 2) - keepCount / 2,
+            Math.floor(msgs.length / 2) + keepCount / 2,
+          ),
+          msgs[msgs.length - 1],
         ];
       };
 
@@ -283,7 +277,7 @@ describe('Agent Full Flow E2E', () => {
           content,
           tags,
           metadata,
-          createdAt: Date.now()
+          createdAt: Date.now(),
         };
         memories.push(memory);
         return memory;
@@ -298,13 +292,14 @@ describe('Agent Full Flow E2E', () => {
       const memories = [
         { id: '1', content: 'Meeting at 9am', tags: ['meeting'] },
         { id: '2', content: 'Lunch at noon', tags: ['food'] },
-        { id: '3', content: 'Project deadline', tags: ['work'] }
+        { id: '3', content: 'Project deadline', tags: ['work'] },
       ];
 
       const searchMemory = (keyword) => {
-        return memories.filter(m =>
-          m.content.toLowerCase().includes(keyword.toLowerCase()) ||
-          m.tags.some(t => t.includes(keyword.toLowerCase()))
+        return memories.filter(
+          (m) =>
+            m.content.toLowerCase().includes(keyword.toLowerCase()) ||
+            m.tags.some((t) => t.includes(keyword.toLowerCase())),
         );
       };
 
@@ -325,7 +320,7 @@ describe('Agent Full Flow E2E', () => {
           description,
           priority,
           status: 'pending',
-          createdAt: Date.now()
+          createdAt: Date.now(),
         };
         tasks.push(task);
         return task;
@@ -341,7 +336,7 @@ describe('Agent Full Flow E2E', () => {
       const task = {
         id: 'task_1',
         title: 'Test task',
-        status: 'pending'
+        status: 'pending',
       };
 
       const completeTask = (task) => {
@@ -359,14 +354,14 @@ describe('Agent Full Flow E2E', () => {
       const parentTask = { id: 'parent', title: 'Parent Task' };
       const subtasks = [
         { title: 'Subtask 1', priority: 'high' },
-        { title: 'Subtask 2', priority: 'middle' }
+        { title: 'Subtask 2', priority: 'middle' },
       ];
 
       const splitTask = (parent, children) => {
-        return children.map(child => ({
+        return children.map((child) => ({
           ...child,
           parent_id: parent.id,
-          status: 'pending'
+          status: 'pending',
         }));
       };
 
@@ -381,20 +376,20 @@ describe('Agent Full Flow E2E', () => {
       const config = {
         baseUrl: 'https://api.openai.com/v1',
         apiKey: 'test-key',
-        model: 'gpt-4o'
+        model: 'gpt-4o',
       };
 
       const buildRequest = (messages) => ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.apiKey}`
+          Authorization: `Bearer ${config.apiKey}`,
         },
         body: JSON.stringify({
           model: config.model,
           messages,
-          stream: true
-        })
+          stream: true,
+        }),
       });
 
       const request = buildRequest([{ role: 'user', content: 'Hello' }]);
@@ -407,8 +402,8 @@ describe('Agent Full Flow E2E', () => {
       const errorResponse = {
         error: {
           message: 'Invalid API key',
-          type: 'authentication_error'
-        }
+          type: 'authentication_error',
+        },
       };
 
       expect(errorResponse.error.type).toBe('authentication_error');

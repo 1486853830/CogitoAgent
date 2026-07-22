@@ -2,9 +2,7 @@
  * 配置模块测试
  */
 
-import { deepMerge, isConfigured, DEFAULT_CONFIG, loadConfig, saveConfig } from '../src/config.js';
-import fs from 'fs';
-import path from 'path';
+import { deepMerge, isConfigured, DEFAULT_CONFIG, loadConfig } from '../src/config.js';
 
 describe('config.js', () => {
   describe('deepMerge', () => {
@@ -33,14 +31,14 @@ describe('config.js', () => {
       const result = deepMerge(target, source);
       expect(result.list).toEqual([3, 4]);
     });
-    
+
     test('应该正确合并三层嵌套对象', () => {
       const target = { a: { b: { c: 1, d: 2 } } };
       const source = { a: { b: { c: 3 } } };
       const result = deepMerge(target, source);
       expect(result).toEqual({ a: { b: { c: 3, d: 2 } } });
     });
-    
+
     test('应该处理undefined值', () => {
       const target = { a: 1 };
       const source = { a: undefined, b: 2 };
@@ -62,14 +60,14 @@ describe('config.js', () => {
       expect(DEFAULT_CONFIG.chat.thinkingInterval).toBeGreaterThanOrEqual(1000);
       expect(DEFAULT_CONFIG.chat.thinkingInterval).toBeLessThanOrEqual(10000);
     });
-    
+
     test('应该包含所有模型的配置', () => {
       expect(DEFAULT_CONFIG.models).toHaveProperty('openai');
       expect(DEFAULT_CONFIG.models).toHaveProperty('moark');
       expect(DEFAULT_CONFIG.models).toHaveProperty('anthropic');
       expect(DEFAULT_CONFIG.models).toHaveProperty('google');
     });
-    
+
     test('应该包含代码执行配置', () => {
       expect(DEFAULT_CONFIG.code).toHaveProperty('maxExecutionTime');
       expect(DEFAULT_CONFIG.code).toHaveProperty('maxOutputSize');
@@ -77,7 +75,7 @@ describe('config.js', () => {
       expect(DEFAULT_CONFIG.code.maxOutputSize).toBe(100000);
     });
   });
-  
+
   describe('loadConfig', () => {
     test('应该返回配置对象', () => {
       const config = loadConfig();
@@ -85,18 +83,18 @@ describe('config.js', () => {
       expect(config).toHaveProperty('api');
       expect(config).toHaveProperty('chat');
     });
-    
+
     test('应该包含默认配置的所有字段', () => {
       const config = loadConfig();
       const defaultKeys = Object.keys(DEFAULT_CONFIG);
       const configKeys = Object.keys(config);
-      
-      defaultKeys.forEach(key => {
+
+      defaultKeys.forEach((key) => {
         expect(configKeys).toContain(key);
       });
     });
   });
-  
+
   describe('isConfigured', () => {
     test('应该是一个函数', () => {
       expect(typeof isConfigured).toBe('function');

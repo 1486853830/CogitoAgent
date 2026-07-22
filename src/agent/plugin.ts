@@ -130,10 +130,10 @@ class PluginManager {
       name,
       path: pluginPath,
       tools: toolDefs,
-      metadata: plugin.metadata || {}
+      metadata: plugin.metadata || {},
     });
 
-    console.error(`[Plugin] Loaded '${name}' with ${toolDefs.length} tools`);
+    console.log(`[Plugin] Loaded '${name}' with ${toolDefs.length} tools`);
   }
 
   /**
@@ -147,7 +147,7 @@ class PluginManager {
     }
 
     if (this.customTools.has(name)) {
-      console.error(`[Plugin] Tool '${name}' already exists, skipping`);
+      console.warn(`[Plugin] Tool '${name}' already exists, skipping`);
       return;
     }
 
@@ -156,7 +156,7 @@ class PluginManager {
       fn,
       description: description || `Plugin: ${pluginName}`,
       category,
-      plugin: pluginName
+      plugin: pluginName,
     });
 
     // 添加到全局注册表
@@ -164,7 +164,7 @@ class PluginManager {
       fn,
       argCount: fn.length || 1,
       category,
-      isCustom: true
+      isCustom: true,
     };
   }
 
@@ -183,7 +183,7 @@ class PluginManager {
     }
 
     this.plugins.delete(name);
-    console.error(`[Plugin] Unloaded '${name}'`);
+    console.log(`[Plugin] Unloaded '${name}'`);
     return true;
   }
 
@@ -191,23 +191,28 @@ class PluginManager {
    * 获取已加载的插件列表
    */
   listPlugins(): PluginListInfo[] {
-    return Array.from(this.plugins.values()).map(p => ({
+    return Array.from(this.plugins.values()).map((p) => ({
       name: p.name,
       path: p.path,
       toolCount: p.tools.length,
-      metadata: p.metadata
+      metadata: p.metadata,
     }));
   }
 
   /**
    * 获取所有自定义工具
    */
-  listCustomTools(): Array<{ name: string; description: string; category: string; plugin: string }> {
+  listCustomTools(): Array<{
+    name: string;
+    description: string;
+    category: string;
+    plugin: string;
+  }> {
     return Array.from(this.customTools.entries()).map(([name, info]) => ({
       name,
       description: info.description,
       category: info.category,
-      plugin: info.plugin
+      plugin: info.plugin,
     }));
   }
 
@@ -266,7 +271,12 @@ function listPlugins(): PluginListInfo[] {
 /**
  * 列出自定义工具
  */
-function listCustomTools(): Array<{ name: string; description: string; category: string; plugin: string }> {
+function listCustomTools(): Array<{
+  name: string;
+  description: string;
+  category: string;
+  plugin: string;
+}> {
   const pm = getPluginManager();
   return pm.listCustomTools();
 }
@@ -306,7 +316,7 @@ export const metadata = {
   "main": "index.js",
   "type": "module"
 }
-`
+`,
   };
 }
 
@@ -314,7 +324,11 @@ export const metadata = {
  * 工具装饰器工厂
  */
 function createTool(options: { name: string; [key: string]: any }) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor): PropertyDescriptor {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ): PropertyDescriptor {
     const originalFn = descriptor.value;
 
     descriptor.value = async function (this: any, ...args: any[]) {
@@ -324,7 +338,7 @@ function createTool(options: { name: string; [key: string]: any }) {
         const result = await originalFn.apply(this, args);
         const duration = Date.now() - startTime;
 
-        console.error(`[Tool:${options.name}] completed in ${duration}ms`);
+        console.log(`[Tool:${options.name}] completed in ${duration}ms`);
 
         return result;
       } catch (error: any) {
@@ -346,14 +360,21 @@ interface RegisterToolOptions {
 /**
  * 注册为 CogitoAgent 工具
  */
-function registerTool(name: string, fn: (...args: any[]) => any, options: RegisterToolOptions = {}): void {
+function registerTool(
+  name: string,
+  fn: (...args: any[]) => any,
+  options: RegisterToolOptions = {},
+): void {
   const pm = getPluginManager();
-  pm.registerTool({
-    name,
-    fn,
-    description: options.description || '',
-    category: options.category || 'custom'
-  }, options.pluginName || 'internal');
+  pm.registerTool(
+    {
+      name,
+      fn,
+      description: options.description || '',
+      category: options.category || 'custom',
+    },
+    options.pluginName || 'internal',
+  );
 }
 
 export {
@@ -365,5 +386,5 @@ export {
   listCustomTools,
   createPluginTemplate,
   createTool,
-  registerTool
+  registerTool,
 };

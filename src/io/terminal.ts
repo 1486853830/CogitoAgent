@@ -7,7 +7,7 @@ import process from 'process';
 
 let rl: readline.Interface | null = null;
 let userInputCallback: ((input: string) => void) | null = null;
-let cleanupCallback: (() => void | Promise<void>) | null = null;  // 清理回调
+let cleanupCallback: (() => void | Promise<void>) | null = null; // 清理回调
 
 // ANSI 颜色代码
 const COLORS: Record<string, string> = {
@@ -29,20 +29,6 @@ const COLORS: Record<string, string> = {
   bgCyan: '\x1b[46m',
 };
 
-// 绘制方框
-function drawBox(lines: string[], width = 60): void {
-  const top = '╔' + '═'.repeat(width) + '╗';
-  const bottom = '╚' + '═'.repeat(width) + '╝';
-  const side = '║';
-
-  console.log(top);
-  for (const line of lines) {
-    const padding = width - stripAnsi(line).length;
-    console.log(`${side} ${line}${' '.repeat(Math.max(0, padding - 1))} ${side}`);
-  }
-  console.log(bottom);
-}
-
 // 去除 ANSI 码
 function stripAnsi(str: string): string {
   return str.replace(/\x1b\[[0-9;]*m/g, '');
@@ -50,7 +36,14 @@ function stripAnsi(str: string): string {
 
 // 打印彩虹渐变文字（用于 ASCII art）
 function rainbow(text: string): string {
-  const colors = [COLORS.red, COLORS.yellow, COLORS.green, COLORS.cyan, COLORS.blue, COLORS.magenta];
+  const colors = [
+    COLORS.red,
+    COLORS.yellow,
+    COLORS.green,
+    COLORS.cyan,
+    COLORS.blue,
+    COLORS.magenta,
+  ];
   let result = '';
   for (let i = 0; i < text.length; i++) {
     result += colors[i % colors.length] + text[i];
@@ -71,11 +64,25 @@ function printTitle(text: string, color: string | null = 'cyan'): void {
   const width = process.stdout.columns || 80;
   const padding = Math.max(0, Math.floor((width - stripAnsi(text).length - 4) / 2));
   console.log();
-  console.log(colorCode + '╭' + '─'.repeat(padding) + ' ' + text + ' ' + '─'.repeat(padding) + '╮' + COLORS.reset);
+  console.log(
+    colorCode +
+      '╭' +
+      '─'.repeat(padding) +
+      ' ' +
+      text +
+      ' ' +
+      '─'.repeat(padding) +
+      '╮' +
+      COLORS.reset,
+  );
 }
 
 // 打印状态标签
-function printTag(text: string, bgColor: string | null = 'bgBlue', textColor: string | null = 'white'): string {
+function printTag(
+  text: string,
+  bgColor: string | null = 'bgBlue',
+  textColor: string | null = 'white',
+): string {
   const bg = COLORS[bgColor as string] || COLORS.bgBlack;
   const tc = COLORS[textColor as string] || COLORS.white;
   return `${bg}${tc} ${text} ${COLORS.reset}`;
@@ -89,7 +96,7 @@ function init(onUserInput: (input: string) => void): void {
 
   rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
 
   // 在 Pipe 模式（Electron 子进程）下保持 stdin 流动，防止事件循环退出
@@ -194,7 +201,7 @@ function printToolBlock(content: string, title = '工具调用'): void {
     // 工具调用显示
     const match = content.match(/\[TOOL\]\s*(\w+)/);
     const toolName = match ? match[1] : '未知工具';
-    
+
     print('  ');
     print(`${COLORS.bgCyan}${COLORS.white} 调用：${toolName} ${COLORS.reset}`, 'cyan');
     print('\n');
@@ -285,5 +292,5 @@ export {
   waitForConfirm,
   exit,
   onCleanup,
-  COLORS
+  COLORS,
 };

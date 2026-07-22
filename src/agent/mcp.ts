@@ -9,7 +9,12 @@ import { createServer, Server, IncomingMessage, ServerResponse } from 'http';
 import { TOOL_REGISTRY, getToolRegistry, getToolsByCategory, hasTool } from './registry.ts';
 import { executeTool } from './Agent.ts';
 import { parseArgs, parseToolCall, parseAllToolCalls } from './tool-parser.ts';
-import { formatToolResult, classifyToolError, formatToolError, TOOL_OUTPUT_LIMITS } from './tool-utils.ts';
+import {
+  formatToolResult,
+  classifyToolError,
+  formatToolError,
+  TOOL_OUTPUT_LIMITS,
+} from './tool-utils.ts';
 import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from './thought-trace.ts';
 
 // MCP JSON-RPC 2.0 实现
@@ -32,7 +37,7 @@ const MCP_METHODS = {
 
   // 提示词相关
   PROMPTS_LIST: 'prompts/list',
-  PROMPTS_GET: 'prompts/get'
+  PROMPTS_GET: 'prompts/get',
 };
 
 // MCP 错误码
@@ -43,7 +48,7 @@ const MCP_ERROR_CODES = {
   INVALID_PARAMS: -32602,
   INTERNAL_ERROR: -32603,
   TOOL_NOT_FOUND: -32001,
-  TOOL_EXECUTION_ERROR: -32002
+  TOOL_EXECUTION_ERROR: -32002,
 };
 
 interface ServerInfo {
@@ -80,7 +85,7 @@ class MCPServer {
     this.serverInfo = {
       name: 'cogito-agent',
       version: '1.0.0',
-      protocolVersion: MCP_VERSION
+      protocolVersion: MCP_VERSION,
     };
   }
 
@@ -104,17 +109,21 @@ class MCPServer {
         if (req.method === 'GET') {
           // 健康检查
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            status: 'ok',
-            server: this.serverInfo,
-            tools: Object.keys(TOOL_REGISTRY).length
-          }));
+          res.end(
+            JSON.stringify({
+              status: 'ok',
+              server: this.serverInfo,
+              tools: Object.keys(TOOL_REGISTRY).length,
+            }),
+          );
           return;
         }
 
         if (req.method === 'POST') {
           let body = '';
-          req.on('data', chunk => { body += chunk; });
+          req.on('data', (chunk) => {
+            body += chunk;
+          });
           req.on('end', async () => {
             try {
               const response = await this.handleRequest(body);
@@ -122,7 +131,11 @@ class MCPServer {
               res.end(JSON.stringify(response));
             } catch (error: any) {
               res.writeHead(500, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify(this.errorResponse(null, MCP_ERROR_CODES.INTERNAL_ERROR, error.message)));
+              res.end(
+                JSON.stringify(
+                  this.errorResponse(null, MCP_ERROR_CODES.INTERNAL_ERROR, error.message),
+                ),
+              );
             }
           });
           return;
@@ -138,7 +151,7 @@ class MCPServer {
       });
 
       this.server.listen(this.port, () => {
-        console.error(`[MCP] Server started on http://localhost:${this.port}`);
+        console.log(`[MCP] Server started on http://localhost:${this.port}`);
         resolve(this.port);
       });
     });
@@ -175,7 +188,9 @@ class MCPServer {
 
     // 批量请求
     if (Array.isArray(request)) {
-      const responses = await Promise.all(request.map((req: JsonRpcRequest) => this.handleSingleRequest(req)));
+      const responses = await Promise.all(
+        request.map((req: JsonRpcRequest) => this.handleSingleRequest(req)),
+      );
       return responses as any;
     }
 
@@ -220,7 +235,11 @@ class MCPServer {
           return null;
 
         default:
-          return this.errorResponse(id, MCP_ERROR_CODES.METHOD_NOT_FOUND, `Unknown method: ${method}`);
+          return this.errorResponse(
+            id,
+            MCP_ERROR_CODES.METHOD_NOT_FOUND,
+            `Unknown method: ${method}`,
+          );
       }
     } catch (error: any) {
       return this.errorResponse(id, MCP_ERROR_CODES.INTERNAL_ERROR, error.message);
@@ -241,10 +260,10 @@ class MCPServer {
         capabilities: {
           tools: {},
           resources: {},
-          prompts: {}
+          prompts: {},
         },
-        serverInfo: this.serverInfo
-      }
+        serverInfo: this.serverInfo,
+      },
     };
   }
 
@@ -255,7 +274,7 @@ class MCPServer {
     return {
       jsonrpc: MCP_VERSION,
       id,
-      result: { shutdown: true }
+      result: { shutdown: true },
     };
   }
 
@@ -268,15 +287,15 @@ class MCPServer {
     const tools = Object.entries(registry).map(([name, info]: [string, any]) => ({
       name,
       description: `${info.category}: ${name}`,
-      inputSchema: this.generateInputSchema(info)
+      inputSchema: this.generateInputSchema(info),
     }));
 
     return {
       jsonrpc: MCP_VERSION,
       id,
       result: {
-        tools
-      }
+        tools,
+      },
     };
   }
 
@@ -289,14 +308,14 @@ class MCPServer {
       args.push({
         name: `arg${i}`,
         type: 'string',
-        description: `Argument ${i + 1}`
+        description: `Argument ${i + 1}`,
       });
     }
 
     return {
       type: 'object',
       properties: args.length > 0 ? { args: { type: 'array', items: { type: 'string' } } } : {},
-      required: args.length > 0 ? ['args'] : []
+      required: args.length > 0 ? ['args'] : [],
     };
   }
 
@@ -320,11 +339,11 @@ class MCPServer {
           content: [
             {
               type: 'text',
-              text: typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result)
-            }
+              text: typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result),
+            },
           ],
-          isError: result?.success === false
-        }
+          isError: result?.success === false,
+        },
       };
     } catch (error: any) {
       return {
@@ -334,11 +353,11 @@ class MCPServer {
           content: [
             {
               type: 'text',
-              text: `Error: ${error.message}`
-            }
+              text: `Error: ${error.message}`,
+            },
           ],
-          isError: true
-        }
+          isError: true,
+        },
       };
     }
   }
@@ -355,15 +374,15 @@ class MCPServer {
           {
             uri: 'file://workspace',
             name: 'Current Workspace',
-            description: 'The current workspace directory'
+            description: 'The current workspace directory',
           },
           {
             uri: 'session://current',
             name: 'Current Session',
-            description: 'Current conversation session info'
-          }
-        ]
-      }
+            description: 'Current conversation session info',
+          },
+        ],
+      },
     };
   }
 
@@ -381,10 +400,10 @@ class MCPServer {
           {
             uri,
             mimeType: 'text/plain',
-            text: `Resource: ${uri}`
-          }
-        ]
-      }
+            text: `Resource: ${uri}`,
+          },
+        ],
+      },
     };
   }
 
@@ -404,12 +423,12 @@ class MCPServer {
               {
                 name: 'path',
                 description: 'Directory path to explore',
-                required: false
-              }
-            ]
-          }
-        ]
-      }
+                required: false,
+              },
+            ],
+          },
+        ],
+      },
     };
   }
 
@@ -420,7 +439,7 @@ class MCPServer {
     return {
       jsonrpc: MCP_VERSION,
       id,
-      error: { code, message }
+      error: { code, message },
     };
   }
 }
@@ -433,7 +452,7 @@ let mcpServer: MCPServer | null = null;
  */
 async function startMCPServer(port = 3001, agent?: any): Promise<number> {
   if (mcpServer) {
-    console.error('[MCP] Server already running');
+    console.warn('[MCP] Server already running');
     return mcpServer.port;
   }
 
@@ -455,7 +474,9 @@ async function stopMCPServer(): Promise<void> {
 /**
  * 获取 MCP 服务器状态
  */
-function getMCPServerStatus(): { running: false } | { running: true; port: number; initialized: boolean; serverInfo: ServerInfo } {
+function getMCPServerStatus():
+  | { running: false }
+  | { running: true; port: number; initialized: boolean; serverInfo: ServerInfo } {
   if (!mcpServer) {
     return { running: false };
   }
@@ -464,15 +485,8 @@ function getMCPServerStatus(): { running: false } | { running: true; port: numbe
     running: true,
     port: mcpServer.port,
     initialized: mcpServer.initialized,
-    serverInfo: mcpServer.serverInfo
+    serverInfo: mcpServer.serverInfo,
   };
 }
 
-export {
-  MCPServer,
-  startMCPServer,
-  stopMCPServer,
-  getMCPServerStatus,
-  MCP_VERSION,
-  MCP_METHODS
-};
+export { MCPServer, startMCPServer, stopMCPServer, getMCPServerStatus, MCP_VERSION, MCP_METHODS };

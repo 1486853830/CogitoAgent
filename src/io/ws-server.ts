@@ -12,29 +12,32 @@ function isValidOrigin(origin: string | undefined): boolean {
     /^https:\/\/localhost(:\d+)?$/,
     /^http:\/\/127\.0\.0\.1(:\d+)?$/,
     /^https:\/\/127\.0\.0\.1(:\d+)?$/,
-    /^file:\/\//
+    /^file:\/\//,
   ];
-  return localhostPatterns.some(pattern => pattern.test(origin));
+  return localhostPatterns.some((pattern) => pattern.test(origin));
 }
 
 function startWsServer(port = 9527): Promise<WebSocketServer> {
   return new Promise((resolve, reject) => {
     try {
-      wss = new WebSocketServer({ 
-        port,
-        host: '127.0.0.1',
-        verifyClient: (info, callback) => {
-          if (!isValidOrigin(info.origin)) {
-            console.log('[WS] 拒绝非本地连接:', info.origin);
-            callback(false, 403, '只允许本地连接');
-            return;
-          }
-          callback(true);
-        }
-      }, () => {
-        console.log(`[WS] WebSocket 服务已启动: ws://localhost:${port}`);
-        resolve(wss!);
-      });
+      wss = new WebSocketServer(
+        {
+          port,
+          host: '127.0.0.1',
+          verifyClient: (info, callback) => {
+            if (!isValidOrigin(info.origin)) {
+              console.log('[WS] 拒绝非本地连接:', info.origin);
+              callback(false, 403, '只允许本地连接');
+              return;
+            }
+            callback(true);
+          },
+        },
+        () => {
+          console.log(`[WS] WebSocket 服务已启动: ws://localhost:${port}`);
+          resolve(wss!);
+        },
+      );
 
       wss.on('error', (err) => {
         reject(err);
@@ -58,7 +61,8 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
             } else if (messageHandler) {
               messageHandler(msg, ws);
             }
-          } catch {
+          } catch (e) {
+            console.error('[WS] 消息解析失败:', (e as Error).message);
           }
         });
 
