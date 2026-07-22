@@ -1,0 +1,50 @@
+bug:
+  - title: ['bug', 'Bug', 'BUG', 'issue', 'Issue']
+  - body: ['bug', 'error', 'crash', 'fail', 'broken']
+
+enhancement:
+  - title: ['feature', 'Feature', 'FEATURE', 'enhancement', 'Enhancement', 'improve', 'Improve']
+
+documentation:
+  - title: ['docs', 'Docs', 'DOCS', 'documentation', 'Documentation']
+  - body: ['docs', 'documentation', 'readme']
+
+good first issue:
+  - title: ['good first', 'Good First', '入门', '新手']
+  - body: ['good first', 'beginner', '入门', '新手']
+
+help wanted:
+  - title: ['help', 'Help', '需要帮助']
+  - body: ['help', 'need help', '需要帮助']
+
+security:
+  - title: ['security', 'Security', 'SECURITY']
+  - body: ['security', 'vulnerability', '漏洞']
+
+test:
+  - title: ['test', 'Test', 'TEST']
+  - body: ['test', 'testing']
+
+ci-cd:
+  - title: ['ci', 'CI', 'cd', 'CD', 'github actions', 'workflow']
+  - body: ['ci', 'github actions', 'workflow']
+
+tools:
+  - title: ['tool', 'Tool', '工具']
+  - body: ['tool', 'tools', '工具']
+
+agent-core:
+  - title: ['agent', 'Agent', 'core', 'Core']
+  - body: ['agent', 'core', '思考', 'think']
+
+electron:
+  - title: ['electron', 'Electron', 'desktop', 'Desktop', 'dashboard', 'Dashboard']
+  - body: ['electron', 'desktop', 'dashboard']
+
+api:
+  - title: ['api', 'API', 'client', 'Client']
+  - body: ['api', 'client', 'model']
+
+dependencies:
+  - title: ['dependency', 'Dependency', 'deps', 'Deps']
+  - body: ['dependency', 'deps', 'npm', 'package']
