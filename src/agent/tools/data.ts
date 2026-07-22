@@ -7,17 +7,17 @@ import path from 'path';
 async function readCSV(filePath: string): Promise<any> {
   try {
     const content = await fs.readFile(filePath, 'utf-8');
-    const lines = content.split('\n').filter(line => line.trim());
+    const lines = content.split('\n').filter((line) => line.trim());
 
     if (lines.length === 0) {
       return {
         success: true,
-        data: { headers: [], rows: [] }
+        data: { headers: [], rows: [] },
       };
     }
 
-    const headers = lines[0].split(',').map(h => h.trim());
-    const rows = lines.slice(1).map(line => {
+    const headers = lines[0].split(',').map((h) => h.trim());
+    const rows = lines.slice(1).map((line) => {
       const values = parseCSVLine(line);
       const row: any = {};
       headers.forEach((header, idx) => {
@@ -28,12 +28,12 @@ async function readCSV(filePath: string): Promise<any> {
 
     return {
       success: true,
-      data: { headers, rows }
+      data: { headers, rows },
     };
   } catch (e: any) {
     return {
       success: false,
-      error: `读取 CSV 失败: ${e.message}`
+      error: `读取 CSV 失败: ${e.message}`,
     };
   }
 }
@@ -74,15 +74,20 @@ function parseCSVLine(line: string): string[] {
 async function writeCSV(filePath: string, headers: string[], rows: any[]): Promise<any> {
   try {
     const dir = path.dirname(filePath);
-    if (!(await fs.access(dir).then(() => true).catch(() => false))) {
+    if (
+      !(await fs
+        .access(dir)
+        .then(() => true)
+        .catch(() => false))
+    ) {
       await fs.mkdir(dir, { recursive: true });
     }
 
     const lines = [headers.join(',')];
 
     for (const row of rows) {
-      const values = headers.map(header => {
-        const value = row[header] || '';
+      const values = headers.map((header) => {
+        const value = String(row[header] || '');
         if (value.includes(',') || value.includes('"') || value.includes('\n')) {
           return `"${value.replace(/"/g, '""')}"`;
         }
@@ -95,12 +100,12 @@ async function writeCSV(filePath: string, headers: string[], rows: any[]): Promi
 
     return {
       success: true,
-      data: `CSV 文件已写入: ${filePath}`
+      data: `CSV 文件已写入: ${filePath}`,
     };
   } catch (e: any) {
     return {
       success: false,
-      error: `写入 CSV 失败: ${e.message}`
+      error: `写入 CSV 失败: ${e.message}`,
     };
   }
 }
@@ -115,12 +120,12 @@ async function readJSON(filePath: string): Promise<any> {
 
     return {
       success: true,
-      data
+      data,
     };
   } catch (e: any) {
     return {
       success: false,
-      error: `读取 JSON 失败: ${e.message}`
+      error: `读取 JSON 失败: ${e.message}`,
     };
   }
 }
@@ -131,24 +136,27 @@ async function readJSON(filePath: string): Promise<any> {
 async function writeJSON(filePath: string, data: any, pretty: boolean = true): Promise<any> {
   try {
     const dir = path.dirname(filePath);
-    if (!(await fs.access(dir).then(() => true).catch(() => false))) {
+    if (
+      !(await fs
+        .access(dir)
+        .then(() => true)
+        .catch(() => false))
+    ) {
       await fs.mkdir(dir, { recursive: true });
     }
 
-    const content = pretty
-      ? JSON.stringify(data, null, 2)
-      : JSON.stringify(data);
+    const content = pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data);
 
     await fs.writeFile(filePath, content, 'utf-8');
 
     return {
       success: true,
-      data: `JSON 文件已写入: ${filePath}`
+      data: `JSON 文件已写入: ${filePath}`,
     };
   } catch (e: any) {
     return {
       success: false,
-      error: `写入 JSON 失败: ${e.message}`
+      error: `写入 JSON 失败: ${e.message}`,
     };
   }
 }
@@ -185,7 +193,7 @@ async function jsonToCSV(jsonPath: string, csvPath: string): Promise<any> {
     if (data.length === 0) {
       return {
         success: false,
-        error: 'JSON 数组为空'
+        error: 'JSON 数组为空',
       };
     }
     headers = Object.keys(data[0]);
@@ -193,7 +201,7 @@ async function jsonToCSV(jsonPath: string, csvPath: string): Promise<any> {
   } else {
     return {
       success: false,
-      error: '不支持的 JSON 格式'
+      error: '不支持的 JSON 格式',
     };
   }
 
@@ -219,7 +227,7 @@ async function queryData(filePath: string, query: any): Promise<any> {
   } else {
     return {
       success: false,
-      error: `不支持的文件格式: ${ext}`
+      error: `不支持的文件格式: ${ext}`,
     };
   }
 
@@ -241,12 +249,12 @@ async function queryData(filePath: string, query: any): Promise<any> {
 
     return {
       success: true,
-      data: filtered
+      data: filtered,
     };
   } catch (e: any) {
     return {
       success: false,
-      error: `查询失败: ${e.message}`
+      error: `查询失败: ${e.message}`,
     };
   }
 }
@@ -268,12 +276,12 @@ async function analyzeData(filePath: string): Promise<any> {
     const jsonData = result.data;
     data = {
       headers: jsonData.headers || (jsonData.length > 0 ? Object.keys(jsonData[0]) : []),
-      rows: jsonData.rows || jsonData
+      rows: jsonData.rows || jsonData,
     };
   } else {
     return {
       success: false,
-      error: `不支持的文件格式: ${ext}`
+      error: `不支持的文件格式: ${ext}`,
     };
   }
 
@@ -282,7 +290,7 @@ async function analyzeData(filePath: string): Promise<any> {
     columns: data.headers.length,
     columnNames: data.headers,
     columnTypes: {},
-    summary: {}
+    summary: {},
   };
 
   for (const header of data.headers) {
@@ -298,14 +306,14 @@ async function analyzeData(filePath: string): Promise<any> {
           min: Math.min(...nums),
           max: Math.max(...nums),
           avg: nums.reduce((a: number, b: number) => a + b, 0) / nums.length,
-          count: nums.length
+          count: nums.length,
         };
       } else {
         stats.summary[header] = {
           min: null,
           max: null,
           avg: null,
-          count: 0
+          count: 0,
         };
       }
     } else {
@@ -318,14 +326,14 @@ async function analyzeData(filePath: string): Promise<any> {
         top: Object.entries(counts)
           .sort((a, b) => (b[1] as number) - (a[1] as number))
           .slice(0, 5)
-          .map(([val, cnt]) => ({ value: val, count: cnt }))
+          .map(([val, cnt]) => ({ value: val, count: cnt })),
       };
     }
   }
 
   return {
     success: true,
-    data: stats
+    data: stats,
   };
 }
 
@@ -380,14 +388,14 @@ async function sortData(filePath: string, column: string, order: string = 'asc')
   } else {
     return {
       success: false,
-      error: `不支持的文件格式: ${ext}`
+      error: `不支持的文件格式: ${ext}`,
     };
   }
 
   if (!headers.includes(column)) {
     return {
       success: false,
-      error: `列不存在: ${column}`
+      error: `列不存在: ${column}`,
     };
   }
 
@@ -413,7 +421,7 @@ async function sortData(filePath: string, column: string, order: string = 'asc')
 
   return {
     success: true,
-    data: { headers, rows: sorted }
+    data: { headers, rows: sorted },
   };
 }
 
@@ -426,5 +434,5 @@ export {
   jsonToCSV,
   queryData,
   analyzeData,
-  sortData
+  sortData,
 };

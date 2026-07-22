@@ -10,15 +10,15 @@ function getBasePath(): string {
 function resolveInWorkspace(targetPath: string): string | null {
   const basePath = getBasePath();
   const resolvedBase = path.resolve(basePath);
-  
-  const fullPath = path.isAbsolute(targetPath) 
-    ? path.resolve(targetPath) 
+
+  const fullPath = path.isAbsolute(targetPath)
+    ? path.resolve(targetPath)
     : path.resolve(resolvedBase, targetPath);
-  
-  if (!fullPath.startsWith(resolvedBase)) {
+
+  if (!fullPath.toLowerCase().startsWith(resolvedBase.toLowerCase())) {
     return null;
   }
-  
+
   return fullPath;
 }
 

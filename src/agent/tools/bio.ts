@@ -13,47 +13,127 @@ import { getBasePath } from './path.ts';
 // ============================================
 
 // DNA 互补碱基映射
-const DNA_COMPLEMENT: any = { 'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C', 'a': 't', 't': 'a', 'c': 'g', 'g': 'c' };
+const DNA_COMPLEMENT: any = { A: 'T', T: 'A', C: 'G', G: 'C', a: 't', t: 'a', c: 'g', g: 'c' };
 
 // 标准遗传密码表（RNA 密码子 → 氨基酸单字母缩写）
 const CODON_TABLE: any = {
-  'UUU': 'F', 'UUC': 'F', 'UUA': 'L', 'UUG': 'L',
-  'CUU': 'L', 'CUC': 'L', 'CUA': 'L', 'CUG': 'L',
-  'AUU': 'I', 'AUC': 'I', 'AUA': 'I', 'AUG': 'M',
-  'GUU': 'V', 'GUC': 'V', 'GUA': 'V', 'GUG': 'V',
-  'UCU': 'S', 'UCC': 'S', 'UCA': 'S', 'UCG': 'S',
-  'CCU': 'P', 'CCC': 'P', 'CCA': 'P', 'CCG': 'P',
-  'ACU': 'T', 'ACC': 'T', 'ACA': 'T', 'ACG': 'T',
-  'GCU': 'A', 'GCC': 'A', 'GCA': 'A', 'GCG': 'A',
-  'UAU': 'Y', 'UAC': 'Y', 'UAA': '*', 'UAG': '*',
-  'CAU': 'H', 'CAC': 'H', 'CAA': 'Q', 'CAG': 'Q',
-  'AAU': 'N', 'AAC': 'N', 'AAA': 'K', 'AAG': 'K',
-  'GAU': 'D', 'GAC': 'D', 'GAA': 'E', 'GAG': 'E',
-  'UGU': 'C', 'UGC': 'C', 'UGA': '*', 'UGG': 'W',
-  'CGU': 'R', 'CGC': 'R', 'CGA': 'R', 'CGG': 'R',
-  'AGU': 'S', 'AGC': 'S', 'AGA': 'R', 'AGG': 'R',
-  'GGU': 'G', 'GGC': 'G', 'GGA': 'G', 'GGG': 'G'
+  UUU: 'F',
+  UUC: 'F',
+  UUA: 'L',
+  UUG: 'L',
+  CUU: 'L',
+  CUC: 'L',
+  CUA: 'L',
+  CUG: 'L',
+  AUU: 'I',
+  AUC: 'I',
+  AUA: 'I',
+  AUG: 'M',
+  GUU: 'V',
+  GUC: 'V',
+  GUA: 'V',
+  GUG: 'V',
+  UCU: 'S',
+  UCC: 'S',
+  UCA: 'S',
+  UCG: 'S',
+  CCU: 'P',
+  CCC: 'P',
+  CCA: 'P',
+  CCG: 'P',
+  ACU: 'T',
+  ACC: 'T',
+  ACA: 'T',
+  ACG: 'T',
+  GCU: 'A',
+  GCC: 'A',
+  GCA: 'A',
+  GCG: 'A',
+  UAU: 'Y',
+  UAC: 'Y',
+  UAA: '*',
+  UAG: '*',
+  CAU: 'H',
+  CAC: 'H',
+  CAA: 'Q',
+  CAG: 'Q',
+  AAU: 'N',
+  AAC: 'N',
+  AAA: 'K',
+  AAG: 'K',
+  GAU: 'D',
+  GAC: 'D',
+  GAA: 'E',
+  GAG: 'E',
+  UGU: 'C',
+  UGC: 'C',
+  UGA: '*',
+  UGG: 'W',
+  CGU: 'R',
+  CGC: 'R',
+  CGA: 'R',
+  CGG: 'R',
+  AGU: 'S',
+  AGC: 'S',
+  AGA: 'R',
+  AGG: 'R',
+  GGU: 'G',
+  GGC: 'G',
+  GGA: 'G',
+  GGG: 'G',
 };
 
 // 氨基酸单字母 → 三字母映射
 const AA_THREE_LETTER: any = {
-  'A': 'Ala', 'R': 'Arg', 'N': 'Asn', 'D': 'Asp', 'C': 'Cys',
-  'Q': 'Gln', 'E': 'Glu', 'G': 'Gly', 'H': 'His', 'I': 'Ile',
-  'L': 'Leu', 'K': 'Lys', 'M': 'Met', 'F': 'Phe', 'P': 'Pro',
-  'S': 'Ser', 'T': 'Thr', 'W': 'Trp', 'Y': 'Tyr', 'V': 'Val',
-  '*': 'Stop'
+  A: 'Ala',
+  R: 'Arg',
+  N: 'Asn',
+  D: 'Asp',
+  C: 'Cys',
+  Q: 'Gln',
+  E: 'Glu',
+  G: 'Gly',
+  H: 'His',
+  I: 'Ile',
+  L: 'Leu',
+  K: 'Lys',
+  M: 'Met',
+  F: 'Phe',
+  P: 'Pro',
+  S: 'Ser',
+  T: 'Thr',
+  W: 'Trp',
+  Y: 'Tyr',
+  V: 'Val',
+  '*': 'Stop',
 };
 
 // 氨基酸单字母分子量（Da，近似值）
 const AA_MOLECULAR_WEIGHT: any = {
-  'A': 89.09, 'R': 174.20, 'N': 132.12, 'D': 133.10, 'C': 121.16,
-  'Q': 146.15, 'E': 147.13, 'G': 75.07, 'H': 155.16, 'I': 131.18,
-  'L': 131.18, 'K': 146.19, 'M': 149.21, 'F': 165.19, 'P': 115.13,
-  'S': 105.09, 'T': 119.12, 'W': 204.23, 'Y': 181.19, 'V': 117.15
+  A: 89.09,
+  R: 174.2,
+  N: 132.12,
+  D: 133.1,
+  C: 121.16,
+  Q: 146.15,
+  E: 147.13,
+  G: 75.07,
+  H: 155.16,
+  I: 131.18,
+  L: 131.18,
+  K: 146.19,
+  M: 149.21,
+  F: 165.19,
+  P: 115.13,
+  S: 105.09,
+  T: 119.12,
+  W: 204.23,
+  Y: 181.19,
+  V: 117.15,
 };
 
 // DNA 碱基分子量（Da）
-const DNA_BASE_MW: any = { 'A': 313.21, 'T': 304.20, 'C': 289.18, 'G': 329.21 };
+const DNA_BASE_MW: any = { A: 313.21, T: 304.2, C: 289.18, G: 329.21 };
 
 // 序列类型字符集
 const DNA_CHARS = new Set('ATCGatcg');
@@ -68,7 +148,7 @@ const PROTEIN_CHARS = new Set('ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy');
  * 清理序列（去除非序列字符）
  */
 function cleanSeq(seq: string, validChars: Set<string>): string {
-  return [...seq].filter(ch => validChars.has(ch)).join('');
+  return [...seq].filter((ch) => validChars.has(ch)).join('');
 }
 
 /**
@@ -100,7 +180,7 @@ async function dnaComplement(seq: string): Promise<any> {
     if (!valid.success) return valid;
     const cleaned = valid.data;
     const upper = cleaned.toUpperCase();
-    const result = [...upper].map(ch => DNA_COMPLEMENT[ch]).join('');
+    const result = [...upper].map((ch) => DNA_COMPLEMENT[ch]).join('');
     return { success: true, data: `互补链: ${result}` };
   } catch (error: any) {
     return { success: false, error: `计算互补链失败: ${error.message}` };
@@ -118,7 +198,10 @@ async function dnaReverseComplement(seq: string): Promise<any> {
     if (!valid.success) return valid;
     const cleaned = valid.data;
     const upper = cleaned.toUpperCase();
-    const result = [...upper].reverse().map(ch => DNA_COMPLEMENT[ch]).join('');
+    const result = [...upper]
+      .reverse()
+      .map((ch) => DNA_COMPLEMENT[ch])
+      .join('');
     return { success: true, data: `反向互补: ${result}` };
   } catch (error: any) {
     return { success: false, error: `计算反向互补失败: ${error.message}` };
@@ -136,14 +219,13 @@ async function rnaTranscribe(seq: string): Promise<any> {
     if (!valid.success) return valid;
     const cleaned = valid.data;
     const upper = cleaned.toUpperCase();
-    // 以 DNA 编码链为模板：A→U, T→A, C→G, G→C
-    const result = [...upper].map(ch => {
-      if (ch === 'A') return 'U';
-      if (ch === 'T') return 'A';
-      if (ch === 'C') return 'G';
-      if (ch === 'G') return 'C';
-      return ch;
-    }).join('');
+    // 以 DNA 编码链为模板：T→U，其他不变
+    const result = [...upper]
+      .map((ch) => {
+        if (ch === 'T') return 'U';
+        return ch;
+      })
+      .join('');
     return { success: true, data: `转录 RNA: ${result}` };
   } catch (error: any) {
     return { success: false, error: `转录失败: ${error.message}` };
@@ -176,11 +258,11 @@ async function translate(seq: string, readingFrame: any = 0): Promise<any> {
       if (aa === '*') break; // 遇到终止密码子停止
     }
 
-    const aaSeq = codons.map(c => c.aa).join('');
+    const aaSeq = codons.map((c) => c.aa).join('');
 
     return {
       success: true,
-      data: `读码框 ${frame}: ${aaSeq}\n详细: ${codons.map(c => `${c.codon}(${AA_THREE_LETTER[c.aa] || '?'})`).join(' → ')}`
+      data: `读码框 ${frame}: ${aaSeq}\n详细: ${codons.map((c) => `${c.codon}(${AA_THREE_LETTER[c.aa] || '?'})`).join(' → ')}`,
     };
   } catch (error: any) {
     return { success: false, error: `翻译失败: ${error.message}` };
@@ -199,10 +281,10 @@ async function gcContent(seq: string): Promise<any> {
     const cleaned = valid.data;
     const upper = cleaned.toUpperCase();
     const gcCount = (upper.match(/[GC]/g) || []).length;
-    const percentage = (gcCount / upper.length * 100).toFixed(2);
+    const percentage = ((gcCount / upper.length) * 100).toFixed(2);
     return {
       success: true,
-      data: `GC 含量: ${percentage}% (${gcCount}/${upper.length})`
+      data: `GC 含量: ${percentage}% (${gcCount}/${upper.length})`,
     };
   } catch (error: any) {
     return { success: false, error: `计算 GC 含量失败: ${error.message}` };
@@ -216,25 +298,53 @@ async function gcContent(seq: string): Promise<any> {
  */
 async function molecularWeight(seq: string): Promise<any> {
   try {
-    const valid = validateSeq(seq, PROTEIN_CHARS, '蛋白质');
-    if (!valid.success) return valid;
-    const cleaned = valid.data;
-    const upper = cleaned.toUpperCase();
+    const upper = seq.toUpperCase();
+
+    const isValidDNA = [...upper].every((ch) => DNA_CHARS.has(ch));
+    const isValidRNA = [...upper].every((ch) => RNA_CHARS.has(ch));
+    const isValidProtein = [...upper].every((ch) => PROTEIN_CHARS.has(ch));
+
+    let type: string;
+
+    if (isValidProtein) {
+      type = '蛋白质';
+    } else if (isValidDNA) {
+      type = 'DNA';
+    } else if (isValidRNA) {
+      type = 'RNA';
+    } else {
+      return { success: false, error: '序列包含无效字符' };
+    }
 
     let totalWeight = 0;
     const details: any[] = [];
-    for (const ch of upper) {
-      const mw = AA_MOLECULAR_WEIGHT[ch];
-      if (mw) {
-        totalWeight += mw;
-        details.push(`${ch}=${mw}Da`);
-      }
-    }
 
-    return {
-      success: true,
-      data: `分子量: ${totalWeight.toFixed(2)} Da (${(totalWeight / 1000).toFixed(4)} kDa)\n序列长度: ${upper.length} aa`
-    };
+    if (type === '蛋白质') {
+      for (const ch of upper) {
+        const mw = AA_MOLECULAR_WEIGHT[ch];
+        if (mw) {
+          totalWeight += mw;
+          details.push(`${ch}=${mw}Da`);
+        }
+      }
+      return {
+        success: true,
+        data: `分子量: ${totalWeight.toFixed(2)} Da (${(totalWeight / 1000).toFixed(4)} kDa)\n序列长度: ${upper.length} aa`,
+      };
+    } else {
+      const BASE_MW: any = { A: 313.21, T: 304.2, C: 289.18, G: 329.21, U: 306.17 };
+      for (const ch of upper) {
+        const mw = BASE_MW[ch];
+        if (mw) {
+          totalWeight += mw;
+          details.push(`${ch}=${mw}Da`);
+        }
+      }
+      return {
+        success: true,
+        data: `${type}分子量: ${totalWeight.toFixed(2)} Da (${(totalWeight / 1000).toFixed(4)} kDa)\n序列长度: ${upper.length} nt`,
+      };
+    }
   } catch (error: any) {
     return { success: false, error: `计算分子量失败: ${error.message}` };
   }
@@ -256,7 +366,10 @@ async function hammingDistance(seq1: string, seq2: string): Promise<any> {
       return { success: false, error: '两个序列都不能为空' };
     }
     if (seq1.length !== seq2.length) {
-      return { success: false, error: `序列长度不相等: ${seq1.length} vs ${seq2.length}，Hamming 距离仅适用于等长序列` };
+      return {
+        success: false,
+        error: `序列长度不相等: ${seq1.length} vs ${seq2.length}，Hamming 距离仅适用于等长序列`,
+      };
     }
 
     let diff = 0;
@@ -271,10 +384,10 @@ async function hammingDistance(seq1: string, seq2: string): Promise<any> {
       }
     }
 
-    const identity = ((upper1.length - diff) / upper1.length * 100).toFixed(2);
+    const identity = (((upper1.length - diff) / upper1.length) * 100).toFixed(2);
     return {
       success: true,
-      data: `Hamming 距离: ${diff}\n序列一致性: ${identity}%\n差异位置: ${diffPositions.length > 0 ? diffPositions.join(', ') : '无差异'}`
+      data: `Hamming 距离: ${diff}\n序列一致性: ${identity}%\n差异位置: ${diffPositions.length > 0 ? diffPositions.join(', ') : '无差异'}`,
     };
   } catch (error: any) {
     return { success: false, error: `计算 Hamming 距离失败: ${error.message}` };
@@ -309,9 +422,9 @@ async function levenshteinDistance(seq1: string, seq2: string): Promise<any> {
       for (let j = 1; j <= n; j++) {
         const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
         curr[j] = Math.min(
-          prev[j] + 1,       // 删除
-          curr[j - 1] + 1,   // 插入
-          prev[j - 1] + cost // 替换
+          prev[j] + 1, // 删除
+          curr[j - 1] + 1, // 插入
+          prev[j - 1] + cost, // 替换
         );
       }
       [prev, curr] = [curr, prev];
@@ -323,7 +436,7 @@ async function levenshteinDistance(seq1: string, seq2: string): Promise<any> {
 
     return {
       success: true,
-      data: `编辑距离: ${distance}\n相似度: ${similarity}%\n序列长度: ${m} vs ${n}`
+      data: `编辑距离: ${distance}\n相似度: ${similarity}%\n序列长度: ${m} vs ${n}`,
     };
   } catch (error: any) {
     return { success: false, error: `计算编辑距离失败: ${error.message}` };
@@ -355,7 +468,7 @@ async function tmEstimate(seq: string): Promise<any> {
     // 更精确的公式：Tm = 64.9 + 41*(G+C-16.4)/(A+T+G+C) （适用于较长序列）
     const total = upper.length;
     const gcPercent = (gc / total) * 100;
-    const tmLong = total >= 14 ? 64.9 + 41 * (gc - 16.4) / total : null;
+    const tmLong = total >= 14 ? 64.9 + (41 * (gc - 16.4)) / total : null;
 
     let result = `引物长度: ${total} nt\nWallace Tm: ${tm}°C\nGC 含量: ${gcPercent.toFixed(1)}%`;
     if (tmLong) {
@@ -386,18 +499,28 @@ async function hairpinCheck(seq: string): Promise<any> {
     const hairpins: any[] = [];
 
     for (let i = 0; i < upper.length - minStem * 2 - minLoop; i++) {
-      for (let stemLen = minStem; stemLen <= Math.min(10, Math.floor((upper.length - i - minLoop) / 2)); stemLen++) {
+      for (
+        let stemLen = minStem;
+        stemLen <= Math.min(10, Math.floor((upper.length - i - minLoop) / 2));
+        stemLen++
+      ) {
         const left = upper.substring(i, i + stemLen);
         const right = upper.substring(i + stemLen + minLoop, i + stemLen * 2 + minLoop);
 
         // 检查右侧是否是左侧的反向互补
-        const revComp = [...left].reverse().map(ch => DNA_COMPLEMENT[ch]).join('');
+        const revComp = [...left]
+          .reverse()
+          .map((ch) => DNA_COMPLEMENT[ch])
+          .join('');
         if (right === revComp) {
           hairpins.push({
             position: i + 1,
             stemLength: stemLen,
             loopLength: i + stemLen * 2 + minLoop - (i + stemLen) - stemLen,
-            sequence: upper.substring(i, i + stemLen * 2 + minLoop + (i + stemLen * 2 + minLoop - (i + stemLen) - stemLen))
+            sequence: upper.substring(
+              i,
+              i + stemLen * 2 + minLoop + (i + stemLen * 2 + minLoop - (i + stemLen) - stemLen),
+            ),
           });
           break; // 只记录每个位置最长的
         }
@@ -410,10 +533,14 @@ async function hairpinCheck(seq: string): Promise<any> {
 
     return {
       success: true,
-      data: `检测到 ${hairpins.length} 个可能的发夹结构:\n` +
-        hairpins.map((h, idx) =>
-          `  [${idx + 1}] 位置 ${h.position}，茎长 ${h.stemLength} bp，环长 ${h.loopLength} nt`
-        ).join('\n')
+      data:
+        `检测到 ${hairpins.length} 个可能的发夹结构:\n` +
+        hairpins
+          .map(
+            (h, idx) =>
+              `  [${idx + 1}] 位置 ${h.position}，茎长 ${h.stemLength} bp，环长 ${h.loopLength} nt`,
+          )
+          .join('\n'),
     };
   } catch (error: any) {
     return { success: false, error: `发夹结构检测失败: ${error.message}` };
@@ -462,7 +589,7 @@ async function parseFASTA(filePath: string): Promise<any> {
     }
 
     // 统计信息
-    const seqTypes = entries.map(e => {
+    const seqTypes = entries.map((e) => {
       const upper = e.sequence.toUpperCase();
       const dnaScore = (upper.match(/[ATCG]/g) || []).length / upper.length;
       const proteinScore = (upper.match(/[ACDEFGHIKLMNPQRSTVWY]/g) || []).length / upper.length;
@@ -472,16 +599,24 @@ async function parseFASTA(filePath: string): Promise<any> {
     });
 
     const typeCount: any = {};
-    seqTypes.forEach(t => { typeCount[t] = (typeCount[t] || 0) + 1; });
+    seqTypes.forEach((t) => {
+      typeCount[t] = (typeCount[t] || 0) + 1;
+    });
 
     return {
       success: true,
-      data: `共 ${entries.length} 个序列条目\n` +
-        `序列类型: ${Object.entries(typeCount).map(([k, v]) => `${k}: ${v}`).join(', ')}\n` +
-        `长度范围: ${Math.min(...entries.map(e => e.length))} - ${Math.max(...entries.map(e => e.length))} nt/aa\n` +
+      data:
+        `共 ${entries.length} 个序列条目\n` +
+        `序列类型: ${Object.entries(typeCount)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(', ')}\n` +
+        `长度范围: ${Math.min(...entries.map((e) => e.length))} - ${Math.max(...entries.map((e) => e.length))} nt/aa\n` +
         `条目列表:\n` +
-        entries.slice(0, 20).map((e, i) => `  [${i + 1}] ${e.header} (${e.length} bp)`).join('\n') +
-        (entries.length > 20 ? `\n  ... 还有 ${entries.length - 20} 个条目` : '')
+        entries
+          .slice(0, 20)
+          .map((e, i) => `  [${i + 1}] ${e.header} (${e.length} bp)`)
+          .join('\n') +
+        (entries.length > 20 ? `\n  ... 还有 ${entries.length - 20} 个条目` : ''),
     };
   } catch (error: any) {
     return { success: false, error: `解析 FASTA 失败: ${error.message}` };
@@ -499,7 +634,7 @@ async function parseFASTQ(filePath: string): Promise<any> {
 
   try {
     const content = await fs.readFile(fullPath, 'utf-8');
-    const lines = content.split('\n').filter(l => l.trim());
+    const lines = content.split('\n').filter((l) => l.trim());
     const entries: any[] = [];
 
     // FASTQ 格式：每 4 行为一组
@@ -512,7 +647,7 @@ async function parseFASTQ(filePath: string): Promise<any> {
         header,
         sequence,
         length: sequence.length,
-        quality
+        quality,
       });
     }
 
@@ -533,12 +668,16 @@ async function parseFASTQ(filePath: string): Promise<any> {
 
     return {
       success: true,
-      data: `共 ${entries.length} 个 reads\n` +
+      data:
+        `共 ${entries.length} 个 reads\n` +
         `平均质量值: ${avgQual} (Phred+33)\n` +
-        `长度范围: ${Math.min(...entries.map(e => e.length))} - ${Math.max(...entries.map(e => e.length))} bp\n` +
+        `长度范围: ${Math.min(...entries.map((e) => e.length))} - ${Math.max(...entries.map((e) => e.length))} bp\n` +
         `条目列表:\n` +
-        entries.slice(0, 10).map((e, i) => `  [${i + 1}] ${e.header} (${e.length} bp)`).join('\n') +
-        (entries.length > 10 ? `\n  ... 还有 ${entries.length - 10} 个条目` : '')
+        entries
+          .slice(0, 10)
+          .map((e, i) => `  [${i + 1}] ${e.header} (${e.length} bp)`)
+          .join('\n') +
+        (entries.length > 10 ? `\n  ... 还有 ${entries.length - 10} 个条目` : ''),
     };
   } catch (error: any) {
     return { success: false, error: `解析 FASTQ 失败: ${error.message}` };
@@ -587,8 +726,10 @@ async function fastaToCSV(fastaPath: string, csvPath: string): Promise<any> {
     const csvLines = ['header,sequence,length'];
     for (const entry of entries) {
       // 处理引号和逗号
-      const safeHeader = entry.header.includes(',') || entry.header.includes('"')
-        ? `"${entry.header.replace(/"/g, '""')}"` : entry.header;
+      const safeHeader =
+        entry.header.includes(',') || entry.header.includes('"')
+          ? `"${entry.header.replace(/"/g, '""')}"`
+          : entry.header;
       csvLines.push(`${safeHeader},${entry.sequence},${entry.length}`);
     }
 
@@ -598,7 +739,7 @@ async function fastaToCSV(fastaPath: string, csvPath: string): Promise<any> {
 
     return {
       success: true,
-      data: `已导出 ${entries.length} 个序列条目到 CSV: ${fullCsvPath}`
+      data: `已导出 ${entries.length} 个序列条目到 CSV: ${fullCsvPath}`,
     };
   } catch (error: any) {
     return { success: false, error: `FASTA 转 CSV 失败: ${error.message}` };
@@ -642,7 +783,7 @@ async function codonUsage(seq: string): Promise<any> {
     for (const [codon, count] of Object.entries(codonCount)) {
       const aa = CODON_TABLE[codon] || '?';
       if (!byAA[aa]) byAA[aa] = [];
-      byAA[aa].push({ codon, count, freq: ((count as any) / total * 100).toFixed(1) });
+      byAA[aa].push({ codon, count, freq: (((count as any) / total) * 100).toFixed(1) });
     }
 
     const lines = ['密码子使用频率统计:\n'];
@@ -705,7 +846,7 @@ async function randomSeq(length: any, type: string = 'dna'): Promise<any> {
 
     return {
       success: true,
-      data: `>Random ${typeName} (${len} ${typeNorm === 'protein' ? 'aa' : 'bp'})\n${result}`
+      data: `>Random ${typeName} (${len} ${typeNorm === 'protein' ? 'aa' : 'bp'})\n${result}`,
     };
   } catch (error: any) {
     return { success: false, error: `生成随机序列失败: ${error.message}` };
@@ -727,5 +868,5 @@ export {
   parseFASTQ,
   fastaToCSV,
   codonUsage,
-  randomSeq
+  randomSeq,
 };
