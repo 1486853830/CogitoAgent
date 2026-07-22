@@ -4,24 +4,92 @@
 
 // 模拟 validateGitArgs 函数
 const ALLOWED_GIT_SUBCOMMANDS = new Set([
-  'init', 'clone', 'add', 'commit', 'push', 'pull', 'status', 'log',
-  'branch', 'checkout', 'merge', 'diff', 'remote', 'stash', 'reset', 'config', 'fetch', 'rebase'
+  'init',
+  'clone',
+  'add',
+  'commit',
+  'push',
+  'pull',
+  'status',
+  'log',
+  'branch',
+  'checkout',
+  'merge',
+  'diff',
+  'remote',
+  'stash',
+  'reset',
+  'config',
+  'fetch',
+  'rebase',
 ]);
 
 const ALLOWED_GIT_OPTIONS = new Set([
-  '-m', '-a', '-am', '-v', '-d', '-D', '-f', '--force',
-  '--soft', '--hard', '--mixed', '--no-pager',
-  '--global', '--local', '--system',
-  '-b', '-B', '-t', '-u', '--set-upstream',
-  '--no-verify', '--only', '--onto',
-  '-r', '-a', '-v', '--verbose', '--stat', '--short', '--name-only',
-  '--oneline', '--graph', '--decorate', '--all', '-n', '--limit',
-  '--since', '--until', '--author', '--grep', '--pickaxe',
-  '-S', '-G', '-L', '-p', '-w', '--ignore-space-change',
-  '--no-commit', '-n', '-e', '--edit', '-F', '--file',
-  '--stash', '--no-stash', '--keep', '--drop',
-  '-q', '--quiet', '--porcelain', '-z', '--null',
-  'user.name', 'user.email', 'user.signingkey'
+  '-m',
+  '-a',
+  '-am',
+  '-v',
+  '-d',
+  '-D',
+  '-f',
+  '--force',
+  '--soft',
+  '--hard',
+  '--mixed',
+  '--no-pager',
+  '--global',
+  '--local',
+  '--system',
+  '-b',
+  '-B',
+  '-t',
+  '-u',
+  '--set-upstream',
+  '--no-verify',
+  '--only',
+  '--onto',
+  '-r',
+  '-a',
+  '-v',
+  '--verbose',
+  '--stat',
+  '--short',
+  '--name-only',
+  '--oneline',
+  '--graph',
+  '--decorate',
+  '--all',
+  '-n',
+  '--limit',
+  '--since',
+  '--until',
+  '--author',
+  '--grep',
+  '--pickaxe',
+  '-S',
+  '-G',
+  '-L',
+  '-p',
+  '-w',
+  '--ignore-space-change',
+  '--no-commit',
+  '-n',
+  '-e',
+  '--edit',
+  '-F',
+  '--file',
+  '--stash',
+  '--no-stash',
+  '--keep',
+  '--drop',
+  '-q',
+  '--quiet',
+  '--porcelain',
+  '-z',
+  '--null',
+  'user.name',
+  'user.email',
+  'user.signingkey',
 ]);
 
 function validateGitArgs(args) {
@@ -66,11 +134,11 @@ function validateCwd(cwd, allowOutsideProject = false) {
   }
 
   // 检查是否包含危险字符
-  const dangerousPattern = /[;&|`$<>!(){}[\]\\*\?\n\r'""]/;
+  const dangerousPattern = /[;&|`$<>!(){}[\]\\*?\n\r'""]/;
   if (dangerousPattern.test(cwd)) {
     return {
       valid: false,
-      error: `工作目录路径包含危险字符: ${cwd}`
+      error: `工作目录路径包含危险字符: ${cwd}`,
     };
   }
 
@@ -79,10 +147,10 @@ function validateCwd(cwd, allowOutsideProject = false) {
   try {
     // 简化处理：直接使用传入的路径
     absolutePath = cwd;
-  } catch (e) {
+  } catch {
     return {
       valid: false,
-      error: `无效的路径: ${cwd}`
+      error: `无效的路径: ${cwd}`,
     };
   }
 
@@ -93,7 +161,7 @@ function validateCwd(cwd, allowOutsideProject = false) {
   if (absolutePath.includes('..')) {
     return {
       valid: false,
-      error: `不允许路径遍历: ${cwd}`
+      error: `不允许路径遍历: ${cwd}`,
     };
   }
 
@@ -105,7 +173,7 @@ function validateCwd(cwd, allowOutsideProject = false) {
     if (!normalizedPath.startsWith(normalizedRoot)) {
       return {
         valid: false,
-        error: `工作目录必须在项目目录下: ${PROJECT_ROOT}`
+        error: `工作目录必须在项目目录下: ${PROJECT_ROOT}`,
       };
     }
   }
