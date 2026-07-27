@@ -20,12 +20,6 @@
     },
     "types": ["node", "jest"]
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.js",
-    "electron/**/*.ts",
-    "electron/**/*.js",
-    "tests/**/*.ts"
-  ],
-  "exclude": ["node_modules", "dist", "coverage"]
+  "include": ["src/**/*.ts", "src/**/*.js", "electron/**/*.ts", "electron/**/*.js"],
+  "exclude": ["node_modules", "dist", "coverage", "tests"]
 }

@@ -26,8 +26,9 @@ jest.unstable_mockModule('../../src/config.ts', () => ({
 }));
 
 // --- Mock fetch ---
-const fetchMock = jest.fn();
-(globalThis as any).fetch = fetchMock;
+
+const fetchMock = jest.fn<any>();
+(globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
 
 const { search } = await import('../../src/api/webSearch.ts');
 
