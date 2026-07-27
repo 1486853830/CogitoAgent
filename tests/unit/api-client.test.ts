@@ -25,8 +25,9 @@ jest.unstable_mockModule('../../src/config.ts', () => ({
 // Use the real safeParseJSON from llm-validator (no external dep)
 
 // --- Fetch mock ---
-const fetchMock = jest.fn();
-(globalThis as any).fetch = fetchMock;
+
+const fetchMock = jest.fn<any>();
+(globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock;
 
 const { streamChat, estimateTokens } = await import('../../src/api/client.ts');
 
