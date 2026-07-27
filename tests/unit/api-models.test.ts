@@ -1,5 +1,9 @@
 import { jest } from '@jest/globals';
 
+// Helper to safely access mock call args
+
+const getCallArgs = (mock: jest.Mock, callIndex: number): any => mock.mock.calls[callIndex] ?? [];
+
 // --- Mock config ---
 function freshConfig() {
   return {
@@ -34,7 +38,8 @@ jest.unstable_mockModule('../../src/config.ts', () => ({
 }));
 
 // --- Mock OpenAI constructor (declared as global in models.ts) ---
-const mockCreate = jest.fn();
+
+const mockCreate = jest.fn<any>().mockResolvedValue({});
 const mockOpenAIInstance = {
   chat: {
     completions: {
@@ -42,8 +47,9 @@ const mockOpenAIInstance = {
     },
   },
 };
-const mockOpenAIConstructor = jest.fn(() => mockOpenAIInstance);
-(globalThis as any).OpenAI = mockOpenAIConstructor;
+
+const mockOpenAIConstructor = jest.fn<any>().mockImplementation(() => mockOpenAIInstance);
+(globalThis as unknown as { OpenAI: jest.Mock }).OpenAI = mockOpenAIConstructor;
 
 const {
   getClient,
@@ -191,10 +197,10 @@ describe('api/models.ts', () => {
       const client = getClient('moark');
       expect(mockOpenAIConstructor).toHaveBeenCalledTimes(1);
       expect(client).toBe(mockOpenAIInstance);
-      const [ctorArgs] = mockOpenAIConstructor.mock.calls[0];
-      expect(ctorArgs.baseURL).toBe('https://api.moark.com/v1');
-      expect(ctorArgs.apiKey).toBe('sk-moark');
-      expect(ctorArgs.defaultHeaders).toEqual({});
+      const ctorArgs = getCallArgs(mockOpenAIConstructor, 0);
+      expect(ctorArgs[0].baseURL).toBe('https://api.moark.com/v1');
+      expect(ctorArgs[0].apiKey).toBe('sk-moark');
+      expect(ctorArgs[0].defaultHeaders).toEqual({});
     });
 
     it('should cache the client and reuse it on subsequent calls', () => {
@@ -209,8 +215,8 @@ describe('api/models.ts', () => {
       const c2 = getClient('google');
       expect(c1).toBe(c2); // same mock instance, but constructor called twice
       expect(mockOpenAIConstructor).toHaveBeenCalledTimes(2);
-      expect(mockOpenAIConstructor.mock.calls[0][0].baseURL).toBe('https://api.openai.com/v1');
-      expect(mockOpenAIConstructor.mock.calls[1][0].baseURL).toBe(
+      expect(getCallArgs(mockOpenAIConstructor, 0)[0].baseURL).toBe('https://api.openai.com/v1');
+      expect(getCallArgs(mockOpenAIConstructor, 1)[0].baseURL).toBe(
         'https://generativelanguage.googleapis.com/v1beta',
       );
     });
@@ -231,9 +237,9 @@ describe('api/models.ts', () => {
       // Reset cache so getClient re-creates
       switchProvider('openai', 'gpt-4');
       getClient('google');
-      const [ctorArgs] =
-        mockOpenAIConstructor.mock.calls[mockOpenAIConstructor.mock.calls.length - 1];
-      expect(ctorArgs.baseURL).toBe('https://generativelanguage.googleapis.com/v1beta');
+      const lastIdx = mockOpenAIConstructor.mock.calls.length - 1;
+      const ctorArgs = getCallArgs(mockOpenAIConstructor, lastIdx);
+      expect(ctorArgs[0].baseURL).toBe('https://generativelanguage.googleapis.com/v1beta');
     });
 
     it('should pass custom headers from config', () => {
@@ -242,8 +248,8 @@ describe('api/models.ts', () => {
       mockConfig.models.anthropic.headers = { 'X-Test': '1' };
       switchProvider('openai', 'gpt-4'); // reset cache
       getClient('anthropic');
-      const lastCall =
-        mockOpenAIConstructor.mock.calls[mockOpenAIConstructor.mock.calls.length - 1];
+      const lastIdx2 = mockOpenAIConstructor.mock.calls.length - 1;
+      const lastCall = getCallArgs(mockOpenAIConstructor, lastIdx2);
       expect(lastCall[0].defaultHeaders).toEqual({ 'X-Test': '1' });
     });
   });
@@ -348,7 +354,7 @@ describe('api/models.ts', () => {
 
       await collectChat(chat([{ role: 'user', content: 'hi' }], { provider: 'openai' }));
 
-      const chatOptions = mockCreate.mock.calls[0][0];
+      const chatOptions = getCallArgs(mockCreate, 0)[0];
       expect(chatOptions.model).toBe('gpt-4');
     });
 
@@ -363,7 +369,7 @@ describe('api/models.ts', () => {
         chat([{ role: 'user', content: 'hi' }], { provider: 'openai', model: 'gpt-4-turbo' }),
       );
 
-      expect(mockCreate.mock.calls[0][0].model).toBe('gpt-4-turbo');
+      expect(getCallArgs(mockCreate, 0)[0].model).toBe('gpt-4-turbo');
     });
 
     it('should pass correct chat options to client.create', async () => {
@@ -383,7 +389,7 @@ describe('api/models.ts', () => {
         ),
       );
 
-      const opts = mockCreate.mock.calls[0][0];
+      const opts = getCallArgs(mockCreate, 0)[0];
       expect(opts.messages).toEqual([
         { role: 'user', content: 'hello' },
         { role: 'assistant', content: 'hi' },
