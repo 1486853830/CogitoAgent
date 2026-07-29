@@ -193,7 +193,7 @@ async function runPython(code: string): Promise<any> {
 
           if (isGuiCode) {
             result =
-              '🖼️ [GUI 程序已执行]\n' +
+              '[GUI 程序已执行]\n' +
               '提示：窗口将在 10 秒后自动关闭\n' +
               '如果窗口未显示，可能是因为当前环境不支持图形界面\n\n' +
               (stdout ? '[程序输出]:\n' + stdout : '');
