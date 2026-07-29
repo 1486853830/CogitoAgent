@@ -118,8 +118,8 @@ let inputState: 'idle' | 'thinking' | 'waiting' = 'idle';
  * 同时设置 readline 的 prompt 供后续重绘（resize、退格等）使用。
  */
 function printInputPrompt(): void {
-  const stateIcon = inputState === 'thinking' ? '⚙' :
-                    inputState === 'waiting' ? '⏳' : '💬';
+  const stateIcon = inputState === 'thinking' ? ' ' :
+                    inputState === 'waiting' ? ' ' : ' ';
   const stateText = inputState === 'thinking' ? '思考中' :
                     inputState === 'waiting' ? '等待中' : '输入';
 
