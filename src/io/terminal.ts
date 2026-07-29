@@ -9,12 +9,20 @@ let rl: readline.Interface | null = null;
 let userInputCallback: ((input: string) => void) | null = null;
 let cleanupCallback: (() => void | Promise<void>) | null = null; // 清理回调
 
-// ANSI 颜色代码
+// ANSI 颜色代码（Claude风格配色）
 const COLORS: Record<string, string> = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',
   dim: '\x1b[2m',
+  // Claude品牌色系
+  claude: '\x1b[38;5;173m',      // 温暖的橙色 #D77757
+  claudeBright: '\x1b[38;5;216m', // 亮橙色
+  claudeDim: '\x1b[38;5;130m',    // 暗橙色
+  permission: '\x1b[38;5;99m',    // 紫色（权限请求）
+  permissionBg: '\x1b[48;5;99m',  // 紫色背景
+  // 基础颜色
   gray: '\x1b[90m',
+  dimGray: '\x1b[37m',
   red: '\x1b[91m',
   green: '\x1b[92m',
   darkGreen: '\x1b[32m',
@@ -23,10 +31,18 @@ const COLORS: Record<string, string> = {
   magenta: '\x1b[95m',
   cyan: '\x1b[96m',
   white: '\x1b[97m',
-  // 渐变相关
+  // 语义颜色（Claude风格）
+  success: '\x1b[38;5;113m',     // 成功绿 rgb(78,186,101)
+  error: '\x1b[38;5;204m',       // 错误红 rgb(255,107,128)
+  warning: '\x1b[38;5;220m',     // 警告黄 rgb(255,193,7)
+  info: '\x1b[38;5;117m',        // 信息蓝
+  // 背景色
   bgBlack: '\x1b[40m',
   bgBlue: '\x1b[44m',
   bgCyan: '\x1b[46m',
+  bgClaude: '\x1b[48;5;173m',    // 橙色背景
+  bgSuccess: '\x1b[48;5;113m',   // 成功背景
+  bgError: '\x1b[48;5;204m',     // 错误背景
 };
 
 // 去除 ANSI 码
@@ -52,14 +68,14 @@ function rainbow(text: string): string {
 }
 
 // 打印带样式的分隔线
-function printDivider(char = '─', color: string | null = 'gray'): void {
+function printDivider(char = '─', color: string | null = 'claude'): void {
   const width = process.stdout.columns || 80;
   const colorCode = COLORS[color as string] || COLORS.reset;
   console.log(colorCode + char.repeat(width) + COLORS.reset);
 }
 
-// 打印标题（带装饰）
-function printTitle(text: string, color: string | null = 'cyan'): void {
+// 打印标题（带装饰，Claude风格）
+function printTitle(text: string, color: string | null = 'claude'): void {
   const colorCode = COLORS[color as string] || COLORS.reset;
   const width = process.stdout.columns || 80;
   const padding = Math.max(0, Math.floor((width - stripAnsi(text).length - 4) / 2));
@@ -69,7 +85,10 @@ function printTitle(text: string, color: string | null = 'cyan'): void {
       '╭' +
       '─'.repeat(padding) +
       ' ' +
+      COLORS.bold +
       text +
+      COLORS.reset +
+      colorCode +
       ' ' +
       '─'.repeat(padding) +
       '╮' +
@@ -77,15 +96,49 @@ function printTitle(text: string, color: string | null = 'cyan'): void {
   );
 }
 
-// 打印状态标签
+// 打印状态标签（Claude风格）
 function printTag(
   text: string,
-  bgColor: string | null = 'bgBlue',
+  bgColor: string | null = 'bgClaude',
   textColor: string | null = 'white',
 ): string {
   const bg = COLORS[bgColor as string] || COLORS.bgBlack;
   const tc = COLORS[textColor as string] || COLORS.white;
-  return `${bg}${tc} ${text} ${COLORS.reset}`;
+  return `${COLORS.bold}${bg}${tc} ${text} ${COLORS.reset}`;
+}
+
+/**
+ * 输入框状态
+ */
+let inputState: 'idle' | 'thinking' | 'waiting' = 'idle';
+
+/**
+ * 打印输入框提示符
+ * 用 process.stdout.write 同步写出，确保 Windows 上立即可见；
+ * 同时设置 readline 的 prompt 供后续重绘（resize、退格等）使用。
+ */
+function printInputPrompt(): void {
+  const stateIcon = inputState === 'thinking' ? '⚙' :
+                    inputState === 'waiting' ? '⏳' : '💬';
+  const stateText = inputState === 'thinking' ? '思考中' :
+                    inputState === 'waiting' ? '等待中' : '输入';
+
+  // 边框顶部行
+  println(`${COLORS.claude}┌─${COLORS.reset} ${COLORS.bold}${stateIcon} ${stateText}${COLORS.reset} ${COLORS.claude}───────────────────────────────────${COLORS.reset}`, 'claude');
+  // 直接写入提示符到 stdout（同步、立即刷新），不依赖 rl.prompt()
+  if (rl) {
+    process.stdout.write('│ ❯ ');
+    rl.setPrompt('│ ❯ ');
+  } else {
+    process.stdout.write('│ ❯ ');
+  }
+}
+
+/**
+ * 设置输入状态
+ */
+function setInputState(state: 'idle' | 'thinking' | 'waiting'): void {
+  inputState = state;
 }
 
 /**
@@ -106,12 +159,17 @@ function init(onUserInput: (input: string) => void): void {
 
   rl.on('line', (input: string) => {
     if (userInputCallback) {
+      // 输入后显示结束边框
+      if (input.trim()) {
+        println(`${COLORS.claude}└${COLORS.reset}`, 'claude');
+        printBlank();
+      }
       userInputCallback(input.trim());
     }
   });
 
-  rl.setPrompt('');
-  rl.prompt();
+  // 注意：不在 init() 内部调用 printInputPrompt()，
+  // 由调用方在所有输出完成后显式调用一次，确保提示符是最后显示的内容
 }
 
 /**
@@ -141,16 +199,16 @@ function printBlank(): void {
 }
 
 /**
- * 打印思考内容（带标签，灰色，仅首行加标签）
+ * 打印思考内容（带标签，Claude风格）
  */
 let reasoningTagPrinted = false;
 function printReasoning(text: string): void {
   if (!reasoningTagPrinted) {
     print('\n');
-    println('┌─ 思考过程 ─────────────────────────────', 'darkGreen');
+    println(`${COLORS.claude}┌─${COLORS.claudeDim} 💭 思考过程 ${COLORS.claude}──────────────────────────${COLORS.reset}`, 'claude');
     reasoningTagPrinted = true;
   }
-  print(text, 'darkGreen');
+  print(text, 'claudeDim');
 }
 function resetReasoningTag(): void {
   reasoningTagPrinted = false;
@@ -158,27 +216,25 @@ function resetReasoningTag(): void {
 function closeReasoning(): void {
   if (reasoningTagPrinted) {
     print('\n');
-    println('└──────────────────────────────────────────', 'darkGreen');
+    println(`${COLORS.claude}└──────────────────────────────────────────────${COLORS.reset}`, 'claude');
     reasoningTagPrinted = false;
   }
 }
 
 /**
- * 打印正文内容（带标签，正常颜色，仅首行加标签）
+ * 打印正文内容（带标签，Claude风格）
  */
 let contentTagPrinted = false;
 function printContent(text: string): void {
   if (!contentTagPrinted) {
     // 如果之前有思考内容，先收尾
     if (reasoningTagPrinted) {
-      print('\n');
-      println('└──────────────────────────────────────────', 'dim');
-      resetReasoningTag();
+      closeReasoning();
     }
     print('\n');
-    println('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'cyan');
-    println('           ▼ 回复内容 ▼', 'bold');
-    println('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'cyan');
+    println(`${COLORS.claudeBright}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${COLORS.reset}`, 'claudeBright');
+    println(`${COLORS.bold}           ▶ 回复内容${COLORS.reset}`, 'bold');
+    println(`${COLORS.claudeBright}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${COLORS.reset}`, 'claudeBright');
     contentTagPrinted = true;
   }
   print(text);
@@ -188,23 +244,25 @@ function resetContentTag(): void {
 }
 
 /**
- * 打印工具调用块（简洁标签样式）
+ * 打印工具调用块（Claude风格）
  */
 function printToolBlock(content: string, title = '工具调用'): void {
   if (title === '工具结果') {
-    // 工具结果显示
+    // 工具结果显示（Claude风格）
     print('\n');
-    println('┌─ 工具结果 ─────────────────────────────', 'green');
-    print(content, 'green');
-    println('\n└──────────────────────────────────────────', 'green');
+    println(`${COLORS.success}┌─${COLORS.reset} ${COLORS.bold}✓ 工具结果${COLORS.reset} ${COLORS.success}──────────────────────────${COLORS.reset}`, 'success');
+    print(content, 'success');
+    println(`\n${COLORS.success}└──────────────────────────────────────────────${COLORS.reset}`, 'success');
   } else {
-    // 工具调用显示
+    // 工具调用显示（Claude风格）
     const match = content.match(/\[TOOL\]\s*(\w+)/);
     const toolName = match ? match[1] : '未知工具';
 
-    print('  ');
-    print(`${COLORS.bgCyan}${COLORS.white} 调用：${toolName} ${COLORS.reset}`, 'cyan');
     print('\n');
+    println(`${COLORS.claude}┌─${COLORS.reset} ${COLORS.bold}⚙ 工具调用${COLORS.reset}`, 'claude');
+    print(`${COLORS.claude}│${COLORS.reset}  `);
+    println(`${COLORS.bgClaude}${COLORS.white} ${toolName} ${COLORS.reset}`, 'claude');
+    println(`${COLORS.claude}└${COLORS.reset}`, 'claude');
   }
 }
 
@@ -253,24 +311,73 @@ function onCleanup(callback: () => void | Promise<void>): void {
 }
 
 /**
- * 打印启动 banner
+ * 打印启动 banner（Claude风格）
  */
 function printBanner(): void {
   const banner = `
-${COLORS.cyan}${COLORS.bold}
-██████╗  ██████╗  ██████╗ ██╗████████╗ ██████╗      █████╗  ██████╗ ███████╗███╗   ██╗████████╗
-██╔═══╝  ██╔═══██╗██╔═══╝  ██║╚══██╔═╝ ██╔═══██╗    ██╔══██╗██╔═══╝  ██╔═══╝ ████╗  ██║╚══██╔═╝
-██║      ██║   ██║██║  ███╗██║   ██║   ██║   ██║    ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
-██║      ██║   ██║██║   ██║██║   ██║   ██║   ██║    ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   
-╚██████╗ ╚██████╔╝╚██████╔╝██║   ██║   ╚██████╔╝    ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   
- ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝   ╚═╝    ╚═════╝     ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   
+${COLORS.claudeBright}${COLORS.bold}
+   ██████╗ ██████╗  ██████╗ ██╗████████╗ ██████╗ 
+  ██╔════╝██╔═══██╗██╔════╝ ██║╚══██╔══╝██╔═══██╗
+  ██║     ██║   ██║██║  ███╗██║   ██║   ██║   ██║
+  ██║     ██║   ██║██║   ██║██║   ██║   ██║   ██║
+  ╚██████╗╚██████╔╝╚██████╔╝██║   ██║   ╚██████╔╝
+   ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝   ╚═╝    ╚═════╝ 
 ${COLORS.reset}
-${COLORS.cyan}${COLORS.bold}            CogitoAgent${COLORS.reset}
-${COLORS.bold}╔══════════════════════════════════════════════════════════════╗
-║  持续思考的智能体 - 探索文件 · 联网搜索 · 自主学习           ║
-╚══════════════════════════════════════════════════════════════╝${COLORS.reset}
 `;
   console.log(banner);
+}
+
+/**
+ * 加载动画帧
+ */
+const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+let spinnerInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * 开始加载动画
+ */
+function startSpinner(text = '思考中'): void {
+  if (spinnerInterval) return;
+  
+  let frameIndex = 0;
+  const stream = process.stdout;
+  
+  spinnerInterval = setInterval(() => {
+    const frame = SPINNER_FRAMES[frameIndex];
+    stream.write(`\r${COLORS.claude}${frame}${COLORS.reset} ${COLORS.dimGray}${text}...${COLORS.reset}`);
+    frameIndex = (frameIndex + 1) % SPINNER_FRAMES.length;
+  }, 80);
+}
+
+/**
+ * 停止加载动画
+ */
+function stopSpinner(): void {
+  if (spinnerInterval) {
+    clearInterval(spinnerInterval);
+    spinnerInterval = null;
+    process.stdout.write('\r' + ' '.repeat(50) + '\r'); // 清除动画行
+  }
+}
+
+/**
+ * 打字机效果输出
+ */
+async function typewriterEffect(text: string, delay = 10): Promise<void> {
+  for (let i = 0; i < text.length; i++) {
+    process.stdout.write(text[i]);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+}
+
+/**
+ * 打印加载进度条
+ */
+function printProgressBar(progress: number, width = 30): void {
+  const filled = Math.round(width * progress);
+  const empty = width - filled;
+  const bar = `${COLORS.claude}█${COLORS.reset}`.repeat(filled) + '░'.repeat(empty);
+  process.stdout.write(`\r[${bar}] ${Math.round(progress * 100)}%`);
 }
 
 export {
@@ -293,4 +400,10 @@ export {
   exit,
   onCleanup,
   COLORS,
+  startSpinner,
+  stopSpinner,
+  typewriterEffect,
+  printProgressBar,
+  printInputPrompt,
+  setInputState,
 };
