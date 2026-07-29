@@ -15,7 +15,7 @@ const COLORS: Record<string, string> = {
   permission: '\x1b[38;5;99m',
   permissionBg: '\x1b[48;5;99m',
   gray: '\x1b[90m',
-  dimGray: '\x1b[37m',
+  dimGray: '\x1b[38;5;250m',
   red: '\x1b[91m',
   green: '\x1b[92m',
   darkGreen: '\x1b[32m',
