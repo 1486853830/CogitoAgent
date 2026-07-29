@@ -283,7 +283,7 @@ function handleUserInput(input: string): void {
       shouldStop = true;
       if (thinkingTimer) clearTimeout(thinkingTimer);
       isProcessing = false;
-      println('思考已停止', 'yellow');
+      println('[中断] 思考已停止', 'warning');
       state.current = STATE.AWAITING_INPUT;
       setInputState('idle');
       printInputPrompt();
@@ -291,6 +291,7 @@ function handleUserInput(input: string): void {
       return;
     }
     if (handleCommand(input)) {
+      // 命令处理后重新显示输入框
       printInputPrompt();
       return;
     }
@@ -302,16 +303,16 @@ function handleUserInput(input: string): void {
     const pendingConf = getPendingConfirmation();
     if (pendingConf?.type === 'clearHistory') {
       if (response === 'y' || response === 'yes' || response === '确认') {
-        println('对话历史已清空', 'success');
+        println('[成功] 对话历史已清空', 'success');
         setPendingConfirmation(null);
         state.current = STATE.THINKING;
       } else if (response === 'n' || response === 'no' || response === '拒绝') {
-        println('操作已取消', 'gray');
+        println('[取消] 操作已取消', 'gray');
         setPendingConfirmation(null);
         state.current = STATE.THINKING;
       } else {
         println(
-          `请输入 ${printTag('y', 'bgSuccess')} 确认或 ${printTag('n', 'bgError')} 取消`,
+          `[提示] 请输入 ${printTag('y', 'bgSuccess')} 确认或 ${printTag('n', 'bgError')} 取消`,
           'warning',
         );
       }
@@ -319,14 +320,14 @@ function handleUserInput(input: string): void {
     }
 
     if (response === 'y' || response === 'yes' || response === '确认') {
-      println('用户同意执行危险操作', 'success');
+      println('[确认] 用户同意执行危险操作', 'success');
       resolveConfirmation(true);
     } else if (response === 'n' || response === 'no' || response === '拒绝') {
-      println('用户拒绝执行危险操作', 'error');
+      println('[拒绝] 用户拒绝执行危险操作', 'error');
       resolveConfirmation(false);
     } else {
       println(
-        `请输入 ${printTag('y', 'bgSuccess')} 确认或 ${printTag('n', 'bgError')} 拒绝`,
+        `[提示] 请输入 ${printTag('y', 'bgSuccess')} 确认或 ${printTag('n', 'bgError')} 拒绝`,
         'warning',
       );
     }
@@ -337,7 +338,7 @@ function handleUserInput(input: string): void {
     shouldStop = true;
     if (thinkingTimer) clearTimeout(thinkingTimer);
     isProcessing = false;
-    println('\n思考已停止，请输入消息...', 'yellow');
+    println('\n[中断] 思考已停止，请输入消息...', 'warning');
     state.current = STATE.AWAITING_INPUT;
     setInputState('idle');
     printInputPrompt();
@@ -352,9 +353,10 @@ function handleUserInput(input: string): void {
       let processedInput = input;
       if (!hasUserMessage) {
         processedInput = `${input}\n\n[WAIT]你需要学会使用这个标签，如果你说完了，需要等待用户回复就用这个标签`;
-        println(input, 'claude');
+        println(`[消息] ${input}`, 'claude');
+        println('[系统] 已自动添加标签提示（首次消息）', 'gray');
       } else {
-        println(input, 'claude');
+        println(`[消息] ${input}`, 'claude');
       }
       addUserMessage(processedInput);
       state.current = STATE.THINKING;
@@ -362,7 +364,7 @@ function handleUserInput(input: string): void {
       broadcast('agent-state', { state: 'thinking' });
       scheduleNextCycle();
     } else {
-      println('没有消息，继续思考', 'gray');
+      println('[取消] 没有消息，继续思考', 'gray');
       state.current = STATE.THINKING;
       setInputState('thinking');
       broadcast('agent-state', { state: 'thinking' });
@@ -451,7 +453,7 @@ async function thinkCycle(): Promise<void> {
       }
       recordTokenUsage(usage.input, usage.output);
       println(
-        `* Crunched for in:${usage.input} out:${usage.output} total:${usage.input + usage.output}`,
+        `[Token] 输入:${usage.input} 输出:${usage.output} 总计:${usage.input + usage.output}`,
         'gray',
       );
       broadcast('token-usage', {
@@ -461,7 +463,7 @@ async function thinkCycle(): Promise<void> {
         session: getSessionStats(),
       });
     } catch (e) {
-      console.error('Token 统计失败:', (e as Error).message);
+      console.error('[Token] 统计失败:', (e as Error).message);
     }
 
     updateTraceStep(requestStep.id, {
@@ -484,7 +486,7 @@ async function thinkCycle(): Promise<void> {
 
     if (fullResponse.includes('[WAIT]')) {
       wantsToWait = true;
-      println('等待用户输入', 'gray');
+      println('[等待] 我先不说了，等你说～', 'gray');
     }
 
     const parseStep = traceStep('解析工具调用', {}, 'running');
@@ -506,7 +508,7 @@ async function thinkCycle(): Promise<void> {
     if (toolCalls.length > 0) {
       for (const toolCall of toolCalls) {
         if (shouldStop) {
-          println('工具执行已停止', 'yellow');
+          println('[中断] 工具执行已停止', 'yellow');
           break;
         }
 
@@ -528,7 +530,7 @@ async function thinkCycle(): Promise<void> {
             (typeof result.data === 'object' && Object.keys(result.data).length === 0);
 
           if (isEmpty) {
-            println(`${toolCall.tool} 返回空结果`, 'yellow');
+            println(`[空结果] ${toolCall.tool} 返回空结果`, 'yellow');
             toolResults.push(`[工具结果]: [空结果] ${toolCall.tool} 返回空结果，未找到相关信息。`);
             broadcast('agent-reply', {
               type: 'tool-result',
@@ -557,7 +559,7 @@ async function thinkCycle(): Promise<void> {
             });
           }
         } else {
-          println(`${result.error}`, 'red');
+          println(`[失败] ${result.error}`, 'red');
           toolResults.push(`[工具错误]: ${result.error}`);
           broadcast('agent-reply', {
             type: 'tool-result',
@@ -572,7 +574,7 @@ async function thinkCycle(): Promise<void> {
         }
 
         if (shouldStop) {
-          println('工具执行已停止', 'yellow');
+          println('[中断] 工具执行已停止', 'yellow');
           break;
         }
       }
@@ -591,9 +593,9 @@ async function thinkCycle(): Promise<void> {
 
     if (shouldCompress()) {
       const compressStep = traceStep('压缩对话历史', {}, 'running');
-      println('正在压缩对话历史...', 'gray');
+      println('[系统] 正在压缩对话历史...', 'gray');
       compressHistory();
-      println('压缩完成', 'gray');
+      println('[系统] 压缩完成', 'gray');
       updateTraceStep(compressStep.id, { status: 'completed' });
     }
 
@@ -622,6 +624,8 @@ async function thinkCycle(): Promise<void> {
       consecutiveCycleCount = 0;
       scheduleNextCycle();
     } else {
+      // AI 回复没有 [WAIT] 也没有工具调用
+      // 如果回复有实质内容，自动视为等待用户（兜底 [WAIT] 遗漏）
       const cleanReply = extractCleanReply(finalResponse);
       if (cleanReply && cleanReply.length > 0) {
         consecutiveCycleCount = 0;
@@ -648,7 +652,7 @@ async function thinkCycle(): Promise<void> {
           broadcast('agent-state', { state: 'idle' });
           setInputState('idle');
           printInputPrompt();
-          println('已连续思考多轮，等待用户输入', 'gray');
+          println('[系统] 已连续思考多轮，先听你说～', 'gray');
         } else {
           scheduleNextCycle();
         }
@@ -664,7 +668,7 @@ async function thinkCycle(): Promise<void> {
       shouldStop = false;
       return;
     }
-    println(`${(error as Error).message}`, 'red');
+    println(`[错误] ${(error as Error).message}`, 'red');
   } finally {
     isProcessing = false;
   }
@@ -688,6 +692,7 @@ async function start(): Promise<void> {
 
   const envPersona = process.env.COGITO_PERSONA;
   if (envPersona) {
+    // 仅复制 persona 文件，不重置对话（避免清空已有会话历史）
     const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
     const personaPath = path.resolve(process.cwd(), 'personas', envPersona, 'persona.md');
     const targetPath = path.resolve(DATA_DIR, 'persona.md');
@@ -753,14 +758,37 @@ async function start(): Promise<void> {
   }
 
   printBanner();
-  println('');
-  println(`工作区: ${tools.getBasePath()}`, 'gray');
-  println(`思考间隔: ${thoughtInterval / 1000}s`, 'gray');
-  println('');
-  println('输入 /help 查看命令，exit 退出', 'gray');
-  println('');
+  printDivider('━', 'claude');
+  println(
+    '  活动范围: ' +
+      printTag(tools.getBasePath(), 'bgClaude') +
+      '  思考间隔: ' +
+      printTag(`${thoughtInterval / 1000}秒`, 'bgClaude'),
+  );
+  println(
+    '  输入 ' +
+      printTag('/sessions', 'bgClaude') +
+      ' 管理多会话，输入 ' +
+      printTag('/help', 'bgClaude') +
+      ' 查看所有命令\n',
+    'gray',
+  );
+  printDivider('━', 'claude');
+  println(
+    '  按 ' +
+      printTag('Enter', 'bgClaude') +
+      ' 打断思考，输入 ' +
+      printTag('exit', 'bgClaude') +
+      ' 退出\n',
+    'gray',
+  );
 
+  println('  准备就绪，等待您的指令...', 'success');
+
+  // 所有启动信息输出完毕后，再显示输入框提示符
   init(handleUserInput);
+  // 用 setTimeout(0) 延迟到当前事件循环 tick 结束后执行，
+  // 确保 Windows 上 stdout 缓冲已全部刷新，提示符立即可见
   setTimeout(() => printInputPrompt(), 0);
 
   await tools.startScheduler();
