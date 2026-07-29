@@ -30,6 +30,8 @@ function openWelcomePage(): void {
 }
 
 async function main(): Promise<void> {
+  console.log('CogitoAgent 项目初始化...\n');
+
   const shouldAutoStart = process.env.ELECTRON_MODE || process.env.CLI_MODE;
 
   if (!isConfigured()) {
@@ -40,6 +42,7 @@ async function main(): Promise<void> {
         console.log('配置未完成，程序退出。');
         process.exit(1);
       }
+      console.log('配置完成！正在启动...\n');
     } else if (process.env.ELECTRON_MODE) {
       console.log('等待 Electron 配置向导完成...\n');
       process.exit(0);
@@ -53,18 +56,18 @@ async function main(): Promise<void> {
         console.log('配置未完成，程序退出。');
         process.exit(1);
       }
-      console.log('');
-      console.log('请使用以下命令启动：');
-      console.log('  npm run electron  桌面模式');
-      console.log('  npm run cli       命令行模式');
+      console.log('配置完成！');
+      console.log('\n请使用以下命令启动：');
+      console.log('  npm run electron  - 桌面模式（Electron + Agent）');
+      console.log('  npm run cli       - 命令行模式');
       process.exit(0);
     }
   }
 
   if (!shouldAutoStart) {
-    console.log('请使用以下命令启动：');
-    console.log('  npm run electron  桌面模式');
-    console.log('  npm run cli       命令行模式');
+    console.log('配置已完成！请使用以下命令启动：');
+    console.log('  npm run electron  - 桌面模式（Electron + Agent）');
+    console.log('  npm run cli       - 命令行模式');
     process.exit(0);
   }
 
@@ -74,6 +77,8 @@ async function main(): Promise<void> {
   });
 }
 
+// main() 返回 Promise，若不捕获 rejection 会成为 unhandledRejection。
+// 内部已对 start() 做了 catch，但 runSetup() 等异步路径的异常仍可能冒泡。
 main().catch((err) => {
   console.error('启动失败:', err);
   process.exit(1);
