@@ -24,8 +24,6 @@ import {
   resetContentTag,
   printToolBlock,
   exit,
-  printInputPrompt,
-  setInputState,
 } from '../io/terminal.ts';
 import { loadConfig } from '../config.ts';
 import { startWsServer, broadcast, onMessage, onStatsRequest } from '../io/ws-server.ts';
@@ -283,16 +281,12 @@ function handleUserInput(input: string): void {
       shouldStop = true;
       if (thinkingTimer) clearTimeout(thinkingTimer);
       isProcessing = false;
-      println('[中断] 思考已停止', 'warning');
+      println('[中断] 思考已停止', 'yellow');
       state.current = STATE.AWAITING_INPUT;
-      setInputState('idle');
-      printInputPrompt();
       broadcast('agent-state', { state: 'idle' });
       return;
     }
     if (handleCommand(input)) {
-      // 命令处理后重新显示输入框
-      printInputPrompt();
       return;
     }
   }
@@ -303,7 +297,7 @@ function handleUserInput(input: string): void {
     const pendingConf = getPendingConfirmation();
     if (pendingConf?.type === 'clearHistory') {
       if (response === 'y' || response === 'yes' || response === '确认') {
-        println('[成功] 对话历史已清空', 'success');
+        println('[成功] 对话历史已清空', 'green');
         setPendingConfirmation(null);
         state.current = STATE.THINKING;
       } else if (response === 'n' || response === 'no' || response === '拒绝') {
@@ -312,23 +306,23 @@ function handleUserInput(input: string): void {
         state.current = STATE.THINKING;
       } else {
         println(
-          `[提示] 请输入 ${printTag('y', 'bgSuccess')} 确认或 ${printTag('n', 'bgError')} 取消`,
-          'warning',
+          `[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 取消`,
+          'yellow',
         );
       }
       return;
     }
 
     if (response === 'y' || response === 'yes' || response === '确认') {
-      println('[确认] 用户同意执行危险操作', 'success');
+      println('[确认] 用户同意执行危险操作', 'green');
       resolveConfirmation(true);
     } else if (response === 'n' || response === 'no' || response === '拒绝') {
-      println('[拒绝] 用户拒绝执行危险操作', 'error');
+      println('[拒绝] 用户拒绝执行危险操作', 'red');
       resolveConfirmation(false);
     } else {
       println(
-        `[提示] 请输入 ${printTag('y', 'bgSuccess')} 确认或 ${printTag('n', 'bgError')} 拒绝`,
-        'warning',
+        `[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 拒绝`,
+        'yellow',
       );
     }
     return;
@@ -338,10 +332,8 @@ function handleUserInput(input: string): void {
     shouldStop = true;
     if (thinkingTimer) clearTimeout(thinkingTimer);
     isProcessing = false;
-    println('\n[中断] 思考已停止，请输入消息...', 'warning');
+    println('\n[中断] 思考已停止，请输入消息...', 'yellow');
     state.current = STATE.AWAITING_INPUT;
-    setInputState('idle');
-    printInputPrompt();
     broadcast('agent-state', { state: 'idle' });
     return;
   }
@@ -353,20 +345,18 @@ function handleUserInput(input: string): void {
       let processedInput = input;
       if (!hasUserMessage) {
         processedInput = `${input}\n\n[WAIT]你需要学会使用这个标签，如果你说完了，需要等待用户回复就用这个标签`;
-        println(`[消息] ${input}`, 'claude');
+        println(`[消息] ${input}`, 'yellow');
         println('[系统] 已自动添加标签提示（首次消息）', 'gray');
       } else {
-        println(`[消息] ${input}`, 'claude');
+        println(`[消息] ${input}`, 'yellow');
       }
       addUserMessage(processedInput);
       state.current = STATE.THINKING;
-      setInputState('thinking');
       broadcast('agent-state', { state: 'thinking' });
       scheduleNextCycle();
     } else {
       println('[取消] 没有消息，继续思考', 'gray');
       state.current = STATE.THINKING;
-      setInputState('thinking');
       broadcast('agent-state', { state: 'thinking' });
       scheduleNextCycle();
     }
@@ -389,7 +379,6 @@ async function thinkCycle(): Promise<void> {
   isProcessing = true;
 
   broadcast('agent-state', { state: 'thinking' });
-  setInputState('thinking');
 
   clearThoughtTrace();
   const cycleStep = traceStep('思考周期开始', { messageCount: getMessages().length }, 'running');
@@ -616,8 +605,6 @@ async function thinkCycle(): Promise<void> {
       }
       broadcast('agent-reply', { type: 'end', nextAction });
       broadcast('agent-state', { state: 'idle' });
-      setInputState('idle');
-      printInputPrompt();
       consecutiveCycleCount = 0;
     } else if (toolCalls.length > 0) {
       broadcast('agent-reply', { type: 'end', nextAction: 'tools' });
@@ -636,8 +623,6 @@ async function thinkCycle(): Promise<void> {
         }
         broadcast('agent-reply', { type: 'end', nextAction: 'wait' });
         broadcast('agent-state', { state: 'idle' });
-        setInputState('idle');
-        printInputPrompt();
       } else {
         consecutiveCycleCount++;
         if (consecutiveCycleCount >= MAX_CONSECUTIVE_CYCLES) {
@@ -650,8 +635,6 @@ async function thinkCycle(): Promise<void> {
           }
           broadcast('agent-reply', { type: 'end', nextAction: 'wait' });
           broadcast('agent-state', { state: 'idle' });
-          setInputState('idle');
-          printInputPrompt();
           println('[系统] 已连续思考多轮，先听你说～', 'gray');
         } else {
           scheduleNextCycle();
@@ -758,45 +741,39 @@ async function start(): Promise<void> {
   }
 
   printBanner();
-  printDivider('━', 'claude');
+  printDivider('─', 'cyan');
   println(
     '  活动范围: ' +
-      printTag(tools.getBasePath(), 'bgClaude') +
+      printTag(tools.getBasePath(), 'bgBlue') +
       '  思考间隔: ' +
-      printTag(`${thoughtInterval / 1000}秒`, 'bgClaude'),
+      printTag(`${thoughtInterval / 1000}秒`, 'bgCyan'),
   );
   println(
     '  输入 ' +
-      printTag('/sessions', 'bgClaude') +
+      printTag('/sessions', 'bgBlue') +
       ' 管理多会话，输入 ' +
-      printTag('/help', 'bgClaude') +
+      printTag('/help', 'bgBlue') +
       ' 查看所有命令\n',
     'gray',
   );
-  printDivider('━', 'claude');
+  printDivider('─', 'cyan');
   println(
     '  按 ' +
-      printTag('Enter', 'bgClaude') +
+      printTag('Enter', 'bgBlue') +
       ' 打断思考，输入 ' +
-      printTag('exit', 'bgClaude') +
+      printTag('exit', 'bgBlue') +
       ' 退出\n',
     'gray',
   );
 
-  println('  准备就绪，等待您的指令...', 'success');
-
-  // 所有启动信息输出完毕后，再显示输入框提示符
   init(handleUserInput);
-  // 用 setTimeout(0) 延迟到当前事件循环 tick 结束后执行，
-  // 确保 Windows 上 stdout 缓冲已全部刷新，提示符立即可见
-  setTimeout(() => printInputPrompt(), 0);
 
   await tools.startScheduler();
 
   await initWechatChannel();
 
+  println('\n  准备就绪，等待您的指令...', 'green');
   state.current = STATE.AWAITING_INPUT;
-  setInputState('idle');
   broadcast('agent-state', { state: 'idle' });
 }
 

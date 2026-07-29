@@ -262,11 +262,11 @@ function handleCommand(input: string): boolean {
  */
 function printHelp(): void {
   println('');
-  printDivider('━', 'claude');
-  println('  CogitoAgent 命令帮助', 'claudeBright');
-  printDivider('━', 'claude');
+  printDivider('=', 'cyan');
+  println('  CogitoAgent 命令帮助', 'cyan');
+  printDivider('=', 'cyan');
   println('');
-  println('  可用命令:', 'claude');
+  println('  可用命令:', 'yellow');
   println('    /help          - 显示此帮助信息', 'gray');
   println('    /status        - 显示当前状态', 'gray');
   println('    /clear         - 清空对话历史', 'gray');
@@ -276,18 +276,18 @@ function printHelp(): void {
   println('    /config        - 显示当前配置', 'gray');
   println('    /debug         - 切换调试模式', 'gray');
   println('');
-  println('  集群命令:', 'claude');
+  println('  集群命令:', 'yellow');
   println('    /spawn <persona> <name> <instruction>  - 生成新智能体', 'gray');
   println('    /delegate <agentId> <task>            - 委托任务', 'gray');
   println('    /agents /cluster      - 显示集群状态', 'gray');
   println('    /stop-agent <id>      - 停止智能体', 'gray');
   println('    /stop-all-agents      - 停止所有智能体', 'gray');
   println('');
-  println('  基本操作:', 'claude');
+  println('  基本操作:', 'yellow');
   println('    ENTER          - 打断当前思考，输入消息', 'gray');
   println('    exit           - 退出程序', 'gray');
   println('');
-  printDivider('━', 'claude');
+  printDivider('=', 'cyan');
   println('');
 }
 
@@ -299,11 +299,11 @@ function printStatus(): void {
   const toolNames = getToolNames();
 
   println('');
-  printDivider('━', 'claude');
-  println('  CogitoAgent 当前状态', 'claudeBright');
-  printDivider('━', 'claude');
+  printDivider('=', 'cyan');
+  println('  CogitoAgent 当前状态', 'cyan');
+  printDivider('=', 'cyan');
   println('');
-  println(`  Persona: ${printTag(cfg.persona || 'default', 'bgClaude')}`, 'white');
+  println(`  Persona: ${printTag(cfg.persona || 'default', 'bgBlue')}`, 'white');
   println(`  模型: ${cfg.api.model || 'N/A'}`, 'white');
   println(`  API: ${cfg.api.baseURL || 'N/A'}`, 'white');
   println(`  工作区: ${tools.getBasePath()}`, 'white');
@@ -322,13 +322,13 @@ function printStatus(): void {
   // Token 用量统计
   const s = getSessionStats();
   println('');
-  printDivider('-', 'claude');
-  println('  Token 用量', 'claude');
+  printDivider('-', 'gray');
+  println('  Token 用量', 'cyan');
   println(`    累计: 输入 ${s.totalInputTokens.toLocaleString()} / 输出 ${s.totalOutputTokens.toLocaleString()} / 总计 ${s.totalTokens.toLocaleString()}`, 'white');
   println(`    今日: 输入 ${s.todayInputTokens.toLocaleString()} / 输出 ${s.todayOutputTokens.toLocaleString()} / 总计 ${s.todayTokens.toLocaleString()}`, 'white');
 
   println('');
-  printDivider('━', 'claude');
+  printDivider('=', 'cyan');
   println('');
 }
 
@@ -399,9 +399,9 @@ function listPersonas(): void {
     .map(dir => dir.name);
 
   println('');
-  printDivider('─', 'claude');
-  println(`  可用 Persona (${dirs.length} 个)`, 'claudeBright');
-  printDivider('─', 'claude');
+  printDivider('─', 'cyan');
+  println(`  可用 Persona (${dirs.length} 个)`, 'cyan');
+  printDivider('─', 'cyan');
 
   for (const dir of dirs) {
     const personaPath = path.join(personasDir, dir, 'persona.md');
@@ -410,10 +410,10 @@ function listPersonas(): void {
       const content = readFileSync(personaPath, 'utf-8');
       firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim() || '(无描述)';
     }
-    println(`  ${printTag(dir, 'bgClaude')} ${firstLine}`, 'gray');
+    println(`  ${printTag(dir, 'bgBlue')} ${firstLine}`, 'gray');
   }
   println('');
-  println(`  使用 ${printTag('/persona <name>', 'bgClaude')} 切换`, 'gray');
+  println(`  使用 ${printTag('/persona <name>', 'bgBlue')} 切换`, 'gray');
   println('');
 }
 
@@ -425,18 +425,18 @@ function listTools(): void {
   const totalCount = getToolNames().length;
 
   println('');
-  printDivider('━', 'claude');
-  println(`  可用工具列表 (共 ${totalCount} 个)`, 'claudeBright');
-  printDivider('━', 'claude');
+  printDivider('=', 'cyan');
+  println(`  可用工具列表 (共 ${totalCount} 个)`, 'cyan');
+  printDivider('=', 'cyan');
   println('');
 
   for (const [category, toolList] of Object.entries(categories)) {
-    println(`  ${category.toUpperCase()}:`, 'claude');
+    println(`  ${category.toUpperCase()}:`, 'yellow');
     println(`    ${toolList.join(', ')}`, 'gray');
     println('');
   }
 
-  printDivider('━', 'claude');
+  printDivider('=', 'cyan');
   println('');
 }
 
@@ -447,9 +447,9 @@ function printConfig(): void {
   const cfg: any = loadConfig();
 
   println('');
-  printDivider('━', 'claude');
-  println('  当前配置', 'claudeBright');
-  printDivider('━', 'claude');
+  printDivider('=', 'cyan');
+  println('  当前配置', 'cyan');
+  printDivider('=', 'cyan');
   println('');
   println(`  Persona: ${cfg.persona || 'default'}`, 'white');
   println(`  工作区: ${cfg.workspace || './'}`, 'white');
@@ -461,7 +461,7 @@ function printConfig(): void {
   println(`  邮件: ${cfg.email?.smtpHost || '未配置'}`, 'white');
   println(`  调试模式: ${process.env.DEBUG === 'true' ? '开启' : '关闭'}`, 'white');
   println('');
-  printDivider('━', 'claude');
+  printDivider('=', 'cyan');
   println('');
 }
 
@@ -486,16 +486,16 @@ function printSessions(): void {
   const current = getCurrentSession();
 
   println('');
-  printDivider('━', 'claude');
-  println('  会话列表', 'claudeBright');
-  printDivider('━', 'claude');
+  printDivider('=', 'cyan');
+  println('  会话列表', 'cyan');
+  printDivider('=', 'cyan');
   println('');
 
   if (sessions.length === 0) {
     println('  暂无会话', 'gray');
   } else {
     for (const s of sessions) {
-      const marker = s.isActive ? printTag('当前', 'bgSuccess') : '     ';
+      const marker = s.isActive ? printTag('当前', 'bgGreen') : '     ';
       const date = new Date(s.lastActiveAt).toLocaleString('zh-CN', {
         month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
       });
@@ -506,7 +506,7 @@ function printSessions(): void {
     }
   }
 
-  println('  会话命令:', 'claude');
+  println('  会话命令:', 'yellow');
   println('    /sessions       - 显示会话列表', 'gray');
   println('    /new           - 创建新会话', 'gray');
   println('    /new <人设>    - 创建新会话并指定人设', 'gray');
@@ -515,7 +515,7 @@ function printSessions(): void {
   println('    /rename <name>  - 重命名当前会话', 'gray');
 
   println('');
-  printDivider('━', 'claude');
+  printDivider('=', 'cyan');
   println('');
 }
 
