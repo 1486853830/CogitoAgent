@@ -71,10 +71,15 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  start().catch(error => {
+  start().catch((error) => {
     console.error('启动失败:', error);
     process.exit(1);
   });
 }
 
-main();
+// main() 返回 Promise，若不捕获 rejection 会成为 unhandledRejection。
+// 内部已对 start() 做了 catch，但 runSetup() 等异步路径的异常仍可能冒泡。
+main().catch((err) => {
+  console.error('启动失败:', err);
+  process.exit(1);
+});

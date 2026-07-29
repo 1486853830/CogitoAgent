@@ -12,7 +12,14 @@ const SharedUtils = {
   },
 
   sanitizeHtml(html) {
-    return window.DOMPurify ? window.DOMPurify.sanitize(html) : html;
+    if (window.DOMPurify) {
+      return window.DOMPurify.sanitize(html);
+    }
+    // DOMPurify 不可用时不能直接返回原始 html——上游若把 AI 输出或用户输入
+    // 直接拼接进 innerHTML 会形成 XSS。回退到全量 HTML 转义，仅保留文本语义。
+    const div = document.createElement('div');
+    div.textContent = html;
+    return div.innerHTML;
   },
 
   filterToolBlocks(text) {
@@ -48,7 +55,7 @@ const SharedUtils = {
 
   formatArgs(args) {
     if (Array.isArray(args)) {
-      return args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(', ');
+      return args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(', ');
     }
     if (typeof args === 'object' && args !== null) {
       return Object.entries(args)

@@ -40,7 +40,7 @@ function getCodeLimits(): any {
   const cfg = loadConfig();
   return {
     maxExecutionTime: cfg.code?.maxExecutionTime ?? 30000,
-    maxOutputSize: cfg.code?.maxOutputSize ?? 100000
+    maxOutputSize: cfg.code?.maxOutputSize ?? 100000,
   };
 }
 
@@ -61,7 +61,16 @@ function isSandboxEnabled(): boolean {
 
 /**
  * 在 isolated-vm 沙箱中执行 JavaScript 代码
- * 使用 ivm.Callback 安全包装，避免原型链逃逸风险
+ *
+ * 安全模型：isolated-vm 使用独立 V8 堆，与宿主完全隔离，原型链逃逸
+ * （如 [].constructor.constructor 拿到宿主 Function）在此机制下无效。
+ *
+ * 实现要点：
+ *  - console 在 isolate 内部实现（把输出收集到数组，随结果 JSON 一起传回），
+ *    避免使用 ivm.Callback/Reference 跨堆暴露（v6 下嵌套属性回调不可靠，
+ *    且 Reference 包装的对象在 isolate 内不可直接调用）。
+ *  - 结果通过 JSON 字符串中转：context.eval 仅能直接传回可转移原始值，
+ *    对象默认返回 undefined，故用 JSON.stringify 包成字符串再在宿主解析。
  */
 async function runJavaScriptIsolated(code: string, timeout: number = 10000): Promise<any> {
   const ivm = await getIvm();
@@ -72,190 +81,110 @@ async function runJavaScriptIsolated(code: string, timeout: number = 10000): Pro
   const { maxExecutionTime, maxOutputSize } = getCodeLimits();
 
   let isolate: any = null;
-  let consoleLogCallback: any = null;
-  let consoleErrorCallback: any = null;
-  let consoleWarnCallback: any = null;
-  let consoleInfoCallback: any = null;
 
   try {
     isolate = new ivm.Isolate({
       memoryLimit: MAX_MEMORY_MB,
       inspector: false,
-      cpuTimeout: Math.min(timeout, maxExecutionTime)
+      cpuTimeout: Math.min(timeout, maxExecutionTime),
     });
 
     const context = await isolate.createContext();
     const jail = context.global;
     await jail.set('global', jail.derefInto());
 
-    let outputBuffer = '';
+    // isolate 自带标准 V8 全局（JSON/Math/Date/parseInt/encodeURIComponent 等），
+    // 已作用于该 isolate 的独立堆，无需也无法"逃逸"到宿主。process/require/module
+    // 等 Node 全局本就不存在。isolated-vm 的堆隔离才是安全边界，而非属性屏蔽。
 
-    const formatArg = (a: any) => {
-      if (a === undefined) return 'undefined';
-      if (a === null) return 'null';
-      if (typeof a === 'function') return '[Function]';
-      if (typeof a === 'object') {
-        try {
-          return JSON.stringify(a, null, 2);
-        } catch {
-          return '[Object]';
-        }
-      }
-      return String(a);
-    };
-
-    consoleLogCallback = new ivm.Callback((...args: any[]) => {
-      const line = args.map(formatArg).join(' ');
-      outputBuffer += line + '\n';
-      if (outputBuffer.length > maxOutputSize) {
-        outputBuffer = outputBuffer.slice(0, maxOutputSize) + '\n[输出过长已截断]';
-      }
-    }, { arguments: { copy: true, maxDepth: 2 } });
-
-    consoleErrorCallback = new ivm.Callback((...args: any[]) => {
-      outputBuffer += '[Error] ' + args.map(formatArg).join(' ') + '\n';
-    }, { arguments: { copy: true, maxDepth: 2 } });
-
-    consoleWarnCallback = new ivm.Callback((...args: any[]) => {
-      outputBuffer += '[Warn] ' + args.map(formatArg).join(' ') + '\n';
-    }, { arguments: { copy: true, maxDepth: 2 } });
-
-    consoleInfoCallback = new ivm.Callback((...args: any[]) => {
-      outputBuffer += '[Info] ' + args.map(formatArg).join(' ') + '\n';
-    }, { arguments: { copy: true, maxDepth: 2 } });
-
-    await jail.set('console', new ivm.Reference({
-      log: consoleLogCallback,
-      error: consoleErrorCallback,
-      warn: consoleWarnCallback,
-      info: consoleInfoCallback
-    }));
-
-    await jail.set('JSON', context.evalSync('({})'));
-    await jail.set('Math', context.evalSync('({})'));
-    await jail.set('Date', context.evalSync('({})'));
-
-    const jsonMethods = ['parse', 'stringify'];
-    const mathMethods = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh', 'atan2', 'cbrt', 'ceil', 'clz32', 'cos', 'cosh', 'exp', 'floor', 'fround', 'hypot', 'imul', 'log', 'log1p', 'log2', 'log10', 'max', 'min', 'pow', 'random', 'round', 'sign', 'sin', 'sinh', 'sqrt', 'tan', 'tanh', 'trunc', 'E', 'PI', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'SQRT1_2', 'SQRT2'];
-    const dateMethods = ['now', 'parse', 'UTC'];
-
-    for (const method of jsonMethods) {
-      await jail.set(`JSON.${method}`, new ivm.Callback((...args: any[]) => (JSON as any)[method](...args), { arguments: { copy: true }, result: { copy: true } }));
-    }
-
-    for (const method of mathMethods) {
-      if (typeof (Math as any)[method] === 'function') {
-        await jail.set(`Math.${method}`, new ivm.Callback((...args: any[]) => (Math as any)[method](...args), { arguments: { copy: true }, result: { copy: true } }));
-      } else {
-        await jail.set(`Math.${method}`, (Math as any)[method]);
-      }
-    }
-
-    for (const method of dateMethods) {
-      await jail.set(`Date.${method}`, new ivm.Callback((...args: any[]) => (Date as any)[method](...args), { arguments: { copy: true }, result: { copy: true } }));
-    }
-
-    await jail.set('parseInt', new ivm.Callback((str: any, radix: any) => parseInt(str, radix), { arguments: { copy: true }, result: { copy: true } }));
-    await jail.set('parseFloat', new ivm.Callback((str: any) => parseFloat(str), { arguments: { copy: true }, result: { copy: true } }));
-    await jail.set('isNaN', new ivm.Callback((val: any) => isNaN(val), { arguments: { copy: true }, result: { copy: true } }));
-    await jail.set('isFinite', new ivm.Callback((val: any) => isFinite(val), { arguments: { copy: true }, result: { copy: true } }));
-    await jail.set('encodeURIComponent', new ivm.Callback((str: any) => encodeURIComponent(str), { arguments: { copy: true }, result: { copy: true } }));
-    await jail.set('decodeURIComponent', new ivm.Callback((str: any) => decodeURIComponent(str), { arguments: { copy: true }, result: { copy: true } }));
-    await jail.set('encodeURI', new ivm.Callback((str: any) => encodeURI(str), { arguments: { copy: true }, result: { copy: true } }));
-    await jail.set('decodeURI', new ivm.Callback((str: any) => decodeURI(str), { arguments: { copy: true }, result: { copy: true } }));
-
-    await jail.set('globalThis', null);
-    await jail.set('process', null);
-    await jail.set('require', null);
-    await jail.set('module', null);
-    await jail.set('exports', null);
-    await jail.set('Buffer', null);
-    await jail.set('setTimeout', null);
-    await jail.set('setInterval', null);
-    await jail.set('setImmediate', null);
-    await jail.set('clearTimeout', null);
-    await jail.set('clearInterval', null);
-    await jail.set('clearImmediate', null);
-    await jail.set('fetch', null);
-    await jail.set('eval', null);
-    await jail.set('Function', null);
-    await jail.set('Proxy', null);
-
+    // console 在 isolate 内部实现：收集日志到数组，随结果一起返回。
+    // 结果通过 JSON 字符串中转回宿主。
     const wrappedCode = `
       (function() {
+        var __logs = [];
+        function __fmt(a) {
+          if (a === undefined) return 'undefined';
+          if (a === null) return 'null';
+          if (typeof a === 'function') return '[Function]';
+          if (typeof a === 'object') {
+            try { return JSON.stringify(a, null, 2); } catch (e) { return '[Object]'; }
+          }
+          return String(a);
+        }
+        function __join(args) {
+          var out = [];
+          for (var i = 0; i < args.length; i++) out.push(__fmt(args[i]));
+          return out.join(' ');
+        }
+        console = {
+          log: function() { __logs.push(__join(arguments)); },
+          info: function() { __logs.push('[INFO] ' + __join(arguments)); },
+          warn: function() { __logs.push('[WARN] ' + __join(arguments)); },
+          error: function() { __logs.push('[ERROR] ' + __join(arguments)); }
+        };
         try {
-          const result = (function() { ${code} })();
-          return { success: true, result: result };
+          var result = (function() { ${code} })();
+          return JSON.stringify({ success: true, result: result, logs: __logs });
         } catch (e) {
-          return { success: false, error: e.message };
+          return JSON.stringify({ success: false, error: e && e.message ? e.message : String(e), logs: __logs });
         }
       })()
     `;
 
-    const result = await context.eval(wrappedCode, {
+    const resultStr = await context.eval(wrappedCode, {
       timeout: Math.min(timeout, maxExecutionTime),
-      breakOnSigint: true
+      breakOnSigint: true,
     });
 
-    const resultObj = await result.copy();
+    let resultObj: any;
+    try {
+      resultObj = JSON.parse(resultStr);
+    } catch {
+      return {
+        success: false,
+        error: '沙箱执行失败: 无法解析执行结果',
+      };
+    }
 
-    let output;
-    if (resultObj.success) {
-      if (resultObj.result === undefined) {
-        output = outputBuffer || '执行完成，无返回值';
-      } else if (typeof resultObj.result === 'object') {
-        output = (outputBuffer || '') + JSON.stringify(resultObj.result, null, 2);
-      } else {
-        output = (outputBuffer || '') + String(resultObj.result);
+    // 控制台输出
+    let output = '';
+    const logs: string[] = Array.isArray(resultObj.logs) ? resultObj.logs : [];
+    if (logs.length > 0) {
+      output = logs.join('\n') + '\n';
+      if (output.length > maxOutputSize) {
+        output = output.slice(0, maxOutputSize) + '\n[输出过长已截断]';
       }
-    } else {
-      output = '[执行错误]: ' + resultObj.error;
+    }
+
+    if (!resultObj.success) {
+      return { success: false, error: `执行失败: ${resultObj.error}` };
+    }
+
+    if (resultObj.result !== undefined && resultObj.result !== null) {
+      if (typeof resultObj.result === 'object') {
+        output += JSON.stringify(resultObj.result, null, 2);
+      } else {
+        output += String(resultObj.result);
+      }
+    } else if (logs.length === 0) {
+      output = '执行完成，无返回值';
     }
 
     if (output.length > maxOutputSize) {
       output = output.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
     }
 
-    return {
-      success: true,
-      data: output
-    };
-
+    return { success: true, data: output };
   } catch (error: any) {
     return {
       success: false,
-      error: `沙箱执行失败: ${error.message}`
+      error: `沙箱执行失败: ${error.message}`,
     };
   } finally {
-    if (consoleLogCallback) {
-      try {
-        consoleLogCallback.release();
-      } catch {
-      }
-    }
-    if (consoleErrorCallback) {
-      try {
-        consoleErrorCallback.release();
-      } catch {
-      }
-    }
-    if (consoleWarnCallback) {
-      try {
-        consoleWarnCallback.release();
-      } catch {
-      }
-    }
-    if (consoleInfoCallback) {
-      try {
-        consoleInfoCallback.release();
-      } catch {
-      }
-    }
     if (isolate) {
       try {
         isolate.dispose();
-      } catch {
-      }
+      } catch {}
     }
   }
 }
@@ -274,7 +203,7 @@ function createFrozenObject(obj: any): any {
 
   for (const name of propNames) {
     const descriptor = Object.getOwnPropertyDescriptor(obj, name);
-    if (descriptor && (descriptor.value !== undefined)) {
+    if (descriptor && descriptor.value !== undefined) {
       if (typeof descriptor.value === 'object' && descriptor.value !== null) {
         createFrozenObject(descriptor.value);
       }
@@ -284,7 +213,7 @@ function createFrozenObject(obj: any): any {
 
   for (const sym of symbolProps) {
     const descriptor = Object.getOwnPropertyDescriptor(obj, sym);
-    if (descriptor && (descriptor.value !== undefined)) {
+    if (descriptor && descriptor.value !== undefined) {
       if (typeof descriptor.value === 'object' && descriptor.value !== null) {
         createFrozenObject(descriptor.value);
       }
@@ -298,12 +227,14 @@ function createFrozenObject(obj: any): any {
 function createJavaScriptSandbox(): any {
   const sandbox = Object.create(null);
 
-  sandbox.console = Object.seal(Object.assign(Object.create(null), {
-    log: () => {},
-    error: () => {},
-    warn: () => {},
-    info: () => {}
-  }));
+  sandbox.console = Object.seal(
+    Object.assign(Object.create(null), {
+      log: () => {},
+      error: () => {},
+      warn: () => {},
+      info: () => {},
+    }),
+  );
 
   sandbox.global = null;
   sandbox.globalThis = null;
@@ -343,12 +274,15 @@ function createJavaScriptSandbox(): any {
 async function runJavaScriptFallback(code: string, timeout: number = 10000): Promise<any> {
   return new Promise((resolve) => {
     const { maxExecutionTime, maxOutputSize } = getCodeLimits();
-    const timeoutId = setTimeout(() => {
-      resolve({
-        success: false,
-        error: '执行超时（超过指定时间）'
-      });
-    }, Math.min(timeout, maxExecutionTime));
+    const timeoutId = setTimeout(
+      () => {
+        resolve({
+          success: false,
+          error: '执行超时（超过指定时间）',
+        });
+      },
+      Math.min(timeout, maxExecutionTime),
+    );
 
     try {
       const { context } = createJavaScriptSandbox();
@@ -365,7 +299,7 @@ async function runJavaScriptFallback(code: string, timeout: number = 10000): Pro
 
       const result = vm.runInContext(wrappedCode, context, {
         timeout: Math.min(timeout, maxExecutionTime),
-        displayErrors: true
+        displayErrors: true,
       });
 
       clearTimeout(timeoutId);
@@ -389,13 +323,13 @@ async function runJavaScriptFallback(code: string, timeout: number = 10000): Pro
 
       resolve({
         success: true,
-        data: output
+        data: output,
       });
     } catch (error: any) {
       clearTimeout(timeoutId);
       resolve({
         success: false,
-        error: `沙箱执行失败: ${error.message}`
+        error: `沙箱执行失败: ${error.message}`,
       });
     }
   });
@@ -411,16 +345,18 @@ async function runJavaScriptSandbox(code: string, timeout: number = 10000): Prom
 
   const ivm = await getIvm();
   if (!ivm) {
-    console.warn('[sandbox] isolated-vm 不可用，使用原生 vm 模块');
-    return await runJavaScriptFallback(code, timeout);
+    // 安全决策：isolated-vm 不可用时不再静默降级到 Node 原生 vm。
+    // vm 模块并非安全沙箱（可通过原型链逃逸到宿主上下文），继续作为"沙箱"使用
+    // 会给调用方造成虚假的安全感。此处直接拒绝执行。
+    return {
+      success: false,
+      error: 'isolated-vm 不可用，已拒绝以不安全的 vm 模块执行代码',
+    };
   }
 
-  try {
-    return await runJavaScriptIsolated(code, timeout);
-  } catch (error: any) {
-    console.warn(`isolated-vm 执行失败，降级到原生 vm: ${error.message}`);
-    return await runJavaScriptFallback(code, timeout);
-  }
+  // runJavaScriptIsolated 内部已用 try/catch 包裹并返回结构化结果，
+  // 此处不再兜底降级到 vm，避免把失败的重试导向不安全路径。
+  return await runJavaScriptIsolated(code, timeout);
 }
 
 /**
@@ -434,7 +370,7 @@ async function runJavaScriptDirect(code: string): Promise<any> {
     const timeoutId = setTimeout(() => {
       resolve({
         success: false,
-        error: `执行超时（超过${maxExecutionTime / 1000}秒）`
+        error: `执行超时（超过${maxExecutionTime / 1000}秒）`,
       });
     }, maxExecutionTime);
 
@@ -442,29 +378,29 @@ async function runJavaScriptDirect(code: string): Promise<any> {
       const safeGlobals: any = {
         console: {
           log: (...args: any[]) => {
-            const output = args.map(a =>
-              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-            ).join(' ');
+            const output = args
+              .map((a) => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)))
+              .join(' ');
             console.log(output);
           },
           error: (...args: any[]) => {
-            const output = args.map(a =>
-              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-            ).join(' ');
+            const output = args
+              .map((a) => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)))
+              .join(' ');
             console.error(output);
           },
           warn: (...args: any[]) => {
-            const output = args.map(a =>
-              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-            ).join(' ');
+            const output = args
+              .map((a) => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)))
+              .join(' ');
             console.warn(output);
           },
           info: (...args: any[]) => {
-            const output = args.map(a =>
-              typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)
-            ).join(' ');
+            const output = args
+              .map((a) => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)))
+              .join(' ');
             console.info(output);
-          }
+          },
         },
         JSON: JSON,
         Math: Math,
@@ -484,7 +420,7 @@ async function runJavaScriptDirect(code: string): Promise<any> {
         isNaN: isNaN,
         isFinite: isFinite,
         encodeURIComponent: encodeURIComponent,
-        decodeURIComponent: decodeURIComponent
+        decodeURIComponent: decodeURIComponent,
       };
 
       const fn = new Function(
@@ -500,7 +436,7 @@ async function runJavaScriptDirect(code: string): Promise<any> {
             }
           })();
         }
-        `
+        `,
       );
 
       const result = fn(safeGlobals);
@@ -526,13 +462,13 @@ async function runJavaScriptDirect(code: string): Promise<any> {
 
       resolve({
         success: true,
-        data: output
+        data: output,
       });
     } catch (error: any) {
       clearTimeout(timeoutId);
       resolve({
         success: false,
-        error: `执行失败: ${error.message}`
+        error: `执行失败: ${error.message}`,
       });
     }
   });
@@ -576,8 +512,7 @@ async function cleanupTmpFile(tmpPath: any): Promise<void> {
   if (tmpPath) {
     try {
       await fs.unlink(tmpPath);
-    } catch {
-    }
+    } catch {}
   }
 }
 
@@ -595,7 +530,7 @@ async function runPythonSandbox(code: string): Promise<any> {
       await cleanupTmpFile(tmpPath);
       resolve({
         success: false,
-        error: `执行超时（超过${maxExecutionTime / 1000}秒）`
+        error: `执行超时（超过${maxExecutionTime / 1000}秒）`,
       });
     }, maxExecutionTime);
 
@@ -618,46 +553,51 @@ async function runPythonSandbox(code: string): Promise<any> {
       delete secureEnv.PYTHONRC;
       delete secureEnv.VIRTUAL_ENV;
 
-      execFile('python', [tmpPath], {
-        timeout: maxExecutionTime,
-        encoding: 'utf8',
-        cwd: os.tmpdir(),
-        env: secureEnv,
-        maxBuffer: maxOutputSize * 2,
-      }, async (error: any, stdout: any, stderr: any) => {
-        if (timedOut) return;
+      execFile(
+        'python',
+        [tmpPath],
+        {
+          timeout: maxExecutionTime,
+          encoding: 'utf8',
+          cwd: os.tmpdir(),
+          env: secureEnv,
+          maxBuffer: maxOutputSize * 2,
+        },
+        async (error: any, stdout: any, stderr: any) => {
+          if (timedOut) return;
 
-        clearTimeout(timeoutId);
-        await cleanupTmpFile(tmpPath);
+          clearTimeout(timeoutId);
+          await cleanupTmpFile(tmpPath);
 
-        if (error) {
+          if (error) {
+            resolve({
+              success: false,
+              error: `执行失败: ${error.message}\n${stderr || ''}`,
+            });
+            return;
+          }
+
+          let result = stdout || '执行完成，无输出';
+          if (stderr) {
+            result += '\n[警告]: ' + stderr;
+          }
+
+          if (result.length > maxOutputSize) {
+            result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
+          }
+
           resolve({
-            success: false,
-            error: `执行失败: ${error.message}\n${stderr || ''}`
+            success: true,
+            data: result,
           });
-          return;
-        }
-
-        let result = stdout || '执行完成，无输出';
-        if (stderr) {
-          result += '\n[警告]: ' + stderr;
-        }
-
-        if (result.length > maxOutputSize) {
-          result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
-        }
-
-        resolve({
-          success: true,
-          data: result
-        });
-      });
+        },
+      );
     } catch (error: any) {
       clearTimeout(timeoutId);
       await cleanupTmpFile(tmpPath);
       resolve({
         success: false,
-        error: `执行失败: ${error.message}`
+        error: `执行失败: ${error.message}`,
       });
     }
   });
@@ -679,7 +619,7 @@ async function executeCodeSandbox(code: string, language: string = 'javascript')
     default:
       return {
         success: false,
-        error: `不支持的语言: ${language}`
+        error: `不支持的语言: ${language}`,
       };
   }
 }

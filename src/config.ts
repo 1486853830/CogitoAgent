@@ -97,12 +97,27 @@ function loadEnvFile(): void {
       const lines = content.split('\n');
       for (const line of lines) {
         const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith('#')) {
-          const [key, value] = trimmed.split('=', 2);
-          if (key && value !== undefined) {
-            process.env[key] = value;
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx === -1) continue;
+        const key = trimmed.slice(0, eqIdx).trim();
+        if (!key) continue;
+        let value = trimmed.slice(eqIdx + 1);
+        // 去除行内注释（# 前必须有空格，避免误切值中的 #）
+        const commentIdx = value.indexOf(' #');
+        if (commentIdx !== -1) {
+          value = value.slice(0, commentIdx);
+        }
+        value = value.trim();
+        // 处理引号包裹的值：支持 "value" 和 'value'，移除首尾引号
+        if (value.length >= 2) {
+          const first = value[0];
+          const last = value[value.length - 1];
+          if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+            value = value.slice(1, -1);
           }
         }
+        process.env[key] = value;
       }
     } catch (e) {
       console.error(`[配置] 读取 .env 文件失败: ${(e as Error).message}`);
@@ -312,8 +327,19 @@ function loadConfig(): Config {
       ) as unknown as Config;
     }
   } catch (e) {
-    console.warn(`[配置] 加载失败: ${(e as Error).message}`);
+    // config.json 解析失败时不能只回退到 DEFAULT_CONFIG——否则 .env 中的
+    // API 密钥等关键配置不会被加载，程序在用户已配置的情况下仍报"未配置"。
+    console.warn(`[配置] 加载失败，回退到默认配置 + 环境变量: ${(e as Error).message}`);
     config = { ...DEFAULT_CONFIG };
+    try {
+      const envConfig = loadEnvConfig();
+      config = deepMerge(
+        config as unknown as Record<string, unknown>,
+        envConfig,
+      ) as unknown as Config;
+    } catch (envErr) {
+      console.warn(`[配置] 环境变量加载也失败: ${(envErr as Error).message}`);
+    }
   }
 
   return config;

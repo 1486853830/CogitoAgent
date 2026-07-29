@@ -436,29 +436,6 @@
   <script src="../shared/token-manager.js"></script>
   <script src="../../node_modules/marked/lib/marked.umd.js"></script>
   <script src="../../node_modules/dompurify/dist/purify.min.js"></script>
-  <script>
-    // 环境粒子生成 — 背景氛围（磷光浮点）
-    (function() {
-      const container = document.getElementById('ambientParticles');
-      if (!container) return;
-      const PARTICLE_COUNT = 28;
-      const frag = document.createDocumentFragment();
-      for (let i = 0; i < PARTICLE_COUNT; i++) {
-        const p = document.createElement('span');
-        p.className = 'particle';
-        const size = (1 + Math.random() * 2.2).toFixed(2);
-        p.style.left = (Math.random() * 100).toFixed(2) + '%';
-        p.style.top = (Math.random() * 100).toFixed(2) + '%';
-        p.style.width = size + 'px';
-        p.style.height = size + 'px';
-        p.style.animationDelay = (Math.random() * -14).toFixed(2) + 's';
-        p.style.animationDuration = (10 + Math.random() * 12).toFixed(2) + 's';
-        p.style.setProperty('--particle-opacity', (0.15 + Math.random() * 0.4).toFixed(2));
-        frag.appendChild(p);
-      }
-      container.appendChild(frag);
-    })();
-  </script>
   <script src="renderer.js"></script>
 </body>
 </html>

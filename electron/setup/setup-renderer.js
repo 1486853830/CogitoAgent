@@ -3,6 +3,23 @@
  * 处理配置向导的 UI 交互和 IPC 通信
  */
 
+// 内联脚本外迁：节折叠交互（原 setup.html 内联 <script>，为 CSP 安全移出）
+function toggleSection(id) {
+  const section = document.getElementById(id);
+  const toggle = section.parentElement.querySelector('.section-toggle');
+  const header = section.parentElement.querySelector('.section-header');
+  if (section.style.display === 'none') {
+    section.style.display = 'block';
+    toggle.textContent = '−';
+    header.classList.add('expanded');
+  } else {
+    section.style.display = 'none';
+    toggle.textContent = '+';
+    header.classList.remove('expanded');
+  }
+}
+document.querySelectorAll('.section-content').forEach((el) => (el.style.display = 'none'));
+
 // DOM 元素
 const progressFill = document.getElementById('progressFill');
 const progressSteps = document.querySelectorAll('.progress-steps .step');
@@ -78,19 +95,19 @@ async function init() {
 async function loadPersonas() {
   try {
     const personas = await window.electronAPI.getPersonas();
-    
+
     personaGrid.innerHTML = '';
-    
+
     // 默认选项
     const defaultCard = createPersonaCard('', '默认', '无特定性格');
     personaGrid.appendChild(defaultCard);
-    
+
     // 动态加载的 personas
     for (const p of personas) {
       const card = createPersonaCard(p.id, p.name, p.id);
       personaGrid.appendChild(card);
     }
-    
+
     // 绑定点击事件
     setupPersonaClickListeners();
   } catch (e) {
@@ -105,18 +122,18 @@ function createPersonaCard(id, name, desc) {
   const card = document.createElement('div');
   card.className = 'persona-card';
   card.dataset.persona = id;
-  
+
   const nameDiv = document.createElement('div');
   nameDiv.className = 'persona-name';
   nameDiv.textContent = name;
-  
+
   const descDiv = document.createElement('div');
   descDiv.className = 'persona-desc';
   descDiv.textContent = desc;
-  
+
   card.appendChild(nameDiv);
   card.appendChild(descDiv);
-  
+
   return card;
 }
 
@@ -124,9 +141,9 @@ function createPersonaCard(id, name, desc) {
  * 设置人设卡片点击事件
  */
 function setupPersonaClickListeners() {
-  personaGrid.querySelectorAll('.persona-card').forEach(card => {
+  personaGrid.querySelectorAll('.persona-card').forEach((card) => {
     card.addEventListener('click', () => {
-      personaGrid.querySelectorAll('.persona-card').forEach(c => c.classList.remove('selected'));
+      personaGrid.querySelectorAll('.persona-card').forEach((c) => c.classList.remove('selected'));
       card.classList.add('selected');
       selectedPersona = card.dataset.persona;
     });
@@ -141,7 +158,7 @@ function setupEventListeners() {
   btnBack.addEventListener('click', handleBack);
 
   // 预设按钮点击
-  presetBtns.forEach(btn => {
+  presetBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const preset = btn.dataset.preset;
       const targetInput = btn.closest('.form-step').querySelector('input');
@@ -158,7 +175,7 @@ function setupEventListeners() {
   });
 
   // 输入框回车跳下一步
-  [baseURLInput, apiKeyInput, modelInput, workspaceInput].forEach(input => {
+  [baseURLInput, apiKeyInput, modelInput, workspaceInput].forEach((input) => {
     if (input) {
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -193,7 +210,7 @@ function updateUI() {
   });
 
   // 更新表单显示
-  formSteps.forEach(step => {
+  formSteps.forEach((step) => {
     step.classList.remove('active');
     if (parseInt(step.dataset.step) === currentStep) {
       step.classList.add('active');
@@ -294,38 +311,42 @@ function submitConfig() {
       provider: 'custom',
       baseURL: baseURLInput.value.trim(),
       apiKey: apiKeyInput.value.trim(),
-      model: modelInput.value.trim()
+      model: modelInput.value.trim(),
     },
     workspace: workspaceInput.value.trim() || defaultWorkspace,
     persona: selectedPersona,
-    thinkingInterval: thinkingIntervalInput.value.trim() ? parseInt(thinkingIntervalInput.value.trim(), 10) : 3000,
+    thinkingInterval: thinkingIntervalInput.value.trim()
+      ? parseInt(thinkingIntervalInput.value.trim(), 10)
+      : 3000,
     mode: modeSelect.value,
     email: {
       host: emailHostInput.value.trim(),
       port: emailPortInput.value.trim() ? parseInt(emailPortInput.value.trim(), 10) : 587,
       user: emailUserInput.value.trim(),
       password: emailPasswordInput.value.trim(),
-      from: emailFromInput.value.trim()
+      from: emailFromInput.value.trim(),
     },
     ocr: {
       apiKey: ocrApiKeyInput.value.trim(),
       baseURL: ocrBaseURLInput.value.trim(),
       model: ocrModelInput.value.trim() || 'Qwen2.5-VL-32B-Instruct',
-      provider: ocrProviderInput.value.trim()
+      provider: ocrProviderInput.value.trim(),
     },
     vision: {
       apiKey: visionApiKeyInput.value.trim(),
       baseURL: visionBaseURLInput.value.trim(),
-      model: visionModelInput.value.trim() || 'Qwen2.5-VL-32B-Instruct'
+      model: visionModelInput.value.trim() || 'Qwen2.5-VL-32B-Instruct',
     },
     code: {
       timeout: codeTimeoutInput.value.trim() ? parseInt(codeTimeoutInput.value.trim(), 10) : 30000,
-      maxOutput: codeMaxOutputInput.value.trim() ? parseInt(codeMaxOutputInput.value.trim(), 10) : 100000
+      maxOutput: codeMaxOutputInput.value.trim()
+        ? parseInt(codeMaxOutputInput.value.trim(), 10)
+        : 100000,
     },
     security: {
       confirmDangerous: confirmDangerousInput.checked,
-      sandboxMode: sandboxModeInput.checked
-    }
+      sandboxMode: sandboxModeInput.checked,
+    },
   };
 
   // 禁用按钮，防止重复提交
@@ -344,7 +365,7 @@ function handleConfigResult(data) {
     // 显示完成页面
     setupForm.style.display = 'none';
     setupComplete.style.display = 'block';
-    
+
     // 2秒后启动主界面
     setTimeout(() => {
       window.electronAPI.launchMainApp();

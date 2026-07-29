@@ -36,7 +36,7 @@ function initApp() {
   window.electronAPI?.onPersonaSwitched?.((data) => {
     console.log('[Desktop] Persona 已切换:', data.persona);
     // 同步主进程的 currentPersona
-    window.electronAPI?.send('update-current-persona', data.persona);
+    window.electronAPI?.updateCurrentPersona(data.persona);
     PersonaManager.loadPersonaMedia();
   });
 
@@ -54,7 +54,8 @@ function initApp() {
     removeMessage: (msgResult) => msgResult?.msgDiv?.remove(),
     removeTypingCursor: (msgResult) => msgResult?.bubble?.classList.remove('typing-cursor'),
     addToolCall: (toolName, args) => MessageRenderer.addToolCall(toolName, args),
-    addToolResult: (toolName, data, success) => MessageRenderer.addToolResult(toolName, data, success),
+    addToolResult: (toolName, data, success) =>
+      MessageRenderer.addToolResult(toolName, data, success),
     filterToolBlocks: (text) => SharedUtils.filterToolBlocks(text),
     scrollToBottom: () => MessageRenderer.scrollToBottom(),
     onProcessingChange: (processing) => {

@@ -7,24 +7,93 @@ const PROJECT_ROOT = process.cwd();
  * Git 命令白名单 - 仅允许安全的 Git 子命令和选项
  */
 const ALLOWED_GIT_SUBCOMMANDS = new Set([
-  'init', 'clone', 'add', 'commit', 'push', 'pull', 'status', 'log',
-  'branch', 'checkout', 'merge', 'diff', 'remote', 'stash', 'reset', 'config', 'fetch', 'rebase'
+  'init',
+  'clone',
+  'add',
+  'commit',
+  'push',
+  'pull',
+  'status',
+  'log',
+  'branch',
+  'checkout',
+  'merge',
+  'diff',
+  'remote',
+  'stash',
+  'reset',
+  'config',
+  'fetch',
+  'rebase',
 ]);
 
 const ALLOWED_GIT_OPTIONS = new Set([
-  '-m', '-a', '-am', '-v', '-d', '-D', '-f', '-force', '--force',
-  '--soft', '--hard', '--mixed', '--no-pager',
-  '--global', '--local', '--system',
-  '-b', '-B', '-t', '-u', '--set-upstream',
-  '--no-verify', '--only', '--onto',
-  '-r', '-a', '-v', '--verbose', '--stat', '--short', '--name-only',
-  '--oneline', '--graph', '--decorate', '--all', '-n', '--limit',
-  '--since', '--until', '--author', '--grep', '--pickaxe',
-  '-S', '-G', '-L', '-p', '-w', '--ignore-space-change',
-  '--no-commit', '-n', '-e', '--edit', '-F', '--file',
-  '--stash', '--no-stash', '--keep', '--drop',
-  '-q', '--quiet', '--porcelain', '-z', '--null',
-  'user.name', 'user.email', 'user.signingkey'
+  '-m',
+  '-a',
+  '-am',
+  '-v',
+  '-d',
+  '-D',
+  '-f',
+  '-force',
+  '--force',
+  '--soft',
+  '--hard',
+  '--mixed',
+  '--no-pager',
+  '--global',
+  '--local',
+  '--system',
+  '-b',
+  '-B',
+  '-t',
+  '-u',
+  '--set-upstream',
+  '--no-verify',
+  '--only',
+  '--onto',
+  '-r',
+  '-a',
+  '-v',
+  '--verbose',
+  '--stat',
+  '--short',
+  '--name-only',
+  '--oneline',
+  '--graph',
+  '--decorate',
+  '--all',
+  '-n',
+  '--limit',
+  '--since',
+  '--until',
+  '--author',
+  '--grep',
+  '--pickaxe',
+  '-S',
+  '-G',
+  '-L',
+  '-p',
+  '-w',
+  '--ignore-space-change',
+  '--no-commit',
+  '-n',
+  '-e',
+  '--edit',
+  '-F',
+  '--file',
+  '--stash',
+  '--no-stash',
+  '--keep',
+  '--drop',
+  '-q',
+  '--quiet',
+  '--porcelain',
+  '-z',
+  '--null',
+  'user.name',
+  'user.email',
+  'user.signingkey',
 ]);
 
 /**
@@ -52,8 +121,14 @@ function validateGitArgs(args: any[]): boolean {
     if (arg.startsWith('-')) {
       // 允许 --no-pager 总是可用
       if (arg === '--no-pager') continue;
-      // 检查是否是允许的选项
-      if (!ALLOWED_GIT_OPTIONS.has(arg) && !arg.startsWith('--')) {
+      // 严格白名单：必须在允许的选项集合中。
+      // 此前曾有 `!arg.startsWith('--')` 豁免分支，使任何 `--xxx` 都能通过，
+      // 导致 --upload-pack / --config=core.sshCommand / --receive-pack / --exec
+      // 等高危选项可注入（git clone --upload-pack=calc.exe 即可 RCE）。
+      // 这里要求 -- 前缀选项同样走显式白名单。
+      // 对于带值的选项（形如 --opt=value），拆分后只校验选项名部分。
+      const optName = arg.includes('=') ? arg.slice(0, arg.indexOf('=')) : arg;
+      if (!ALLOWED_GIT_OPTIONS.has(optName)) {
         return false;
       }
       continue;
@@ -75,7 +150,10 @@ function validateGitArgs(args: any[]): boolean {
  * @param allowOutsideProject - 是否允许在项目目录外操作
  * @returns {{ valid: boolean, error?: string, resolvedPath?: string }}
  */
-function validateCwd(cwd: string, allowOutsideProject: boolean = false): { valid: boolean; error?: string; resolvedPath?: string } {
+function validateCwd(
+  cwd: string,
+  allowOutsideProject: boolean = false,
+): { valid: boolean; error?: string; resolvedPath?: string } {
   // 如果是默认的 process.cwd()，直接允许
   if (!cwd || cwd === process.cwd()) {
     return { valid: true, resolvedPath: process.cwd() };
@@ -86,20 +164,18 @@ function validateCwd(cwd: string, allowOutsideProject: boolean = false): { valid
   if (dangerousPattern.test(cwd)) {
     return {
       valid: false,
-      error: `工作目录路径包含危险字符: ${cwd}`
+      error: `工作目录路径包含危险字符: ${cwd}`,
     };
   }
 
   // 解析为绝对路径
   let absolutePath: string;
   try {
-    absolutePath = path.isAbsolute(cwd)
-      ? path.normalize(cwd)
-      : path.resolve(PROJECT_ROOT, cwd);
+    absolutePath = path.isAbsolute(cwd) ? path.normalize(cwd) : path.resolve(PROJECT_ROOT, cwd);
   } catch (e) {
     return {
       valid: false,
-      error: `无效的路径: ${cwd}`
+      error: `无效的路径: ${cwd}`,
     };
   }
 
@@ -110,17 +186,19 @@ function validateCwd(cwd: string, allowOutsideProject: boolean = false): { valid
   if (absolutePath.includes('..')) {
     return {
       valid: false,
-      error: `不允许路径遍历: ${cwd}`
+      error: `不允许路径遍历: ${cwd}`,
     };
   }
 
   // 如果不允许在项目目录外，检查是否在项目目录下
   if (!allowOutsideProject) {
     const normalizedRoot = path.normalize(PROJECT_ROOT);
-    if (!absolutePath.startsWith(normalizedRoot)) {
+    // 必须使用路径分隔符边界校验，避免兄弟目录前缀绕过：
+    // 若仅用 startsWith，PROJECT_ROOT=/proj 会放行 /proj-evil。
+    if (absolutePath !== normalizedRoot && !absolutePath.startsWith(normalizedRoot + path.sep)) {
       return {
         valid: false,
-        error: `工作目录必须在项目目录下: ${PROJECT_ROOT}`
+        error: `工作目录必须在项目目录下: ${PROJECT_ROOT}`,
       };
     }
   }
@@ -138,7 +216,7 @@ function gitCommand(args: string[], cwd: string = process.cwd()): Promise<any> {
     if (!validateGitArgs(args)) {
       resolve({
         success: false,
-        error: 'Git 命令参数包含危险字符或不允许的操作，操作已拒绝'
+        error: 'Git 命令参数包含危险字符或不允许的操作，操作已拒绝',
       });
       return;
     }
@@ -148,7 +226,7 @@ function gitCommand(args: string[], cwd: string = process.cwd()): Promise<any> {
     if (!cwdValidation.valid) {
       resolve({
         success: false,
-        error: `工作目录验证失败: ${cwdValidation.error}`
+        error: `工作目录验证失败: ${cwdValidation.error}`,
       });
       return;
     }
@@ -156,23 +234,28 @@ function gitCommand(args: string[], cwd: string = process.cwd()): Promise<any> {
     // 使用 --no-pager 防止通过 git 命令注入
     const safeArgs = ['--no-pager', ...args];
 
-    execFile('git', safeArgs, {
-      cwd: cwdValidation.resolvedPath,
-      timeout: 30000,
-      encoding: 'utf8'
-    }, (error, stdout, stderr) => {
-      if (error) {
-        resolve({
-          success: false,
-          error: `Git 命令执行失败: ${error.message}\n${stderr || ''}`
-        });
-      } else {
-        resolve({
-          success: true,
-          data: stdout.trim() || '操作成功'
-        });
-      }
-    });
+    execFile(
+      'git',
+      safeArgs,
+      {
+        cwd: cwdValidation.resolvedPath,
+        timeout: 30000,
+        encoding: 'utf8',
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          resolve({
+            success: false,
+            error: `Git 命令执行失败: ${error.message}\n${stderr || ''}`,
+          });
+        } else {
+          resolve({
+            success: true,
+            data: stdout.trim() || '操作成功',
+          });
+        }
+      },
+    );
   });
 }
 
@@ -186,7 +269,11 @@ async function gitInit(cwd: string = process.cwd()): Promise<any> {
 /**
  * 克隆仓库
  */
-async function gitClone(url: string, dest: string = '.', cwd: string = process.cwd()): Promise<any> {
+async function gitClone(
+  url: string,
+  dest: string = '.',
+  cwd: string = process.cwd(),
+): Promise<any> {
   return await gitCommand(['clone', url, dest], cwd);
 }
 
@@ -207,14 +294,22 @@ async function gitCommit(message: string, cwd: string = process.cwd()): Promise<
 /**
  * 推送变更
  */
-async function gitPush(remote: string = 'origin', branch: string = 'main', cwd: string = process.cwd()): Promise<any> {
+async function gitPush(
+  remote: string = 'origin',
+  branch: string = 'main',
+  cwd: string = process.cwd(),
+): Promise<any> {
   return await gitCommand(['push', remote, branch], cwd);
 }
 
 /**
  * 拉取变更
  */
-async function gitPull(remote: string = 'origin', branch: string = 'main', cwd: string = process.cwd()): Promise<any> {
+async function gitPull(
+  remote: string = 'origin',
+  branch: string = 'main',
+  cwd: string = process.cwd(),
+): Promise<any> {
   return await gitCommand(['pull', remote, branch], cwd);
 }
 
@@ -306,7 +401,11 @@ async function gitRemoteList(cwd: string = process.cwd()): Promise<any> {
 /**
  * 设置用户信息
  */
-async function gitConfigUser(name: string, email: string, cwd: string = process.cwd()): Promise<any> {
+async function gitConfigUser(
+  name: string,
+  email: string,
+  cwd: string = process.cwd(),
+): Promise<any> {
   await gitCommand(['config', 'user.name', name], cwd);
   return await gitCommand(['config', 'user.email', email], cwd);
 }
@@ -317,12 +416,12 @@ async function gitConfigUser(name: string, email: string, cwd: string = process.
 async function gitReset(options: string = '--hard', cwd: string = process.cwd()): Promise<any> {
   // 白名单验证：只允许安全的 reset 选项
   const ALLOWED_RESET_OPTIONS = ['--hard', '--soft', '--mixed', '--keep', '--merge'];
-  const safeOptions = options.split(' ').filter(opt => ALLOWED_RESET_OPTIONS.includes(opt));
+  const safeOptions = options.split(' ').filter((opt) => ALLOWED_RESET_OPTIONS.includes(opt));
 
   if (safeOptions.length === 0) {
     return {
       success: false,
-      error: `无效的 git reset 选项: ${options}，只允许: ${ALLOWED_RESET_OPTIONS.join(', ')}`
+      error: `无效的 git reset 选项: ${options}，只允许: ${ALLOWED_RESET_OPTIONS.join(', ')}`,
     };
   }
 
@@ -365,5 +464,5 @@ export {
   gitConfigUser,
   gitReset,
   gitStash,
-  gitStashPop
+  gitStashPop,
 };

@@ -12,6 +12,9 @@ import path from 'path';
 const WS_URL = 'ws://localhost:9527';
 let ws = null;
 let reconnectTimer = null;
+// 是否应当重连。窗口全部关闭后置为 false，避免 ws.close() 触发 close 事件
+// 又调度重连，导致连接空转泄漏。
+let shouldReconnect = true;
 const connectedWindows = new Set();
 let USER_DATA_DIR = '';
 
@@ -30,6 +33,7 @@ function connect() {
 
   ws.on('open', () => {
     console.log('[AgentBridge] 已连接到 Agent');
+    shouldReconnect = true;
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
@@ -39,7 +43,7 @@ function connect() {
   ws.on('message', (raw) => {
     try {
       const msg = JSON.parse(raw.toString());
-      
+
       if (msg.type === 'session-meta-update') {
         if (USER_DATA_DIR) {
           const metaPath = path.join(USER_DATA_DIR, 'data', 'sessions', 'meta.json');
@@ -52,7 +56,7 @@ function connect() {
             }
             fs.renameSync(tempFile, metaPath);
             console.log('[AgentBridge] 会话元数据已更新');
-            connectedWindows.forEach(win => {
+            connectedWindows.forEach((win) => {
               if (!win.isDestroyed()) {
                 win.webContents.send('session-updated');
               }
@@ -63,18 +67,18 @@ function connect() {
         }
         return;
       }
-      
+
       if (msg.type === 'persona-switched') {
         console.log('[AgentBridge] Persona 已切换:', msg.persona);
-        connectedWindows.forEach(win => {
+        connectedWindows.forEach((win) => {
           if (!win.isDestroyed()) {
             win.webContents.send('persona-switched', { persona: msg.persona });
           }
         });
         return;
       }
-      
-      connectedWindows.forEach(win => {
+
+      connectedWindows.forEach((win) => {
         if (!win.isDestroyed()) {
           if (msg.type === 'agent-state') {
             win.webContents.send('agent-state', msg.state);
@@ -90,7 +94,7 @@ function connect() {
               from: msg.from,
               to: msg.to,
               text: msg.text,
-              timestamp: msg.timestamp
+              timestamp: msg.timestamp,
             });
           } else if (msg.type === 'wechat-qrcode') {
             win.webContents.send('wechat-qrcode', msg.data);
@@ -109,13 +113,24 @@ function connect() {
   });
 
   ws.on('close', () => {
-    console.log('[AgentBridge] 连接断开，3秒后重连...');
-    reconnectTimer = setTimeout(() => connect(), 3000);
+    console.log('[AgentBridge] 连接断开');
+    // 仅在一处调度重连：ws 库会先 emit error 再 emit close，若两处都设定时器，
+    // 第二次赋值会覆盖引用，使第一个定时器成为孤儿无法清除，每次断线积累孤儿
+    // 连接并重复转发消息。这里只在 close 中调度，且设新定时器前先清旧定时器。
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    if (shouldReconnect) {
+      console.log('[AgentBridge] 3秒后重连...');
+      reconnectTimer = setTimeout(() => connect(), 3000);
+    }
   });
 
   ws.on('error', (err) => {
+    // 仅记录日志，不在此调度重连：close 事件会随后触发并统一调度，
+    // 避免与 close 回调重复设置定时器造成连接泄漏。
     console.log('[AgentBridge] 连接失败:', err.message);
-    reconnectTimer = setTimeout(() => connect(), 3000);
   });
 }
 
@@ -171,7 +186,9 @@ function ensureUserMessageHandler() {
       const handler = (raw) => {
         try {
           const msg = JSON.parse(raw.toString());
-          if (msg.type === 'stats-response') {
+          // 必须匹配 requestId：多窗口并发请求时，若不校验会让第一个到达的
+          // stats-response 错误地回复给所有等待中的 handler，造成串扰。
+          if (msg.type === 'stats-response' && msg.requestId === requestId) {
             event.reply('stats-response', msg);
             ws.removeListener('message', handler);
           }
@@ -179,7 +196,7 @@ function ensureUserMessageHandler() {
       };
       ws.on('message', handler);
       ws.send(JSON.stringify({ type: 'stats-request', payload, requestId }));
-      
+
       setTimeout(() => {
         ws.removeListener('message', handler);
       }, 30000);
