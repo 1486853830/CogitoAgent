@@ -235,7 +235,7 @@ async function dilution(c1: any, v1: any, c2: any, v2: any): Promise<any> {
       const rhs = c2 * v2;
       return {
         success: true,
-        data: `验证: ${c1}×${v1} = ${lhs.toFixed(4)}，${c2}×${v2} = ${rhs.toFixed(4)}\n两者相差: ${Math.abs(lhs - rhs).toFixed(4)} (${Math.abs(lhs - rhs) < 0.001 ? '一致 ✓' : '不一致 ✗'})`,
+        data: `验证: ${c1}×${v1} = ${lhs.toFixed(4)}，${c2}×${v2} = ${rhs.toFixed(4)}\n两者相差: ${Math.abs(lhs - rhs).toFixed(4)} (${Math.abs(lhs - rhs) < 0.001 ? '一致' : '不一致'})`,
       };
     } else if (c2Given) {
       if (c2 <= 0) return { success: false, error: '目标浓度必须为正数' };
