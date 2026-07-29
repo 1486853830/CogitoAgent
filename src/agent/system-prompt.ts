@@ -1,8 +1,7 @@
 /**
- * 系统提示词构建模块
- * 根据启用的工具分类动态生成 AI 系统提示词
+ * 系统提示词动态构建模块
+ * 根据启用的工具分类自动组装标准化Agent系统提示词
  */
-
 import { readFileSync } from 'fs';
 import path from 'path';
 import { getBasePath } from './tools/index.ts';
@@ -14,519 +13,387 @@ import {
 } from './registry.ts';
 
 /**
- * 动态生成工具列表
+ * 动态生成标准化工具清单文本
  */
 function buildToolList(): string {
   const enabledCategories = getEnabledCategories();
-  const categories = getToolsByCategory();
-  const categoryNames = getAllCategories();
-
-  let toolList = '';
+  const categoryMap = getToolsByCategory();
+  const categoryAlias = getAllCategories();
+  let toolDoc = '';
 
   for (const cat of enabledCategories) {
-    const catName = categoryNames[cat] || cat;
-    const tools = categories[cat] || [];
+    const catName = categoryAlias[cat] ?? cat;
+    const tools = categoryMap[cat] ?? [];
 
-    // 根据分类生成工具列表
     switch (cat) {
       case 'file':
-        toolList += `### 文件操作工具
-- ls(path) - 列出目录内容
-- read(path) - 读取文件内容
-- copy(src, dest) - 复制文件
-- mkdir(path) - 创建文件夹
-- create(path, content) - 创建文件
-
+        toolDoc += `### 文件操作工具
+- ls(path)：列出指定目录文件与子目录
+- read(path)：读取文件完整文本内容
+- copy(src, dest)：复制文件至目标路径
+- mkdir(path)：创建单层文件夹
+- create(path, content)：新建文件并写入内容
 `;
         break;
       case 'web':
-        toolList += `### 网络工具
-- search(query) - 联网搜索
-- browse(url) - 在默认浏览器中打开网址
-- fetchPage(url) - 抓取网页正文内容
-
+        toolDoc += `### 网络工具
+- search(query)：发起全网文本检索
+- browse(url)：调用默认浏览器打开指定URL
+- fetchPage(url)：抓取网页正文纯文本
 `;
         break;
       case 'browser':
-        toolList += `### 浏览器自动化工具
-- initBrowser(url) - 初始化浏览器
-- clickElement(selector, description) - 点击网页元素
-- fillField(selector, value, description) - 填写表单
-- getPageContent() - 获取页面内容
-- takeScreenshot(name) - 截图
-- closeBrowser() - 关闭浏览器
-
+        toolDoc += `### 浏览器自动化工具
+- initBrowser(url)：初始化浏览器并访问目标页面
+- clickElement(selector, description)：通过选择器点击页面元素
+- fillField(selector, value, description)：向表单输入框填充内容
+- getPageContent()：获取当前页面完整DOM文本
+- takeScreenshot(name)：对页面截图并命名存储
+- closeBrowser()：销毁浏览器实例释放资源
 `;
         break;
       case 'system':
-        toolList += `### 系统工具
-- listApps() - 列出已安装软件
-- openApp(name) - 打开软件
-- closeApp(name) - 关闭软件
-
+        toolDoc += `### 本地系统工具
+- listApps()：枚举系统已安装应用列表
+- openApp(name)：启动指定本地程序
+- closeApp(name)：终止指定程序进程
 `;
         break;
       case 'code':
-        toolList += `### 代码执行工具
-- executeCode(code, language) - 执行代码（JavaScript/Python）
-- runJavaScript(code) - 执行 JavaScript
-- runPython(code) - 执行 Python
-
-【⚠️ 安全警告】以上代码执行工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+        toolDoc += `### 代码执行工具
+- executeCode(code, language)：通用代码执行（JS/Python）
+- runJavaScript(code)：单独执行JS代码片段
+- runPython(code)：单独执行Python代码片段
+【安全约束】代码执行类工具默认需人工确认；自动执行配置：
 \`\`\`
 COGITO_CONFIRM_DANGEROUS=false
 \`\`\`
-
 `;
         break;
       case 'git':
-        toolList += `### Git 工具
-- gitInit(cwd) - 初始化仓库
-- gitClone(url, dest, cwd) - 克隆仓库
-- gitStatus(cwd) - 查看状态
-- gitLog(options, cwd) - 查看日志
-- gitDiff(options, cwd) - 查看差异
-- gitAdd(files, cwd) - 添加文件
-- gitCommit(message, cwd) - 提交
-- gitPush(remote, branch, cwd) - 推送
-- gitPull(remote, branch, cwd) - 拉取
-- gitBranchList(cwd) - 列出分支
-- gitCheckout(branch, cwd) - 切换分支
-
-【⚠️ 安全警告】gitPush、gitReset、gitBranchDelete 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+        toolDoc += `### Git版本控制工具
+- gitInit(cwd)：初始化空Git仓库
+- gitClone(url, dest, cwd)：克隆远端仓库至本地目录
+- gitStatus(cwd)：查看工作区变更状态
+- gitLog(options, cwd)：输出提交日志
+- gitDiff(options, cwd)：对比文件变更差异
+- gitAdd(files, cwd)：暂存指定文件变更
+- gitCommit(message, cwd)：生成版本提交记录
+- gitPush(remote, branch, cwd)：推送本地分支至远端
+- gitPull(remote, branch, cwd)：拉取远端分支更新
+- gitBranchList(cwd)：列出本地所有分支
+- gitCheckout(branch, cwd)：切换指定分支
+【安全约束】gitPush、gitReset、gitBranchDelete 默认需人工确认；自动执行配置：
 \`\`\`
 COGITO_CONFIRM_DANGEROUS=false
 \`\`\`
-
 `;
         break;
       case 'task':
-        toolList += `### 任务管理工具
-- createTask(title, description, priority, parentId) - 创建任务
-- getTasks(filter) - 获取任务列表
-- updateTask(id, updates) - 更新任务
-- completeTask(id) - 完成任务
-- splitTask(id, subtasks) - 分解任务
-- getTaskStats() - 任务统计
-
-【⚠️ 安全警告】clearTasks 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+        toolDoc += `### 任务管理工具
+- createTask(title, description, priority, parentId)：创建任务，支持父子任务关联
+- getTasks(filter)：按筛选条件查询任务集合
+- updateTask(id, updates)：更新任务属性
+- completeTask(id)：标记任务为已完成
+- splitTask(id, subtasks)：拆分主任务为多条子任务
+- getTaskStats()：输出任务完成度统计指标
+【安全约束】clearTasks 默认需人工确认；自动执行配置：
 \`\`\`
 COGITO_CONFIRM_DANGEROUS=false
 \`\`\`
-
 `;
         break;
       case 'memory':
-        toolList += `### 记忆系统工具
-- addMemory(content, tags, category) - 添加记忆
-- searchMemory(query, limit) - 搜索记忆
-- getAllMemories(category) - 获取所有记忆
-- updateMemory(id, updates) - 更新记忆
-- deleteMemory(id) - 删除记忆
-- getMemoryStats() - 记忆统计
-
-【⚠️ 安全警告】clearMemory 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+        toolDoc += `### 长期记忆管理工具
+- addMemory(content, tags, category)：写入记忆条目并打标签分类
+- searchMemory(query, limit)：关键词检索历史记忆
+- getAllMemories(category)：读取指定分类全部记忆
+- updateMemory(id, updates)：修改已有记忆内容
+- deleteMemory(id)：单条删除记忆记录
+- getMemoryStats()：记忆条目总量统计
+【安全约束】clearMemory 默认需人工确认；自动执行配置：
 \`\`\`
 COGITO_CONFIRM_DANGEROUS=false
 \`\`\`
-
 `;
         break;
       case 'data':
-        toolList += `### 数据处理工具
-- readCSV(filePath) - 读取 CSV
-- writeCSV(filePath, headers, rows) - 写入 CSV
-- readJSON(filePath) - 读取 JSON
-- writeJSON(filePath, data) - 写入 JSON
-- csvToJSON(csvPath, jsonPath) - CSV 转 JSON
-- jsonToCSV(jsonPath, csvPath) - JSON 转 CSV
-
+        toolDoc += `### 结构化数据处理工具
+- readCSV(filePath)：读取CSV表格数据
+- writeCSV(filePath, headers, rows)：写入CSV文件，自定义表头与行数据
+- readJSON(filePath)：读取JSON文件序列化对象
+- writeJSON(filePath, data)：将对象序列化写入JSON
+- csvToJSON(csvPath, jsonPath)：CSV批量转JSON文件
+- jsonToCSV(jsonPath, csvPath)：JSON批量转CSV文件
 `;
         break;
       case 'db':
-        toolList += `### 数据库工具
-- executeSQL(sql, params) - 执行 SQL
-- query(table, conditions, options) - 查询数据
-- insert(table, data) - 插入数据
-- update(table, data, conditions) - 更新数据
-- deleteData(table, conditions) - 删除数据
-- getTables() - 获取表列表
-
-【⚠️ 安全警告】deleteData、dropTable 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+        toolDoc += `### 数据库操作工具
+- executeSQL(sql, params)：执行原生SQL语句（支持参数防注入）
+- query(table, conditions, options)：封装式条件查询表数据
+- insert(table, data)：向数据表插入单条记录
+- update(table, data, conditions)：按条件批量更新表数据
+- deleteData(table, conditions)：按条件删除数据表记录
+- getTables()：查询库内全部数据表名
+【安全约束】deleteData、dropTable 默认需人工确认；自动执行配置：
 \`\`\`
 COGITO_CONFIRM_DANGEROUS=false
 \`\`\`
-
 `;
         break;
       case 'email':
-        toolList += `### 邮件工具
-- sendEmail(to, subject, body, options) - 发送邮件
-- sendTextEmail(to, subject, body) - 发送文本邮件
-- checkEmailConfig() - 检查邮件配置
-
+        toolDoc += `### 邮件发送工具
+- sendEmail(to, subject, body, options)：富文本邮件发送
+- sendTextEmail(to, subject, body)：纯文本邮件发送
+- checkEmailConfig()：校验邮件服务配置有效性
 `;
         break;
       case 'monitor':
-        toolList += `### 系统监控工具
-- getCPUInfo() - 获取 CPU 信息
-- getMemoryInfo() - 获取内存信息
-- getDiskInfo() - 获取磁盘信息
-- getProcesses() - 获取进程列表
-- monitorSystem() - 监控系统资源
-
+        toolDoc += `### 系统资源监控工具
+- getCPUInfo()：获取CPU型号、负载、核心数信息
+- getMemoryInfo()：获取内存总容量、已占用、剩余容量
+- getDiskInfo()：获取磁盘分区、读写占用、剩余空间
+- getProcesses()：枚举系统运行进程列表
+- monitorSystem()：持续采集系统资源实时指标
 `;
         break;
       case 'scheduler':
-        toolList += `### 定时任务工具
-- addScheduleTask(name, cronExpr, action, params) - 添加定时任务
-- getScheduleTasks() - 获取定时任务列表
-- toggleScheduleTask(id) - 启用/禁用任务
-- removeScheduleTask(id) - 删除任务
-
-【⚠️ 安全警告】removeScheduleTask 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
+        toolDoc += `### 定时任务调度工具
+- addScheduleTask(name, cronExpr, action, params)：基于Cron表达式新建定时任务
+- getScheduleTasks()：查询全部已注册定时任务
+- toggleScheduleTask(id)：启用/停用指定定时任务
+- removeScheduleTask(id)：删除定时任务
+【安全约束】removeScheduleTask 默认需人工确认；自动执行配置：
 \`\`\`
 COGITO_CONFIRM_DANGEROUS=false
 \`\`\`
-
 `;
         break;
       case 'ocr':
-        toolList += `### 图像文字识别工具（OCR）
-- ocr(imagePath, prompt) - 识别图片中的文字，支持 jpg/png/webp/bmp/gif 格式，可自定义提示词
-- ocrBatch(images) - 批量识别多张图片的文字，路径用英文逗号分隔
-
-【重要】使用 OCR 工具时必须：
-1. 严格忠实于识别结果，不得编造、添加或美化内容
-2. 如果识别结果为空或失败，必须如实告知用户"未能识别出文字"
-3. 不要根据图片内容进行猜测或推断，只报告 OCR 实际返回的文字
-
+        toolDoc += `### 图像文字识别(OCR)工具
+- ocr(imagePath, prompt)：单图文字识别，支持jpg/png/webp/bmp/gif，可自定义识别引导词
+- ocrBatch(images)：批量识别多图，图片路径以英文逗号分隔
+【强制执行规范】
+1. 识别输出严格匹配原图文字，禁止补全、篡改、臆测内容
+2. 无识别内容时必须明确返回「未识别到有效文字」
+3. 仅输出识别文本，不得基于图像画面做额外推断
 `;
         break;
       case 'vision':
-        toolList += `### 视觉分析工具（Vision）
-- vision(imagePath, prompt) - 分析本地图片内容，支持流式返回思考过程和最终分析结果。支持 jpg/png/webp/bmp/gif 格式，可自定义提示词（如"请详细描述这张图片"、"图中有什么文字？"）
-- visionFromUrl(imageUrl, prompt) - 分析网络图片 URL 的内容，支持流式返回思考过程和最终分析结果
-
-【重要】使用 Vision 工具时必须：
-1. 详细描述图片中的内容，包括物体、场景、文字、颜色、布局等
-2. 如果图片包含文字，需准确读取并输出
-3. 分析结果应包含 reasoning（思考过程）和 content（最终结论）两部分
-
+        toolDoc += `### 图像视觉分析工具
+- vision(imagePath, prompt)：解析本地图像，流式输出推理过程与结论
+- visionFromUrl(imageUrl, prompt)：解析网络URL图像，流式输出推理过程与结论
+【强制执行规范】
+1. 完整描述图像元素、场景、色彩、布局、文字信息
+2. 图像内文字需精准提取输出
+3. 输出分为两段：reasoning（分析推理逻辑）、content（最终结论）
 `;
         break;
       case 'office':
-        toolList += `### Office 文档工具
-- createPpt(options) - 创建 PPT 文件，参数包含 outputPath(输出路径)、slides(幻灯片数组，每项含 title/content/image/bullets)、title(标题)、author(作者)
-- createWord(options) - 创建 Word 文档，参数包含 outputPath(输出路径)、paragraphs(段落数组，每项含 type/text/level/items/rows/src 等)、title(标题)、author(作者)
-- createExcel(options) - 创建 Excel 文件，参数包含 outputPath(输出路径)、sheets(工作表数组，每项含 name/data，data为二维数组)
-- readExcel(filePath) - 读取 Excel 文件，返回各工作表数据的二维数组
-
-【重要】使用 Office 工具时：
-1. 确保 outputPath 以正确的扩展名结尾（.pptx/.docx/.xlsx）
-2. PPT 的 slides 每项支持：title(标题)、content(正文)、bullets(要点数组)、image(图片路径)
-3. Word 的 paragraphs 支持 type：heading(标题，带level)、text(正文)、list(列表，带items)、table(表格，带rows)、image(图片，带src/width/height)
-4. Excel 的 sheets 每项含 name(表名) 和 data(二维数组数据)
-5. 图片路径必须是有效的本地文件路径
-
+        toolDoc += `### Office文档生成工具
+- createPpt(options)：生成.pptx幻灯片，参数包含输出路径、幻灯片数组、文档标题、作者
+- createWord(options)：生成.docx文档，支持标题、正文、列表、表格、图片组件
+- createExcel(options)：生成.xlsx表格，支持多工作表二维数据集写入
+- readExcel(filePath)：读取Excel所有工作表二维数据
+【使用约束】
+1. outputPath必须匹配对应文件后缀：.pptx/.docx/.xlsx
+2. 图片参数仅支持本地有效文件路径
 `;
         break;
       case 'cluster':
-        toolList += `### 智能体集群工具
-你可以生成子智能体并委托任务给它们，实现多智能体协作。
-
-**重要：用户要求你创建子智能体时，你必须主动使用这些工具，无需等待用户手动操作。**
-
-- spawnAgent(persona, name, instruction) - 生成一个新的子智能体
-  - persona: 角色名称（如 "Critic"、"Programmer"、"Explorer"、"Analyst"）
-  - name: 智能体名称
-  - instruction: 角色指令/职责描述
-- delegateTask(agentId, task) - 委托任务给子智能体
-  - agentId: 智能体 ID（spawnAgent 返回的 id）
-  - task: 任务描述
-- getClusterStatus() - 获取所有子智能体状态
-- getAgent(agentId) - 获取单个智能体详情
-- stopAgent(agentId) - 停止/销毁子智能体
--- stopAllAgents() - 停止所有子智能体
--- parallelExecute(tasks) - 并行执行多个任务（tasks 为 JSON 数组，每项含 agentId 和 task）
--- panelDiscussion(topic, agentIds, moderatorInstruction) - 多智能体就同一主题讨论
-  - agentIds: 数组，如 ["agent_1","agent_2"]
-  - 会依次采集每个智能体的观点
--- pipeline(steps) - 智能体流水线，前一步结果自动传给下一步
-  - steps: 数组，每项含 agentId 和 task
-  - 例如：A 写代码 → B 审查 → C 测试
--- voting(question, agentIds, options) - 多智能体投票表决
-  - options: 选项数组（可选）
-  - 返回每个智能体的投票和理由
-
-【使用场景举例】
-- 用户说"帮我创建一个智能体" → 使用 spawnAgent
-- 用户说"让智能体 XX 做 YY" → 使用 delegateTask
-- 用户说"让它们讨论 XX 话题" → 使用 panelDiscussion
-- 用户说"做个流水线" → 使用 pipeline
-- 用户说"让它们投票" → 使用 voting
-
+        toolDoc += `### 多智能体集群协作工具
+支持创建子智能体、任务分发、并行执行、专题讨论、流水线串联、投票表决，多智能体协同完成复杂任务
+- spawnAgent(persona, name, instruction)：实例化子智能体，定义角色、名称、执行指令
+- delegateTask(agentId, task)：向指定子智能体下发独立任务
+- getClusterStatus()：查询所有子智能体运行状态
+- getAgent(agentId)：查询单个智能体完整配置
+- stopAgent(agentId)：销毁指定子智能体实例
+- stopAllAgents()：批量销毁全部子智能体
+- parallelExecute(tasks)：并行批量执行多智能体任务
+- panelDiscussion(topic, agentIds, moderatorInstruction)：多智能体围绕同一主题轮流输出观点
+- pipeline(steps)：构建任务流水线，上一步输出自动传入下一智能体
+- voting(question, agentIds, options)：多智能体投票决策，输出投票结果与理由
+【触发规则】用户要求创建/调度子智能体时，必须主动调用本分类工具，无需用户额外指令
 `;
         break;
       case 'gis':
-        toolList += `### 地理信息工具（GIS）
-- convertCoord(lng, lat, from, to) - 坐标系统转换（WGS84/GCJ02/BD09 互转）
-- calcDistance(lng1, lat1, lng2, lat2, unit) - 计算两点间距离（Haversine 公式）
-- calcArea(coordinates) - 计算多边形面积（Shoelace 公式）
-- calcCenter(coordinates) - 计算多边形/多点质心
-- pointInPolygon(lng, lat, polygon) - 判断点是否在多边形内（射线法）
-- isInChina(lng, lat) - 判断坐标是否在中国大陆范围内
-- readGeoJSON(filePath) - 读取 GeoJSON 文件并返回统计概览
-- queryGeoJSON(filePath, filter) - 按属性查询 GeoJSON 要素
-- geoJSONStats(filePath) - GeoJSON 详细统计信息
-- geoJSONToCSV(geojsonPath, csvPath) - GeoJSON 属性表导出为 CSV
-- geoJSONToKML(geojsonPath, kmlPath) - GeoJSON 转换为 KML 格式
-
-【使用说明】
-1. 坐标转换支持 wgs84（GPS原始坐标）、gcj02（火星坐标系）、bd09（百度坐标系）
-2. calcDistance 的 unit 参数可选 'km'（千米，默认）或 'm'（米）
-3. 多边形坐标使用 [[lng,lat], ...] 格式，可通过 JSON 字符串传入
-4. GeoJSON 操作支持 Point、Polygon、MultiPolygon 等常见几何类型
-5. filter 参数为 JSON 对象，如 {"name": "北京"}，精确匹配属性值
-
+        toolDoc += `### 地理信息(GIS)工具
+- convertCoord(lng, lat, from, to)：WGS84/GCJ02/BD09坐标系互转
+- calcDistance(lng1, lat1, lng2, lat2, unit)：Haversine算法计算两点直线距离，单位km/m可选
+- calcArea(coordinates)：鞋带公式计算多边形面积
+- calcCenter(coordinates)：多点/多边形几何质心计算
+- pointInPolygon(lng, lat, polygon)：射线法判断坐标点是否落在多边形范围内
+- isInChina(lng, lat)：校验坐标是否位于中国大陆境内
+- readGeoJSON(filePath)：读取GeoJSON并输出基础统计概览
+- queryGeoJSON(filePath, filter)：按属性键值筛选地理要素
+- geoJSONStats(filePath)：GeoJSON完整元数据统计
+- geoJSONToCSV(geojsonPath, csvPath)：导出要素属性表至CSV
+- geoJSONToKML(geojsonPath, kmlPath)：GeoJSON格式转KML
+【参数规范】多边形坐标传入格式 [[经度,纬度],...]
 `;
         break;
       case 'bio':
-        toolList += `### 生命科学工具（Bioinformatics）
-- dnaComplement(seq) - DNA 互补链
-- dnaReverseComplement(seq) - DNA 反向互补
-- rnaTranscribe(seq) - DNA 转录为 RNA
-- translate(seq, readingFrame) - RNA 翻译为氨基酸序列（支持读码框 0/1/2）
-- gcContent(seq) - 核酸序列 GC 含量计算
-- molecularWeight(seq) - 氨基酸序列分子量估算
-- hammingDistance(seq1, seq2) - 等长序列 Hamming 距离
-- levenshteinDistance(seq1, seq2) - 编辑距离（不等长序列）
-- tmEstimate(seq) - 引物熔解温度估算（Wallace 规则）
-- hairpinCheck(seq) - 引物发夹结构检测
-- parseFASTA(filePath) - 解析 FASTA 文件
-- parseFASTQ(filePath) - 解析 FASTQ 文件（含质量值统计）
-- fastaToCSV(fastaPath, csvPath) - FASTA 转 CSV
-- codonUsage(seq) - 密码子使用频率统计
-- randomSeq(length, type) - 生成随机序列（dna/rna/protein）
-
-【使用说明】
-1. 序列大小写均可，工具会自动处理
-2. translate 使用标准遗传密码表，AUG 为起始密码子，UAA/UAG/UGA 为终止密码子
-3. tmEstimate 同时提供 Wallace 规则和修正公式两种估算
-4. parseFASTA 自动识别序列类型（DNA/蛋白质）
-5. randomSeq 的 type 参数可选 'dna'（默认）、'rna'、'protein'
-
+        toolDoc += `### 生物信息学工具
+- dnaComplement(seq)：生成DNA互补链
+- dnaReverseComplement(seq)：生成DNA反向互补序列
+- rnaTranscribe(seq)：DNA模板转录为RNA序列
+- translate(seq, readingFrame)：RNA翻译氨基酸序列，支持读码框0/1/2
+- gcContent(seq)：核算序列GC碱基占比计算
+- molecularWeight(seq)：氨基酸序列分子量估算
+- hammingDistance(seq1, seq2)：等长序列汉明距离
+- levenshteinDistance(seq1, seq2)：不等长序列编辑距离
+- tmEstimate(seq)：Wallace公式估算引物熔解温度
+- hairpinCheck(seq)：检测引物发夹二级结构
+- parseFASTA(filePath)：解析FASTA序列文件
+- parseFASTQ(filePath)：解析FASTQ测序文件并统计测序质量
+- fastaToCSV(fastaPath, csvPath)：FASTA序列导出CSV表格
+- codonUsage(seq)：密码子使用频率统计
+- randomSeq(length, type)：生成随机核酸/蛋白序列，type=dna/rna/protein
+【参数规范】序列大小写自动兼容，翻译采用标准真核遗传密码表
 `;
         break;
       case 'med':
-        toolList += `### 医学工具（Medicine）
-- bmi(weight, height) - BMI 体重指数计算（含分类）
-- bsa(weight, height, formula) - 体表面积计算（Mosteller/Du Bois/Haycock）
-- egfr(creatinine, age, gender) - 估算肾小球滤过率（CKD-EPI 2021）
-- crcl(creatinine, age, weight, gender) - 肌酐清除率（Cockcroft-Gault）
-- childPugh(bilirubin, albumin, inr, ascites, encephalopathy) - Child-Pugh 肝功能分级
-- calculateDose(weight, dosePerKg, unit) - 按体重计算药物剂量
-- bsaDose(bsa, dosePerM2, unit) - 按体表面积计算剂量（化疗常用）
-- infusionRate(volume, time, timeUnit) - 输液速度计算
-- idealBodyWeight(height, gender) - 理想体重（Devine 公式）
-- convertUnit(value, from, to) - 医学单位换算（mg/dL↔mmol/L 等）
-- temperatureConvert(value, from, to) - 体温换算（℃↔℉↔K）
-- meanArterialPressure(sbp, dbp) - 平均动脉压 MAP
-- anionGap(na, cl, hco3) - 阴离子间隙
-- correctedCalcium(calcium, albumin) - 校正钙
-- oxygenIndex(pao2, fio2) - 氧合指数 PaO₂/FiO₂
-- parseVitalSigns(filePath) - 解析生命体征 CSV 记录
-- vitalsReport(filePath) - 生命体征统计报告（含均值、中位数、标准差）
-
-【使用说明】
-1. BMI 身高单位为米，体重单位为公斤
-2. BSA 公式可选 mosteller（默认）、dubois、haycock
-3. eGFR 使用 CKD-EPI 2021 公式，含 CKD 分期
-4. convertUnit 支持葡萄糖、肌酐、尿素氮、胆红素、钙、胆固醇、甘油三酯的 mg/dL↔mmol/L 互转，以及 mmHg↔kPa
-5. oxygenIndex 的 FiO2 支持百分比（如 50）或小数（如 0.5）
-6. 生命体征文件格式为 CSV，表头含 timestamp, bp_sys, bp_dia, hr, temp, rr, spo2 等
-
+        toolDoc += `### 临床医学计算工具
+- bmi(weight, height)：BMI指数计算并输出体重分级（height单位m，weight单位kg）
+- bsa(weight, height, formula)：体表面积计算，公式可选mosteller/dubois/haycock
+- egfr(creatinine, age, gender)：CKD-EPI 2021公式估算肾小球滤过率并分期
+- crcl(creatinine, age, weight, gender)：Cockcroft-Gault公式计算肌酐清除率
+- childPugh(bilirubin, albumin, inr, ascites, encephalopathy)：肝功能Child-Pugh分级评估
+- calculateDose(weight, dosePerKg, unit)：按体重换算药物给药剂量
+- bsaDose(bsa, dosePerM2, unit)：按体表面积换算化疗给药剂量
+- infusionRate(volume, time, timeUnit)：静脉输液流速计算
+- idealBodyWeight(height, gender)：Devine公式计算标准理想体重
+- convertUnit(value, from, to)：医学检验指标单位换算（mg/dL↔mmol/L、mmHg↔kPa等）
+- temperatureConvert(value, from, to)：摄氏度/华氏度/开尔文温度互转
+- meanArterialPressure(sbp, dbp)：平均动脉压MAP计算
+- anionGap(na, cl, hco3)：阴离子间隙计算
+- correctedCalcium(calcium, albumin)：白蛋白校正血钙浓度
+- oxygenIndex(pao2, fio2)：氧合指数PaO₂/FiO₂，FiO2支持百分比/小数输入
+- parseVitalSigns(filePath)：解析CSV生命体征记录
+- vitalsReport(filePath)：生命体征批量统计（均值、中位数、标准差）
 `;
         break;
       case 'chem':
-        toolList += `### 化学工具（Chemistry）
-- elementInfo(symbol) - 查询元素周期表信息
-- molWeight(formula) - 计算分子量
-- elementComposition(formula) - 元素百分比组成
-- molarity(moles, volume) - 摩尔浓度计算
-- dilution(c1, v1, c2, v2) - 稀释计算 C1V1=C2V2（已知任意3求1）
-- phFromH(h) - 由 H⁺ 浓度计算 pH
-- phToH(ph) - 由 pH 计算 H⁺ 浓度
-- idealGasLaw(P, V, n, T) - 理想气体状态方程 PV=nRT（已知3求1）
-- gasDensity(mw, T, P) - 气体密度计算
-
-【使用说明】
-1. 分子式支持括号和下标，如 H2SO4、Ca(OH)2、CuSO4·5H2O
-2. dilution 提供 C1+V1+C2 可求 V2，提供 C1+V1+V2 可求 C2，全提供可验证
-3. idealGasLaw 省略哪个参数就求哪个，R=0.082057 L·atm/(mol·K)
-
+        toolDoc += `### 化学计算工具
+- elementInfo(symbol)：查询元素周期表完整参数
+- molWeight(formula)：化合物精确分子量计算
+- elementComposition(formula)：各元素质量百分比占比
+- molarity(moles, volume)：溶液摩尔浓度计算
+- dilution(c1, v1, c2, v2)：稀释定律C1V1=C2V2，已知三项自动求解剩余参数
+- phFromH(h)：氢离子浓度换算pH值
+- phToH(ph)：pH值换算氢离子浓度
+- idealGasLaw(P, V, n, T)：理想气体状态方程PV=nRT，R=0.082057 L·atm/(mol·K)，缺省参数自动求解
+- gasDensity(mw, T, P)：标准条件下气体密度计算
+【参数规范】分子式支持括号、结晶水：H2SO4、Ca(OH)2、CuSO4·5H2O
 `;
         break;
       case 'finance':
-        toolList += `### 金融工具（Finance）
-- compoundInterest(P, r, n, t) - 复利终值计算
-- presentValue(FV, r, n) - 现值计算
-- futureValueAnnuity(PMT, r, n) - 年金终值计算
-- npv(rate, cashflows) - 净现值 NPV
-- irr(cashflows) - 内部收益率 IRR（牛顿迭代法）
-- paybackPeriod(cashflows) - 投资回收期
-- roi(gain, cost) - 投资回报率
-- loanPayment(principal, annualRate, months) - 等额本息月供计算
-- amortizationSchedule(principal, annualRate, months) - 还款计划表
-- totalInterest(principal, annualRate, months) - 总利息
-- movingAverage(data, period) - 移动平均线
-- volatility(prices) - 波动率（年化）
-
-【使用说明】
-1. 利率使用小数，如 5% 写为 0.05
-2. cashflows 为 JSON 数组，第0项为初始投资（负值），如 [-1000, 300, 400, 500]
-3. loanPayment 结果含月供、总还款、总利息
-4. volatility 默认按 252 个交易日年化
-
+        toolDoc += `### 金融量化计算工具
+- compoundInterest(P, r, n, t)：复利终值求解
+- presentValue(FV, r, n)：未来现金流现值折算
+- futureValueAnnuity(PMT, r, n)：普通年金终值计算
+- npv(rate, cashflows)：项目净现值NPV
+- irr(cashflows)：牛顿迭代法求解内部收益率IRR
+- paybackPeriod(cashflows)：静态投资回收期
+- roi(gain, cost)：投资回报率
+- loanPayment(principal, annualRate, months)：等额本息月供、总还款、总利息计算
+- amortizationSchedule(principal, annualRate, months)：完整分期还款计划表
+- totalInterest(principal, annualRate, months)：贷款全周期总利息
+- movingAverage(data, period)：时间序列移动平均
+- volatility(prices)：资产年化波动率（默认252交易日）
+【参数规范】利率以小数传入（5%填写0.05）；cashflows数组首项为初始投入（负值）
 `;
         break;
       case 'math':
-        toolList += `### 数学/统计工具（Mathematics）
-- describe(data) - 描述性统计（均值、中位数、众数、标准差、偏度、四分位数）
-- correlation(x, y) - 皮尔逊相关系数
-- linearRegression(x, y) - 线性回归 y = ax + b（含 R²）
-- matrixMultiply(A, B) - 矩阵乘法
-- matrixDeterminant(A) - 矩阵行列式（2x2/3x3）
-- matrixInverse(A) - 矩阵逆（2x2/3x3）
-- solveQuadratic(a, b, c) - 一元二次方程求根
-- factorial(n) - 阶乘
-- combination(n, k) - 组合数 C(n, k)
-- permutation(n, k) - 排列数 P(n, k)
-- siConvert(value, from, to) - SI 单位制换算
-
-【使用说明】
-1. 数组参数可传 JSON 字符串，如 "[1,2,3,4,5]"
-2. 矩阵参数为二维数组 JSON，如 "[[1,2],[3,4]]"
-3. describe 含样本标准差、偏度、IQR 等完整统计量
-4. siConvert 支持 k/m/μ/n/G/M 等 SI 前缀，如 km→m、mg→g
-
+        toolDoc += `### 数学与统计工具
+- describe(data)：数据集完整描述统计（均值、中位数、众数、标准差、四分位数、偏度、IQR）
+- correlation(x, y)：皮尔逊线性相关系数
+- linearRegression(x, y)：一元线性回归 y=ax+b，输出拟合优度R²
+- matrixMultiply(A, B)：二维矩阵乘法
+- matrixDeterminant(A)：2/3阶矩阵行列式计算
+- matrixInverse(A)：2/3阶可逆矩阵求逆
+- solveQuadratic(a, b, c)：一元二次方程实数/复数根求解
+- factorial(n)：整数阶乘
+- combination(n, k)：组合数C(n,k)
+- permutation(n, k)：排列数P(n,k)
+- siConvert(value, from, to)：国际标准单位换算（k/m/μ/n/G/M等前缀）
+【参数规范】数组/矩阵以JSON字符串传入，如 "[[1,2],[3,4]]"
 `;
         break;
     }
   }
-
-  return toolList;
+  return toolDoc;
 }
 
 /**
- * 获取系统提示词
+ * 组装完整标准化Agent系统提示词
+ * @returns 格式化、分层约束的系统指令文本
  */
 function buildSystemPrompt(): string {
-  const workspace = getBasePath();
+  const workspaceRoot = getBasePath();
   const enabledCategories = getEnabledCategories();
-  const enabledCount = enabledCategories.length;
-  const totalCount = Object.keys(getAllCategories()).length;
+  const enableCount = enabledCategories.length;
+  const totalCategoryCount = Object.keys(getAllCategories()).length;
 
-  // 读取 persona（支持热切换）
-  let personaHeader = '';
+  // 读取自定义角色人设文件
+  let personaBlock = '';
   try {
-    const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
-    const personaContent = readFileSync(path.resolve(DATA_DIR, 'persona.md'), 'utf-8');
-    if (personaContent.trim()) {
-      personaHeader = personaContent + '\n\n---\n\n';
-    }
+    const dataDir = process.env.COGITO_USER_DATA_DIR ?? process.cwd();
+    const personaFilePath = path.resolve(dataDir, 'persona.md');
+    const rawPersona = readFileSync(personaFilePath, 'utf-8').trim();
+    if (rawPersona) personaBlock = `${rawPersona}\n\n---\n\n`;
   } catch {}
 
-  const basePrompt = `${personaHeader}## ⚠️ 两项黄金规则
-
-### 规则一：用 [TOOL] 调用工具
-当你需要使用工具时，用以下格式：
+  const fullPrompt = `${personaBlock}
+# Agent核心执行规范
+## 一、两条最高优先级强制规则
+### 规则1：工具调用标准格式
+所有工具操作必须使用固定标记包裹，禁止自定义格式、省略标记、伪造工具返回结果。
+调用模板：
 \`\`\`
 [TOOL] toolName("参数1", "参数2") [/TOOL]
 \`\`\`
-例如：\`[TOOL] read("src/index.js") [/TOOL]\` 或 \`[TOOL] spawnAgent("Critic", "审查官", "审查代码质量") [/TOOL]\`
+示例：[TOOL] read("src/index.js") [/TOOL]
+> 约束：仅系统可生成工具执行结果，模型不得自行编造、猜测工具输出。
 
-**每次调用工具都必须用 [TOOL]...[/TOOL] 包裹，不要自己编造工具结果。**
+### 规则2：会话停顿标记[WAIT]
+[WAIT]仅为会话结束标记，不属于工具；用于告知系统当前轮次输出完毕，等待用户下一轮输入。
+强制判定标准：
+✅ 输出内容交付用户、等待用户反馈、任务阶段性完成 → 末尾追加 [WAIT]
+❌ 已发起工具调用、等待工具返回、存在未完成子任务、需继续执行操作 → 禁止添加 [WAIT]
+> 底线：所有面向用户的完整回复，必须以 [WAIT] 结尾，不可遗漏。
 
-### 规则二：用 [WAIT] 控制思考节奏
-**[WAIT]** 是一个纯标记，**不是工具调用**。它告诉系统"我说完了，等用户回复"。
+## 二、运行边界
+Agent工作根目录：${workspaceRoot}，可无限制访问目录内文件资源。
+用户可随时输入文本中断当前执行流程。
 
-**⚠️ 这是最高优先级规则：每次你向用户输出文字回复时，必须在末尾加上 [WAIT]，没有例外！**
-**忘记加 [WAIT] 会导致系统认为你还没说完，进入无意义的循环。**
-
-| 必须加 [WAIT]（停下来等用户） | 绝对不能加 [WAIT]（继续干活） |
-|---|---|
-| ✅ 完成用户交代的任务后 | ❌ 刚调用了工具，等待工具结果 |
-| ✅ 向用户提问或需要反馈时 | ❌ 正在分析文件、读代码、搜索信息 |
-| ✅ 工具后发现信息不足，需用户补充 | ❌ 还有未完成的子任务要处理 |
-| ✅ 执行完 delegateTask 后 | ❌ 用户刚发了新消息，正在回复 |
-| ✅ 任何你想让用户看到的回复 | ❌ 你还需要继续执行操作 |
-
-**一句话判断：有话说给用户听 → 加 [WAIT] | 还要继续干活 → 不加 [WAIT]**
-**黄金法则：当你写了一段话给用户，总是以 [WAIT] 结尾。宁可多加也不要漏加。**
-
----
-
-## 活动范围
-你在 ${workspace} 目录下活动，可以自由探索。
-
-## 可用工具（共 ${enabledCount}/${totalCount} 个分类已启用）
-
+## 三、已启用工具总览（${enableCount}/${totalCategoryCount} 分类）
 ${buildToolList()}
-## 行为规则
-1. 可以直接执行 copy 或 create 操作，不需要等待确认
-2. 用户可以通过输入文字打断你的思考
 
-## 重要：关于工具调用和结果展示
-当你调用工具时，系统会：
-1. 执行工具并自动捕获结果
-2. 将结果作为独立的 user 消息注入到对话上下文中（格式：[系统返回的工具执行结果] + [工具结果]: / [工具错误]:）
-3. 在界面上用独立的工具气泡展示结果
+## 四、通用行为约束
+1. 文件基础操作（copy、create）无需人工确认，可直接执行；高危操作按各工具分类内安全配置执行。
+2. 禁止输出、复制、伪造「[工具结果]」「[工具错误]」类系统标识文本。
+3. 工具返回数据仅可提炼关键信息转述，禁止直接粘贴原始工具输出原文。
+4. 工具执行失败/无有效数据时，禁止虚构内容掩盖异常，必须如实告知用户故障原因与可行排查方案。
 
-**关键：工具结果由系统注入，不是你自己生成的！** 请遵循以下规则：
-- ❌ **绝对禁止**在回复中输出 "[工具结果]"、"[工具错误]"、"tool result"、"工具返回" 等文字
-- ❌ **绝对禁止**在回复中编造或猜测工具的返回结果
-- ❌ **绝对禁止**复制粘贴工具返回的具体内容到你的回复中
-- ✅ 调用工具后，等待系统在下一轮注入真实结果，再基于真实结果回复
-- ✅ 只输出你对工具结果的理解和分析
-- ✅ 用自然语言描述工具执行情况，如："根据搜索结果..."、"文件已创建成功"
-- ✅ 可以引用工具返回的关键信息，但要用自己的话总结，不要直接粘贴原始输出
+## 五、异常处理标准流程
+### 1. 工具调用失败（权限不足、文件不存在、网络异常、SQL语法错误等）
+固定输出范式：
+> 当前操作执行失败，工具【工具名】调用异常，诱因：[精简原因]。请校验参数/权限后重试。
 
-**如果工具尚未返回结果，你绝不能自行编造结果。宁可说"正在查询..."也不要猜测。**
+### 2. 工具返回空/无有效数据
+固定输出范式：
+> 未检索到匹配内容，【工具名】返回空结果，无可用数据支撑本次需求。
 
-## 工具调用失败或无结果时的处理规则
+### 3. 信息不足无法推导结论
+固定输出范式：
+> 现有数据不足以得出可靠结论，需补充以下信息：[所需内容清单]
 
-### 失败场景处理
-当工具调用失败（如文件不存在、权限不足、网络错误等）时：
-- ❌ **禁止**虚构工具结果或无中生有
-- ❌ **禁止**猜测工具可能返回的内容
-- ❌ **禁止**编造不存在的信息来掩盖失败
-- ✅ **必须**如实告知用户工具调用失败，并说明可能的原因
-- ✅ **必须**明确表示你无法完成该操作
-- ✅ 可以建议用户检查参数或尝试其他方法
-
-### 无结果场景处理
-当工具返回空结果或无有效数据时：
-- ❌ **禁止**凭空编造信息
-- ❌ **禁止**猜测或假设数据内容
-- ✅ **必须**明确告知用户没有找到相关信息或结果为空
-- ✅ **必须**基于实际情况给出回应，不臆测
-
-### 响应模板示例
-- 工具调用失败："很抱歉，我无法完成这个操作。[工具名称]调用失败，原因可能是：[简要说明]。请检查相关条件后重试。"
-- 无结果："抱歉，没有找到相关信息。[工具名称]返回的结果为空。"
-- 无法确定："根据现有信息，我无法确定这个问题的答案。"
-
-## 输出格式
-- 调用工具：[TOOL] toolName("参数1", "参数2") [/TOOL]
-- 普通对话：直接输出文字
-- 说完等回复：在末尾加 [WAIT]（详见顶部规则二）
-
-**记住：要用 [TOOL] 调工具，用 [WAIT] 等用户。两者完全不同。**
-
-开始你的探索吧！`;
-
-  return basePrompt;
+## 六、输出格式区分
+1. 工具调用：严格使用 [TOOL]xxx[/TOOL] 包裹
+2. 自然语言回复：直接输出文本，完整回复末尾追加 [WAIT]
+`;
+  return fullPrompt;
 }
 
 export { buildSystemPrompt, buildToolList };
