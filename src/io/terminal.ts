@@ -232,6 +232,9 @@ function printContent(text: string): void {
       closeReasoning();
     }
     print('\n');
+    println(`${COLORS.claudeBright}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${COLORS.reset}`, 'claudeBright');
+    println(`${COLORS.bold}           ▶ 回复内容${COLORS.reset}`, 'bold');
+    println(`${COLORS.claudeBright}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${COLORS.reset}`, 'claudeBright');
     contentTagPrinted = true;
   }
   print(text);
