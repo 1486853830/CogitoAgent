@@ -7,7 +7,7 @@
 import { app, BrowserWindow, ipcMain, screen, dialog, shell } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn, execSync } from 'child_process';
+import { spawn, execSync, execFileSync } from 'child_process';
 import { initAgentBridge, sendToAgent, setUserDataDir } from './agent-bridge.js';
 import fs from 'fs';
 import os from 'os';
@@ -20,12 +20,12 @@ let setupWindow = null;
 let dashboardWindow = null;
 let monitorWindow = null;
 let agentProcess = null;
-let isQuitting = false;  // 标记是否为用户主动退出
-let mainWindowCreated = false;  // 标记主窗口是否曾经创建过
-let dashboardWindowCreated = false;  // 标记 Dashboard 窗口是否曾经创建过
-let isTransitioningToMain = false;  // 标记正在从配置向导过渡到主窗口
-let currentPersona = '';  // 当前选中的 persona
-let currentMode = 'desktop';  // 当前模式: desktop / dashboard
+let isQuitting = false; // 标记是否为用户主动退出
+let mainWindowCreated = false; // 标记主窗口是否曾经创建过
+let dashboardWindowCreated = false; // 标记 Dashboard 窗口是否曾经创建过
+let isTransitioningToMain = false; // 标记正在从配置向导过渡到主窗口
+let currentPersona = ''; // 当前选中的 persona
+let currentMode = 'desktop'; // 当前模式: desktop / dashboard
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const USER_DATA_DIR = app.getPath('userData');
@@ -33,27 +33,27 @@ const CONFIG_FILE = path.join(USER_DATA_DIR, 'config.json');
 setUserDataDir(USER_DATA_DIR);
 const PERSONA_FILE = path.join(USER_DATA_DIR, 'persona.md');
 
-const CSP_HEADER = `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; media-src 'self' https:; connect-src 'self' http://localhost:9527; object-src 'none'; frame-src 'none';`;
+// CSP: script-src 不再允许 unsafe-inline（内联脚本已全部外迁到 .js 文件），
+// style-src 保留 unsafe-inline 以支持动态样式（粒子动画等运行时设的 style 属性）。
+const CSP_HEADER = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; media-src 'self' https:; connect-src 'self' http://localhost:9527; object-src 'none'; frame-src 'none';`;
 
 /**
  * 检查是否已配置
  */
 function isConfigured() {
   // 检查 .env 文件中的关键配置（优先 USER_DATA_DIR，回退到 PROJECT_ROOT）
-  const envPaths = [
-    path.join(USER_DATA_DIR, '.env'),
-    path.join(PROJECT_ROOT, '.env')
-  ];
+  const envPaths = [path.join(USER_DATA_DIR, '.env'), path.join(PROJECT_ROOT, '.env')];
   for (const envPath of envPaths) {
     try {
       if (fs.existsSync(envPath)) {
         const envContent = fs.readFileSync(envPath, 'utf-8');
-        const hasApiKey = envContent.includes('COGITO_API_KEY=') &&
-          !envContent.match(/^COGITO_API_KEY=\s*$/m);
-        const hasBaseURL = envContent.includes('COGITO_API_BASE_URL=') &&
+        const hasApiKey =
+          envContent.includes('COGITO_API_KEY=') && !envContent.match(/^COGITO_API_KEY=\s*$/m);
+        const hasBaseURL =
+          envContent.includes('COGITO_API_BASE_URL=') &&
           !envContent.match(/^COGITO_API_BASE_URL=\s*$/m);
-        const hasModel = envContent.includes('COGITO_MODEL=') &&
-          !envContent.match(/^COGITO_MODEL=\s*$/m);
+        const hasModel =
+          envContent.includes('COGITO_MODEL=') && !envContent.match(/^COGITO_MODEL=\s*$/m);
 
         if (hasApiKey && hasBaseURL && hasModel) {
           return true;
@@ -76,7 +76,7 @@ function saveConfig(config) {
       api: {
         provider: config.api?.provider || 'custom',
         baseURL: config.api?.baseURL || '',
-        model: config.api?.model || ''
+        model: config.api?.model || '',
         // 不保存 apiKey
       },
       chat: {
@@ -85,16 +85,16 @@ function saveConfig(config) {
         topP: 0.7,
         topK: 50,
         frequencyPenalty: 1,
-        thinkingInterval: config.thinkingInterval || 3000
+        thinkingInterval: config.thinkingInterval || 3000,
       },
       search: {
         enabled: true,
-        baseURL: ''
+        baseURL: '',
       },
       workspace: config.workspace || os.homedir(),
       database: {
-        path: './data/example.db'
-      }
+        path: './data/example.db',
+      },
     };
 
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(configData, null, 2), 'utf-8');
@@ -229,7 +229,13 @@ function saveConfig(config) {
     fs.writeFileSync(envPath, envLines.join('\n'), 'utf-8');
     try {
       if (process.platform === 'win32') {
-        execSync(`icacls "${envPath}" /inheritance:r /grant:r "${os.userInfo().username}:R"`);
+        // 使用 execFileSync+数组参数避免 shell 注入（用户名可能含特殊字符）；
+        // 权限设为 :RW 而非 :R，否则下次 saveConfig 写入会因只读而失败。
+        execFileSync(
+          'icacls',
+          [envPath, '/inheritance:r', '/grant:r', `${os.userInfo().username}:RW`],
+          { windowsHide: true },
+        );
       } else {
         fs.chmodSync(envPath, 0o600);
       }
@@ -261,7 +267,10 @@ function saveConfig(config) {
 function killPortProcess(port = 9527) {
   try {
     if (process.platform === 'win32') {
-      const result = execSync(`netstat -ano | findstr :${port}`, { encoding: 'utf-8', windowsHide: true });
+      const result = execSync(`netstat -ano | findstr :${port}`, {
+        encoding: 'utf-8',
+        windowsHide: true,
+      });
       const lines = result.trim().split('\n');
       const pids = new Set();
       for (const line of lines) {
@@ -290,10 +299,7 @@ function killPortProcess(port = 9527) {
  * 从 .env 文件读取环境变量
  */
 function loadEnvFile() {
-  const envPaths = [
-    path.join(USER_DATA_DIR, '.env'),
-    path.join(PROJECT_ROOT, '.env')
-  ];
+  const envPaths = [path.join(USER_DATA_DIR, '.env'), path.join(PROJECT_ROOT, '.env')];
   const envConfig = {};
 
   for (const envPath of envPaths) {
@@ -329,7 +335,7 @@ function startAgentProcess() {
   const isPackaged = app.isPackaged;
   let workingDir;
   let srcPath;
-  
+
   if (isPackaged) {
     workingDir = process.resourcesPath;
     srcPath = path.join(workingDir, 'src');
@@ -344,7 +350,7 @@ function startAgentProcess() {
     ELECTRON_RUN_AS_NODE: undefined,
     COGITO_USER_DATA_DIR: USER_DATA_DIR,
     ELECTRON_MODE: 'true',
-    COGITO_SRC_PATH: srcPath
+    COGITO_SRC_PATH: srcPath,
   };
 
   let tsxPath;
@@ -453,7 +459,9 @@ function createSetupWindow() {
 
   setupWindow.setMenuBarVisibility(false);
   setupWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] } });
+    callback({
+      responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] },
+    });
   });
   setupWindow.loadFile(path.join(__dirname, 'setup', 'setup.html'));
 
@@ -495,7 +503,9 @@ function createMainWindow() {
     mainWindow.setWindowButtonVisibility(false);
   }
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] } });
+    callback({
+      responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] },
+    });
   });
   mainWindow.loadFile(path.join(__dirname, 'desktop', 'index.html'));
 
@@ -505,7 +515,7 @@ function createMainWindow() {
     mainWindow = null;
   });
 
-  mainWindowCreated = true;  // 标记主窗口已创建
+  mainWindowCreated = true; // 标记主窗口已创建
   console.log('[主进程] 主窗口已创建');
 }
 
@@ -538,7 +548,9 @@ function createDashboardWindow() {
 
   dashboardWindow.setMenuBarVisibility(false);
   dashboardWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] } });
+    callback({
+      responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] },
+    });
   });
   dashboardWindow.loadFile(path.join(__dirname, 'dashboard', 'index.html'));
 
@@ -587,7 +599,9 @@ function createMonitorWindow() {
 
   monitorWindow.setMenuBarVisibility(false);
   monitorWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] } });
+    callback({
+      responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] },
+    });
   });
   monitorWindow.loadFile(path.join(__dirname, 'monitor', 'index.html'));
 
@@ -607,10 +621,10 @@ app.on('window-all-closed', () => {
     console.log('[主进程] 配置完成，正在启动主窗口...');
     return;
   }
-  
+
   // 停止 Agent 进程
   stopAgentProcess();
-  
+
   // 只有在配置向导阶段（setupWindow 存在且 mainWindow 从未创建过）才等待
   // 否则退出应用
   if (!setupWindow || mainWindowCreated) {
@@ -698,7 +712,7 @@ app.whenReady().then(async () => {
     } else {
       setupWindow?.webContents.send('setup-config-result', {
         success: false,
-        error: '保存配置失败'
+        error: '保存配置失败',
       });
     }
   });
@@ -707,7 +721,7 @@ app.whenReady().then(async () => {
   ipcMain.on('setup-select-directory', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory'],
-      defaultPath: os.homedir()
+      defaultPath: os.homedir(),
     });
 
     if (!result.canceled && result.filePaths.length > 0) {
@@ -729,15 +743,21 @@ app.whenReady().then(async () => {
   ipcMain.handle('get-personas', () => {
     const personasDir = path.join(PROJECT_ROOT, 'personas');
     const personas = [];
-    
+
     try {
-      const dirs = fs.readdirSync(personasDir, { withFileTypes: true }).filter(dir => dir.isDirectory()).map(dir => dir.name);
-      
+      const dirs = fs
+        .readdirSync(personasDir, { withFileTypes: true })
+        .filter((dir) => dir.isDirectory())
+        .map((dir) => dir.name);
+
       for (const dir of dirs) {
         const personaPath = path.join(personasDir, dir, 'persona.md');
         if (fs.existsSync(personaPath)) {
           const content = fs.readFileSync(personaPath, 'utf-8');
-          const firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim();
+          const firstLine = content
+            .split('\n')[0]
+            .replace(/^#+\s*/, '')
+            .trim();
           const match = firstLine.match(/^(.*?)\s*\(([^)]+)\)$/);
           const name = match ? match[1].trim() : firstLine;
           personas.push({ id: dir, name });
@@ -746,7 +766,7 @@ app.whenReady().then(async () => {
     } catch (e) {
       console.error('[主进程] 读取 personas 目录失败:', e.message);
     }
-    
+
     return personas;
   });
 
@@ -757,7 +777,10 @@ app.whenReady().then(async () => {
     try {
       if (fs.existsSync(PERSONA_FILE)) {
         const content = fs.readFileSync(PERSONA_FILE, 'utf-8');
-        const firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim();
+        const firstLine = content
+          .split('\n')[0]
+          .replace(/^#+\s*/, '')
+          .trim();
         const match = firstLine.match(/\(([^)]+)\)$/);
         if (match) {
           // 将空格替换为连字符，匹配目录名（如 "Shaanbei Youth" → "Shaanbei-Youth"）
@@ -767,7 +790,7 @@ app.whenReady().then(async () => {
     } catch (e) {
       console.error('[主进程] 读取 persona.md 失败:', e.message);
     }
-    
+
     // 回退到 .env 配置
     if (!persona) {
       try {
@@ -777,23 +800,23 @@ app.whenReady().then(async () => {
         }
       } catch (e) {}
     }
-    
+
     // 回退到内存缓存
     if (!persona) {
       persona = currentPersona;
     }
-    
+
     if (!persona) {
       return { type: 'video', path: 'default' };
     }
-    
+
     const personaDir = path.join(PROJECT_ROOT, 'personas', persona);
-    
+
     const videoPath = path.join(personaDir, 'video.mp4');
     if (fs.existsSync(videoPath)) {
       return { type: 'video', path: `../../personas/${persona}/video.mp4` };
     }
-    
+
     const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
     for (const ext of imageExtensions) {
       const imagePath = path.join(personaDir, `image.${ext}`);
@@ -801,7 +824,7 @@ app.whenReady().then(async () => {
         return { type: 'image', path: `../../personas/${persona}/image.${ext}` };
       }
     }
-    
+
     return { type: 'video', path: 'default' };
   });
 
@@ -819,16 +842,16 @@ app.whenReady().then(async () => {
     try {
       let sessions = [];
       let meta = { sessions: [], activeId: null };
-      
+
       if (fs.existsSync(metaPath)) {
         meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
         if (!meta.sessions) meta.sessions = [];
-        sessions = meta.sessions.map(s => ({
+        sessions = meta.sessions.map((s) => ({
           id: s.id,
           name: s.name,
           createdAt: s.createdAt,
           lastActiveAt: s.lastActiveAt,
-          isActive: s.id === meta.activeId
+          isActive: s.id === meta.activeId,
         }));
       }
 
@@ -837,44 +860,51 @@ app.whenReady().then(async () => {
         try {
           const files = fs.readdirSync(sessionsDir);
           const recovered = [];
-          
+
           for (const file of files) {
             if (!file.match(/^sess_[^_]+\.json$/)) continue;
             const sessionId = file.replace('.json', '');
             try {
               const content = JSON.parse(fs.readFileSync(path.join(sessionsDir, file), 'utf-8'));
               // 统计真实消息数（排除 system prompt 和系统注入的工具结果消息）
-              const messageCount = Array.isArray(content) ? content.filter(m =>
-                m.role !== 'system' &&
-                !(m.role === 'user' && m.content.startsWith('[系统返回的工具执行结果]'))
-              ).length : 0;
+              const messageCount = Array.isArray(content)
+                ? content.filter(
+                    (m) =>
+                      m.role !== 'system' &&
+                      !(m.role === 'user' && m.content.startsWith('[系统返回的工具执行结果]')),
+                  ).length
+                : 0;
               recovered.push({
                 id: sessionId,
                 name: `会话 ${recovered.length + 1}`,
                 createdAt: new Date().toISOString(),
                 lastActiveAt: new Date().toISOString(),
                 isActive: sessionId === meta.activeId,
-                messageCount
+                messageCount,
               });
             } catch {
               // 跳过损坏的文件
             }
           }
-          
+
           if (recovered.length > 0) {
             sessions = recovered;
             // 同步回 meta.json
-            meta.sessions = recovered.map(s => ({
+            meta.sessions = recovered.map((s) => ({
               id: s.id,
               name: s.name,
               createdAt: s.createdAt,
               lastActiveAt: s.lastActiveAt,
-              messageCount: s.messageCount || 0
+              messageCount: s.messageCount || 0,
             }));
             fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
             try {
               if (process.platform === 'win32') {
-                execSync(`icacls "${metaPath}" /inheritance:r /grant:r "${os.userInfo().username}:R"`);
+                execFileSync(
+                  'icacls',
+                  [metaPath, '/inheritance:r', '/grant:r', `${os.userInfo().username}:RW`],
+                  { windowsHide: true },
+                );
               } else {
                 fs.chmodSync(metaPath, 0o600);
               }
@@ -893,8 +923,8 @@ app.whenReady().then(async () => {
           if (fs.existsSync(sessionFile)) {
             const messages = JSON.parse(fs.readFileSync(sessionFile, 'utf-8'));
             // 找第一条真实用户消息作为预览（排除系统注入的工具结果）
-            const firstUserMsg = messages.find(m =>
-              m.role === 'user' && !m.content.startsWith('[系统返回的工具执行结果]')
+            const firstUserMsg = messages.find(
+              (m) => m.role === 'user' && !m.content.startsWith('[系统返回的工具执行结果]'),
             );
             if (firstUserMsg) {
               session.preview = firstUserMsg.content.substring(0, 50);
@@ -939,11 +969,11 @@ app.whenReady().then(async () => {
         // 过滤掉 system prompt 和系统注入的工具结果 user 消息
         // 工具结果在实时聊天时已通过 tool-result 事件显示为卡片，历史中不需要重复显示
         return messages
-          .filter(m => m.role !== 'system')
-          .filter(m => !(m.role === 'user' && m.content.startsWith('[系统返回的工具执行结果]')))
-          .map(m => ({
+          .filter((m) => m.role !== 'system')
+          .filter((m) => !(m.role === 'user' && m.content.startsWith('[系统返回的工具执行结果]')))
+          .map((m) => ({
             role: m.role,
-            content: m.content
+            content: m.content,
           }));
       }
     } catch (e) {
@@ -1018,7 +1048,7 @@ app.whenReady().then(async () => {
  */
 function getCurrentPersona() {
   if (currentPersona) return currentPersona;
-  
+
   // 优先从 .env 文件读取
   try {
     const envConfig = loadEnvFile();
@@ -1029,12 +1059,15 @@ function getCurrentPersona() {
   } catch (e) {
     console.error('[主进程] 从 .env 读取 persona 失败:', e.message);
   }
-  
+
   // 回退到从 persona.md 获取
   try {
     if (fs.existsSync(PERSONA_FILE)) {
       const content = fs.readFileSync(PERSONA_FILE, 'utf-8');
-      const firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim();
+      const firstLine = content
+        .split('\n')[0]
+        .replace(/^#+\s*/, '')
+        .trim();
       const match = firstLine.match(/\(([^)]+)\)$/);
       if (match) {
         currentPersona = match[1].trim();
@@ -1044,7 +1077,7 @@ function getCurrentPersona() {
   } catch (e) {
     console.error('[主进程] 读取 persona.md 失败:', e.message);
   }
-  
+
   return '';
 }
 
@@ -1053,14 +1086,20 @@ function getCurrentPersona() {
  */
 async function launchMainApp() {
   // 防止重复调用（例如来自渲染进程的多次 IPC）
-  if (isTransitioningToMain || mainWindow || mainWindowCreated || dashboardWindow || dashboardWindowCreated) {
+  if (
+    isTransitioningToMain ||
+    mainWindow ||
+    mainWindowCreated ||
+    dashboardWindow ||
+    dashboardWindowCreated
+  ) {
     console.log('[主进程] launchMainApp 已被调用，跳过');
     return;
   }
 
   // 先关闭配置向导窗口（如果存在）
   if (setupWindow) {
-    isTransitioningToMain = true;  // 防止 window-all-closed 误退出
+    isTransitioningToMain = true; // 防止 window-all-closed 误退出
     setupWindow.close();
     setupWindow = null;
   }
@@ -1088,5 +1127,5 @@ async function launchMainApp() {
     createMainWindow();
   }
 
-  isTransitioningToMain = false;  // 过渡完成
+  isTransitioningToMain = false; // 过渡完成
 }

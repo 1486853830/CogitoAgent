@@ -265,23 +265,6 @@
           </div>
         </div>
 
-        <script>
-          function toggleSection(id) {
-            const section = document.getElementById(id);
-            const toggle = section.parentElement.querySelector('.section-toggle');
-            const header = section.parentElement.querySelector('.section-header');
-            if (section.style.display === 'none') {
-              section.style.display = 'block';
-              toggle.textContent = '−';
-              header.classList.add('expanded');
-            } else {
-              section.style.display = 'none';
-              toggle.textContent = '+';
-              header.classList.remove('expanded');
-            }
-          }
-          document.querySelectorAll('.section-content').forEach(el => el.style.display = 'none');
-        </script>
       </div>
     </div>
 

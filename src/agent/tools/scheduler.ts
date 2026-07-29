@@ -20,7 +20,12 @@ function safeParseId(id: any): number | null {
  */
 async function loadTasks(): Promise<void> {
   try {
-    if (await fs.access(TASKS_FILE).then(() => true).catch(() => false)) {
+    if (
+      await fs
+        .access(TASKS_FILE)
+        .then(() => true)
+        .catch(() => false)
+    ) {
       const data = await fs.readFile(TASKS_FILE, 'utf-8');
       tasks = JSON.parse(data);
     }
@@ -37,7 +42,12 @@ async function loadTasks(): Promise<void> {
 async function saveTasks(): Promise<boolean> {
   const dir = path.dirname(TASKS_FILE);
   try {
-    if (!(await fs.access(dir).then(() => true).catch(() => false))) {
+    if (
+      !(await fs
+        .access(dir)
+        .then(() => true)
+        .catch(() => false))
+    ) {
       await fs.mkdir(dir, { recursive: true });
     }
     await fs.writeFile(TASKS_FILE, JSON.stringify(tasks, null, 2), 'utf-8');
@@ -53,7 +63,12 @@ async function saveTasks(): Promise<boolean> {
 /**
  * 添加定时任务
  */
-async function addScheduleTask(name: string, cronExpr: string, action: string, params: any = {}): Promise<any> {
+async function addScheduleTask(
+  name: string,
+  cronExpr: string,
+  action: string,
+  params: any = {},
+): Promise<any> {
   await loadTasks();
 
   const task = {
@@ -67,7 +82,7 @@ async function addScheduleTask(name: string, cronExpr: string, action: string, p
     lastRun: null,
     nextRun: null,
     runCount: 0,
-    lastError: null
+    lastError: null,
   };
 
   tasks.push(task);
@@ -77,7 +92,7 @@ async function addScheduleTask(name: string, cronExpr: string, action: string, p
 
   return {
     success: true,
-    data: task
+    data: task,
   };
 }
 
@@ -91,15 +106,15 @@ async function removeScheduleTask(id: any): Promise<any> {
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const index = tasks.findIndex(t => t.id === numId);
+  const index = tasks.findIndex((t) => t.id === numId);
   if (index === -1) {
     return {
       success: false,
-      error: `定时任务不存在: ${id}`
+      error: `定时任务不存在: ${id}`,
     };
   }
 
@@ -114,7 +129,7 @@ async function removeScheduleTask(id: any): Promise<any> {
 
   return {
     success: true,
-    data: `定时任务已删除: ${task.name}`
+    data: `定时任务已删除: ${task.name}`,
   };
 }
 
@@ -126,7 +141,7 @@ async function getScheduleTasks(): Promise<any> {
 
   return {
     success: true,
-    data: tasks
+    data: tasks,
   };
 }
 
@@ -140,21 +155,21 @@ async function getScheduleTask(id: any): Promise<any> {
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const task = tasks.find(t => t.id === numId);
+  const task = tasks.find((t) => t.id === numId);
   if (!task) {
     return {
       success: false,
-      error: `定时任务不存在: ${id}`
+      error: `定时任务不存在: ${id}`,
     };
   }
 
   return {
     success: true,
-    data: task
+    data: task,
   };
 }
 
@@ -168,15 +183,15 @@ async function updateScheduleTask(id: any, updates: any): Promise<any> {
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const task = tasks.find(t => t.id === numId);
+  const task = tasks.find((t) => t.id === numId);
   if (!task) {
     return {
       success: false,
-      error: `定时任务不存在: ${id}`
+      error: `定时任务不存在: ${id}`,
     };
   }
 
@@ -200,7 +215,7 @@ async function updateScheduleTask(id: any, updates: any): Promise<any> {
 
   return {
     success: true,
-    data: task
+    data: task,
   };
 }
 
@@ -214,15 +229,15 @@ async function toggleScheduleTask(id: any): Promise<any> {
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const task = tasks.find(t => t.id === numId);
+  const task = tasks.find((t) => t.id === numId);
   if (!task) {
     return {
       success: false,
-      error: `定时任务不存在: ${id}`
+      error: `定时任务不存在: ${id}`,
     };
   }
 
@@ -241,8 +256,8 @@ async function toggleScheduleTask(id: any): Promise<any> {
     data: {
       id: task.id,
       name: task.name,
-      enabled: task.enabled
-    }
+      enabled: task.enabled,
+    },
   };
 }
 
@@ -277,8 +292,9 @@ function scheduleTask(task: any): void {
     await saveTasks();
   };
 
-  runTask();
-
+  // 不再立即执行：调度任务时只注册定时器，等下一个周期到了再运行。
+  // 此前 runTask() 在此直接调用，导致 addScheduleTask / startScheduler
+  // 时所有任务都会立即触发一次，违背 cron 语义且可能产生副作用。
   intervals[task.id] = setInterval(runTask, ms);
   task.nextRun = new Date(Date.now() + ms).toISOString();
 }
@@ -315,12 +331,12 @@ function parseCronToMs(cronExpr: string): number {
   if (parts.length === 1) {
     const simple = parts[0].toLowerCase();
     const simpleMap: any = {
-      'secondly': 1000,
-      'minutely': 60000,
-      'hourly': 3600000,
-      'daily': 86400000,
-      'weekly': 604800000,
-      'monthly': 2592000000
+      secondly: 1000,
+      minutely: 60000,
+      hourly: 3600000,
+      daily: 86400000,
+      weekly: 604800000,
+      monthly: 2592000000,
     };
     return simpleMap[simple] || 0;
   }
@@ -338,7 +354,7 @@ function parseCronToMs(cronExpr: string): number {
     if (minute !== '*') {
       // 处理范围表达式 (如 1-5)
       if (minute.includes('-')) {
-        const [start, end] = minute.split('-').map(n => parseInt(n));
+        const [start, end] = minute.split('-').map((n) => parseInt(n));
         if (!isNaN(start) && !isNaN(end)) {
           // 范围表达式返回最小间隔（分钟）
           return 60000;
@@ -353,16 +369,21 @@ function parseCronToMs(cronExpr: string): number {
       }
       // 处理列表表达式 (如 0,15,30)
       if (minute.includes(',')) {
-        const values = minute.split(',').map(n => parseInt(n)).filter(n => !isNaN(n));
+        const values = minute
+          .split(',')
+          .map((n) => parseInt(n))
+          .filter((n) => !isNaN(n));
         if (values.length > 0) {
           // 返回最小间隔（分钟）
           return 60000;
         }
       }
-      // 简单数字
+      // 简单数字（如 "0"、"30"）：cron 语义是"每小时的第 N 分钟"，
+      // 不是"每 N 分钟"。固定分钟 + hour=* → 间隔为 1 小时。
+      // 此前返回 mins * 60000，导致 "0" 返回 0（被判为无效），"30" 返回 30 分钟（错误）。
       const mins = parseInt(minute);
       if (!isNaN(mins)) {
-        return mins * 60000;
+        return 3600000; // 1 小时
       }
     }
 
@@ -396,14 +417,14 @@ function parseCronToMs(cronExpr: string): number {
     const unit = match[2].toLowerCase();
 
     const unitMap: any = {
-      'second': 1000,
-      'seconds': 1000,
-      'minute': 60000,
-      'minutes': 60000,
-      'hour': 3600000,
-      'hours': 3600000,
-      'day': 86400000,
-      'days': 86400000
+      second: 1000,
+      seconds: 1000,
+      minute: 60000,
+      minutes: 60000,
+      hour: 3600000,
+      hours: 3600000,
+      day: 86400000,
+      days: 86400000,
     };
 
     return (unitMap[unit] || 0) * num;
@@ -420,7 +441,7 @@ async function executeAction(action: string, params: any): Promise<void> {
   const actions: any = {
     'system.check': () => checkSystem,
     'memory.clean': () => cleanMemory,
-    'tasks.summary': () => summarizeTasks
+    'tasks.summary': () => summarizeTasks,
   };
 
   const fn = actions[action];
@@ -468,7 +489,7 @@ async function startScheduler(): Promise<void> {
     }
   }
 
-  console.log(`[定时任务] 已启动 ${tasks.filter(t => t.enabled).length} 个任务`);
+  console.log(`[定时任务] 已启动 ${tasks.filter((t) => t.enabled).length} 个任务`);
 }
 
 /**
@@ -490,5 +511,5 @@ export {
   updateScheduleTask,
   toggleScheduleTask,
   startScheduler,
-  stopScheduler
+  stopScheduler,
 };

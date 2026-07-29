@@ -6,6 +6,7 @@ import readline from 'readline';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { execFileSync } from 'child_process';
 import { DEFAULT_CONFIG, loadEnvConfig } from './config.ts';
 
 interface PersonaInfo {
@@ -703,6 +704,20 @@ function saveEnvConfig(config: any): boolean {
 
   try {
     fs.writeFileSync(envPath, lines.join('\n'), 'utf-8');
+    // 设置文件权限：.env 含 API 密钥，必须限制访问。此前未设权限，文件对所有用户可读。
+    try {
+      if (process.platform === 'win32') {
+        execFileSync(
+          'icacls',
+          [envPath, '/inheritance:r', '/grant:r', `${os.userInfo().username}:RW`],
+          { windowsHide: true },
+        );
+      } else {
+        fs.chmodSync(envPath, 0o600);
+      }
+    } catch {
+      printWarning('无法设置 .env 文件权限，建议手动限制访问');
+    }
     printSuccess('配置已保存到 .env 文件');
     return true;
   } catch (e) {

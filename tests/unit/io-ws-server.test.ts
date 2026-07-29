@@ -129,11 +129,32 @@ describe('io/ws-server.ts', () => {
       stopWsServer();
     });
 
-    it('should accept undefined origin', async () => {
+    it('should reject undefined origin from non-local address', async () => {
+      // 空 Origin + 非本机地址 → 拒绝（外部恶意进程）
       await startWsServer();
       const verifyClient = lastServerInstance.options.verifyClient;
       const cb = jest.fn();
-      verifyClient({ origin: undefined }, cb);
+      verifyClient({ origin: undefined, req: { socket: { remoteAddress: '10.0.0.5' } } }, cb);
+      expect(cb).toHaveBeenCalledWith(false, 403, expect.any(String));
+      stopWsServer();
+    });
+
+    it('should accept undefined origin from localhost address', async () => {
+      // 空 Origin + 本机回环地址 → 放行（Node ws 客户端不发 Origin）
+      await startWsServer();
+      const verifyClient = lastServerInstance.options.verifyClient;
+      const cb = jest.fn();
+      verifyClient({ origin: undefined, req: { socket: { remoteAddress: '127.0.0.1' } } }, cb);
+      expect(cb).toHaveBeenCalledWith(true);
+      stopWsServer();
+    });
+
+    it('should fallback-allow when both origin and remoteAddress are missing', async () => {
+      // 兜底：Origin 和 remoteAddress 都缺失时放行（服务绑定 127.0.0.1）
+      await startWsServer();
+      const verifyClient = lastServerInstance.options.verifyClient;
+      const cb = jest.fn();
+      verifyClient({ origin: undefined, req: {} }, cb);
       expect(cb).toHaveBeenCalledWith(true);
       stopWsServer();
     });
@@ -142,7 +163,10 @@ describe('io/ws-server.ts', () => {
       await startWsServer();
       const verifyClient = lastServerInstance.options.verifyClient;
       const cb = jest.fn();
-      verifyClient({ origin: 'http://evil.com' }, cb);
+      verifyClient(
+        { origin: 'http://evil.com', req: { socket: { remoteAddress: '10.0.0.5' } } },
+        cb,
+      );
       expect(cb).toHaveBeenCalledWith(false, 403, expect.any(String));
       expect(logSpy).toHaveBeenCalled();
       stopWsServer();

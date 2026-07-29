@@ -15,7 +15,12 @@ function resolveInWorkspace(targetPath: string): string | null {
     ? path.resolve(targetPath)
     : path.resolve(resolvedBase, targetPath);
 
-  if (!fullPath.toLowerCase().startsWith(resolvedBase.toLowerCase())) {
+  // 必须使用路径分隔符边界校验，避免兄弟目录前缀绕过：
+  // 若仅用 startsWith，resolvedBase=/proj 会放行 /proj-evil。
+  // 此处要求 fullPath 等于 resolvedBase，或以 resolvedBase+sep 开头。
+  const baseLower = resolvedBase.toLowerCase();
+  const fullLower = fullPath.toLowerCase();
+  if (fullLower !== baseLower && !fullLower.startsWith(baseLower + path.sep.toLowerCase())) {
     return null;
   }
 

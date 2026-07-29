@@ -10,16 +10,15 @@
  *  - createJavaScriptSandbox
  *
  * 说明：
- *  - isolated-vm 为可选原生模块。当前环境下其原生绑定不可用（require 后仅返回
- *    `{ lib: {} }`，缺少 Isolate 等构造器），会导致 runJavaScriptIsolated 内部
- *    报错且无法触发降级。因此这里通过 jest.unstable_mockModule 让
- *    `import('isolated-vm')` 抛错，使 getIvm() 返回 null，从而走原生 vm 降级
- *    路径（runJavaScriptFallback），即真实的沙箱隔离执行路径。
+ *  - isolated-vm 为强安全依赖。runJavaScriptSandbox 在 isolated-vm 不可用时
+ *    会直接拒绝执行（不再静默降级到不安全的 vm 模块）。本测试使用真实的
+ *    isolated-vm 原生绑定执行 runJavaScriptSandbox / runJavaScriptIsolated。
+ *  - createJavaScriptSandbox / runJavaScriptFallback 仍作为工具函数保留并单独
+ *    覆盖，它们不再被 runJavaScriptSandbox 调用。
  *  - runPythonSandbox 会把 PATH 截断为前 3 项，因此在 beforeAll 中把 python
  *    所在目录前置到 PATH，保证真实执行可用。
  */
 
-import { jest } from '@jest/globals';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -47,10 +46,8 @@ try {
   pythonAvailable = false;
 }
 
-// 让 isolated-vm 的动态导入失败，强制 getIvm() 返回 null 并走原生 vm 降级路径。
-jest.unstable_mockModule('isolated-vm', () => {
-  throw new Error('isolated-vm disabled in tests');
-});
+// runJavaScriptSandbox 现在要求 isolated-vm 可用（拒绝降级到 vm），故不再 mock。
+// 真实 isolated-vm 绑定在本环境下可用。
 
 const {
   isSandboxEnabled,
@@ -186,10 +183,10 @@ describe('sandbox tools', () => {
       expect(result.data).toBe('2');
     });
 
-    it('should handle code that throws and surface the error in data', async () => {
+    it('should handle code that throws and return a failure result', async () => {
       const result = await runJavaScriptSandbox("throw new Error('oops')");
-      expect(result.success).toBe(true);
-      expect(result.data).toContain('oops');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('oops');
     });
 
     it('should report no-return-value message', async () => {
@@ -208,9 +205,19 @@ describe('sandbox tools', () => {
   });
 
   describe('runJavaScriptIsolated', () => {
-    it('should throw when isolated-vm is unavailable', async () => {
-      // 已通过 mock 禁用 isolated-vm，getIvm() 返回 null，函数直接抛错。
-      await expect(runJavaScriptIsolated('return 1')).rejects.toThrow(/isolated-vm 不可用/);
+    it('should execute code via real isolated-vm when available', async () => {
+      const result = await runJavaScriptIsolated('return 1 + 1');
+      expect(result.success).toBe(true);
+      expect(result.data).toBe('2');
+    });
+
+    it('should not expose process / require in the isolate', async () => {
+      const r1 = await runJavaScriptIsolated('return typeof process');
+      expect(r1.success).toBe(true);
+      expect(r1.data).toBe('undefined');
+      const r2 = await runJavaScriptIsolated('return typeof require');
+      expect(r2.success).toBe(true);
+      expect(r2.data).toBe('undefined');
     });
   });
 

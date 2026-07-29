@@ -4,6 +4,29 @@
  * 公共组件: SharedUtils / PersonaManager / MessageRenderer (来自 ../shared/)
  */
 
+// 环境粒子生成 — 背景氛围（磷光浮点）
+// 原为 index.html 内联 <script>，为 CSP 安全（移除 unsafe-inline）外迁至此。
+(function () {
+  const container = document.getElementById('ambientParticles');
+  if (!container) return;
+  const PARTICLE_COUNT = 28;
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const p = document.createElement('span');
+    p.className = 'particle';
+    const size = (1 + Math.random() * 2.2).toFixed(2);
+    p.style.left = (Math.random() * 100).toFixed(2) + '%';
+    p.style.top = (Math.random() * 100).toFixed(2) + '%';
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.animationDelay = (Math.random() * -14).toFixed(2) + 's';
+    p.style.animationDuration = (10 + Math.random() * 12).toFixed(2) + 's';
+    p.style.setProperty('--particle-opacity', (0.15 + Math.random() * 0.4).toFixed(2));
+    frag.appendChild(p);
+  }
+  container.appendChild(frag);
+})();
+
 // ============================================================
 // 工具函数模块 - 复用公共 SharedUtils
 // ============================================================
@@ -17,112 +40,230 @@ const TOOL_CATEGORIES = [
     id: 'file',
     name: '文件操作',
     code: 'FILE',
-    tools: ['ls', 'read', 'copy', 'mkdir', 'create']
+    tools: ['ls', 'read', 'copy', 'mkdir', 'create'],
   },
   {
     id: 'web',
     name: '网络工具',
     code: 'WEB',
-    tools: ['search', 'browse', 'fetchPage']
+    tools: ['search', 'browse', 'fetchPage'],
   },
   {
     id: 'system',
     name: '系统操作',
     code: 'SYS',
-    tools: ['listApps', 'openApp', 'closeApp']
+    tools: ['listApps', 'openApp', 'closeApp'],
   },
   {
     id: 'browser',
     name: '浏览器自动化',
     code: 'BROW',
-    tools: ['initBrowser', 'clickElement', 'fillField', 'selectOption', 'viewChanges', 'getPageContent', 'takeScreenshot', 'closeBrowser', 'searchOnPage', 'findElements', 'searchOnEngine', 'downloadFile']
+    tools: [
+      'initBrowser',
+      'clickElement',
+      'fillField',
+      'selectOption',
+      'viewChanges',
+      'getPageContent',
+      'takeScreenshot',
+      'closeBrowser',
+      'searchOnPage',
+      'findElements',
+      'searchOnEngine',
+      'downloadFile',
+    ],
   },
   {
     id: 'code',
     name: '代码执行',
     code: 'CODE',
-    tools: ['executeCode', 'executeFile', 'runJavaScript', 'runPython', 'formatCode']
+    tools: ['executeCode', 'executeFile', 'runJavaScript', 'runPython', 'formatCode'],
   },
   {
     id: 'git',
     name: 'Git 版本控制',
     code: 'GIT',
-    tools: ['gitInit', 'gitClone', 'gitAdd', 'gitCommit', 'gitPush', 'gitPull', 'gitStatus', 'gitLog', 'gitBranchCreate', 'gitBranchDelete', 'gitCheckout', 'gitCheckoutNew', 'gitMerge', 'gitDiff', 'gitRemoteAdd', 'gitRemoteList', 'gitConfigUser', 'gitReset', 'gitStash', 'gitStashPop']
+    tools: [
+      'gitInit',
+      'gitClone',
+      'gitAdd',
+      'gitCommit',
+      'gitPush',
+      'gitPull',
+      'gitStatus',
+      'gitLog',
+      'gitBranchCreate',
+      'gitBranchDelete',
+      'gitCheckout',
+      'gitCheckoutNew',
+      'gitMerge',
+      'gitDiff',
+      'gitRemoteAdd',
+      'gitRemoteList',
+      'gitConfigUser',
+      'gitReset',
+      'gitStash',
+      'gitStashPop',
+    ],
   },
   {
     id: 'task',
     name: '任务管理',
     code: 'TASK',
-    tools: ['createTask', 'getTasks', 'getTask', 'updateTask', 'deleteTask', 'completeTask', 'splitTask', 'getTaskStats', 'clearTasks']
+    tools: [
+      'createTask',
+      'getTasks',
+      'getTask',
+      'updateTask',
+      'deleteTask',
+      'completeTask',
+      'splitTask',
+      'getTaskStats',
+      'clearTasks',
+    ],
   },
   {
     id: 'memory',
     name: '记忆系统',
     code: 'MEM',
-    tools: ['addMemory', 'searchMemory', 'getAllMemories', 'getMemory', 'updateMemory', 'deleteMemory', 'getMemoryStats', 'getRelatedMemories', 'clearMemory']
+    tools: [
+      'addMemory',
+      'searchMemory',
+      'getAllMemories',
+      'getMemory',
+      'updateMemory',
+      'deleteMemory',
+      'getMemoryStats',
+      'getRelatedMemories',
+      'clearMemory',
+    ],
   },
   {
     id: 'data',
     name: '数据处理',
     code: 'DATA',
-    tools: ['readCSV', 'writeCSV', 'readJSON', 'writeJSON', 'csvToJSON', 'jsonToCSV', 'queryData', 'analyzeData', 'sortData']
+    tools: [
+      'readCSV',
+      'writeCSV',
+      'readJSON',
+      'writeJSON',
+      'csvToJSON',
+      'jsonToCSV',
+      'queryData',
+      'analyzeData',
+      'sortData',
+    ],
   },
   {
     id: 'db',
     name: '数据库',
     code: 'DB',
-    tools: ['executeSQL', 'query', 'insert', 'update', 'deleteData', 'createTable', 'dropTable', 'getTables', 'getTableSchema', 'executeTransaction', 'closeDB']
+    tools: [
+      'executeSQL',
+      'query',
+      'insert',
+      'update',
+      'deleteData',
+      'createTable',
+      'dropTable',
+      'getTables',
+      'getTableSchema',
+      'executeTransaction',
+      'closeDB',
+    ],
   },
   {
     id: 'email',
     name: '邮件功能',
     code: 'MAIL',
-    tools: ['sendEmail', 'sendTextEmail', 'sendHtmlEmail', 'sendTemplateEmail', 'sendEmailWithAttachments', 'checkEmailConfig']
+    tools: [
+      'sendEmail',
+      'sendTextEmail',
+      'sendHtmlEmail',
+      'sendTemplateEmail',
+      'sendEmailWithAttachments',
+      'checkEmailConfig',
+    ],
   },
   {
     id: 'monitor',
     name: '系统监控',
     code: 'MON',
-    tools: ['getCPUInfo', 'getMemoryInfo', 'getDiskInfo', 'getNetworkInfo', 'getProcesses', 'getSystemInfo', 'getCurrentProcess', 'getSystemLoad', 'monitorSystem']
+    tools: [
+      'getCPUInfo',
+      'getMemoryInfo',
+      'getDiskInfo',
+      'getNetworkInfo',
+      'getProcesses',
+      'getSystemInfo',
+      'getCurrentProcess',
+      'getSystemLoad',
+      'monitorSystem',
+    ],
   },
   {
     id: 'scheduler',
     name: '定时任务',
     code: 'CRON',
-    tools: ['addScheduleTask', 'getScheduleTasks', 'getScheduleTask', 'updateScheduleTask', 'toggleScheduleTask', 'removeScheduleTask', 'startScheduler', 'stopScheduler']
+    tools: [
+      'addScheduleTask',
+      'getScheduleTasks',
+      'getScheduleTask',
+      'updateScheduleTask',
+      'toggleScheduleTask',
+      'removeScheduleTask',
+      'startScheduler',
+      'stopScheduler',
+    ],
   },
   {
     id: 'ocr',
     name: '图像文字识别',
     code: 'OCR',
-    tools: ['ocr', 'ocrBatch']
+    tools: ['ocr', 'ocrBatch'],
   },
   {
     id: 'vision',
     name: '视觉分析',
     code: 'VIS',
-    tools: ['vision', 'visionFromUrl']
+    tools: ['vision', 'visionFromUrl'],
   },
   {
     id: 'office',
     name: 'Office 文档',
     code: 'DOC',
-    tools: ['createPpt', 'createWord', 'createExcel', 'readExcel']
+    tools: ['createPpt', 'createWord', 'createExcel', 'readExcel'],
   },
   {
     id: 'cluster',
     name: '集群管理',
     code: 'NODE',
-    tools: ['spawnAgent', 'delegateTask', 'getClusterStatus', 'stopAgent', 'stopAllAgents', 'parallelExecute', 'getAgent']
-  }
+    tools: [
+      'spawnAgent',
+      'delegateTask',
+      'getClusterStatus',
+      'stopAgent',
+      'stopAllAgents',
+      'parallelExecute',
+      'getAgent',
+    ],
+  },
 ];
 
 // 危险操作列表（来自 registry.js）
 const DANGEROUS_TOOLS = new Set([
-  'gitPush', 'gitReset', 'gitBranchDelete',
-  'executeCode', 'executeFile', 'runJavaScript', 'runPython',
-  'deleteData', 'dropTable', 'clearTasks', 'clearMemory',
-  'removeScheduleTask'
+  'gitPush',
+  'gitReset',
+  'gitBranchDelete',
+  'executeCode',
+  'executeFile',
+  'runJavaScript',
+  'runPython',
+  'deleteData',
+  'dropTable',
+  'clearTasks',
+  'clearMemory',
+  'removeScheduleTask',
 ]);
 
 // ============================================================
@@ -130,13 +271,13 @@ const DANGEROUS_TOOLS = new Set([
 // ============================================================
 const AppState = {
   isProcessing: false,
-  isWaiting: false,  // Agent 是否在等待用户输入
+  isWaiting: false, // Agent 是否在等待用户输入
   currentAssistantBubble: null,
   lastToolKey: '',
   currentMode: 'work', // work / code / design
   view: 'welcome', // welcome / chat
-  currentSessionId: null,  // 追踪当前会话 ID
-  wechatSessionId: null,   // 微信通道会话 ID
+  currentSessionId: null, // 追踪当前会话 ID
+  wechatSessionId: null, // 微信通道会话 ID
 
   setProcessing(val) {
     this.isProcessing = val;
@@ -181,7 +322,7 @@ const PersonaUIManager = {
     window.electronAPI?.onPersonaSwitched?.((data) => {
       console.log('[PersonaUIManager] Persona 已切换:', data.persona);
       // 同步主进程的 currentPersona
-      window.electronAPI?.send('update-current-persona', data.persona);
+      window.electronAPI?.updateCurrentPersona(data.persona);
       PersonaManager.loadPersonaMedia();
     });
   },
@@ -209,11 +350,11 @@ const PersonaSelectModal = {
     // 加载 personas
     try {
       const personas = await window.electronAPI.getPersonas();
-      
+
       // 默认选项
       const defaultCard = this._createCard('', '默认', '无特定性格');
       grid.appendChild(defaultCard);
-      
+
       for (const p of personas) {
         const card = this._createCard(p.id, p.name, p.id);
         grid.appendChild(card);
@@ -223,9 +364,9 @@ const PersonaSelectModal = {
     }
 
     // 绑定点击事件
-    grid.querySelectorAll('.persona-card').forEach(card => {
+    grid.querySelectorAll('.persona-card').forEach((card) => {
       card.addEventListener('click', () => {
-        grid.querySelectorAll('.persona-card').forEach(c => c.classList.remove('selected'));
+        grid.querySelectorAll('.persona-card').forEach((c) => c.classList.remove('selected'));
         card.classList.add('selected');
         this.selectedPersona = card.dataset.persona;
         confirmBtn.disabled = false;
@@ -288,7 +429,7 @@ const WindowManager = {
 const NavManager = {
   init() {
     // Work/Code/Design 模式切换
-    document.querySelectorAll('.mode-tab').forEach(tab => {
+    document.querySelectorAll('.mode-tab').forEach((tab) => {
       tab.addEventListener('click', () => {
         this.switchMode(tab.dataset.mode);
       });
@@ -312,7 +453,7 @@ const NavManager = {
 
     // 技能按钮
     const skillBtns = document.querySelectorAll('.action-btn');
-    skillBtns.forEach(btn => {
+    skillBtns.forEach((btn) => {
       if (btn.id === 'newTaskBtn') return;
       if (btn.id === 'desktopModeBtn') {
         btn.addEventListener('click', () => this.switchToDesktop());
@@ -345,7 +486,7 @@ const NavManager = {
     }
 
     // 仓库源链接 — 欢迎页双仓库标识条
-    document.querySelectorAll('.repo-link').forEach(link => {
+    document.querySelectorAll('.repo-link').forEach((link) => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         const url = link.dataset.url;
@@ -356,7 +497,7 @@ const NavManager = {
     });
 
     // 快捷功能卡片 — 支持 .func-card (旧) 与 .module-entry (新, 带 data-func)
-    document.querySelectorAll('.func-card, .module-entry').forEach(card => {
+    document.querySelectorAll('.func-card, .module-entry').forEach((card) => {
       card.addEventListener('click', () => {
         const funcName = card.dataset.func || card.textContent.trim();
         this.handleQuickFunction(funcName);
@@ -402,7 +543,9 @@ const NavManager = {
       // 按最后活跃时间排序（最新的在前）
       sessions.sort((a, b) => new Date(b.lastActiveAt) - new Date(a.lastActiveAt));
 
-      sessionListEl.innerHTML = sessions.map(session => `
+      sessionListEl.innerHTML = sessions
+        .map(
+          (session) => `
         <div class="session-item ${session.isActive ? 'active' : ''}" data-session-id="${session.id}">
           <div class="session-icon">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
@@ -415,10 +558,12 @@ const NavManager = {
             <div class="session-time">${this.formatTime(session.lastActiveAt)}</div>
           </div>
         </div>
-      `).join('');
+      `,
+        )
+        .join('');
 
       // 绑定点击事件
-      sessionListEl.querySelectorAll('.session-item').forEach(item => {
+      sessionListEl.querySelectorAll('.session-item').forEach((item) => {
         item.addEventListener('click', () => {
           const sessionId = item.dataset.sessionId;
           this.switchToSession(sessionId);
@@ -490,7 +635,9 @@ const NavManager = {
             } else if (msg.role === 'assistant') {
               const filtered = Utils.filterToolBlocks(msg.content);
               if (filtered) {
-                ChatManager.addMessage('assistant', Utils.renderMarkdown(filtered), { isHtml: true });
+                ChatManager.addMessage('assistant', Utils.renderMarkdown(filtered), {
+                  isHtml: true,
+                });
               }
             }
           }
@@ -529,21 +676,21 @@ const NavManager = {
       console.log('[NavManager] 创建新会话, 人设:', persona || '默认');
       AppState.setProcessing(false);
       AppState.currentAssistantBubble = null;
-      
+
       // 发送创建命令，携带人设参数
       const cmd = persona ? `/new ${persona}` : '/new';
       window.electronAPI?.sendMessage(cmd);
-      
+
       ChatManager.clearMessages();
       ChatManager.enterChatView();
-      
+
       const input = document.getElementById('chatInputBottom');
       if (input) {
         input.value = '';
         Utils.autoResizeTextarea(input);
         input.focus();
       }
-      
+
       setTimeout(() => this.loadSessions(), 500);
     });
   },
@@ -581,7 +728,7 @@ const NavManager = {
 
   switchMode(mode) {
     AppState.currentMode = mode;
-    document.querySelectorAll('.mode-tab').forEach(t => {
+    document.querySelectorAll('.mode-tab').forEach((t) => {
       t.classList.toggle('active', t.dataset.mode === mode);
     });
     console.log('[NavManager] 切换模式:', mode);
@@ -601,17 +748,17 @@ const NavManager = {
     PersonaSelectModal.show((persona) => {
       const cmd = persona ? `/new ${persona}` : '/new';
       window.electronAPI?.sendMessage(cmd);
-      
+
       ChatManager.clearMessages();
       ChatManager.enterChatView();
-      
+
       const input = document.getElementById('chatInputBottom');
       if (input) {
         input.value = '';
         Utils.autoResizeTextarea(input);
         input.focus();
       }
-      
+
       setTimeout(() => this.loadSessions(), 500);
       console.log('[NavManager] 新建任务, 人设:', persona || '默认');
     });
@@ -630,7 +777,7 @@ const NavManager = {
     // 进入对话视图，预置提示词
     ChatManager.enterChatView();
     const prompts = {
-      '自动化': '请帮我创建一个自动化任务，我需要...',
+      自动化: '请帮我创建一个自动化任务，我需要...',
     };
     const prompt = prompts[label] || `请帮我处理${label}相关的任务。`;
     const inputBottom = document.getElementById('chatInputBottom');
@@ -645,10 +792,10 @@ const NavManager = {
     console.log('[NavManager] 快捷功能:', funcName);
     ChatManager.enterChatView();
     const prompts = {
-      '网页读取': '请帮我读取并分析以下网页内容：',
-      '调研分析': '请帮我做一个调研分析，主题是：',
-      '数据挖掘': '请帮我进行数据挖掘，分析以下数据：',
-      '文件管理': '请帮我管理文件，我需要：',
+      网页读取: '请帮我读取并分析以下网页内容：',
+      调研分析: '请帮我做一个调研分析，主题是：',
+      数据挖掘: '请帮我进行数据挖掘，分析以下数据：',
+      文件管理: '请帮我管理文件，我需要：',
     };
     const prompt = prompts[funcName] || `请帮我进行${funcName}。`;
     const inputBottom = document.getElementById('chatInputBottom');
@@ -718,7 +865,9 @@ const NavManager = {
 
     const closeBtn = document.getElementById('wechatQrClose');
     if (closeBtn) {
-      closeBtn.onclick = () => { modal.style.display = 'none'; };
+      closeBtn.onclick = () => {
+        modal.style.display = 'none';
+      };
     }
   },
 
@@ -752,8 +901,8 @@ const SkillsManager = {
     const totalCategories = TOOL_CATEGORIES.length;
     const totalTools = TOOL_CATEGORIES.reduce((sum, c) => sum + (c.tools ? c.tools.length : 0), 0);
     const dangerTools = new Set(DANGEROUS_TOOLS);
-    const totalDanger = [...dangerTools].filter(t =>
-      TOOL_CATEGORIES.some(c => c.tools && c.tools.includes(t))
+    const totalDanger = [...dangerTools].filter((t) =>
+      TOOL_CATEGORIES.some((c) => c.tools && c.tools.includes(t)),
     ).length;
 
     const statsEl = document.getElementById('skillsStats');
@@ -776,10 +925,10 @@ const SkillsManager = {
       `;
     }
 
-    this.gridEl.innerHTML = TOOL_CATEGORIES.map(cat => {
+    this.gridEl.innerHTML = TOOL_CATEGORIES.map((cat) => {
       const isExpanded = this._expandedCategories.has(cat.id);
       const catTools = cat.tools || [];
-      const catDangerCount = catTools.filter(t => dangerTools.has(t)).length;
+      const catDangerCount = catTools.filter((t) => dangerTools.has(t)).length;
 
       return `
         <div class="skill-category-card" data-category="${cat.id}">
@@ -796,17 +945,19 @@ const SkillsManager = {
             </div>
           </div>
           <div class="skill-tool-list ${isExpanded ? '' : 'collapsed'}">
-            ${catTools.map(tool => {
-              const isDanger = dangerTools.has(tool);
-              return `<span class="skill-tool-chip ${isDanger ? 'danger' : ''}">${tool}</span>`;
-            }).join('')}
+            ${catTools
+              .map((tool) => {
+                const isDanger = dangerTools.has(tool);
+                return `<span class="skill-tool-chip ${isDanger ? 'danger' : ''}">${tool}</span>`;
+              })
+              .join('')}
           </div>
         </div>
       `;
     }).join('');
 
     // 绑定点击展开/收起
-    this.gridEl.querySelectorAll('.skill-category-header').forEach(header => {
+    this.gridEl.querySelectorAll('.skill-category-header').forEach((header) => {
       header.addEventListener('click', () => {
         const card = header.closest('.skill-category-card');
         const catId = card.dataset.category;
@@ -975,14 +1126,14 @@ const ChatManager = {
   handleSendFromWelcome() {
     const text = this.inputTop.value.trim();
     if (!text) return;
-    
+
     window.electronAPI?.sendMessage('/new');
-    
+
     this.enterChatView();
     this.sendMessage(text);
     this.inputTop.value = '';
     Utils.autoResizeTextarea(this.inputTop);
-    
+
     setTimeout(() => NavManager.loadSessions(), 500);
   },
 
@@ -1011,7 +1162,7 @@ const ChatManager = {
     if (!AppState.isProcessing) {
       return;
     }
-    
+
     window.electronAPI?.sendMessage('/stop');
     console.log('[ChatManager] 发送停止命令');
   },
@@ -1064,7 +1215,7 @@ const ChatManager = {
 
   updateSendButtonState() {
     const btns = [this.sendBtnTop, this.sendBtnBottom].filter(Boolean);
-    btns.forEach(btn => {
+    btns.forEach((btn) => {
       if (AppState.isProcessing) {
         btn.style.background = '#dc2626';
         btn.style.borderColor = '#f87171';
@@ -1146,7 +1297,7 @@ const ChatManager = {
 
         // 根据 nextAction 设置状态
         const nextAction = data.nextAction || 'wait';
-        AppState.isWaiting = (nextAction === 'wait');
+        AppState.isWaiting = nextAction === 'wait';
         AppState.setProcessing(false);
         console.log('[ChatManager] 消息结束，下一步:', nextAction);
         break;

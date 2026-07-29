@@ -376,10 +376,12 @@ describe('api/client.ts', () => {
     });
 
     it('should handle response.text() rejection by using empty string', async () => {
+      // 使用 400（非重试状态码）而非 500：500 现在会触发 5xx 重试逻辑，
+      // 而本测试关注的是 text() 拒绝时的兜底处理，不应混入重试行为。
       fetchMock.mockResolvedValueOnce({
         ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
+        status: 400,
+        statusText: 'Bad Request',
         body: { getReader: () => ({ read: async () => ({ done: true, value: undefined }) }) },
         text: async () => {
           throw new Error('cannot read');
@@ -390,7 +392,7 @@ describe('api/client.ts', () => {
       const result = await collectStream(gen).catch((e) => e);
 
       expect(result).toBeInstanceOf(Error);
-      expect((result as Error).message).toContain('API 500');
+      expect((result as Error).message).toContain('API 400');
     });
   });
 

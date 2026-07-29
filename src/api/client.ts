@@ -11,6 +11,7 @@ import { safeParseJSON } from '../utils/llm-validator.ts';
 // 重试配置
 const MAX_RETRIES = 5; // 最大重试次数
 const RETRY_DELAY_BASE = 2000; // 基础重试延迟（毫秒）
+const REQUEST_TIMEOUT_MS = 120000; // 单次请求超时 120 秒（流式响应整体上限）
 
 /**
  * 等待指定时间
@@ -67,6 +68,12 @@ async function* streamChat(
   let retryCount = 0;
 
   while (retryCount < MAX_RETRIES) {
+    // AbortController 实现请求级超时：fetch 默认无超时，服务端不响应时会
+    // 永久挂起，占满连接池。超时后 abort 触发 AbortError，进入重试。
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+
     try {
       const cfg = loadConfig();
 
@@ -90,17 +97,25 @@ async function* streamChat(
           top_k: cfg.chat?.topK ?? 50,
           frequency_penalty: cfg.chat?.frequencyPenalty ?? 1,
         }),
+        signal: controller.signal,
       });
 
       let capturedUsage: { input: number; output: number } | null = null;
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        throw new Error(`API ${response.status}: ${text.slice(0, 200)}`);
+        const err = new Error(`API ${response.status}: ${text.slice(0, 200)}`) as Error & {
+          status?: number;
+          retryAfter?: string | null;
+        };
+        err.status = response.status;
+        // Retry-After 头可能不存在（非 429 响应通常没有），需防御性访问
+        err.retryAfter = response.headers?.get('Retry-After') ?? null;
+        throw err;
       }
 
       // 直接读取 SSE 流
-      const reader = response.body!.getReader();
+      reader = response.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
 
@@ -159,19 +174,44 @@ async function* streamChat(
         };
       }
       return capturedUsage;
-    } catch (error) {
+    } catch (error: any) {
       retryCount++;
 
-      // 如果是网络错误且未达到最大重试次数，进行重试
-      if (isNetworkError(error) && retryCount < MAX_RETRIES) {
-        const delay = Math.pow(2, retryCount - 1) * RETRY_DELAY_BASE;
-        console.error(`[API] 网络错误，${delay / 1000}秒后重试（第${retryCount}次）`);
+      const status = error?.status as number | undefined;
+      const isAbort = error?.name === 'AbortError';
+      // 429（限流）和 5xx（服务端错误）应当重试；网络错误和超时也重试。
+      const isHTTPRetryable =
+        status === 429 || (typeof status === 'number' && status >= 500 && status < 600);
+
+      if ((isNetworkError(error) || isHTTPRetryable || isAbort) && retryCount < MAX_RETRIES) {
+        let delay: number;
+        if (status === 429 && error?.retryAfter) {
+          // 429 优先使用 Retry-After 头（秒）
+          const retryAfterSec = parseInt(error.retryAfter, 10);
+          delay = (isNaN(retryAfterSec) ? 1 : Math.max(retryAfterSec, 1)) * 1000;
+        } else {
+          delay = Math.pow(2, retryCount - 1) * RETRY_DELAY_BASE;
+        }
+        const reason = isAbort ? '请求超时' : isHTTPRetryable ? `HTTP ${status}` : '网络错误';
+        console.error(`[API] ${reason}，${delay / 1000}秒后重试（第${retryCount}次）`);
         await sleep(delay);
         continue;
       }
 
       // 其他错误或达到最大重试次数，抛出异常
       throw error;
+    } finally {
+      // 必须释放 reader：无论成功结束、出错重试、还是生成器被调用方提前
+      // 抛弃（break/return），都要 cancel reader，否则底层 TCP 连接不会归还，
+      // 长期积累导致连接泄漏。
+      if (reader) {
+        try {
+          await reader.cancel();
+        } catch {
+          /* 忽略取消失败 */
+        }
+      }
+      clearTimeout(timeoutId);
     }
   }
 

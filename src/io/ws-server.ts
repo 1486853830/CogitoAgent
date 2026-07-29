@@ -5,8 +5,18 @@ let wss: WebSocketServer | null = null;
 let messageHandler: ((msg: any, ws: WebSocket) => void) | null = null;
 let statsHandler: ((payload: any) => any) | null = null;
 
+function isLocalRemoteAddress(remoteAddress: string | undefined): boolean {
+  if (!remoteAddress) return false;
+  // 本机回环地址：IPv4 127.0.0.1 / IPv6 ::1
+  return (
+    remoteAddress === '127.0.0.1' ||
+    remoteAddress === '::1' ||
+    remoteAddress.startsWith('127.') ||
+    remoteAddress === '::ffff:127.0.0.1'
+  );
+}
+
 function isValidOrigin(origin: string | undefined): boolean {
-  if (!origin) return true;
   const localhostPatterns = [
     /^http:\/\/localhost(:\d+)?$/,
     /^https:\/\/localhost(:\d+)?$/,
@@ -14,7 +24,7 @@ function isValidOrigin(origin: string | undefined): boolean {
     /^https:\/\/127\.0\.0\.1(:\d+)?$/,
     /^file:\/\//,
   ];
-  return localhostPatterns.some((pattern) => pattern.test(origin));
+  return !!origin && localhostPatterns.some((pattern) => pattern.test(origin));
 }
 
 function startWsServer(port = 9527): Promise<WebSocketServer> {
@@ -25,12 +35,32 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
           port,
           host: '127.0.0.1',
           verifyClient: (info, callback) => {
-            if (!isValidOrigin(info.origin)) {
-              console.log('[WS] 拒绝非本地连接:', info.origin);
-              callback(false, 403, '只允许本地连接');
+            // 双重校验：
+            // 1. Origin 头（浏览器客户端）必须命中本地白名单；
+            // 2. 非浏览器客户端（如 Electron agent-bridge 的 Node ws 客户端，
+            //    它不发送 Origin 头）必须来自本机回环地址。
+            //
+            // 注：ws 库的 info 对象只有 origin / secure / req 三个属性，
+            // 没有 info.socket。remoteAddress 必须从 info.req.socket 取。
+            const remoteAddress = info.req?.socket?.remoteAddress;
+            const originOk = isValidOrigin(info.origin);
+            const addrOk = isLocalRemoteAddress(remoteAddress);
+
+            if (originOk || addrOk) {
+              callback(true);
               return;
             }
-            callback(true);
+
+            // 兜底：服务绑定在 127.0.0.1，能连上来的请求必然来自本机。
+            // 当 remoteAddress 取不到时（理论上不应发生），放行以避免误杀。
+            if (!remoteAddress && !info.origin) {
+              console.warn('[WS] remoteAddress 未知，但 Origin 也为空，按本机连接放行');
+              callback(true);
+              return;
+            }
+
+            console.log('[WS] 拒绝非本地连接:', { origin: info.origin, remoteAddress });
+            callback(false, 403, '只允许本地连接');
           },
         },
         () => {
@@ -46,17 +76,60 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
       wss.on('connection', (ws, req) => {
         console.log('[WS] 客户端已连接:', req.socket.remoteAddress);
 
+        // 必须为每个连接注册 error 监听器：Node EventEmitter 规则下，
+        // 若 error 事件无监听器会抛出并导致进程退出。ws 库在底层 socket
+        // 异常时会向 ws 对象 emit error，缺监听器即崩溃整个 Agent。
+        ws.on('error', (err) => {
+          console.error('[WS] 连接错误:', err.message);
+        });
+
         ws.on('message', (raw) => {
           try {
             const msg = JSON.parse(raw.toString());
             if (msg.type === 'stats-request' && statsHandler) {
               const result = statsHandler(msg.payload);
               if (result && typeof result.then === 'function') {
-                result.then((data: any) => {
-                  ws.send(JSON.stringify({ type: 'stats-response', ...data }));
-                });
+                // Promise 结果必须带 .catch，否则 rejection 成为 unhandledRejection；
+                // ws.send 失败也需吞错避免抛出。
+                result
+                  .then((data: any) => {
+                    try {
+                      ws.send(
+                        JSON.stringify({
+                          type: 'stats-response',
+                          requestId: msg.requestId,
+                          ...data,
+                        }),
+                      );
+                    } catch (e) {
+                      console.error('[WS] stats-response 发送失败:', (e as Error).message);
+                    }
+                  })
+                  .catch((err: any) => {
+                    console.error(
+                      '[WS] stats 处理失败:',
+                      err && err.message ? err.message : String(err),
+                    );
+                    try {
+                      ws.send(
+                        JSON.stringify({
+                          type: 'stats-response',
+                          requestId: msg.requestId,
+                          error: 'stats 处理失败',
+                        }),
+                      );
+                    } catch {
+                      /* 忽略 */
+                    }
+                  });
               } else if (result) {
-                ws.send(JSON.stringify({ type: 'stats-response', ...result }));
+                try {
+                  ws.send(
+                    JSON.stringify({ type: 'stats-response', requestId: msg.requestId, ...result }),
+                  );
+                } catch (e) {
+                  console.error('[WS] stats-response 发送失败:', (e as Error).message);
+                }
               }
             } else if (messageHandler) {
               messageHandler(msg, ws);
