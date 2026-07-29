@@ -9,15 +9,15 @@ let rl: readline.Interface | null = null;
 let userInputCallback: ((input: string) => void) | null = null;
 let cleanupCallback: (() => void | Promise<void>) | null = null; // 清理回调
 
-// ANSI 颜色代码（主题色：浅蓝 #5BCEFA）
+// ANSI 颜色代码（Claude风格配色）
 const COLORS: Record<string, string> = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',
   dim: '\x1b[2m',
-  // 主题色系：浅蓝 rgb(91,206,250)
-  claude: '\x1b[38;2;91;206;250m',
-  claudeBright: '\x1b[38;2;135;220;255m',
-  claudeDim: '\x1b[38;2;60;170;220m',
+  // Claude品牌色系
+  claude: '\x1b[38;5;173m',      // 温暖的橙色 #D77757
+  claudeBright: '\x1b[38;5;216m', // 亮橙色
+  claudeDim: '\x1b[38;5;130m',    // 暗橙色
   permission: '\x1b[38;5;99m',    // 紫色（权限请求）
   permissionBg: '\x1b[48;5;99m',  // 紫色背景
   // 基础颜色
@@ -31,18 +31,18 @@ const COLORS: Record<string, string> = {
   magenta: '\x1b[95m',
   cyan: '\x1b[96m',
   white: '\x1b[97m',
-  // 语义颜色
+  // 语义颜色（Claude风格）
   success: '\x1b[38;5;113m',     // 成功绿 rgb(78,186,101)
   error: '\x1b[38;5;204m',       // 错误红 rgb(255,107,128)
   warning: '\x1b[38;5;220m',     // 警告黄 rgb(255,193,7)
-  info: '\x1b[38;2;91;206;250m', // 信息蓝（主题色）
+  info: '\x1b[38;5;117m',        // 信息蓝
   // 背景色
   bgBlack: '\x1b[40m',
   bgBlue: '\x1b[44m',
   bgCyan: '\x1b[46m',
-  bgClaude: '\x1b[48;2;91;206;250m', // 主题背景
-  bgSuccess: '\x1b[48;5;113m',
-  bgError: '\x1b[48;5;204m',
+  bgClaude: '\x1b[48;5;173m',    // 橙色背景
+  bgSuccess: '\x1b[48;5;113m',   // 成功背景
+  bgError: '\x1b[48;5;204m',     // 错误背景
 };
 
 // 去除 ANSI 码
