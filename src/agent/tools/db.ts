@@ -19,7 +19,69 @@ const DANGEROUS_STATEMENTS = [
 
 function isDangerousSQL(sql: string): boolean {
   const upperSql = sql.trim().toUpperCase();
-  return DANGEROUS_STATEMENTS.some(stmt => upperSql.startsWith(stmt));
+  return DANGEROUS_STATEMENTS.some((stmt) => upperSql.startsWith(stmt));
+}
+
+/**
+ * 校验单条 SQL 是否包含危险语句。
+ * 注意：sql.js 的 Database.run 底层基于 sqlite3_exec，支持分号分隔的多语句执行，
+ * 因此不能只看整段字符串开头（'SELECT 1; DROP TABLE users' 会以 SELECT 开头绕过）。
+ * 这里按分号拆分后对每条非空语句分别校验。
+ */
+function containsDangerousStatement(sql: string): boolean {
+  const statements = sql.split(';');
+  for (const raw of statements) {
+    const s = raw.trim();
+    if (!s) continue;
+    if (isDangerousSQL(s)) return true;
+  }
+  return false;
+}
+
+/**
+ * 列类型白名单校验。
+ * SQLite 是动态类型，但列定义中的类型字符串若直接拼接进 DDL 会构成 SQL 注入
+ * （如 type:"INTEGER); DROP TABLE users; --"）。此处只允许已知类型名 + 可选长度。
+ */
+const COLUMN_TYPE_PATTERN =
+  /^(INTEGER|INT|REAL|TEXT|BLOB|NUMERIC|BOOLEAN|DATETIME|DATE|TIME|VARCHAR|CHAR|FLOAT|DOUBLE|DECIMAL)(\(\d+\))?$/i;
+
+function validateColumnType(type: any): boolean {
+  if (typeof type !== 'string') return false;
+  return COLUMN_TYPE_PATTERN.test(type.trim());
+}
+
+/**
+ * 列默认值校验。默认值会直接拼接进 DDL（DEFAULT <value>），必须严格限定：
+ *  - 数字字面量
+ *  - 布尔（转 0/1）
+ *  - SQL 常量（NULL/TRUE/FALSE/CURRENT_TIMESTAMP 等）
+ *  - 单引号字符串字面量（内部仅允许 '' 转义引号，禁止 ) ; 等破坏结构）
+ * 返回可直接拼接的安全字符串，不合法返回 null。
+ */
+function validateColumnDefault(val: any): string | null {
+  if (typeof val === 'number') {
+    return isFinite(val) ? String(val) : null;
+  }
+  if (typeof val === 'boolean') {
+    return val ? '1' : '0';
+  }
+  if (typeof val === 'string') {
+    const s = val.trim();
+    if (s === '') return null;
+    if (/^(NULL|TRUE|FALSE|CURRENT_TIMESTAMP|CURRENT_DATE|CURRENT_TIME)$/i.test(s)) {
+      return s.toUpperCase();
+    }
+    if (/^-?\d+(\.\d+)?$/.test(s)) {
+      return s;
+    }
+    // 单引号字符串字面量：内部仅允许 '' 作为转义引号，禁止其他可能破坏 DDL 的字符
+    if (/^'([^']|'')*'$/i.test(s) && !/[;)]/.test(s)) {
+      return s;
+    }
+    return null;
+  }
+  return null;
 }
 
 async function initSQL(): Promise<any> {
@@ -28,7 +90,7 @@ async function initSQL(): Promise<any> {
     const modulePath = path.join(process.cwd(), 'src', 'agent', 'tools', 'db.ts');
     const sqlJsDir = path.dirname(modulePath).replace(/\\/g, '/');
     SQL = await initSqlJs({
-      locateFile: (file: string) => `file://${sqlJsDir}/../../../node_modules/sql.js/dist/${file}`
+      locateFile: (file: string) => `file://${sqlJsDir}/../../../node_modules/sql.js/dist/${file}`,
     });
   } catch {
     SQL = await initSqlJs();
@@ -92,7 +154,8 @@ async function executeSQL(sql: string, params: any[] = []): Promise<any> {
   if (isDangerousSQL(sql)) {
     return {
       success: false,
-      error: '不允许执行危险的 SQL 语句，请使用专用方法（query/insert/update/delete/createTable/dropTable）'
+      error:
+        '不允许执行危险的 SQL 语句，请使用专用方法（query/insert/update/delete/createTable/dropTable）',
     };
   }
 
@@ -116,7 +179,7 @@ async function executeSQL(sql: string, params: any[] = []): Promise<any> {
     if (sql.trim().toUpperCase().startsWith('SELECT')) {
       return {
         success: true,
-        data: results
+        data: results,
       };
     } else {
       await saveDB();
@@ -124,14 +187,14 @@ async function executeSQL(sql: string, params: any[] = []): Promise<any> {
         success: true,
         data: {
           changes: changes,
-          lastID: database.lastInsertRowid ? database.lastInsertRowid() : null
-        }
+          lastID: database.lastInsertRowid ? database.lastInsertRowid() : null,
+        },
       };
     }
   } catch (err: any) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`
+      error: `SQL 执行失败: ${err.message}`,
     };
   }
 }
@@ -147,7 +210,7 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
   if (!validateIdentifier(table)) {
     return {
       success: false,
-      error: '无效的表名'
+      error: '无效的表名',
     };
   }
 
@@ -160,7 +223,7 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
       if (!validateIdentifier(key)) {
         return {
           success: false,
-          error: '无效的列名'
+          error: '无效的列名',
         };
       }
       if (Array.isArray(value)) {
@@ -179,7 +242,7 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
     if (isNaN(limit) || limit < 0) {
       return {
         success: false,
-        error: '无效的 limit 值'
+        error: '无效的 limit 值',
       };
     }
     sql += ` LIMIT ${limit}`;
@@ -190,7 +253,7 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
     if (isNaN(offset) || offset < 0) {
       return {
         success: false,
-        error: '无效的 offset 值'
+        error: '无效的 offset 值',
       };
     }
     sql += ` OFFSET ${offset}`;
@@ -204,13 +267,13 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
       if (!validateIdentifier(col)) {
         return {
           success: false,
-          error: '无效的 ORDER BY 列名'
+          error: '无效的 ORDER BY 列名',
         };
       }
       if (dir && !['ASC', 'DESC'].includes(dir.toUpperCase())) {
         return {
           success: false,
-          error: '无效的排序方向'
+          error: '无效的排序方向',
         };
       }
       validParts.push(dir ? `\`${col}\` ${dir.toUpperCase()}` : `\`${col}\``);
@@ -225,7 +288,7 @@ async function insert(table: string, data: any): Promise<any> {
   if (!validateIdentifier(table)) {
     return {
       success: false,
-      error: '无效的表名'
+      error: '无效的表名',
     };
   }
 
@@ -234,15 +297,15 @@ async function insert(table: string, data: any): Promise<any> {
     if (!validateIdentifier(key)) {
       return {
         success: false,
-        error: '无效的列名'
+        error: '无效的列名',
       };
     }
   }
 
-  const values = keys.map(key => data[key]);
+  const values = keys.map((key) => data[key]);
   const placeholders = keys.map(() => '?').join(',');
 
-  const sql = `INSERT INTO \`${table}\` (${keys.map(k => `\`${k}\``).join(',')}) VALUES (${placeholders})`;
+  const sql = `INSERT INTO \`${table}\` (${keys.map((k) => `\`${k}\``).join(',')}) VALUES (${placeholders})`;
 
   try {
     const database = await getDB();
@@ -256,13 +319,13 @@ async function insert(table: string, data: any): Promise<any> {
       success: true,
       data: {
         changes: changes,
-        lastID: database.lastInsertRowid ? database.lastInsertRowid() : null
-      }
+        lastID: database.lastInsertRowid ? database.lastInsertRowid() : null,
+      },
     };
   } catch (err: any) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`
+      error: `SQL 执行失败: ${err.message}`,
     };
   }
 }
@@ -271,7 +334,7 @@ async function update(table: string, data: any, conditions: any): Promise<any> {
   if (!validateIdentifier(table)) {
     return {
       success: false,
-      error: '无效的表名'
+      error: '无效的表名',
     };
   }
 
@@ -282,7 +345,7 @@ async function update(table: string, data: any, conditions: any): Promise<any> {
     if (!validateIdentifier(key)) {
       return {
         success: false,
-        error: '无效的列名'
+        error: '无效的列名',
       };
     }
     setClauses.push(`\`${key}\` = ?`);
@@ -294,7 +357,7 @@ async function update(table: string, data: any, conditions: any): Promise<any> {
     if (!validateIdentifier(key)) {
       return {
         success: false,
-        error: '无效的列名'
+        error: '无效的列名',
       };
     }
     whereClauses.push(`\`${key}\` = ?`);
@@ -314,13 +377,13 @@ async function update(table: string, data: any, conditions: any): Promise<any> {
     return {
       success: true,
       data: {
-        changes: changes
-      }
+        changes: changes,
+      },
     };
   } catch (err: any) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`
+      error: `SQL 执行失败: ${err.message}`,
     };
   }
 }
@@ -329,7 +392,7 @@ async function deleteData(table: string, conditions: any): Promise<any> {
   if (!validateIdentifier(table)) {
     return {
       success: false,
-      error: '无效的表名'
+      error: '无效的表名',
     };
   }
 
@@ -340,7 +403,7 @@ async function deleteData(table: string, conditions: any): Promise<any> {
     if (!validateIdentifier(key)) {
       return {
         success: false,
-        error: '无效的列名'
+        error: '无效的列名',
       };
     }
     whereClauses.push(`\`${key}\` = ?`);
@@ -360,13 +423,13 @@ async function deleteData(table: string, conditions: any): Promise<any> {
     return {
       success: true,
       data: {
-        changes: changes
-      }
+        changes: changes,
+      },
     };
   } catch (err: any) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`
+      error: `SQL 执行失败: ${err.message}`,
     };
   }
 }
@@ -375,22 +438,35 @@ async function createTable(name: string, columns: any[]): Promise<any> {
   if (!validateIdentifier(name)) {
     return {
       success: false,
-      error: '无效的表名'
+      error: '无效的表名',
     };
   }
 
-  const columnDefinitions = columns.map(col => {
-    if (!validateIdentifier(col.name)) {
-      throw new Error('无效的列名');
-    }
-    let def = `\`${col.name}\` ${col.type}`;
-    if (col.primaryKey) def += ' PRIMARY KEY';
-    if (col.autoIncrement) def += ' AUTOINCREMENT';
-    if (col.notNull) def += ' NOT NULL';
-    if (col.unique) def += ' UNIQUE';
-    if (col.default !== undefined) def += ` DEFAULT ${col.default}`;
-    return def;
-  }).join(',');
+  const columnDefinitions = columns
+    .map((col) => {
+      if (!validateIdentifier(col.name)) {
+        throw new Error('无效的列名');
+      }
+      // 列类型必须命中白名单，禁止直接拼接任意字符串（防 SQL 注入）
+      if (!validateColumnType(col.type)) {
+        throw new Error(`无效的列类型: ${col.type}`);
+      }
+      let def = `\`${col.name}\` ${col.type}`;
+      if (col.primaryKey) def += ' PRIMARY KEY';
+      if (col.autoIncrement) def += ' AUTOINCREMENT';
+      if (col.notNull) def += ' NOT NULL';
+      if (col.unique) def += ' UNIQUE';
+      if (col.default !== undefined) {
+        // 默认值必须通过校验后才可拼接，避免 DEFAULT 子句注入
+        const safeDefault = validateColumnDefault(col.default);
+        if (safeDefault === null) {
+          throw new Error(`无效的列默认值: ${col.default}`);
+        }
+        def += ` DEFAULT ${safeDefault}`;
+      }
+      return def;
+    })
+    .join(',');
 
   const sql = `CREATE TABLE IF NOT EXISTS \`${name}\` (${columnDefinitions})`;
 
@@ -402,7 +478,7 @@ async function createTable(name: string, columns: any[]): Promise<any> {
   } catch (err: any) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`
+      error: `SQL 执行失败: ${err.message}`,
     };
   }
 }
@@ -411,7 +487,7 @@ async function dropTable(name: string): Promise<any> {
   if (!validateIdentifier(name)) {
     return {
       success: false,
-      error: '无效的表名'
+      error: '无效的表名',
     };
   }
 
@@ -425,7 +501,7 @@ async function dropTable(name: string): Promise<any> {
   } catch (err: any) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`
+      error: `SQL 执行失败: ${err.message}`,
     };
   }
 }
@@ -445,7 +521,7 @@ async function getTableSchema(tableName: string): Promise<any> {
   if (!validateIdentifier(tableName)) {
     return {
       success: false,
-      error: '无效的表名'
+      error: '无效的表名',
     };
   }
 
@@ -462,17 +538,20 @@ async function getTableSchema(tableName: string): Promise<any> {
   } catch (err: any) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`
+      error: `SQL 执行失败: ${err.message}`,
     };
   }
 }
 
 async function executeTransaction(sqlStatements: string[]): Promise<any> {
   for (const sql of sqlStatements) {
-    if (isDangerousSQL(sql)) {
+    // 用 containsDangerousStatement 按分号拆分逐条校验，防止
+    // 'SELECT 1; DROP TABLE users' 这类多语句绕过（原 isDangerousSQL
+    // 只看整段开头，SELECT 开头即放行）。
+    if (containsDangerousStatement(sql)) {
       return {
         success: false,
-        error: '事务中不允许执行危险的 SQL 语句'
+        error: '事务中不允许执行危险的 SQL 语句',
       };
     }
   }
@@ -491,18 +570,17 @@ async function executeTransaction(sqlStatements: string[]): Promise<any> {
 
     return {
       success: true,
-      data: '事务执行成功'
+      data: '事务执行成功',
     };
   } catch (err: any) {
     try {
       if (db) {
         db.run('ROLLBACK');
       }
-    } catch {
-    }
+    } catch {}
     return {
       success: false,
-      error: `事务失败: ${err.message}`
+      error: `事务失败: ${err.message}`,
     };
   }
 }
@@ -535,5 +613,5 @@ export {
   getTables,
   getTableSchema,
   executeTransaction,
-  closeDB
+  closeDB,
 };

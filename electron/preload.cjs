@@ -91,8 +91,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 切换会话
   switchSession: (sessionId) => ipcRenderer.send('switch-session', sessionId),
 
-  // 通用 IPC 发送（用于更新主进程状态）
-  send: (channel, ...args) => ipcRenderer.send(channel, ...args),
+  // 更新主进程当前 persona（原通用 send 通道已移除，改为具名方法避免任意通道转发）
+  updateCurrentPersona: (persona) => ipcRenderer.send('update-current-persona', persona),
 
   // 获取当前会话 ID
   getCurrentSession: () => ipcRenderer.invoke('get-current-session'),

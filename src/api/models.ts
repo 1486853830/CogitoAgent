@@ -4,8 +4,10 @@
 // import OpenAI from 'openai';
 import { loadConfig } from '../config.ts';
 
-// OpenAI 构造器未导入（文件已废弃），声明为 any 以保持编译通过
-declare const OpenAI: any;
+// 文件已废弃：OpenAI SDK 未安装。此前用 `declare const OpenAI: any;` 让 TS 编译通过，
+// 但运行时引用 OpenAI 会抛出隐晦的 ReferenceError。这里改为显式获取 + 清晰报错，
+// 既保持测试可 mock（globalThis.OpenAI），又让生产环境得到可读的错误信息。
+const OpenAI: any = (globalThis as any).OpenAI;
 
 interface ProviderInfo {
   baseURL: string;
@@ -15,20 +17,20 @@ interface ProviderInfo {
 const providers: Record<string, ProviderInfo> = {
   openai: {
     baseURL: 'https://api.openai.com/v1',
-    models: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo']
+    models: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'],
   },
   moark: {
     baseURL: 'https://api.moark.com/v1',
-    models: ['DeepSeek-V4-Flash', 'DeepSeek-V4']
+    models: ['DeepSeek-V4-Flash', 'DeepSeek-V4'],
   },
   anthropic: {
     baseURL: 'https://api.anthropic.com/v1',
-    models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku']
+    models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
   },
   google: {
     baseURL: 'https://generativelanguage.googleapis.com/v1beta',
-    models: ['gemini-pro', 'gemini-1.5-pro']
-  }
+    models: ['gemini-pro', 'gemini-1.5-pro'],
+  },
 };
 
 let clients: Record<string, any> = {};
@@ -40,22 +42,28 @@ function getClient(provider: string): any {
   if (clients[provider]) {
     return clients[provider];
   }
-  
+
+  if (!OpenAI) {
+    throw new Error(
+      'api/models.ts 已废弃：未安装 openai 包。请改用 src/api/client.ts 的原生 fetch 实现，或运行 npm install openai 后再启用本模块。',
+    );
+  }
+
   const cfg = loadConfig();
   const providerConfig = cfg.models?.[provider];
-  
+
   if (!providerConfig?.apiKey) {
     throw new Error(`提供商 ${provider} 未配置 API 密钥`);
   }
-  
+
   const baseURL = providerConfig.baseURL || providers[provider]?.baseURL;
-  
+
   const client = new OpenAI({
     baseURL: baseURL,
     apiKey: providerConfig.apiKey,
-    defaultHeaders: (providerConfig as any).headers || {}
+    defaultHeaders: (providerConfig as any).headers || {},
   });
-  
+
   clients[provider] = client;
   return client;
 }
@@ -68,7 +76,7 @@ function getCurrentModel(): { provider: string; model: string; baseURL: string }
   return {
     provider: cfg.api.provider,
     model: cfg.api.model,
-    baseURL: cfg.api.baseURL
+    baseURL: cfg.api.baseURL,
   };
 }
 
@@ -76,10 +84,10 @@ function getCurrentModel(): { provider: string; model: string; baseURL: string }
  * 列出支持的提供商
  */
 function listProviders(): Array<{ name: string; baseURL: string; models: string[] }> {
-  return Object.keys(providers).map(provider => ({
+  return Object.keys(providers).map((provider) => ({
     name: provider,
     baseURL: providers[provider].baseURL,
-    models: providers[provider].models
+    models: providers[provider].models,
   }));
 }
 
@@ -93,73 +101,83 @@ function getProviderInfo(provider: string): ProviderInfo | null {
 /**
  * 切换模型提供商
  */
-function switchProvider(provider: string, model: string): { success: boolean; error?: string; data?: { provider: string; model: string; baseURL: string } } {
+function switchProvider(
+  provider: string,
+  model: string,
+): {
+  success: boolean;
+  error?: string;
+  data?: { provider: string; model: string; baseURL: string };
+} {
   const cfg = loadConfig();
-  
+
   if (!providers[provider]) {
     return {
       success: false,
-      error: `不支持的提供商: ${provider}`
+      error: `不支持的提供商: ${provider}`,
     };
   }
-  
+
   if (!cfg.models?.[provider]?.apiKey) {
     return {
       success: false,
-      error: `提供商 ${provider} 未配置，请在 .env 文件中配置 ${provider.toUpperCase()}_API_KEY`
+      error: `提供商 ${provider} 未配置，请在 .env 文件中配置 ${provider.toUpperCase()}_API_KEY`,
     };
   }
-  
+
   cfg.api.provider = provider;
   cfg.api.model = model;
   cfg.api.baseURL = cfg.models[provider].baseURL || providers[provider].baseURL;
-  
+
   clients = {};
-  
+
   return {
     success: true,
     data: {
       provider,
       model,
-      baseURL: cfg.api.baseURL
-    }
+      baseURL: cfg.api.baseURL,
+    },
   };
 }
 
 /**
  * 发送消息（通用接口）
  */
-async function* chat(messages: Array<{ role: string; content: string }>, options: any = {}): AsyncGenerator<any, void, unknown> {
+async function* chat(
+  messages: Array<{ role: string; content: string }>,
+  options: any = {},
+): AsyncGenerator<any, void, unknown> {
   const cfg = loadConfig();
   const provider = options.provider || cfg.api.provider;
   const model = options.model || cfg.api.model;
-  
+
   let client: any;
   try {
     client = getClient(provider);
   } catch (e) {
     throw new Error(`获取客户端失败: ${(e as Error).message}`);
   }
-  
+
   const chatOptions: Record<string, any> = {
-    messages: messages.map(msg => ({
+    messages: messages.map((msg) => ({
       role: msg.role,
-      content: msg.content
+      content: msg.content,
     })),
     model: model,
     stream: true,
     max_tokens: options.maxTokens || cfg.chat.maxTokens,
     temperature: options.temperature || cfg.chat.temperature,
     top_p: options.topP || cfg.chat.topP,
-    frequency_penalty: options.frequencyPenalty || cfg.chat.frequencyPenalty
+    frequency_penalty: options.frequencyPenalty || cfg.chat.frequencyPenalty,
   };
-  
+
   if (options.topK !== undefined) {
     chatOptions.top_k = options.topK;
   }
-  
+
   const response = await client.chat.completions.create(chatOptions);
-  
+
   for await (const chunk of response) {
     if (chunk.choices.length === 0) {
       continue;
@@ -168,7 +186,7 @@ async function* chat(messages: Array<{ role: string; content: string }>, options
     yield {
       content: delta.content || null,
       reasoning: delta.reasoning_content || null,
-      provider
+      provider,
     };
   }
 }
@@ -180,7 +198,7 @@ function getModels(provider: string | null = null): string[] | Record<string, st
   if (provider) {
     return providers[provider]?.models || [];
   }
-  
+
   const result: Record<string, string[]> = {};
   for (const [name, info] of Object.entries(providers)) {
     result[name] = info.models;
@@ -196,5 +214,5 @@ export {
   switchProvider,
   chat,
   getModels,
-  providers
+  providers,
 };
