@@ -273,8 +273,15 @@ ${COLORS.bold}╔═════════════════════
   console.log(banner);
 }
 
+function showPrompt(): void {
+  if (rl) {
+    rl.prompt();
+  }
+}
+
 export {
   init,
+  showPrompt,
   print,
   println,
   printBlank,

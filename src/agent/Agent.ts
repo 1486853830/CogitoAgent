@@ -12,6 +12,7 @@ import {
 } from './session.ts';
 import {
   init,
+  showPrompt,
   println,
   printBlank,
   printBanner,
@@ -284,9 +285,11 @@ function handleUserInput(input: string): void {
       println('[中断] 思考已停止', 'yellow');
       state.current = STATE.AWAITING_INPUT;
       broadcast('agent-state', { state: 'idle' });
+      showPrompt();
       return;
     }
     if (handleCommand(input)) {
+      showPrompt();
       return;
     }
   }
@@ -335,6 +338,7 @@ function handleUserInput(input: string): void {
     println('\n[中断] 思考已停止，请输入消息...', 'yellow');
     state.current = STATE.AWAITING_INPUT;
     broadcast('agent-state', { state: 'idle' });
+    showPrompt();
     return;
   }
 
