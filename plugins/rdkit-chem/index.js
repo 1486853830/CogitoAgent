@@ -16,12 +16,16 @@ const TOOLS = [];
  * @param {number} timeout - 超时毫秒
  */
 async function runPython(script, inputData, timeout = 30000) {
-  const { execFileSync } = await import('child_process');
-  return execFileSync('python', ['-c', script], {
-    encoding: 'utf8',
-    timeout,
-    input: JSON.stringify(inputData),
-  });
+  try {
+    const { execFileSync } = await import('child_process');
+    return execFileSync('python', ['-c', script], {
+      encoding: 'utf8',
+      timeout,
+      input: JSON.stringify(inputData),
+    });
+  } catch (error) {
+    throw new Error(`Failed to run Python: ${error.message}`);
+  }
 }
 
 // ============================================

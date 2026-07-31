@@ -13,12 +13,16 @@ const TOOLS = [];
  * 安全执行 Python 脚本，通过 stdin 传递 JSON 参数
  */
 async function runPython(script, inputData, timeout = 30000) {
-  const { execFileSync } = await import('child_process');
-  return execFileSync('python', ['-c', script], {
-    encoding: 'utf8',
-    timeout,
-    input: JSON.stringify(inputData),
-  });
+  try {
+    const { execFileSync } = await import('child_process');
+    return execFileSync('python', ['-c', script], {
+      encoding: 'utf8',
+      timeout,
+      input: JSON.stringify(inputData),
+    });
+  } catch (error) {
+    throw new Error(`Failed to run Python: ${error.message}`);
+  }
 }
 
 // ============================================
