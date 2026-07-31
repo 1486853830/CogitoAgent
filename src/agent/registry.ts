@@ -27,6 +27,9 @@ const TOOL_CATEGORIES: Record<ToolCategory, string> = {
   chem: '化学',
   finance: '金融',
   math: '数学/统计',
+  chemistry: '化学信息学',
+  bioinformatics: '生物信息学',
+  literature: '文献检索',
 };
 
 const TOOL_REGISTRY: Record<string, ToolRegistryEntry> = {
@@ -585,6 +588,17 @@ function getToolsByCategory(): Record<ToolCategory, string[]> {
       'permutation',
       'siConvert',
     ],
+    chemistry: ['molInfo', 'molDraw', 'molFingerprint', 'molSubstruct', 'molSimilarity'],
+    bioinformatics: [
+      'bioAlign',
+      'bioBlast',
+      'bioConvert',
+      'bioFetchGenbank',
+      'bioPdbInfo',
+      'bioFastaStats',
+      'bioMsa',
+    ],
+    literature: ['pubmedSearch', 'pubmedFetch', 'pubmedAdvanced', 'pubmedCite'],
   };
 }
 

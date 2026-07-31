@@ -485,6 +485,14 @@ const NavManager = {
       });
     }
 
+    // 重新配置按钮 — 打开 Setup 向导
+    const reconfigLink = document.getElementById('reconfigLink');
+    if (reconfigLink) {
+      reconfigLink.addEventListener('click', () => {
+        window.electronAPI?.openSetup();
+      });
+    }
+
     // 仓库源链接 — 欢迎页双仓库标识条
     document.querySelectorAll('.repo-link').forEach((link) => {
       link.addEventListener('click', (e) => {
@@ -1099,6 +1107,18 @@ const ChatManager = {
     if (window.electronAPI?.requestWechatStatus) {
       window.electronAPI.requestWechatStatus();
     }
+
+    // 拦截消息区域内的链接点击，在系统浏览器中打开
+    this.messagesEl?.addEventListener('click', (e) => {
+      const link = e.target.closest('a');
+      if (link && link.href) {
+        const url = link.href;
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          e.preventDefault();
+          window.electronAPI?.openExternal(url);
+        }
+      }
+    });
 
     console.log('[ChatManager] 初始化完成');
   },

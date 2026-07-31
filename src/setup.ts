@@ -451,7 +451,7 @@ async function configureOCR(rl: readline.Interface): Promise<OcrSetupConfig | nu
   return {
     apiKey: apiKey.trim(),
     baseURL: baseURL.trim(),
-    model: model.trim() || 'Qwen2.5-VL-32B-Instruct',
+    model: model.trim() || 'InternVL3-78B',
     provider: provider.trim(),
   };
 }
@@ -483,7 +483,7 @@ async function configureVision(rl: readline.Interface): Promise<VisionSetupConfi
   return {
     apiKey: apiKey.trim(),
     baseURL: baseURL.trim(),
-    model: model.trim() || 'Qwen2.5-VL-32B-Instruct',
+    model: model.trim() || 'InternVL3-78B',
   };
 }
 
@@ -649,7 +649,7 @@ function saveEnvConfig(config: any): boolean {
     `COGITO_OCR_API_BASE_URL=${config.ocr?.baseURL || ''}`,
     '',
     '# OCR 模型名称',
-    `COGITO_OCR_MODEL=${config.ocr?.model || 'Qwen2.5-VL-32B-Instruct'}`,
+    `COGITO_OCR_MODEL=${config.ocr?.model || 'InternVL3-78B'}`,
     '',
     '# OCR 服务商名称',
     `COGITO_OCR_PROVIDER=${config.ocr?.provider || ''}`,
@@ -664,8 +664,8 @@ function saveEnvConfig(config: any): boolean {
     '# 视觉分析 API 服务地址（可选，默认使用 COGITO_API_BASE_URL）',
     `COGITO_VISION_API_BASE_URL=${config.vision?.baseURL || ''}`,
     '',
-    '# 视觉模型名称（可选，默认 Qwen2.5-VL-32B-Instruct）',
-    `COGITO_VISION_MODEL=${config.vision?.model || 'Qwen2.5-VL-32B-Instruct'}`,
+    '# 视觉模型名称（可选，默认 InternVL3-78B）',
+    `COGITO_VISION_MODEL=${config.vision?.model || 'InternVL3-78B'}`,
     '',
     '# ============================================',
     '# 代码执行配置（可选）',

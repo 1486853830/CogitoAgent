@@ -145,22 +145,38 @@ async function runPython(code: string): Promise<any> {
       tmpPath = generateSecureTmpPath('py');
       await writeSecureTmpFile(tmpPath, processedCode);
 
+      // 科学模式：允许使用已安装的 Python 科学库
+      const cfg: any = loadConfig();
+      const scientificMode = cfg.code?.scientificMode === true;
+
       const secureEnv: Record<string, string | undefined> = {
         HOME: process.env.HOME || process.env.USERPROFILE || '',
         TMPDIR: os.tmpdir(),
         TEMP: os.tmpdir(),
         PYTHONUNBUFFERED: '1',
-        PYTHONNOUSERSITE: '1',
         PYTHONDONTWRITEBYTECODE: '1',
         PYTHONHASHSEED: '0',
         PATH: process.env.PATH || '',
       };
 
-      delete secureEnv.PYTHONPATH;
-      delete secureEnv.PYTHONHOME;
-      delete secureEnv.PYTHONSTARTUP;
-      delete secureEnv.PYTHONRC;
-      delete secureEnv.VIRTUAL_ENV;
+      if (scientificMode) {
+        // 科学模式：保留 PYTHONPATH 和用户 site-packages，允许加载科学库
+        if (process.env.PYTHONPATH) {
+          secureEnv.PYTHONPATH = process.env.PYTHONPATH;
+        }
+        if (process.env.PYTHONHOME) {
+          secureEnv.PYTHONHOME = process.env.PYTHONHOME;
+        }
+        console.log('[提示] 科学模式已启用 - 允许加载 Python 科学库');
+      } else {
+        // 安全模式：阻止加载用户级 site-packages
+        secureEnv.PYTHONNOUSERSITE = '1';
+        delete secureEnv.PYTHONPATH;
+        delete secureEnv.PYTHONHOME;
+        delete secureEnv.PYTHONSTARTUP;
+        delete secureEnv.PYTHONRC;
+        delete secureEnv.VIRTUAL_ENV;
+      }
 
       const pythonExec = findPythonExecutable();
 

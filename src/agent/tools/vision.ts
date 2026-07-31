@@ -11,7 +11,7 @@ import { getBasePath } from './path.ts';
 
 const SUPPORTED_FORMATS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif']);
 
-const DEFAULT_VISION_MODEL = 'Qwen2.5-VL-32B-Instruct';
+const DEFAULT_VISION_MODEL = 'InternVL3-78B';
 const DEFAULT_VISION_MAX_TOKENS = 512;
 
 function getMimeType(ext: string): string {
@@ -21,7 +21,7 @@ function getMimeType(ext: string): string {
     '.png': 'image/png',
     '.webp': 'image/webp',
     '.bmp': 'image/bmp',
-    '.gif': 'image/gif'
+    '.gif': 'image/gif',
   };
   return map[ext.toLowerCase()] || 'image/jpeg';
 }
@@ -34,7 +34,9 @@ function encodeImageToBase64(imagePath: string): string {
 /**
  * 解析 SSE 流式响应，收集 reasoning_content 和 content
  */
-async function parseStreamingResponse(response: any): Promise<{ reasoning: string; content: string }> {
+async function parseStreamingResponse(
+  response: any,
+): Promise<{ reasoning: string; content: string }> {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -89,7 +91,9 @@ function getVisionConfig(): { apiKey: string; baseURL: string; model: string } {
   const model = visionCfg.model || DEFAULT_VISION_MODEL;
 
   if (!apiKey) {
-    throw new Error('视觉 API 密钥未配置。请在 .env 中设置 COGITO_VISION_API_KEY，或使用主 API Key (COGITO_API_KEY) 作为回退');
+    throw new Error(
+      '视觉 API 密钥未配置。请在 .env 中设置 COGITO_VISION_API_KEY，或使用主 API Key (COGITO_API_KEY) 作为回退',
+    );
   }
   if (!baseURL) {
     throw new Error('视觉 API 地址未配置。请在 .env 中设置 COGITO_VISION_API_BASE_URL');
@@ -101,7 +105,11 @@ function getVisionConfig(): { apiKey: string; baseURL: string; model: string } {
 /**
  * 调用视觉 API（流式）
  */
-async function callVisionAPI(imageUrl: string, mimeType: string, userPrompt: string): Promise<{ reasoning: string; content: string }> {
+async function callVisionAPI(
+  imageUrl: string,
+  mimeType: string,
+  userPrompt: string,
+): Promise<{ reasoning: string; content: string }> {
   const { apiKey, baseURL, model } = getVisionConfig();
   const url = baseURL.endsWith('/') ? `${baseURL}chat/completions` : `${baseURL}/chat/completions`;
 
@@ -114,25 +122,25 @@ async function callVisionAPI(imageUrl: string, mimeType: string, userPrompt: str
           { type: 'text', text: userPrompt },
           {
             type: 'image_url',
-            image_url: { url: imageUrl }
-          }
-        ]
-      }
+            image_url: { url: imageUrl },
+          },
+        ],
+      },
     ],
     stream: true,
     max_tokens: DEFAULT_VISION_MAX_TOKENS,
     temperature: 0.7,
     top_p: 1,
-    frequency_penalty: 0
+    frequency_penalty: 0,
   };
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
+      Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -173,7 +181,7 @@ async function vision(imagePath: string, prompt?: string): Promise<any> {
     if (!SUPPORTED_FORMATS.has(ext)) {
       return {
         success: false,
-        error: `不支持的图片格式: ${ext}。支持格式: ${[...SUPPORTED_FORMATS].join(', ')}`
+        error: `不支持的图片格式: ${ext}。支持格式: ${[...SUPPORTED_FORMATS].join(', ')}`,
       };
     }
 
@@ -185,7 +193,7 @@ async function vision(imagePath: string, prompt?: string): Promise<any> {
     const mimeType = getMimeType(ext);
     const base64Data = encodeImageToBase64(fullPath);
     const dataUrl = `data:${mimeType};base64,${base64Data}`;
-    const userPrompt = (prompt && prompt.trim()) ? prompt.trim() : '请详细描述这张图片的内容';
+    const userPrompt = prompt && prompt.trim() ? prompt.trim() : '请详细描述这张图片的内容';
 
     const { reasoning, content } = await callVisionAPI(dataUrl, mimeType, userPrompt);
 
@@ -217,7 +225,7 @@ async function visionFromUrl(imageUrl: string, prompt?: string): Promise<any> {
   }
 
   try {
-    const userPrompt = (prompt && prompt.trim()) ? prompt.trim() : '请详细描述这张图片的内容';
+    const userPrompt = prompt && prompt.trim() ? prompt.trim() : '请详细描述这张图片的内容';
     const { reasoning, content } = await callVisionAPI(imageUrl, '', userPrompt);
 
     let result = `[视觉分析结果] ${imageUrl}\n\n`;

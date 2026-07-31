@@ -27,6 +27,18 @@ function initApp() {
     showAvatar: false,
   });
 
+  // 拦截消息区域内的链接点击，在系统浏览器中打开
+  messagesEl?.addEventListener('click', (e) => {
+    const link = e.target.closest('a');
+    if (link && link.href) {
+      const url = link.href;
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        e.preventDefault();
+        window.electronAPI?.openExternal(url);
+      }
+    }
+  });
+
   PersonaManager.init({
     containerEl: characterEl,
     defaultMediaPath: '../shared/video.mp4',

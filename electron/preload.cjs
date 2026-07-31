@@ -62,9 +62,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 提交配置
   submitConfig: (config) => ipcRenderer.send('setup-submit-config', config),
 
+  // 加载已有配置（回填表单）
+  loadConfig: () => ipcRenderer.invoke('load-config'),
+
   // 监听配置结果
   onConfigResult: (callback) => {
     ipcRenderer.on('setup-config-result', (_event, data) => callback(data));
+  },
+
+  // 监听重新配置模式
+  onSetupReconfigureMode: (callback) => {
+    ipcRenderer.on('setup-reconfigure-mode', (_event, isReconfigure) => callback(isReconfigure));
   },
 
   // 请求选择目录
@@ -102,6 +110,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 打开外部链接
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+
+  // 打开 Setup 配置向导（重新配置）
+  openSetup: () => ipcRenderer.send('open-setup'),
 
   // ===== 微信相关 IPC =====
   // 登录微信

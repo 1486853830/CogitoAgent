@@ -1,0 +1,17 @@
+{
+  "name": "cogito-plugin-biopython-bio",
+  "version": "1.0.0",
+  "description": "Biopython 生物信息学工具包 - 序列比对、BLAST、GenBank 获取、PDB 分析",
+  "main": "index.js",
+  "type": "module",
+  "keywords": [
+    "bioinformatics",
+    "biopython",
+    "sequence",
+    "blast",
+    "genbank",
+    "pdb"
+  ],
+  "author": "CogitoAgent AI for Science",
+  "license": "Apache-2.0"
+}

@@ -42,12 +42,12 @@ const DEFAULT_CONFIG: Config = {
     provider: '',
     baseURL: '',
     apiKey: '',
-    model: 'Qwen2.5-VL-32B-Instruct',
+    model: 'InternVL3-78B',
   },
   vision: {
     baseURL: '',
     apiKey: '',
-    model: 'Qwen2.5-VL-32B-Instruct',
+    model: 'InternVL3-78B',
   },
   workspace: os.homedir(),
   database: {
@@ -81,6 +81,8 @@ const DEFAULT_CONFIG: Config = {
   code: {
     maxExecutionTime: 30000,
     maxOutputSize: 100000,
+    scientificMode: false,
+    scientificLibraries: [],
   },
   scheduler: {
     enabled: true,

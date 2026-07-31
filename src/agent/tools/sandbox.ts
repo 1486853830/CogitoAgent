@@ -538,20 +538,40 @@ async function runPythonSandbox(code: string): Promise<any> {
       tmpPath = generateSecureTmpPath('py');
       await writeSecureTmpFile(tmpPath, code);
 
+      // 科学模式：允许使用已安装的 Python 科学库
+      const cfg = loadConfig();
+      const scientificMode = cfg.code?.scientificMode === true;
+
       const secureEnv: any = {
         ...process.env,
         PYTHONUNBUFFERED: '1',
-        PYTHONNOUSERSITE: '1',
         PYTHONHASHSEED: '0',
         PYTHONDONTWRITEBYTECODE: '1',
-        PATH: process.env.PATH?.split(path.delimiter).slice(0, 3).join(path.delimiter) || '',
+        PATH: process.env.PATH || '',
       };
 
-      delete secureEnv.PYTHONPATH;
-      delete secureEnv.PYTHONHOME;
-      delete secureEnv.PYTHONSTARTUP;
-      delete secureEnv.PYTHONRC;
-      delete secureEnv.VIRTUAL_ENV;
+      if (scientificMode) {
+        // 科学模式：保留完整 PATH 和 PYTHONPATH，允许加载科学库
+        if (process.env.PYTHONPATH) {
+          secureEnv.PYTHONPATH = process.env.PYTHONPATH;
+        }
+        if (process.env.PYTHONHOME) {
+          secureEnv.PYTHONHOME = process.env.PYTHONHOME;
+        }
+        console.log('[提示] 科学模式已启用 - 允许加载 Python 科学库');
+      } else {
+        // 安全模式：阻止加载用户级 site-packages
+        secureEnv.PYTHONNOUSERSITE = '1';
+        delete secureEnv.PYTHONPATH;
+        delete secureEnv.PYTHONHOME;
+        delete secureEnv.PYTHONSTARTUP;
+        delete secureEnv.PYTHONRC;
+        delete secureEnv.VIRTUAL_ENV;
+
+        // 限制 PATH 范围
+        secureEnv.PATH =
+          process.env.PATH?.split(path.delimiter).slice(0, 3).join(path.delimiter) || '';
+      }
 
       execFile(
         'python',

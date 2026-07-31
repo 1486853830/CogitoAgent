@@ -173,7 +173,7 @@ function saveConfig(config) {
       `COGITO_OCR_API_BASE_URL=${config.ocr?.baseURL || ''}`,
       '',
       '# OCR 模型名称',
-      `COGITO_OCR_MODEL=${config.ocr?.model || 'Qwen2.5-VL-32B-Instruct'}`,
+      `COGITO_OCR_MODEL=${config.ocr?.model || 'InternVL3-78B'}`,
       '',
       '# OCR 服务商名称',
       `COGITO_OCR_PROVIDER=${config.ocr?.provider || ''}`,
@@ -188,8 +188,8 @@ function saveConfig(config) {
       '# 视觉分析 API 服务地址（可选，默认使用 COGITO_API_BASE_URL）',
       `COGITO_VISION_API_BASE_URL=${config.vision?.baseURL || ''}`,
       '',
-      '# 视觉模型名称（可选，默认 Qwen2.5-VL-32B-Instruct）',
-      `COGITO_VISION_MODEL=${config.vision?.model || 'Qwen2.5-VL-32B-Instruct'}`,
+      '# 视觉模型名称（可选，默认 InternVL3-78B）',
+      `COGITO_VISION_MODEL=${config.vision?.model || 'InternVL3-78B'}`,
       '',
       '# ============================================',
       '# 代码执行配置（可选）',
@@ -200,6 +200,12 @@ function saveConfig(config) {
       '',
       '# 代码输出最大大小（字符）',
       `COGITO_CODE_MAX_OUTPUT=${config.code?.maxOutput || 100000}`,
+      '',
+      '# 是否启用科学计算模式（默认关闭）',
+      `COGITO_CODE_SCIENTIFIC_MODE=${config.code?.scientificMode ? 'true' : 'false'}`,
+      '',
+      '# 已安装的科学库（逗号分隔）',
+      `COGITO_CODE_SCIENTIFIC_LIBRARIES=${config.code?.scientificLibraries || ''}`,
       '',
       '# ============================================',
       '# 安全配置（可选）',
@@ -243,16 +249,6 @@ function saveConfig(config) {
       console.warn('[主进程] 无法设置 .env 文件权限');
     }
     console.log('[主进程] 配置已保存到 .env');
-
-    // 复制 persona 文件
-    if (config.persona) {
-      const srcPath = path.join(PROJECT_ROOT, 'personas', config.persona, 'persona.md');
-      if (fs.existsSync(srcPath)) {
-        fs.copyFileSync(srcPath, PERSONA_FILE);
-        currentPersona = config.persona;
-        console.log('[主进程] 人设已应用:', config.persona);
-      }
-    }
 
     return true;
   } catch (e) {
@@ -305,15 +301,46 @@ function loadEnvFile() {
   for (const envPath of envPaths) {
     if (fs.existsSync(envPath)) {
       try {
-        const content = fs.readFileSync(envPath, 'utf-8');
+        // 检测文件编码：处理 UTF-16（Windows 可能保存为 UTF-16 LE）
+        const raw = fs.readFileSync(envPath);
+        let content;
+
+        // 检查 UTF-16 LE BOM (0xFF, 0xFE)
+        if (raw.length >= 2 && raw[0] === 0xff && raw[1] === 0xfe) {
+          content = raw.toString('ucs2');
+        }
+        // 检查 UTF-16 BE BOM (0xFE, 0xFF)
+        else if (raw.length >= 2 && raw[0] === 0xfe && raw[1] === 0xff) {
+          content = raw.toString('ucs2');
+        } else {
+          content = raw.toString('utf-8');
+        }
+
+        // 移除 BOM 字符和 null 字节
+        content = content.replace(/^\uFEFF/, '').replace(/\x00/g, '');
+
         const lines = content.split('\n');
         for (const line of lines) {
           const trimmed = line.trim();
           if (trimmed && !trimmed.startsWith('#')) {
-            const [key, value] = trimmed.split('=', 2);
-            if (key && value !== undefined) {
-              envConfig[key] = value;
+            const eqIdx = trimmed.indexOf('=');
+            if (eqIdx === -1) continue;
+            const key = trimmed.slice(0, eqIdx).trim();
+            let value = trimmed.slice(eqIdx + 1).trim();
+            // 去除行内注释（# 前必须有空格）
+            const commentIdx = value.indexOf(' #');
+            if (commentIdx !== -1) {
+              value = value.slice(0, commentIdx);
             }
+            // 处理引号包裹的值
+            if (value.length >= 2) {
+              const first = value[0];
+              const last = value[value.length - 1];
+              if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+                value = value.slice(1, -1);
+              }
+            }
+            envConfig[key] = value;
           }
         }
         break;
@@ -435,7 +462,10 @@ function stopAgentProcess() {
 /**
  * 创建配置向导窗口
  */
-function createSetupWindow() {
+let isReconfiguring = false;
+
+function createSetupWindow(isReconfigure = false) {
+  isReconfiguring = isReconfigure;
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
   setupWindow = new BrowserWindow({
@@ -467,6 +497,10 @@ function createSetupWindow() {
 
   setupWindow.on('closed', () => {
     setupWindow = null;
+  });
+
+  setupWindow.webContents.on('did-finish-load', () => {
+    setupWindow?.webContents.send('setup-reconfigure-mode', isReconfiguring);
   });
 
   console.log('[主进程] 配置向导窗口已创建');
@@ -507,6 +541,22 @@ function createMainWindow() {
       responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] },
     });
   });
+
+  // 拦截链接导航：所有外部链接在系统浏览器中打开
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
   mainWindow.loadFile(path.join(__dirname, 'desktop', 'index.html'));
 
   initAgentBridge(mainWindow);
@@ -552,6 +602,23 @@ function createDashboardWindow() {
       responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP_HEADER] },
     });
   });
+
+  // 拦截链接导航：所有外部链接在系统浏览器中打开，不在 Electron 内加载
+  dashboardWindow.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
+  // 拦截新窗口打开（如 target="_blank"）
+  dashboardWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
   dashboardWindow.loadFile(path.join(__dirname, 'dashboard', 'index.html'));
 
   initAgentBridge(dashboardWindow);
@@ -707,14 +774,85 @@ app.whenReady().then(async () => {
 
     if (success && setupWindow) {
       setupWindow.webContents.send('setup-config-result', { success: true });
-      // 等待渲染进程完成 UI 过渡后由渲染进程触发 launchMainApp
-      // 不再在这里自动调用，避免与渲染进程的 setup-launch-main-app 冲突
+
+      // 如果是重新配置模式，保存后直接刷新 Dashboard，不重启应用
+      if (isReconfiguring) {
+        setTimeout(() => {
+          if (setupWindow) {
+            setupWindow.close();
+            setupWindow = null;
+          }
+          // 刷新现有 Dashboard 窗口以加载新配置
+          if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+            dashboardWindow.reload();
+          }
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.reload();
+          }
+          isReconfiguring = false;
+        }, 500);
+      }
     } else {
       setupWindow?.webContents.send('setup-config-result', {
         success: false,
         error: '保存配置失败',
       });
     }
+  });
+
+  // 加载已有配置（用于回填表单）
+  ipcMain.handle('load-config', () => {
+    const env = loadEnvFile();
+
+    // 同时读取 config.json 作为补充数据源
+    let configJson = {};
+    try {
+      if (fs.existsSync(CONFIG_FILE)) {
+        configJson = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      }
+    } catch {
+      /* ignore */
+    }
+
+    return {
+      api: {
+        baseURL: env['COGITO_API_BASE_URL'] || configJson.api?.baseURL || '',
+        apiKey: env['COGITO_API_KEY'] || '',
+        model: env['COGITO_MODEL'] || configJson.api?.model || '',
+      },
+      workspace: env['COGITO_WORKSPACE'] || configJson.workspace || '',
+      thinkingInterval:
+        env['COGITO_THINKING_INTERVAL'] || configJson.chat?.thinkingInterval || '3000',
+      mode: env['COGITO_MODE'] || 'dashboard',
+      email: {
+        host: env['COGITO_EMAIL_HOST'] || '',
+        port: env['COGITO_EMAIL_PORT'] || '',
+        user: env['COGITO_EMAIL_USER'] || '',
+        password: env['COGITO_EMAIL_PASSWORD'] || '',
+        from: env['COGITO_EMAIL_FROM'] || '',
+      },
+      ocr: {
+        apiKey: env['COGITO_OCR_API_KEY'] || '',
+        baseURL: env['COGITO_OCR_API_BASE_URL'] || '',
+        model: env['COGITO_OCR_MODEL'] || '',
+        provider: env['COGITO_OCR_PROVIDER'] || '',
+      },
+      vision: {
+        apiKey: env['COGITO_VISION_API_KEY'] || '',
+        baseURL: env['COGITO_VISION_API_BASE_URL'] || '',
+        model: env['COGITO_VISION_MODEL'] || '',
+      },
+      code: {
+        timeout: env['COGITO_CODE_TIMEOUT'] || '',
+        maxOutput: env['COGITO_CODE_MAX_OUTPUT'] || '',
+        scientificMode: env['COGITO_CODE_SCIENTIFIC_MODE'] === 'true',
+        scientificLibraries: env['COGITO_CODE_SCIENTIFIC_LIBRARIES'] || '',
+      },
+      security: {
+        confirmDangerous: env['COGITO_CONFIRM_DANGEROUS'] !== 'false',
+        sandboxMode: env['COGITO_SANDBOX_MODE'] !== 'false',
+      },
+    };
   });
 
   // 选择目录对话框
@@ -995,6 +1133,17 @@ app.whenReady().then(async () => {
     } catch {
       console.warn('[主进程] 拒绝打开无效或危险的 URL:', url);
     }
+  });
+
+  ipcMain.on('open-setup', () => {
+    // 如果 setup 窗口已存在，聚焦到它
+    if (setupWindow) {
+      if (setupWindow.isMinimized()) setupWindow.restore();
+      setupWindow.focus();
+      return;
+    }
+    // 关闭现有窗口，重新创建 setup（传递 reconfigure 模式）
+    createSetupWindow(true);
   });
 
   // ===== IPC: 微信相关 =====
