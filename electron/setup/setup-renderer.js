@@ -6,18 +6,37 @@
 // 内联脚本外迁：节折叠交互（原 setup.html 内联 <script>，为 CSP 安全移出）
 function toggleSection(id) {
   const section = document.getElementById(id);
+  if (!section) return;
   const toggle = section.parentElement.querySelector('.section-toggle');
   const header = section.parentElement.querySelector('.section-header');
   if (section.style.display === 'none') {
     section.style.display = 'block';
-    toggle.textContent = '−';
-    header.classList.add('expanded');
+    if (toggle) toggle.textContent = '−';
+    if (header) header.classList.add('expanded');
   } else {
     section.style.display = 'none';
-    toggle.textContent = '+';
-    header.classList.remove('expanded');
+    if (toggle) toggle.textContent = '+';
+    if (header) header.classList.remove('expanded');
   }
 }
+
+// CSP 安全：用事件委托替代内联 onclick
+document.querySelectorAll('.section-header').forEach((header) => {
+  header.addEventListener('click', () => {
+    const section = header.parentElement.querySelector('.section-content');
+    if (!section) return;
+    const toggle = header.querySelector('.section-toggle');
+    if (section.style.display === 'none') {
+      section.style.display = 'block';
+      if (toggle) toggle.textContent = '−';
+      header.classList.add('expanded');
+    } else {
+      section.style.display = 'none';
+      if (toggle) toggle.textContent = '+';
+      header.classList.remove('expanded');
+    }
+  });
+});
 document.querySelectorAll('.section-content').forEach((el) => (el.style.display = 'none'));
 
 // DOM 元素
@@ -35,7 +54,6 @@ const baseURLInput = document.getElementById('baseURL');
 const apiKeyInput = document.getElementById('apiKey');
 const modelInput = document.getElementById('model');
 const workspaceInput = document.getElementById('workspace');
-const personaGrid = document.getElementById('personaGrid');
 const browseBtn = document.getElementById('browseBtn');
 
 // 高级配置元素
@@ -68,13 +86,17 @@ const codeMaxOutputInput = document.getElementById('codeMaxOutput');
 const confirmDangerousInput = document.getElementById('confirmDangerous');
 const sandboxModeInput = document.getElementById('sandboxMode');
 
+// 科学配置元素
+const scientificModeInput = document.getElementById('scientificMode');
+const scientificLibrariesInput = document.getElementById('scientificLibraries');
+
 // 预设按钮
 const presetBtns = document.querySelectorAll('.preset-btn');
 
 // 状态
 let currentStep = 1;
-const totalSteps = 6;
-let selectedPersona = '';
+const totalSteps = 5;
+let isReconfigureMode = false;
 
 // 默认工作区路径
 let defaultWorkspace = '';
@@ -84,70 +106,84 @@ async function init() {
   // 工作区输入框保持空，用户可以手动输入或浏览选择
   defaultWorkspace = '';
 
+  // 监听重新配置模式
+  window.electronAPI?.onSetupReconfigureMode?.((isReconfigure) => {
+    isReconfigureMode = isReconfigure;
+  });
+
+  // 加载已有配置并回填表单
+  try {
+    const config = await window.electronAPI.loadConfig();
+    if (config) {
+      fillConfig(config);
+    }
+  } catch (e) {
+    console.log('无已有配置，使用默认值');
+  }
+
   setupEventListeners();
-  await loadPersonas();
   updateUI();
 }
 
 /**
- * 动态加载 personas 列表
+ * 回填表单配置
  */
-async function loadPersonas() {
-  try {
-    const personas = await window.electronAPI.getPersonas();
+function fillConfig(cfg) {
+  if (!cfg) return;
 
-    personaGrid.innerHTML = '';
-
-    // 默认选项
-    const defaultCard = createPersonaCard('', '默认', '无特定性格');
-    personaGrid.appendChild(defaultCard);
-
-    // 动态加载的 personas
-    for (const p of personas) {
-      const card = createPersonaCard(p.id, p.name, p.id);
-      personaGrid.appendChild(card);
-    }
-
-    // 绑定点击事件
-    setupPersonaClickListeners();
-  } catch (e) {
-    console.error('加载 personas 失败:', e);
+  // Step 1-3: API 配置
+  if (cfg.api) {
+    if (cfg.api.baseURL) baseURLInput.value = cfg.api.baseURL;
+    if (cfg.api.apiKey) apiKeyInput.value = cfg.api.apiKey;
+    if (cfg.api.model) modelInput.value = cfg.api.model;
   }
-}
 
-/**
- * 创建角色卡片元素
- */
-function createPersonaCard(id, name, desc) {
-  const card = document.createElement('div');
-  card.className = 'persona-card';
-  card.dataset.persona = id;
+  // Step 4: 工作区
+  if (cfg.workspace) workspaceInput.value = cfg.workspace;
 
-  const nameDiv = document.createElement('div');
-  nameDiv.className = 'persona-name';
-  nameDiv.textContent = name;
+  // Step 5: 高级配置
+  if (cfg.thinkingInterval) thinkingIntervalInput.value = cfg.thinkingInterval;
+  if (cfg.mode) modeSelect.value = cfg.mode;
 
-  const descDiv = document.createElement('div');
-  descDiv.className = 'persona-desc';
-  descDiv.textContent = desc;
+  // 邮件
+  if (cfg.email) {
+    if (cfg.email.host) emailHostInput.value = cfg.email.host;
+    if (cfg.email.port) emailPortInput.value = cfg.email.port;
+    if (cfg.email.user) emailUserInput.value = cfg.email.user;
+    if (cfg.email.password) emailPasswordInput.value = cfg.email.password;
+    if (cfg.email.from) emailFromInput.value = cfg.email.from;
+  }
 
-  card.appendChild(nameDiv);
-  card.appendChild(descDiv);
+  // OCR
+  if (cfg.ocr) {
+    if (cfg.ocr.apiKey) ocrApiKeyInput.value = cfg.ocr.apiKey;
+    if (cfg.ocr.baseURL) ocrBaseURLInput.value = cfg.ocr.baseURL;
+    if (cfg.ocr.model) ocrModelInput.value = cfg.ocr.model;
+    if (cfg.ocr.provider) ocrProviderInput.value = cfg.ocr.provider;
+  }
 
-  return card;
-}
+  // 视觉
+  if (cfg.vision) {
+    if (cfg.vision.apiKey) visionApiKeyInput.value = cfg.vision.apiKey;
+    if (cfg.vision.baseURL) visionBaseURLInput.value = cfg.vision.baseURL;
+    if (cfg.vision.model) visionModelInput.value = cfg.vision.model;
+  }
 
-/**
- * 设置人设卡片点击事件
- */
-function setupPersonaClickListeners() {
-  personaGrid.querySelectorAll('.persona-card').forEach((card) => {
-    card.addEventListener('click', () => {
-      personaGrid.querySelectorAll('.persona-card').forEach((c) => c.classList.remove('selected'));
-      card.classList.add('selected');
-      selectedPersona = card.dataset.persona;
-    });
-  });
+  // 代码执行
+  if (cfg.code) {
+    if (cfg.code.timeout) codeTimeoutInput.value = cfg.code.timeout;
+    if (cfg.code.maxOutput) codeMaxOutputInput.value = cfg.code.maxOutput;
+    if (scientificModeInput) scientificModeInput.checked = !!cfg.code.scientificMode;
+    if (scientificLibrariesInput)
+      scientificLibrariesInput.value = cfg.code.scientificLibraries || '';
+  }
+
+  // 安全
+  if (cfg.security) {
+    if (confirmDangerousInput)
+      confirmDangerousInput.checked = cfg.security.confirmDangerous !== false;
+    if (sandboxModeInput) sandboxModeInput.checked = cfg.security.sandboxMode !== false;
+  }
 }
 
 /**
@@ -295,7 +331,7 @@ function validateCurrentStep() {
       value = workspaceInput.value.trim();
       break;
     case 5:
-      // 人设可选
+      // 高级配置可选
       break;
   }
 
@@ -314,7 +350,6 @@ function submitConfig() {
       model: modelInput.value.trim(),
     },
     workspace: workspaceInput.value.trim() || defaultWorkspace,
-    persona: selectedPersona,
     thinkingInterval: thinkingIntervalInput.value.trim()
       ? parseInt(thinkingIntervalInput.value.trim(), 10)
       : 3000,
@@ -329,19 +364,21 @@ function submitConfig() {
     ocr: {
       apiKey: ocrApiKeyInput.value.trim(),
       baseURL: ocrBaseURLInput.value.trim(),
-      model: ocrModelInput.value.trim() || 'Qwen2.5-VL-32B-Instruct',
+      model: ocrModelInput.value.trim() || 'InternVL3-78B',
       provider: ocrProviderInput.value.trim(),
     },
     vision: {
       apiKey: visionApiKeyInput.value.trim(),
       baseURL: visionBaseURLInput.value.trim(),
-      model: visionModelInput.value.trim() || 'Qwen2.5-VL-32B-Instruct',
+      model: visionModelInput.value.trim() || 'InternVL3-78B',
     },
     code: {
       timeout: codeTimeoutInput.value.trim() ? parseInt(codeTimeoutInput.value.trim(), 10) : 30000,
       maxOutput: codeMaxOutputInput.value.trim()
         ? parseInt(codeMaxOutputInput.value.trim(), 10)
         : 100000,
+      scientificMode: scientificModeInput?.checked || false,
+      scientificLibraries: scientificLibrariesInput?.value.trim() || '',
     },
     security: {
       confirmDangerous: confirmDangerousInput.checked,
@@ -366,10 +403,19 @@ function handleConfigResult(data) {
     setupForm.style.display = 'none';
     setupComplete.style.display = 'block';
 
-    // 2秒后启动主界面
-    setTimeout(() => {
-      window.electronAPI.launchMainApp();
-    }, 2000);
+    if (isReconfigureMode) {
+      // 重新配置模式：保存后自动关闭窗口，刷新现有界面
+      const completeTitle = setupComplete.querySelector('h2');
+      const completeDesc = setupComplete.querySelector('p');
+      if (completeTitle) completeTitle.textContent = '配置已更新';
+      if (completeDesc) completeDesc.textContent = '正在刷新界面...';
+      // 主进程会自动关闭 setup 窗口并刷新 Dashboard
+    } else {
+      // 首次配置模式：2秒后启动主界面
+      setTimeout(() => {
+        window.electronAPI.launchMainApp();
+      }, 2000);
+    }
   } else {
     btnNext.disabled = false;
     btnNext.textContent = '完成配置';

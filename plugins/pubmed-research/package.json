@@ -1,0 +1,17 @@
+{
+  "name": "cogito-plugin-pubmed-research",
+  "version": "1.0.0",
+  "description": "PubMed 文献检索工具包 - 文献搜索、详情获取、高级检索、引用格式导出",
+  "main": "index.js",
+  "type": "module",
+  "keywords": [
+    "pubmed",
+    "literature",
+    "research",
+    "ncbi",
+    "entrez",
+    "citation"
+  ],
+  "author": "CogitoAgent AI for Science",
+  "license": "Apache-2.0"
+}

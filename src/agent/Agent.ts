@@ -87,6 +87,7 @@ import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from '
 import { safeParseJSON } from '../utils/llm-validator.ts';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import path from 'path';
+import { loadPlugins } from './plugin.ts';
 
 let thinkingTimer: ReturnType<typeof setTimeout> | null = null;
 let shouldStop = false;
@@ -693,6 +694,19 @@ async function start(): Promise<void> {
       console.error(`[Agent] Persona 文件复制失败:`, err);
     }
   }
+
+  // 自动加载科学插件
+  (async () => {
+    const result = await loadPlugins();
+    if (result.loaded > 0) {
+      console.log(`[Agent] 已加载 ${result.loaded} 个科学插件`);
+    }
+    if (result.errors.length > 0) {
+      for (const err of result.errors) {
+        console.warn(`[Agent] 插件加载失败: ${err.name} - ${err.error}`);
+      }
+    }
+  })();
 
   if (process.env.DISABLE_WS !== 'true') {
     try {

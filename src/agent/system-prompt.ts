@@ -412,6 +412,47 @@ COGITO_CONFIRM_DANGEROUS=false
 
 `;
         break;
+      case 'chemistry':
+        toolList += `### 化学信息学工具（Cheminformatics）
+- molInfo(smiles) - 分析分子的基本化学信息（分子式、分子量、LogP、氢键供体/受体、TPSA 等）
+- molDraw(smiles, outputPath) - 生成分子的 2D 结构图，保存为 PNG 文件
+- molFingerprint(smiles, radius, nBits) - 计算分子的 Morgan 指纹（ECFP 类似物），用于分子相似性搜索
+- molSubstruct(smiles, substructure) - 子结构搜索，检测分子中是否包含指定片段
+- molSimilarity(smiles1, smiles2) - 计算两个分子的 Tanimoto 相似度
+
+【重要】以上工具需要启用科学模式（COGITO_CODE_SCIENTIFIC_MODE=true）并安装 Python 库：pip install rdkit
+
+`;
+        break;
+      case 'bioinformatics':
+        toolList += `### 生物信息学工具（Bioinformatics）
+- bioAlign(seq1, seq2, matchScore, mismatchScore, gapScore) - 双序列全局比对（Needleman-Wunsch 算法）
+- bioBlast(sequence, program, database) - NCBI BLAST 相似性搜索（需要网络）
+- bioConvert(inputPath, outputPath, inputFormat, outputFormat) - 序列格式转换（FASTA/GenBank/EMBL 互转）
+- bioFetchGenbank(accession) - 从 GenBank 获取序列信息（需要网络）
+- bioPdbInfo(pdbPath) - 分析 PDB 蛋白质结构文件（链、残基、原子、质心）
+- bioFastaStats(fastaPath) - FASTA 文件序列统计（长度、GC含量、序列数量）
+- bioMsa(inputFasta, outputAln) - 多序列比对（需要安装 clustalw）
+
+【重要】以上工具需要启用科学模式（COGITO_CODE_SCIENTIFIC_MODE=true）并安装 Python 库：pip install biopython
+
+`;
+        break;
+      case 'literature':
+        toolList += `### 文献检索工具（Literature）
+- pubmedSearch(query, maxResults) - 在 PubMed 中搜索文献，返回标题、作者、期刊、摘要
+- pubmedFetch(pmid) - 通过 PMID 获取单篇文献的完整信息（含完整摘要、关键词、MeSH 术语）
+- pubmedAdvanced(query, field, mindate, maxdate, maxResults) - 高级检索（支持 AND/OR/NOT、字段限定、日期范围）
+- pubmedCite(pmid, format) - 生成标准引用格式（AMA/APA/MLA/NLM）
+
+【使用说明】
+1. 搜索关键词支持布尔运算，如 "cancer AND immunotherapy"
+2. field 可选：title、abstract、author、journal、mesh、keyword
+3. 日期格式：YYYY/MM/DD，如 "2020/01/01"
+4. 以上工具使用 Node.js 内置 https 模块，无需额外依赖
+
+`;
+        break;
     }
   }
 

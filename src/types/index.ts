@@ -62,6 +62,8 @@ export interface ModelsConfig {
 export interface CodeConfig {
   maxExecutionTime: number;
   maxOutputSize: number;
+  scientificMode?: boolean;
+  scientificLibraries?: string[];
 }
 
 export interface SecurityConfig {
@@ -113,7 +115,7 @@ export interface ToolRegistryEntry {
   description?: string;
 }
 
-export type ToolCategory = 
+export type ToolCategory =
   | 'file'
   | 'web'
   | 'system'
@@ -137,7 +139,10 @@ export type ToolCategory =
   | 'med'
   | 'chem'
   | 'finance'
-  | 'math';
+  | 'math'
+  | 'chemistry'
+  | 'bioinformatics'
+  | 'literature';
 
 export interface Message {
   role: 'user' | 'assistant' | 'system';

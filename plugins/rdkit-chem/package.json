@@ -1,0 +1,16 @@
+{
+  "name": "cogito-plugin-rdkit-chem",
+  "version": "1.0.0",
+  "description": "RDKit 化学信息学工具包 - 分子分析、指纹计算、子结构搜索、相似性比较",
+  "main": "index.js",
+  "type": "module",
+  "keywords": [
+    "chemistry",
+    "rdkit",
+    "cheminformatics",
+    "molecular",
+    "smiles"
+  ],
+  "author": "CogitoAgent AI for Science",
+  "license": "Apache-2.0"
+}

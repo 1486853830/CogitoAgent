@@ -1,0 +1,140 @@
+{
+  "workflows": [
+    {
+      "id": "drug-discovery",
+      "name": "药物发现工作流",
+      "description": "从靶点验证到候选分子筛选的完整药物发现流水线，结合化学信息学和生物信息学工具",
+      "mode": "pipeline",
+      "steps": [
+        {
+          "agentId": "agent_chem",
+          "persona": "Chemist",
+          "name": "化学家",
+          "instruction": "你是药物化学家，专注于分子设计和构效关系分析",
+          "task": "使用 RDKit 工具分析候选分子的化学性质。计算分子量、LogP、氢键供体/受体数、可旋转键数等类药性指标，评估是否符合 Lipinski 五规则。"
+        },
+        {
+          "agentId": "agent_bio",
+          "persona": "Biologist",
+          "name": "生物学家",
+          "instruction": "你是分子生物学家，专注于靶点验证和生物活性分析",
+          "task": "从生物信息学角度评估候选分子。使用 Biopython 工具比对相关靶点序列一致性，分析结合位点的保守性，评估脱靶风险。"
+        },
+        {
+          "agentId": "agent_comp",
+          "persona": "Computational-Scientist",
+          "name": "计算科学家",
+          "instruction": "你是计算科学家，专注于数据分析和模型预测",
+          "task": "综合分析化学家和生物学家的结果，使用统计方法评估候选分子的整体开发潜力。计算 ADMET 评分，生成优化的候选分子列表。"
+        }
+      ]
+    },
+    {
+      "id": "literature-review",
+      "name": "文献综述工作流",
+      "description": "系统性文献检索、阅读和综述生成流水线，自动搜索 PubMed 并生成结构化综述",
+      "mode": "pipeline",
+      "steps": [
+        {
+          "agentId": "agent_searcher",
+          "persona": "Scholar",
+          "name": "文献检索员",
+          "instruction": "你是文献检索专家，精通 PubMed 检索策略",
+          "task": "使用 PubMed 工具搜索相关文献。使用 pubmedSearch 搜索关键词，获取文献列表。评估搜索结果的覆盖率和相关性，必要时调整查询策略。"
+        },
+        {
+          "agentId": "agent_reader",
+          "persona": "Biologist",
+          "name": "文献阅读员",
+          "instruction": "你是生物信息学文献阅读专家，擅长提取关键信息",
+          "task": "对检索到的文献逐一阅读摘要和关键部分。使用 pubmedFetch 获取每篇文献的完整信息，提取研究目的、方法、主要发现和结论。"
+        },
+        {
+          "agentId": "agent_writer",
+          "persona": "Scholar",
+          "name": "综述撰写员",
+          "instruction": "你是学术写作专家，擅长撰写文献综述",
+          "task": "综合所有文献阅读结果，撰写结构化文献综述。包括：研究背景、主要研究方向、关键发现总结、现存问题与挑战、未来展望。使用 pubmedCite 为每篇引用生成标准引用格式。"
+        }
+      ]
+    },
+    {
+      "id": "protein-analysis",
+      "name": "蛋白质结构分析工作流",
+      "description": "从序列到结构的完整蛋白质分析流水线，支持 PDB 分析和功能预测",
+      "mode": "pipeline",
+      "steps": [
+        {
+          "agentId": "agent_seq",
+          "persona": "Biologist",
+          "name": "序列分析员",
+          "instruction": "你是序列分析专家，专注于蛋白质序列和进化分析",
+          "task": "使用 Biopython 工具分析蛋白质序列。从 GenBank 获取序列信息，进行序列比对，分析保守结构域。使用 bioFastaStats 统计序列特征。"
+        },
+        {
+          "agentId": "agent_struct",
+          "persona": "Computational-Scientist",
+          "name": "结构分析员",
+          "instruction": "你是结构生物信息学专家，专注于蛋白质结构分析",
+          "task": "使用 Biopython 的 PDB 分析工具解析蛋白质结构文件。使用 bioPdbInfo 分析链组成、残基分布和原子坐标。评估结构质量。"
+        },
+        {
+          "agentId": "agent_integrate",
+          "persona": "Scholar",
+          "name": "综合分析员",
+          "instruction": "你是整合分析专家，擅长序列-结构-功能关联分析",
+          "task": "综合序列和结构分析结果，撰写蛋白质分析报告。包括：序列特征、结构域组成、保守性分析、功能预测、与已知蛋白质的同源性关系。"
+        }
+      ]
+    },
+    {
+      "id": "molecular-docking-prep",
+      "name": "分子对接准备工作流",
+      "description": "为分子对接模拟准备输入文件和参数，生成配体库和受体结构",
+      "mode": "parallel",
+      "steps": [
+        {
+          "agentId": "agent_ligand",
+          "persona": "Chemist",
+          "name": "配体制备员",
+          "instruction": "你是化学信息学专家，专注于配体分子制备",
+          "task": "使用 RDKit 工具准备配体分子。检查 SMILES 有效性，计算分子性质（molInfo），生成分子指纹（molFingerprint），筛选类药分子。"
+        },
+        {
+          "agentId": "agent_receptor",
+          "persona": "Biologist",
+          "name": "受体制备员",
+          "instruction": "你是结构生物学家，专注于蛋白质受体制备",
+          "task": "使用 Biopython 工具分析受体蛋白结构。使用 bioPdbInfo 检查 PDB 文件结构完整性，分析结合位点周围的氨基酸组成。"
+        }
+      ]
+    },
+    {
+      "id": "research-panel",
+      "name": "跨学科圆桌讨论",
+      "description": "多学科专家团队就同一科学问题展开讨论，通过投票达成共识",
+      "mode": "panel",
+      "agents": [
+        {
+          "id": "chemist",
+          "persona": "Chemist",
+          "name": "化学家",
+          "instruction": "你是化学家，从分子结构、反应性和合成可行性角度分析问题"
+        },
+        {
+          "id": "biologist",
+          "persona": "Biologist",
+          "name": "生物学家",
+          "instruction": "你是生物学家，从生物功能、进化和机制角度分析问题"
+        },
+        {
+          "id": "computational",
+          "persona": "Computational-Scientist",
+          "name": "计算科学家",
+          "instruction": "你是计算科学家，从数据、算法和模型角度分析问题"
+        }
+      ],
+      "moderatorInstruction": "作为主持人，引导三位专家从各自领域深入讨论，鼓励跨学科交叉思考，最后总结共识和分歧"
+    }
+  ]
+}
