@@ -2,6 +2,8 @@
  * PubMed 文献检索插件
  * 基于 NCBI Entrez API，提供文献搜索、摘要获取和引用管理功能
  * 不需要额外依赖，使用 Node.js 内置 https 模块
+ *
+ * 安全设计：XML 标签清理使用状态机而非正则，避免不完整的清理风险。
  */
 
 const TOOLS = [];
@@ -30,6 +32,32 @@ async function entrezFetch(url) {
 }
 
 /**
+ * 使用状态机安全剥离 XML 标签
+ * 不使用正则，避免 CodeQL "Incomplete multi-character sanitization" 警报
+ * @param {string} str - 包含 XML 标签的字符串
+ * @returns {string} - 剥离标签后的纯文本
+ */
+function stripXmlTags(str) {
+  let out = '';
+  let inTag = false;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (ch === '<') {
+      inTag = true;
+      continue;
+    }
+    if (ch === '>') {
+      inTag = false;
+      continue;
+    }
+    if (!inTag) {
+      out += ch;
+    }
+  }
+  return out.trim();
+}
+
+/**
  * 解析 PubMed XML 结果的简化版本
  */
 function parsePubMedXml(xml) {
@@ -43,15 +71,10 @@ function parsePubMedXml(xml) {
     article.pmid = pmidMatch ? pmidMatch[1] : '';
 
     const titleMatch = articleXml.match(/<ArticleTitle[^>]*>([\s\S]*?)<\/ArticleTitle>/);
-    article.title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+    article.title = titleMatch ? stripXmlTags(titleMatch[1]) : '';
 
     const absMatch = articleXml.match(/<AbstractText[^>]*>([\s\S]*?)<\/AbstractText>/);
-    article.abstract = absMatch
-      ? absMatch[1]
-          .replace(/<[^>]+>/g, '')
-          .trim()
-          .slice(0, 500)
-      : '';
+    article.abstract = absMatch ? stripXmlTags(absMatch[1]).slice(0, 500) : '';
 
     const authors = [];
     const authorMatches = articleXml.matchAll(/<Author[^>]*>[\s\S]*?<\/Author>/g);
@@ -139,8 +162,11 @@ TOOLS.push({
   category: 'literature',
   fn: async (pmid) => {
     if (!pmid) return { success: false, error: '请输入 PMID' };
+    // 只允许数字
+    const cleanPmid = String(pmid).replace(/\D/g, '');
+    if (!cleanPmid) return { success: false, error: 'PMID 应为数字' };
     try {
-      const fetchUrl = `${ENTREZ_BASE}/efetch.fcgi?db=pubmed&id=${pmid}&retmode=xml`;
+      const fetchUrl = `${ENTREZ_BASE}/efetch.fcgi?db=pubmed&id=${cleanPmid}&retmode=xml`;
       const xml = await entrezFetch(fetchUrl);
 
       const articles = parsePubMedXml(xml);
@@ -154,7 +180,7 @@ TOOLS.push({
       for (const m of absMatches) {
         const labelMatch = m[0].match(/Label="([^"]+)"/);
         const label = labelMatch ? `[${labelMatch[1]}] ` : '';
-        fullAbstract += label + m[1].replace(/<[^>]+>/g, '').trim() + '\n\n';
+        fullAbstract += label + stripXmlTags(m[1]) + '\n\n';
       }
 
       // 提取完整作者列表
@@ -233,9 +259,9 @@ TOOLS.push({
 
       let dateRange = '';
       if (mindate && maxdate) {
-        dateRange = `&mindate=${mindate}&maxdate=${maxdate}&datetype=pdat`;
+        dateRange = `&mindate=${encodeURIComponent(mindate)}&maxdate=${encodeURIComponent(maxdate)}&datetype=pdat`;
       } else if (mindate) {
-        dateRange = `&mindate=${mindate}&maxdate=3000&datetype=pdat`;
+        dateRange = `&mindate=${encodeURIComponent(mindate)}&maxdate=3000&datetype=pdat`;
       }
 
       const searchUrl = `${ENTREZ_BASE}/esearch.fcgi?db=pubmed&term=${encodeURIComponent(searchQuery)}${dateRange}&retmax=${max}&retmode=xml&sort=relevance`;
@@ -288,11 +314,13 @@ TOOLS.push({
   category: 'literature',
   fn: async (pmid, format = 'nlm') => {
     if (!pmid) return { success: false, error: '请输入 PMID' };
+    const cleanPmid = String(pmid).replace(/\D/g, '');
+    if (!cleanPmid) return { success: false, error: 'PMID 应为数字' };
     try {
       const formats = { ama: 'AMA', apa: 'APA', mla: 'MLA', nlm: 'NLM' };
       const fmt = (formats[format] || 'NLM').toLowerCase();
 
-      const fetchUrl = `${ENTREZ_BASE}/efetch.fcgi?db=pubmed&id=${pmid}&retmode=xml`;
+      const fetchUrl = `${ENTREZ_BASE}/efetch.fcgi?db=pubmed&id=${cleanPmid}&retmode=xml`;
       const xml = await entrezFetch(fetchUrl);
 
       const articles = parsePubMedXml(xml);

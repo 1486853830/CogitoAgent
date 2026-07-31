@@ -2,20 +2,34 @@
  * RDKit 化学信息学插件
  * 依赖：RDKit (pip install rdkit)
  * 提供分子操作、指纹计算、子结构搜索、药效团分析等功能
+ *
+ * 安全设计：所有用户输入通过 stdin 传递 JSON，不使用字符串拼接，
+ * 彻底避免命令注入风险。
  */
 
 const TOOLS = [];
+
+/**
+ * 安全执行 Python 脚本，通过 stdin 传递 JSON 参数
+ * @param {string} script - Python 脚本（不含用户输入）
+ * @param {object} inputData - 传递给脚本的 JSON 数据
+ * @param {number} timeout - 超时毫秒
+ */
+async function runPython(script, inputData, timeout = 30000) {
+  const { execFileSync } = await import('child_process');
+  return execFileSync('python', ['-c', script], {
+    encoding: 'utf8',
+    timeout,
+    input: JSON.stringify(inputData),
+  });
+}
 
 // ============================================
 // 辅助函数：检查 RDKit 是否可用
 // ============================================
 async function checkRdkit() {
   try {
-    const { execFileSync } = await import('child_process');
-    execFileSync('python', ['-c', 'from rdkit import Chem; print("ok")'], {
-      stdio: 'pipe',
-      timeout: 5000,
-    });
+    await runPython(`from rdkit import Chem; print("ok")`, {});
     return true;
   } catch {
     return false;
@@ -34,12 +48,13 @@ TOOLS.push({
       return { success: false, error: '请输入 SMILES 字符串' };
     }
     try {
-      const { execFileSync } = await import('child_process');
       const script = `
+import json, sys
 from rdkit import Chem
 from rdkit.Chem import Descriptors, Crippen
 
-mol = Chem.MolFromSmiles("${smiles.replace(/"/g, '\\"')}")
+data = json.load(sys.stdin)
+mol = Chem.MolFromSmiles(data["smiles"])
 if mol is None:
     print("ERROR:Invalid SMILES")
 else:
@@ -62,10 +77,7 @@ else:
     print(f"重原子数: {heavy}")
     print(f"环数: {rings}")
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 30000,
-      });
+      const result = await runPython(script, { smiles });
       if (result.startsWith('ERROR:')) {
         return { success: false, error: result.replace('ERROR:', '').trim() };
       }
@@ -87,23 +99,22 @@ TOOLS.push({
     if (!smiles) return { success: false, error: '请输入 SMILES 字符串' };
     if (!outputPath) return { success: false, error: '请指定输出文件路径' };
     try {
-      const { execFileSync } = await import('child_process');
       const script = `
+import json, sys, os
 from rdkit import Chem
 from rdkit.Chem import Draw
 
-mol = Chem.MolFromSmiles("${smiles.replace(/"/g, '\\"')}")
+data = json.load(sys.stdin)
+mol = Chem.MolFromSmiles(data["smiles"])
 if mol is None:
     print("ERROR:Invalid SMILES")
 else:
+    out_path = os.path.normpath(data["outputPath"])
     img = Draw.MolToImage(mol, size=(600, 600))
-    img.save("${outputPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}")
+    img.save(out_path)
     print(f"OK: 分子结构图已保存")
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 30000,
-      });
+      const result = await runPython(script, { smiles, outputPath });
       if (result.startsWith('ERROR:')) {
         return { success: false, error: result.replace('ERROR:', '').trim() };
       }
@@ -124,28 +135,27 @@ TOOLS.push({
   fn: async (smiles, radius = 2, nBits = 2048) => {
     if (!smiles) return { success: false, error: '请输入 SMILES 字符串' };
     try {
-      const { execFileSync } = await import('child_process');
+      const r = Math.max(1, parseInt(radius) || 2);
+      const n = Math.max(32, Math.min(4096, parseInt(nBits) || 2048));
       const script = `
+import json, sys
 from rdkit import Chem
 from rdkit.Chem import AllChem
-from rdkit.DataStructs import BitVectToText
 
-mol = Chem.MolFromSmiles("${smiles.replace(/"/g, '\\"')}")
+data = json.load(sys.stdin)
+mol = Chem.MolFromSmiles(data["smiles"])
 if mol is None:
     print("ERROR:Invalid SMILES")
 else:
-    fp = AllChem.GetMorganFingerprintAsBitVect(mol, ${radius}, nBits=${nBits})
+    fp = AllChem.GetMorganFingerprintAsBitVect(mol, data["radius"], nBits=data["nBits"])
     bits = [i for i in range(len(fp)) if fp[i]]
-    print(f"指纹位长: ${nBits}")
+    print(f"指纹位长: {data['nBits']}")
     print(f"开启位数量: {len(bits)}")
     print(f"开启位索引: {bits[:50]}")
     if len(bits) > 50:
         print(f"... 还有 {len(bits) - 50} 个位")
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 30000,
-      });
+      const result = await runPython(script, { smiles, radius: r, nBits: n });
       if (result.startsWith('ERROR:')) {
         return { success: false, error: result.replace('ERROR:', '').trim() };
       }
@@ -168,12 +178,13 @@ TOOLS.push({
       return { success: false, error: '请输入分子 SMILES 和子结构 SMILES' };
     }
     try {
-      const { execFileSync } = await import('child_process');
       const script = `
+import json, sys
 from rdkit import Chem
 
-mol = Chem.MolFromSmiles("${smiles.replace(/"/g, '\\"')}")
-sub = Chem.MolFromSmiles("${substructureSmiles.replace(/"/g, '\\"')}")
+data = json.load(sys.stdin)
+mol = Chem.MolFromSmiles(data["smiles"])
+sub = Chem.MolFromSmiles(data["substructureSmiles"])
 if mol is None:
     print("ERROR:Invalid molecule SMILES")
 elif sub is None:
@@ -187,10 +198,7 @@ else:
         if len(matches) > 10:
             print(f"  ... 还有 {len(matches) - 10} 个匹配")
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 30000,
-      });
+      const result = await runPython(script, { smiles, substructureSmiles });
       if (result.startsWith('ERROR:')) {
         return { success: false, error: result.replace('ERROR:', '').trim() };
       }
@@ -213,14 +221,15 @@ TOOLS.push({
       return { success: false, error: '请输入两个 SMILES 字符串' };
     }
     try {
-      const { execFileSync } = await import('child_process');
       const script = `
+import json, sys
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.DataStructs import TanimotoSimilarity
 
-mol1 = Chem.MolFromSmiles("${smiles1.replace(/"/g, '\\"')}")
-mol2 = Chem.MolFromSmiles("${smiles2.replace(/"/g, '\\"')}")
+data = json.load(sys.stdin)
+mol1 = Chem.MolFromSmiles(data["smiles1"])
+mol2 = Chem.MolFromSmiles(data["smiles2"])
 if mol1 is None or mol2 is None:
     print("ERROR:Invalid SMILES")
 else:
@@ -228,12 +237,10 @@ else:
     fp2 = AllChem.GetMorganFingerprintAsBitVect(mol2, 2, nBits=2048)
     sim = TanimotoSimilarity(fp1, fp2)
     print(f"Tanimoto 相似度: {sim:.4f}")
-    print(f"描述: {'非常相似 (>=0.85)' if sim >= 0.85 else '相似 (>=0.7)' if sim >= 0.7 else '中等相似 (>=0.5)' if sim >= 0.5 else '不相似 (<0.5)'}")
+    desc = '非常相似 (>=0.85)' if sim >= 0.85 else '相似 (>=0.7)' if sim >= 0.7 else '中等相似 (>=0.5)' if sim >= 0.5 else '不相似 (<0.5)'
+    print(f"描述: {desc}")
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 30000,
-      });
+      const result = await runPython(script, { smiles1, smiles2 });
       if (result.startsWith('ERROR:')) {
         return { success: false, error: result.replace('ERROR:', '').trim() };
       }

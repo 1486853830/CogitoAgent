@@ -2,9 +2,24 @@
  * Biopython 生物信息学插件
  * 依赖：Biopython (pip install biopython)
  * 提供序列比对、BLAST 搜索、进化树构建、蛋白质结构分析等功能
+ *
+ * 安全设计：所有用户输入通过 stdin 传递 JSON，不使用字符串拼接，
+ * 彻底避免命令注入风险。
  */
 
 const TOOLS = [];
+
+/**
+ * 安全执行 Python 脚本，通过 stdin 传递 JSON 参数
+ */
+async function runPython(script, inputData, timeout = 30000) {
+  const { execFileSync } = await import('child_process');
+  return execFileSync('python', ['-c', script], {
+    encoding: 'utf8',
+    timeout,
+    input: JSON.stringify(inputData),
+  });
+}
 
 // ============================================
 // 工具：序列全局比对（Needleman-Wunsch）
@@ -16,20 +31,24 @@ TOOLS.push({
   fn: async (seq1, seq2, matchScore = 1, mismatchScore = -1, gapScore = -2) => {
     if (!seq1 || !seq2) return { success: false, error: '请输入两个序列' };
     try {
-      const { execFileSync } = await import('child_process');
+      const ms = parseFloat(matchScore) || 1;
+      const mms = parseFloat(mismatchScore) || -1;
+      const gs = parseFloat(gapScore) || -2;
       const script = `
-from Bio import SeqIO
+import json, sys
 from Bio.Seq import Seq
 from Bio import Align
 
+data = json.load(sys.stdin)
+
 aligner = Align.PairwiseAligner()
 aligner.mode = 'global'
-aligner.match_score = ${matchScore}
-aligner.mismatch_score = ${mismatchScore}
-aligner.gap_score = ${gapScore}
+aligner.match_score = data["matchScore"]
+aligner.mismatch_score = data["mismatchScore"]
+aligner.gap_score = data["gapScore"]
 
-seq_a = Seq("${seq1.replace(/"/g, '\\"')}")
-seq_b = Seq("${seq2.replace(/"/g, '\\"')}")
+seq_a = Seq(data["seq1"])
+seq_b = Seq(data["seq2"])
 
 alignments = aligner.align(seq_a, seq_b)
 best = alignments[0]
@@ -47,9 +66,12 @@ print(f"序列2: {best[1][:120]}")
 if len(best[0]) > 120:
     print(f"... (剩余 {len(best[0]) - 120} 个字符)")
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 30000,
+      const result = await runPython(script, {
+        seq1,
+        seq2,
+        matchScore: ms,
+        mismatchScore: mms,
+        gapScore: gs,
       });
       return { success: true, data: result.trim() };
     } catch (error) {
@@ -68,20 +90,24 @@ TOOLS.push({
   fn: async (sequence, program = 'blastn', database = 'nt') => {
     if (!sequence) return { success: false, error: '请输入查询序列' };
     try {
-      const { execFileSync } = await import('child_process');
+      // 白名单校验
+      const allowedPrograms = ['blastn', 'blastp', 'blastx', 'tblastn', 'tblastx'];
+      const allowedDatabases = ['nt', 'nr', 'refseq_rna', 'refseq_protein', 'swissprot', 'pdb'];
+      const prog = allowedPrograms.includes(program) ? program : 'blastn';
+      const db = allowedDatabases.includes(database) ? database : 'nt';
       const script = `
+import json, sys
 from Bio.Blast import NCBIWWW, NCBIXML
-import io, sys
 
-# 限制查询长度，避免过长
-seq = "${sequence.replace(/"/g, '\\"')}"[:2000]
+data = json.load(sys.stdin)
+seq = data["sequence"][:2000]
 
-print(f"正在提交 BLAST {program} 查询到 {database} 数据库...")
+print(f"正在提交 BLAST {data['program']} 查询到 {data['database']} 数据库...")
 print(f"查询序列长度: {len(seq)}")
 print()
 
 try:
-    result_handle = NCBIWWW.qblast(program, database, seq, hitlist_size=10, alignments=5)
+    result_handle = NCBIWWW.qblast(data["program"], data["database"], seq, hitlist_size=10, alignments=5)
     records = NCBIXML.parse(result_handle)
     
     for i, record in enumerate(records):
@@ -92,17 +118,14 @@ try:
             print(f"    长度: {alignment.length}, 得分: {hsp.score:.0f}, E-value: {hsp.expect:.2e}")
             print(f"    一致度: {hsp.identities}/{hsp.align_length} ({hsp.identities/hsp.align_length*100:.1f}%)")
             print()
-    
-    if not record.alignments:
-        print("未找到显著匹配。")
+        
+        if not record.alignments:
+            print("未找到显著匹配。")
 except Exception as e:
     print(f"BLAST 搜索失败: {e}")
     print("提示: BLAST 需要网络连接，请确保能访问 NCBI 服务器。")
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 60000,
-      });
+      const result = await runPython(script, { sequence, program: prog, database: db }, 60000);
       return { success: true, data: result.trim() };
     } catch (error) {
       return { success: false, error: `BLAST 搜索失败: ${error.message}` };
@@ -122,20 +145,29 @@ TOOLS.push({
       return { success: false, error: '请指定输入和输出文件路径' };
     }
     try {
-      const { execFileSync } = await import('child_process');
+      // 白名单校验格式
+      const allowedFormats = ['fasta', 'genbank', 'embl', 'swiss', 'fastq', 'phylip'];
+      const inFmt = allowedFormats.includes(inputFormat) ? inputFormat : 'fasta';
+      const outFmt = allowedFormats.includes(outputFormat) ? outputFormat : 'fasta';
       const script = `
+import json, sys, os
 from Bio import SeqIO
 
-count = SeqIO.convert("${inputPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}",
-                       "${inputFormat}",
-                       "${outputPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}",
-                       "${outputFormat}")
+data = json.load(sys.stdin)
+count = SeqIO.convert(
+    os.path.normpath(data["inputPath"]),
+    data["inputFormat"],
+    os.path.normpath(data["outputPath"]),
+    data["outputFormat"]
+)
 print(f"成功转换 {count} 条序列")
-print(f"格式: {inputFormat} → {outputFormat}")
+print(f"格式: {data['inputFormat']} -> {data['outputFormat']}")
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 30000,
+      const result = await runPython(script, {
+        inputPath,
+        outputPath,
+        inputFormat: inFmt,
+        outputFormat: outFmt,
       });
       return { success: true, data: result.trim() };
     } catch (error) {
@@ -153,16 +185,22 @@ TOOLS.push({
   category: 'bioinformatics',
   fn: async (accession) => {
     if (!accession) return { success: false, error: '请输入 GenBank 登录号' };
+    // 只允许字母数字和点号
+    const cleanAcc = String(accession).replace(/[^A-Za-z0-9._-]/g, '');
+    if (!cleanAcc) return { success: false, error: '无效的登录号' };
     try {
-      const { execFileSync } = await import('child_process');
       const script = `
+import json, sys
 from Bio import Entrez, SeqIO
 
+data = json.load(sys.stdin)
+accession = data["accession"]
+
 Entrez.email = "cogito-agent@research.local"
-print(f"正在从 NCBI 获取序列 {${JSON.stringify(accession)}}...")
+print(f"正在从 NCBI 获取序列 {accession}...")
 
 try:
-    handle = Entrez.efetch(db="nucleotide", id="${accession.replace(/"/g, '')}", rettype="gb", retmode="text")
+    handle = Entrez.efetch(db="nucleotide", id=accession, rettype="gb", retmode="text")
     record = SeqIO.read(handle, "genbank")
     handle.close()
     
@@ -187,10 +225,7 @@ try:
 except Exception as e:
     print(f"获取失败: {e}")
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 30000,
-      });
+      const result = await runPython(script, { accession: cleanAcc });
       return { success: true, data: result.trim() };
     } catch (error) {
       return { success: false, error: `GenBank 获取失败: ${error.message}` };
@@ -208,12 +243,13 @@ TOOLS.push({
   fn: async (pdbPath) => {
     if (!pdbPath) return { success: false, error: '请输入 PDB 文件路径' };
     try {
-      const { execFileSync } = await import('child_process');
       const script = `
+import json, sys, os
 from Bio.PDB import PDBParser
 
+data = json.load(sys.stdin)
 parser = PDBParser(QUIET=True)
-structure = parser.get_structure("protein", "${pdbPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}")
+structure = parser.get_structure("protein", os.path.normpath(data["pdbPath"]))
 
 print(f"结构名称: {structure.id}")
 print(f"模型数量: {len(structure)}")
@@ -222,16 +258,13 @@ for model in structure:
     print(f"\\n模型 {model.id}:")
     for chain in model:
         print(f"  链 {chain.id}: {len(chain)} 个残基")
-        # 统计氨基酸类型
         residues = [r.get_resname() for r in chain if r.get_id()[0] == ' ']
         unique = set(residues)
         print(f"    氨基酸残基: {len(residues)} 个, {len(unique)} 种")
         
-        # 统计原子数
         atoms = sum(1 for r in chain for a in r)
         print(f"    原子数: {atoms}")
         
-        # 计算链的质心
         try:
             coords = [a.get_vector() for r in chain for a in r if a.get_id() != 'H']
             if coords:
@@ -240,10 +273,7 @@ for model in structure:
         except:
             pass
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 30000,
-      });
+      const result = await runPython(script, { pdbPath });
       return { success: true, data: result.trim() };
     } catch (error) {
       return { success: false, error: `PDB 分析失败: ${error.message}` };
@@ -261,11 +291,12 @@ TOOLS.push({
   fn: async (fastaPath) => {
     if (!fastaPath) return { success: false, error: '请输入 FASTA 文件路径' };
     try {
-      const { execFileSync } = await import('child_process');
       const script = `
+import json, sys, os
 from Bio import SeqIO
 
-records = list(SeqIO.parse("${fastaPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}", "fasta"))
+data = json.load(sys.stdin)
+records = list(SeqIO.parse(os.path.normpath(data["fastaPath"]), "fasta"))
 n = len(records)
 print(f"序列总数: {n}")
 
@@ -278,17 +309,13 @@ if n > 0:
     print(f"中位长度: {sorted(lengths)[n//2]}")
     print(f"平均 GC 含量: {sum(gc_contents)/n:.2f}%")
     
-    # 序列描述统计
     descs = [r.description[:60] for r in records[:5]]
     for i, d in enumerate(descs):
         print(f"[{i+1}] {d}")
     if n > 5:
         print(f"... 还有 {n-5} 条序列")
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 30000,
-      });
+      const result = await runPython(script, { fastaPath });
       return { success: true, data: result.trim() };
     } catch (error) {
       return { success: false, error: `FASTA 统计失败: ${error.message}` };
@@ -308,29 +335,26 @@ TOOLS.push({
       return { success: false, error: '请指定输入 FASTA 和输出比对文件路径' };
     }
     try {
-      const { execFileSync } = await import('child_process');
       const script = `
+import json, sys, os
 from Bio import AlignIO
 from Bio.Align.Applications import ClustalwCommandline
 
-cline = ClustalwCommandline("clustalw2",
-    infile="${inputFasta.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}",
-    outfile="${outputAln.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}",
-    outorder="input")
+data = json.load(sys.stdin)
+infile = os.path.normpath(data["inputFasta"])
+outfile = os.path.normpath(data["outputAln"])
+
+cline = ClustalwCommandline("clustalw2", infile=infile, outfile=outfile, outorder="input")
 stdout, stderr = cline()
 
 print("多序列比对完成")
-print(f"输出文件: ${outputAln.replace(/\\/g, '\\\\')}")
+print(f"输出文件: {outfile}")
 
-# 读取比对结果并统计
-alignment = AlignIO.read("${outputAln.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}", "clustal")
+alignment = AlignIO.read(outfile, "clustal")
 print(f"序列数: {len(alignment)}")
 print(f"比对长度: {alignment.get_alignment_length()}")
 `;
-      const result = execFileSync('python', ['-c', script], {
-        encoding: 'utf8',
-        timeout: 60000,
-      });
+      const result = await runPython(script, { inputFasta, outputAln }, 60000);
       return { success: true, data: result.trim() };
     } catch (error) {
       return { success: false, error: `多序列比对失败: ${error.message}` };
