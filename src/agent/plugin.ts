@@ -53,17 +53,19 @@ interface PluginListInfo {
 class PluginManager {
   plugins: Map<string, PluginInfo>;
   customTools: Map<string, CustomToolInfo>;
+  private pluginsDir: string;
 
-  constructor() {
+  constructor(pluginsDir?: string) {
     this.plugins = new Map();
     this.customTools = new Map();
+    this.pluginsDir = pluginsDir || PLUGINS_DIR;
   }
 
   /**
    * 加载所有插件
    */
   async loadAll(): Promise<LoadResult> {
-    if (!existsSync(PLUGINS_DIR)) {
+    if (!existsSync(this.pluginsDir)) {
       return { loaded: 0, errors: [] };
     }
 
@@ -71,10 +73,10 @@ class PluginManager {
     let loaded = 0;
 
     try {
-      const entries = readdirSync(PLUGINS_DIR);
+      const entries = readdirSync(this.pluginsDir);
 
       for (const entry of entries) {
-        const pluginPath = path.join(PLUGINS_DIR, entry);
+        const pluginPath = path.join(this.pluginsDir, entry);
         const stat = statSync(pluginPath);
 
         if (!stat.isDirectory()) continue;
