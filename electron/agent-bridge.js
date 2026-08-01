@@ -23,13 +23,53 @@ function setUserDataDir(dir) {
 }
 
 /**
+ * 校验 session.id 格式，防止路径穿越。
+ * 与 main.js isValidSessionId 保持一致：sess_ + base36时间戳 + 8位hex。
+ */
+function isValidSessionId(id) {
+  return typeof id === 'string' && /^sess_[A-Za-z0-9_-]+$/.test(id);
+}
+
+/**
+ * 过滤 meta 中的非法 session.id，防止路径穿越写入 meta.json 后被 get-sessions 读取。
+ */
+function sanitizeMeta(meta) {
+  if (!meta || typeof meta !== 'object') return meta;
+  const sanitized = { ...meta };
+  if (Array.isArray(sanitized.sessions)) {
+    sanitized.sessions = sanitized.sessions.filter((s) => s && isValidSessionId(s.id));
+  }
+  if (sanitized.activeId && !isValidSessionId(sanitized.activeId)) {
+    delete sanitized.activeId;
+  }
+  return sanitized;
+}
+
+/**
+ * 读取 ws token（agent 启动时写入 USER_DATA_DIR/.ws-token）
+ */
+function readWsToken() {
+  if (!USER_DATA_DIR) return '';
+  try {
+    const tokenPath = path.join(USER_DATA_DIR, '.ws-token');
+    return fs.readFileSync(tokenPath, 'utf-8').trim();
+  } catch {
+    // token 文件尚未写入，返回空（连接会被拒绝，3 秒后重连重试）
+    return '';
+  }
+}
+
+/**
  * 连接 WebSocket 服务
  */
 function connect() {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
 
   console.log('[AgentBridge] 正在连接 Agent...');
-  ws = new WebSocket(WS_URL);
+  // 携带 token 通过 ws-server 的非浏览器客户端校验
+  const token = readWsToken();
+  const url = token ? `${WS_URL}?token=${token}` : WS_URL;
+  ws = new WebSocket(url);
 
   ws.on('open', () => {
     console.log('[AgentBridge] 已连接到 Agent');
@@ -49,8 +89,10 @@ function connect() {
           const metaPath = path.join(USER_DATA_DIR, 'data', 'sessions', 'meta.json');
           try {
             fs.mkdirSync(path.dirname(metaPath), { recursive: true });
+            // 过滤非法 session.id，防止路径穿越（攻击者可构造 session.id 读写任意文件）
+            const safeMeta = sanitizeMeta(msg.meta);
             const tempFile = metaPath + '.tmp';
-            fs.writeFileSync(tempFile, JSON.stringify(msg.meta, null, 2), 'utf-8');
+            fs.writeFileSync(tempFile, JSON.stringify(safeMeta, null, 2), 'utf-8');
             try {
               fs.renameSync(tempFile, metaPath);
             } catch {
@@ -152,8 +194,11 @@ function initAgentBridge(win) {
   // 窗口关闭时移除
   win.on('closed', () => {
     connectedWindows.delete(win);
-    // 如果没有窗口了，关闭连接
+    // 如果没有窗口了，关闭连接并停止重连
     if (connectedWindows.size === 0 && ws) {
+      // 必须先置 false 再 close：ws.close() 会触发 'close' 事件，
+      // 若 shouldReconnect 仍为 true 会调度重连定时器，导致无窗口时连接空转泄漏。
+      shouldReconnect = false;
       ws.close();
       ws = null;
       if (reconnectTimer) {

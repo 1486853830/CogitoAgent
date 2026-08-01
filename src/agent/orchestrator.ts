@@ -6,7 +6,7 @@
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import { streamChat } from '../api/client.ts';
-import { TOOL_REGISTRY, isDangerousOperation } from './registry.ts';
+import { TOOL_REGISTRY, isDangerousOperation, preprocessToolArgs } from './registry.ts';
 import { broadcast } from '../io/ws-server.ts';
 import { parseAllToolCalls } from './tool-parser.ts';
 
@@ -541,7 +541,12 @@ class AgentOrchestrator {
         }
 
         try {
-          const result = await registry.fn(...(Array.isArray(tc.args) ? tc.args : [tc.args]));
+          // 复用 Agent.executeTool 的参数预处理（customArgs/parseJson/jsonParams），
+          // 否则依赖 JSON 解析的工具（parallelExecute/pipeline/voting 等）会收到字符串而非对象。
+          const processedArgs = preprocessToolArgs(tc.tool, tc.args);
+          const result = await registry.fn(
+            ...(Array.isArray(processedArgs) ? processedArgs : [processedArgs]),
+          );
           const data = result?.data ?? result ?? '执行完成（无返回值）';
           const text = typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data);
           const truncated =

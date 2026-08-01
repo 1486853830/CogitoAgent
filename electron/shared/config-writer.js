@@ -74,10 +74,10 @@ export function buildEnvLines(config) {
     '# ============================================',
     '',
     '# SMTP 服务器地址',
-    `COGITO_EMAIL_HOST=${q(c.email?.host)}`,
+    `COGITO_EMAIL_HOST=${q(c.email?.smtpHost || c.email?.host)}`,
     '',
     '# SMTP 端口',
-    `COGITO_EMAIL_PORT=${q(c.email?.port || 587)}`,
+    `COGITO_EMAIL_PORT=${q(c.email?.smtpPort || c.email?.port || 587)}`,
     '',
     '# 邮箱用户名',
     `COGITO_EMAIL_USER=${q(c.email?.user)}`,
@@ -122,10 +122,10 @@ export function buildEnvLines(config) {
     '# ============================================',
     '',
     '# 代码执行超时时间（毫秒）',
-    `COGITO_CODE_TIMEOUT=${q(c.code?.timeout || 30000)}`,
+    `COGITO_CODE_TIMEOUT=${q(c.code?.maxExecutionTime || c.code?.timeout || 30000)}`,
     '',
     '# 代码输出最大大小（字符）',
-    `COGITO_CODE_MAX_OUTPUT=${q(c.code?.maxOutput || 100000)}`,
+    `COGITO_CODE_MAX_OUTPUT=${q(c.code?.maxOutputSize || c.code?.maxOutput || 100000)}`,
     '',
     '# 是否启用科学计算模式（默认关闭）',
     `COGITO_CODE_SCIENTIFIC_MODE=${q(c.code?.scientificMode ? 'true' : 'false')}`,
@@ -168,7 +168,24 @@ export function buildEnvLines(config) {
 export function writeEnvConfig(config, options = {}) {
   const dataDir = options.dataDir || process.env.COGITO_USER_DATA_DIR || process.cwd();
   const envPath = path.join(dataDir, '.env');
-  const lines = buildEnvLines(config);
+
+  // persona 为空时保留现有 .env 中的 COGITO_PERSONA：
+  // Setup 向导的 submitConfig 不包含 persona 字段，main.js saveConfig 也不补，
+  // 此前每次保存都会把已配置的人设擦成空字符串。
+  let effectiveConfig = config;
+  if (!config || !config.persona) {
+    try {
+      const existing = fs.readFileSync(envPath, 'utf-8');
+      const match = existing.match(/^COGITO_PERSONA=["']?([^"'\n\r]*)["']?/m);
+      if (match && match[1]) {
+        effectiveConfig = { ...config, persona: match[1] };
+      }
+    } catch {
+      // .env 不存在或读取失败，忽略（首次创建时无现有文件）
+    }
+  }
+
+  const lines = buildEnvLines(effectiveConfig);
 
   try {
     fs.writeFileSync(envPath, lines.join('\n'), 'utf-8');

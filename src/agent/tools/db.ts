@@ -151,7 +151,9 @@ async function saveDB(): Promise<void> {
 }
 
 async function executeSQL(sql: string, params: any[] = []): Promise<any> {
-  if (isDangerousSQL(sql)) {
+  // 与 executeTransaction 保持一致：用 containsDangerousStatement 而非 isDangerousSQL，
+  // 防止 'SELECT 1; DROP TABLE users' 这类多语句绕过（sql.js 底层 sqlite3_exec 支持分号多语句）。
+  if (containsDangerousStatement(sql)) {
     return {
       success: false,
       error:

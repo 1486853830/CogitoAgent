@@ -148,8 +148,10 @@ function fillConfig(cfg) {
 
   // 邮件
   if (cfg.email) {
-    if (cfg.email.host) emailHostInput.value = cfg.email.host;
-    if (cfg.email.port) emailPortInput.value = cfg.email.port;
+    // config.ts loadConfig 返回正式 EmailConfig（smtpHost/smtpPort），
+    // 此前读 cfg.email.host 一直为 undefined，导致已有邮件配置无法回填表单。
+    if (cfg.email.smtpHost) emailHostInput.value = cfg.email.smtpHost;
+    if (cfg.email.smtpPort) emailPortInput.value = cfg.email.smtpPort;
     if (cfg.email.user) emailUserInput.value = cfg.email.user;
     if (cfg.email.password) emailPasswordInput.value = cfg.email.password;
     if (cfg.email.from) emailFromInput.value = cfg.email.from;
@@ -172,8 +174,9 @@ function fillConfig(cfg) {
 
   // 代码执行
   if (cfg.code) {
-    if (cfg.code.timeout) codeTimeoutInput.value = cfg.code.timeout;
-    if (cfg.code.maxOutput) codeMaxOutputInput.value = cfg.code.maxOutput;
+    // 同 email：config.ts 返回正式 CodeConfig（maxExecutionTime/maxOutputSize）
+    if (cfg.code.maxExecutionTime) codeTimeoutInput.value = cfg.code.maxExecutionTime;
+    if (cfg.code.maxOutputSize) codeMaxOutputInput.value = cfg.code.maxOutputSize;
     if (scientificModeInput) scientificModeInput.checked = !!cfg.code.scientificMode;
     if (scientificLibrariesInput)
       scientificLibrariesInput.value = cfg.code.scientificLibraries || '';
@@ -356,8 +359,8 @@ function submitConfig() {
       : 3000,
     mode: modeSelect.value,
     email: {
-      host: emailHostInput.value.trim(),
-      port: emailPortInput.value.trim() ? parseInt(emailPortInput.value.trim(), 10) : 587,
+      smtpHost: emailHostInput.value.trim(),
+      smtpPort: emailPortInput.value.trim() ? parseInt(emailPortInput.value.trim(), 10) : 587,
       user: emailUserInput.value.trim(),
       password: emailPasswordInput.value.trim(),
       from: emailFromInput.value.trim(),
@@ -374,8 +377,10 @@ function submitConfig() {
       model: visionModelInput.value.trim() || 'InternVL3-78B',
     },
     code: {
-      timeout: codeTimeoutInput.value.trim() ? parseInt(codeTimeoutInput.value.trim(), 10) : 30000,
-      maxOutput: codeMaxOutputInput.value.trim()
+      maxExecutionTime: codeTimeoutInput.value.trim()
+        ? parseInt(codeTimeoutInput.value.trim(), 10)
+        : 30000,
+      maxOutputSize: codeMaxOutputInput.value.trim()
         ? parseInt(codeMaxOutputInput.value.trim(), 10)
         : 100000,
       scientificMode: scientificModeInput?.checked || false,

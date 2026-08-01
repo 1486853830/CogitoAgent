@@ -60,9 +60,11 @@ export function encrypt(plaintext) {
     const tag = cipher.getAuthTag();
     return `${ENCRYPTED_PREFIX}${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
   } catch (e) {
-    // 加密失败：返回明文（不阻塞配置保存流程，但记录错误）
-    console.error('[credentials] encrypt failed:', e.message);
-    return plaintext;
+    // 加密失败：返回空字符串而非明文，避免明文落盘到 .env。
+    // 此前返回明文导致敏感凭据以明文写入 .env，用户无感知。
+    // 返回空字符串会让密码字段为空，用户保存后需重新输入，但确保不会明文泄露。
+    console.error('[credentials] encrypt failed, refusing to write plaintext:', e.message);
+    return '';
   }
 }
 

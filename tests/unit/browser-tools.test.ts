@@ -23,14 +23,29 @@ jest.unstable_mockModule('playwright', () => ({
 }));
 
 // === Mock fs / path 避免 downloadFile 产生文件系统副作用 ===
+// browser.ts 顶部 import './path.ts' → path.ts import config.ts → config.ts 用 readFileSync，
+// 故 fs mock 必须包含 readFileSync/writeFileSync，否则模块加载时报错。
 jest.unstable_mockModule('fs', () => ({
   existsSync: jest.fn().mockReturnValue(true),
   mkdirSync: jest.fn(),
+  readFileSync: jest.fn().mockReturnValue(''),
+  writeFileSync: jest.fn(),
 }));
 
 jest.unstable_mockModule('path', () => ({
   dirname: jest.fn().mockReturnValue('/tmp'),
   join: jest.fn().mockReturnValue('/tmp/downloaded-file'),
+  isAbsolute: jest.fn().mockReturnValue(false),
+  resolve: jest.fn().mockReturnValue('/tmp'),
+  sep: '/',
+  // path.ts 用 `import path from 'path'`（默认导入），mock 必须提供 default
+  default: {
+    dirname: jest.fn().mockReturnValue('/tmp'),
+    join: jest.fn().mockReturnValue('/tmp/downloaded-file'),
+    isAbsolute: jest.fn().mockReturnValue(false),
+    resolve: jest.fn().mockReturnValue('/tmp'),
+    sep: '/',
+  },
 }));
 
 const browserModule = await import('../../src/agent/tools/browser.ts');

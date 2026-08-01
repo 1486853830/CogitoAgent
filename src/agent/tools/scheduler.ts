@@ -289,7 +289,12 @@ function scheduleTask(task: any): void {
       console.error(`[定时任务] 执行失败: ${task.name} - ${e.message}`);
     }
 
-    await saveTasks();
+    // saveTasks 必须在 try/catch 内，否则 setInterval 回调产生 unhandledRejection。
+    try {
+      await saveTasks();
+    } catch (e: any) {
+      console.error(`[定时任务] 保存任务状态失败: ${task.name} - ${e.message}`);
+    }
   };
 
   // 不再立即执行：调度任务时只注册定时器，等下一个周期到了再运行。
@@ -438,15 +443,17 @@ function parseCronToMs(cronExpr: string): number {
  * 执行任务动作
  */
 async function executeAction(action: string, params: any): Promise<void> {
-  const actions: any = {
-    'system.check': () => checkSystem,
-    'memory.clean': () => cleanMemory,
-    'tasks.summary': () => summarizeTasks,
+  // 内置 action 均为无参函数，params 当前不生效（保留接口以便扩展自定义 action）。
+  // 此前 fn()(params) 把 params 传给无参函数被静默丢弃，这里改为显式不传，避免误用。
+  const actions: Record<string, () => Promise<void>> = {
+    'system.check': checkSystem,
+    'memory.clean': cleanMemory,
+    'tasks.summary': summarizeTasks,
   };
 
   const fn = actions[action];
   if (fn) {
-    await fn()(params);
+    await fn();
   }
 }
 

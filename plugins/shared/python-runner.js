@@ -100,6 +100,19 @@ export function validateOutputPath(p, allowedExt) {
 }
 
 /**
+ * 校验输入路径：与 validateOutputPath 策略一致，拒绝绝对路径和 .. 路径遍历。
+ * 此前 bioConvert/bioPdbInfo/bioFastaStats/bioMsa 仅校验输出路径，输入路径未校验，
+ * LLM 可构造 inputPath="/etc/passwd" 读取任意文件（Python 端 normpath 后直接读取）。
+ * @param {string} p - 输入路径
+ */
+export function validateInputPath(p) {
+  if (!p || typeof p !== 'string') throw new Error('输入路径不能为空');
+  if (path.isAbsolute(p) || p.includes('..')) {
+    throw new Error('输入路径必须为相对路径且不能包含 ..');
+  }
+}
+
+/**
  * 检查 Python 是否可用（忽略缓存，真实探测所有候选）
  * @returns {Promise<boolean>}
  */

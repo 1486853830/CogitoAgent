@@ -6,6 +6,11 @@
 
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM 下 __dirname 未定义，import.meta.dirname 是 Node 20.11+ 特性；
+// engines.node 声明 >=18，故用 fileURLToPath 兜底，避免在 18.x 抛 ReferenceError。
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 interface WorkflowStep {
   agentId: string;
@@ -40,10 +45,7 @@ interface WorkflowCollection {
  * 加载所有预设科学工作流
  */
 function loadWorkflows(): WorkflowCollection {
-  const workflowsPath = path.resolve(
-    import.meta.dirname || __dirname,
-    '../../workflows/scientific-workflows.json',
-  );
+  const workflowsPath = path.resolve(__dirname, '../../workflows/scientific-workflows.json');
 
   try {
     if (existsSync(workflowsPath)) {
