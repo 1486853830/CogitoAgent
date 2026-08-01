@@ -2,44 +2,89 @@
 
 ## v2.3.2 (2025-07)
 
-- **新增 6 个专业工具模块**：GIS 地理信息（坐标转换、距离面积计算、GeoJSON）、生命科学（DNA/RNA/蛋白质序列分析、FASTA/FASTQ 解析）、医学（临床评分、药物剂量、生理参数）、化学（分子量、元素周期表、pH、气体定律）、金融（复利、NPV/IRR、贷款计算）、数学统计（描述统计、回归、矩阵运算）
-- **Token 用量追踪**：新增 token usage tracking 功能，实时监控 API 调用消耗
-- **代码重构**：提取公共组件，拆分通用工具与业务模块，重构页面逻辑
-- **坐标转换优化**：优化 GIS 坐标转换参数校验逻辑
+- feat: 新增化学、金融、数学统计工具模块，优化坐标转换参数校验
+- feat(agent): add medical tool suite with clinical calculation functions
+- feat: 新增生命科学工具模块及相关功能
+- feat(gis): 新增地理信息工具模块及配套支持
+- refactor: 重构代码结构，拆分通用工具与业务模块
+- refactor: 提取公共组件并重构页面逻辑
+- feat: add token usage tracking and display feature
 
 ## v2.3.1 (2025-06)
 
-- **微信通道集成**：iLink 协议集成，支持扫码登录、消息收发、历史消息同步与会话管理
-- **多智能体集群**：新增子智能体创建、任务委派、多智能体协作工具，独立监控面板
-- **思维链可视化**：实时展示思考过程和工具执行统计
-- **视觉分析工具**：新增图像识别（OCR）和视觉分析能力
-- **Office 文档工具链**：支持 PPT/Word/Excel 创建与 Excel 读取
-- **Dashboard 仪表盘**：新增桌面模式与仪表盘模式切换，会话管理、工具可视化
-- **安全加固**：XSS 防护升级，DOMPurify 替换手动过滤，覆盖更多危险协议
-- **沙箱重构**：代码执行限制配置读取逻辑重构
-- **配置与会话重构**：重构配置管理、会话管理，支持自动恢复
-- **聊天中断**：新增中断功能，调整默认 maxTokens 配置
-- **工具调用优化**：重构处理逻辑，新增空结果和失败处理规则
-- **Docker 升级**：Node 基础镜像从 18 升级到 22
-- **CI/CD**：删除无用的 Gitee 工作流配置
-- **角色系统**：更新人设，优化首次输入处理，新增运动员角色头像
-- **文档更新**：全量文档适配 v2.3.0，中英文 README 重构
+- **微信通道集成**:
+  - feat: 新增微信通道集成功能
+  - feat: 新增微信历史消息同步与会话管理能力
+  - feat: 新增微信机器人功能，支持扫码登录、消息收发
+- **多智能体集群**:
+  - feat: add agent cluster multi-agent tools and standalone monitor panel
+  - feat(agent/orchestrator): add multi-agent collaboration utilities
+  - feat: 新增多智能体集群管理功能
+- **Dashboard 与可视化**:
+  - feat: add dashboard mode and optimize session management
+  - feat: add thought trace and tool stats dashboard for agent
+  - feat(ui): add desktop mode and dashboard mode switch buttons
+  - feat: add toast prompts and session recovery feature
+  - feat: add collapsible tool result display for terminal and desktop UI
+- **视觉与文档工具**:
+  - feat: 添加视觉分析工具及相关配置文档
+  - feat: 添加Office文档工具链，支持PPT/Word/Excel创建与Excel读取
+- **安全与沙箱**:
+  - chore: 替换手动XSS过滤为DOMPurify库实现
+  - refactor(desktop,dashboard): rewrite html sanitize logic to use regex replace
+  - fix(security): 完善XSS防护逻辑，覆盖更多危险协议
+  - refactor(utils): upgrade html sanitize logic to avoid regex bypass
+  - refactor: 优化多处代码逻辑并新增XSS防护
+  - !9 refactor(sandbox): 重构代码执行限制配置读取逻辑
+- **配置与会话**:
+  - refactor: 重构项目配置与会话管理，更新角色设定
+  - feat: 新增聊天中断功能并调整默认maxTokens配置
+  - refactor: 重构工具调用处理逻辑，新增空结果和失败处理规则
+  - fix(nav): 修复新建会话的流程并添加防重复点击校验
+  - feat(session): add automatic session recovery from disk
+- **重构与优化**:
+  - refactor: 重构代码结构，引入公共共享模块
+  - refactor(electron): 重构stats请求相关通信逻辑
+  - fix(dashboard): 修复可视化管理器的定时任务资源泄漏问题
+  - refactor(persona & agent): 更新人设并优化首次输入处理
+  - style: add tool call card style and interactive logic
+- **文档**:
+  - docs: 更新全量文档适配v2.3.0版本
+  - docs: 更新中英文README，修正项目定位与隐私说明
+  - docs: 更新README中的系统架构图为流程图格式
+  - docs: update README mermaid diagrams to flowchart LR style
+  - docs: 优化中英文README里的工具分类命名
+  - docs(personas): 更新角色创建指南
+  - docs: 更新README里的dashboard图片路径
+  - docs: 更新中英文README文档格式与内容
+  - docs: 优化中英文README文档并新增dashboard截图
+  - docs: 更新README里的预览图说明文字
+  - docs: 更新README中的许可证和界面描述
+  - docs: 重构并优化README.md文档内容
+- **构建与CI/CD**:
+  - build(package.json): 更新启动脚本，添加默认COGITO_MODE环境变量
+  - build: 更换xlsx依赖源到官方cdn版本
+  - build(docker): 将node基础镜像从18升级到22
+  - ci: 删除无用的Gitee CI/CD工作流配置
+  - build: 更新依赖包版本
+- **角色系统**:
+  - feat: add multiple advanced configurations and update persona
+  - feat: 新增多个角色人设并完善角色系统
+  - feat(personas): add athlete profile image
+  - feat: add persona media support and dynamic character assets
+  - fix(electron): 修正 persona 媒体资源的视频文件路径
+  - refactor(personas): 重构人设系统，改用文件夹存储结构
+  - style: 合并electron/main.js里的链式调用代码行
+- **基础设施**:
+  - chore: 删除多个角色的静态资源文件
+  - chore: 更新仓库地址和作者信息为SnowLeopard-io组织
+  - chore: add author and license info, update copyright year
+  - style: 优化页面视觉效果并添加初始终端欢迎内容
+  - fix: 调整欢迎页面路径并新增完整首页
+  - 5d878dd GitHub pages
+  - chore: 更新依赖配置与文档要求
 
 ## v2.3.0 (2025-05)
 
-- **Dashboard 仪表盘模式**：全屏仪表盘，包含会话管理和工具可视化
-- **多会话管理**：支持多个独立对话会话，持久化存储，自动压缩
-- **角色系统重构**：改用文件夹存储结构，支持媒体资源（头像、视频），新增运动员等多个角色
-- **会话自动恢复**：从磁盘自动恢复会话，简化前端渲染逻辑
-- **欢迎页面**：新增完整首页，双语展示，含粒子动画
-- **流式输出优化**：优化工具调用处理逻辑，支持可折叠工具结果展示
-- **文档全面重构**：中英文 README 优化，完善产品介绍与架构说明
-- **项目迁移**：重命名项目标识为 CogitoAgent，更新仓库地址和作者信息为 SnowLeopard-io 组织
-- **许可证**：添加 Apache 2.0 许可证
-
-## v1.0.0 (2025-01)
-
-- **项目初始化**：CogitoAgent 项目创建，核心功能实现
-- **核心功能**：基础文件操作、网络搜索工具、CLI 交互终端
-- **工作区配置**：支持工作区路径配置与动态活动范围
-- **文档**：完善产品介绍与架构说明
+- feat: Initialize CogitoAgent project with core functionalities
+- 初始版本发布，包含核心 Agent 功能和基础工具链
