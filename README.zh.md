@@ -11,10 +11,8 @@
 与传统聊天机器人不同，CogitoAgent 具备**持续思考**、**自主探索**和**工具执行**的能力，能够在后台主动发现和整理您的本地文件资产，并通过可扩展的工具集提供更多能力。
 
 <p align="center">
-  <a href="https://github.com/SnowLeopard-io/CogitoAgent"><img src="https://img.shields.io/badge/GitHub-国际镜像-181717?style=flat-square&logo=github" alt="GitHub"></a>
-  <a href="https://gitee.com/cnt-code/cogito-agent"><img src="https://img.shields.io/badge/Gitee-国内镜像-c71d23?style=flat-square&logo=gitee" alt="Gitee"></a>
-  <a href="https://www.npmjs.com/package/cogitoagent"><img src="https://img.shields.io/npm/v/cogitoagent?style=flat-square&logo=npm" alt="npm"></a>
-  <a href="https://www.npmjs.com/package/cogitoagent"><img src="https://img.shields.io/npm/dm/cogitoagent?style=flat-square&logo=npm" alt="npm downloads"></a>
+  <a href="https://github.com/SnowLeopard-io/CogitoAgent"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github" alt="GitHub"></a>
+  <a href="https://gitee.com/cnt-code/cogito-agent"><img src="https://img.shields.io/badge/Gitee-China-c71d23?style=flat-square&logo=gitee" alt="Gitee"></a>
   <a href="#"><img src="https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square" alt="Version"></a>
   <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript" alt="TypeScript"></a>
   <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js" alt="Node"></a>
@@ -534,7 +532,7 @@ docker-compose up -d
 
 - [GitHub Issues](https://github.com/SnowLeopard-io/CogitoAgent/issues) — 报告 Bug 和请求功能
 - [GitHub Discussions](https://github.com/SnowLeopard-io/CogitoAgent/discussions) — 提问和交流想法
-- [Gitee](https://gitee.com/cnt-code/cogito-agent) — 国内镜像仓库
+- [Gitee](https://gitee.com/cnt-code/cogito-agent) — China mirror
 
 期待你的参与和反馈！
 
