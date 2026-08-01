@@ -458,9 +458,22 @@ function startAgentProcess() {
 
 /**
  * 停止 Agent 进程
+ * 返回 Promise，在进程真正退出（或被 kill）后 resolve，便于重启流程 await。
  */
 function stopAgentProcess() {
-  if (agentProcess) {
+  return new Promise((resolve) => {
+    if (!agentProcess) {
+      resolve();
+      return;
+    }
+    let resolved = false;
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      resolve();
+    };
+    // 进程主动退出时（startAgentProcess 中注册的 exit 处理器会置 agentProcess=null）
+    agentProcess.on('exit', finish);
     try {
       agentProcess.stdin.write('exit\n');
     } catch (e) {
@@ -468,11 +481,14 @@ function stopAgentProcess() {
     }
     setTimeout(() => {
       if (agentProcess) {
-        agentProcess.kill();
+        try {
+          agentProcess.kill();
+        } catch {}
         agentProcess = null;
       }
+      finish();
     }, 3000);
-  }
+  });
 }
 
 /**
@@ -809,11 +825,15 @@ app.whenReady().then(async () => {
 
       // 如果是重新配置模式，保存后直接刷新 Dashboard，不重启应用
       if (isReconfiguring) {
-        setTimeout(() => {
+        setTimeout(async () => {
           if (setupWindow) {
             setupWindow.close();
             setupWindow = null;
           }
+          // 重启 Agent 子进程以加载新 .env：仅 reload 窗口不会让已在运行的
+          // Agent 重新读取配置，内存状态与磁盘不一致，配置变更不生效。
+          await stopAgentProcess();
+          await startAgentProcess();
           // 刷新现有 Dashboard 窗口以加载新配置
           if (dashboardWindow && !dashboardWindow.isDestroyed()) {
             dashboardWindow.reload();

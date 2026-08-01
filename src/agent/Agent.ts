@@ -50,6 +50,7 @@ import {
   setPendingConfirmation,
   requestConfirmation,
   resolveConfirmation,
+  cancelConfirmation,
   state,
 } from './state.ts';
 import {
@@ -283,7 +284,16 @@ function handleUserInput(input: string): void {
     if (input === '/stop') {
       shouldStop = true;
       if (thinkingTimer) clearTimeout(thinkingTimer);
-      isProcessing = false;
+      // 若正在等待危险操作确认，必须 resolve 挂起的 Promise：否则 thinkCycle
+      // 会卡在 await requestConfirmation 直到 5 分钟超时，期间 isProcessing 被置
+      // false 后新的 thinkCycle 可能被调起，导致两个循环并发、状态机破裂。
+      if (isAwaitingConfirmation()) {
+        cancelConfirmation(); // resolve(false)，解除 thinkCycle 阻塞
+        // 不在此处置 isProcessing=false：被解除阻塞的 thinkCycle 会经 shouldStop
+        // 检查快速退出，其 finally 块会复位 isProcessing，避免与新周期并发。
+      } else {
+        isProcessing = false;
+      }
       println('[中断] 思考已停止', 'yellow');
       state.current = STATE.AWAITING_INPUT;
       broadcast('agent-state', { state: 'idle' });

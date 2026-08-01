@@ -5,12 +5,16 @@
  */
 
 import { execFile } from 'child_process';
-import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import crypto from 'crypto';
 import vm from 'vm';
 import { loadConfig } from '../../config.ts';
+import {
+  getCodeLimits,
+  generateSecureTmpPath,
+  writeSecureTmpFile,
+  cleanupTmpFile,
+} from './code-exec-utils.ts';
 
 /**
  * 动态加载 isolated-vm（原生模块可能在 Electron 等环境中不可用）
@@ -30,18 +34,6 @@ async function getIvm(): Promise<any> {
     console.warn('[sandbox] isolated-vm 不可用，将使用原生 vm 模块');
     return null;
   }
-}
-
-/**
- * 从配置读取代码执行限制（按需调用，与 code.js 保持一致）
- * 支持 .env 中 COGITO_CODE_TIMEOUT / COGITO_CODE_MAX_OUTPUT 配置
- */
-function getCodeLimits(): any {
-  const cfg = loadConfig();
-  return {
-    maxExecutionTime: cfg.code?.maxExecutionTime ?? 30000,
-    maxOutputSize: cfg.code?.maxOutputSize ?? 100000,
-  };
 }
 
 const MAX_MEMORY_MB = 128;
@@ -190,7 +182,11 @@ async function runJavaScriptIsolated(code: string, timeout: number = 10000): Pro
 }
 
 /**
- * 使用 Node.js 原生 vm 模块执行（降级方案）
+ * 基于 Node.js 原生 vm 模块的沙箱上下文工具
+ *
+ * 说明：runJavaScriptSandbox 已不再降级到 vm（vm 非安全沙箱，可经原型链逃逸）。
+ * createJavaScriptSandbox / createFrozenObject 仍作为工具函数导出，供需要
+ * 受限 vm 上下文的场景直接使用，但不再参与 runJavaScriptSandbox 的执行路径。
  */
 
 function createFrozenObject(obj: any): any {
@@ -269,70 +265,6 @@ function createJavaScriptSandbox(): any {
 
   const context = vm.createContext(sandbox);
   return { sandbox, context };
-}
-
-async function runJavaScriptFallback(code: string, timeout: number = 10000): Promise<any> {
-  return new Promise((resolve) => {
-    const { maxExecutionTime, maxOutputSize } = getCodeLimits();
-    const timeoutId = setTimeout(
-      () => {
-        resolve({
-          success: false,
-          error: '执行超时（超过指定时间）',
-        });
-      },
-      Math.min(timeout, maxExecutionTime),
-    );
-
-    try {
-      const { context } = createJavaScriptSandbox();
-
-      const wrappedCode = `
-        (function() {
-          try {
-            return { success: true, result: (function() { ${code} })() };
-          } catch (e) {
-            return { success: false, error: e.message };
-          }
-        })()
-      `;
-
-      const result = vm.runInContext(wrappedCode, context, {
-        timeout: Math.min(timeout, maxExecutionTime),
-        displayErrors: true,
-      });
-
-      clearTimeout(timeoutId);
-
-      let output;
-      if (result.success) {
-        if (result.result === undefined) {
-          output = '执行完成，无返回值';
-        } else if (typeof result.result === 'object') {
-          output = JSON.stringify(result.result, null, 2);
-        } else {
-          output = String(result.result);
-        }
-      } else {
-        output = '[执行错误]: ' + result.error;
-      }
-
-      if (output.length > maxOutputSize) {
-        output = output.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
-      }
-
-      resolve({
-        success: true,
-        data: output,
-      });
-    } catch (error: any) {
-      clearTimeout(timeoutId);
-      resolve({
-        success: false,
-        error: `沙箱执行失败: ${error.message}`,
-      });
-    }
-  });
 }
 
 /**
@@ -472,48 +404,6 @@ async function runJavaScriptDirect(code: string): Promise<any> {
       });
     }
   });
-}
-
-/**
- * 生成安全的临时文件路径
- */
-function generateSecureTmpPath(ext: string): string {
-  const tmpDir = os.tmpdir();
-  const randomName = `cogito_${crypto.randomUUID()}_${Date.now()}`;
-  return path.join(tmpDir, `${randomName}.${ext}`);
-}
-
-/**
- * 安全写入临时文件
- */
-async function writeSecureTmpFile(filePath: string, content: string): Promise<any> {
-  try {
-    const fd = await fs.open(filePath, 'wx');
-    try {
-      await fd.writeFile(content, 'utf8');
-    } finally {
-      await fd.close();
-    }
-    return true;
-  } catch (error: any) {
-    if (error.code === 'EEXIST') {
-      const newPath = generateSecureTmpPath(path.extname(filePath).slice(1) || 'tmp');
-      await fs.writeFile(newPath, content, 'utf8');
-      return newPath;
-    }
-    throw error;
-  }
-}
-
-/**
- * 清理临时文件
- */
-async function cleanupTmpFile(tmpPath: any): Promise<void> {
-  if (tmpPath) {
-    try {
-      await fs.unlink(tmpPath);
-    } catch {}
-  }
 }
 
 /**
