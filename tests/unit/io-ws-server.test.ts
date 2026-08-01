@@ -6,6 +6,7 @@ let lastServerInstance: any = null;
 class MockClient {
   readyState = 1;
   send = jest.fn();
+  close = jest.fn();
   private handlers: Record<string, Function> = {};
   on(event: string, handler: Function) {
     this.handlers[event] = handler;

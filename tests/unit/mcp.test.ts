@@ -35,6 +35,15 @@ jest.unstable_mockModule('../../src/agent/registry.ts', () => ({
   getToolRegistry: mockGetToolRegistry,
   getToolsByCategory: mockGetToolsByCategory,
   hasTool: mockHasTool,
+  isDangerousOperation: jest.fn(() => false),
+  isConfirmEnabled: jest.fn(() => false),
+  getEnabledCategories: jest.fn(() => []),
+  getAllCategories: jest.fn(() => ({})),
+  getToolNames: jest.fn(() => []),
+  getToolsForPrompt: jest.fn(() => ''),
+  getEnabledToolNames: jest.fn(() => []),
+  TOOL_CATEGORIES: {},
+  DANGEROUS_OPERATIONS: [],
 }));
 
 jest.unstable_mockModule('../../src/agent/tool-parser.ts', () => ({
