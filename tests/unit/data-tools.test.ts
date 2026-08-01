@@ -1,6 +1,14 @@
+import { jest } from '@jest/globals';
 import fs from 'fs/promises';
 import path from 'path';
-import {
+
+// 模拟 resolveInWorkspace：测试文件在临时目录，不在工作区内，直接返回原路径
+jest.unstable_mockModule('../../src/agent/tools/path.ts', () => ({
+  resolveInWorkspace: (p: string) => p,
+  getBasePath: () => '/',
+}));
+
+const {
   readCSV,
   writeCSV,
   readJSON,
@@ -10,7 +18,7 @@ import {
   queryData,
   analyzeData,
   sortData,
-} from '../../src/agent/tools/data.ts';
+} = await import('../../src/agent/tools/data.ts');
 
 describe('data tools', () => {
   const testDir = path.join(process.env.TEMP || '/tmp', 'cogito-test-data');

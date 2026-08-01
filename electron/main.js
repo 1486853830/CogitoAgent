@@ -722,42 +722,52 @@ app.whenReady().then(async () => {
   ipcMain.on('setup-submit-config', async (_event, config) => {
     if (isSetupConfiguring) return; // 防重入
     isSetupConfiguring = true;
-    console.log('[主进程] 收到配置提交:', config.api?.model);
+    try {
+      console.log('[主进程] 收到配置提交:', config.api?.model);
 
-    const success = saveConfig(config);
+      const success = saveConfig(config);
 
-    if (success && setupWindow) {
-      setupWindow.webContents.send('setup-config-result', { success: true });
+      if (success && setupWindow) {
+        setupWindow.webContents.send('setup-config-result', { success: true });
 
-      // 如果是重新配置模式，保存后直接刷新 Dashboard，不重启应用
-      if (isReconfiguring) {
-        setTimeout(async () => {
-          if (setupWindow) {
-            setupWindow.close();
-            setupWindow = null;
-          }
-          // 重启 Agent 子进程以加载新 .env：仅 reload 窗口不会让已在运行的
-          // Agent 重新读取配置，内存状态与磁盘不一致，配置变更不生效。
-          await stopAgentProcess();
-          await startAgentProcess();
-          // 刷新现有 Dashboard 窗口以加载新配置
-          if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-            dashboardWindow.reload();
-          }
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.reload();
-          }
-          isReconfiguring = false;
-          isSetupConfiguring = false;
-        }, 500);
+        // 如果是重新配置模式，保存后直接刷新 Dashboard，不重启应用
+        if (isReconfiguring) {
+          setTimeout(async () => {
+            try {
+              if (setupWindow) {
+                setupWindow.close();
+                setupWindow = null;
+              }
+              // 重启 Agent 子进程以加载新 .env：仅 reload 窗口不会让已在运行的
+              // Agent 重新读取配置，内存状态与磁盘不一致，配置变更不生效。
+              await stopAgentProcess();
+              await startAgentProcess();
+              // 刷新现有 Dashboard 窗口以加载新配置
+              if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+                dashboardWindow.reload();
+              }
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.reload();
+              }
+              isReconfiguring = false;
+            } finally {
+              isSetupConfiguring = false;
+            }
+          }, 500);
+          // 不在此处重置标志——setTimeout 回调完成后才会重置
+          return;
+        }
+        // 非重新配置模式：直接在本同步路径重置
+        isSetupConfiguring = false;
       } else {
+        setupWindow?.webContents.send('setup-config-result', {
+          success: false,
+          error: '保存配置失败',
+        });
         isSetupConfiguring = false;
       }
-    } else {
-      setupWindow?.webContents.send('setup-config-result', {
-        success: false,
-        error: '保存配置失败',
-      });
+    } catch (e) {
+      console.error('[主进程] 配置提交异常:', e);
       isSetupConfiguring = false;
     }
   });

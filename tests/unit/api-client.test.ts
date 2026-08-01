@@ -346,7 +346,7 @@ describe('api/client.ts', () => {
 
       const [, init] = fetchMock.mock.calls[0];
       const body = JSON.parse(init.body);
-      expect(body.max_tokens).toBe(384000);
+      expect(body.max_tokens).toBe(131072);
       expect(body.temperature).toBe(0.7);
       expect(body.top_p).toBe(0.7);
       expect(body.top_k).toBe(50);

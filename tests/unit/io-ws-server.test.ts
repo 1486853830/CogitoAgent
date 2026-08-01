@@ -121,12 +121,12 @@ describe('io/ws-server.ts', () => {
       stopWsServer();
     });
 
-    it('should accept file:// origins', async () => {
+    it('should reject file:// origins', async () => {
       await startWsServer();
       const verifyClient = lastServerInstance.options.verifyClient;
       const cb = jest.fn();
       verifyClient({ origin: 'file://' }, cb);
-      expect(cb).toHaveBeenCalledWith(true);
+      expect(cb).toHaveBeenCalledWith(false, 403, '只允许本地连接');
       stopWsServer();
     });
 

@@ -82,7 +82,11 @@ export async function runPython(script, inputData, timeout = 30000) {
       killed = true;
       setTimeout(() => {
         try {
-          execFile('taskkill', ['/f', '/t', '/pid', String(child.pid)]);
+          if (process.platform === 'win32') {
+            execFile('taskkill', ['/f', '/t', '/pid', String(child.pid)]);
+          } else {
+            execFile('kill', ['-9', String(child.pid)]);
+          }
         } catch (_) {
           // 进程可能已结束
         }
