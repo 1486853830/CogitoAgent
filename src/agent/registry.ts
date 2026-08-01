@@ -1,5 +1,6 @@
 import * as tools from './tools/index.ts';
 import { loadConfig } from '../config.ts';
+import { safeParseJSON } from '../utils/llm-validator.ts';
 import type { ToolRegistryEntry, ToolCategory } from '../types/index.ts';
 
 const TOOL_CATEGORIES: Record<ToolCategory, string> = {
@@ -417,6 +418,50 @@ function getEnabledToolNames(): string[] {
   return toolNames;
 }
 
+/**
+ * 工具调用前的参数预处理。
+ * 此前该逻辑只存在于 Agent.ts 的 executeTool 内，子智能体（orchestrator.ts）直接用原始参数
+ * 调用 registry.fn，导致依赖 JSON 解析的工具（parallelExecute/pipeline/voting 等）在子智能体
+ * 场景下收到字符串而非对象，行为异常。提取为共享函数消除分叉。
+ */
+function preprocessToolArgs(toolName: string, args: unknown): unknown {
+  const registry = TOOL_REGISTRY[toolName];
+  if (!registry) return args;
+
+  const { parseJson, jsonParams } = registry;
+  let processedArgs = args;
+
+  if (
+    args &&
+    typeof args === 'object' &&
+    'isJson' in args &&
+    (args as { isJson: boolean }).isJson === true
+  ) {
+    const jsonData = (args as unknown as { data: Record<string, unknown> }).data;
+    if (jsonParams) {
+      processedArgs = jsonParams.map((paramName: string) => jsonData[paramName]);
+    } else {
+      processedArgs = [jsonData];
+    }
+  } else if (Array.isArray(args)) {
+    if (toolName === 'create') {
+      processedArgs = [args[0], args.slice(1).join(',')];
+    } else if (toolName === 'search') {
+      processedArgs = [args.join(',').trim()];
+    } else if (parseJson) {
+      processedArgs = args.map((arg, i) => {
+        if (Array.isArray(parseJson) && parseJson[i] && typeof arg === 'string') {
+          const parsed = safeParseJSON(arg);
+          return parsed.success && parsed.data !== null ? parsed.data : arg;
+        }
+        return arg;
+      });
+    }
+  }
+
+  return processedArgs;
+}
+
 export {
   TOOL_REGISTRY,
   TOOL_CATEGORIES,
@@ -431,4 +476,5 @@ export {
   getAllCategories,
   getToolsForPrompt,
   getEnabledToolNames,
+  preprocessToolArgs,
 };

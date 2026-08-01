@@ -62,6 +62,7 @@ import {
   isDangerousOperation,
   isConfirmEnabled,
   getToolsByCategory,
+  preprocessToolArgs,
 } from './registry.ts';
 import {
   handleCommand,
@@ -86,7 +87,6 @@ import {
   formatToolError,
 } from './tool-utils.ts';
 import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from './thought-trace.ts';
-import { safeParseJSON } from '../utils/llm-validator.ts';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import path from 'path';
 import { loadPlugins } from './plugin.ts';
@@ -215,36 +215,10 @@ async function executeTool(
     state.current = STATE.THINKING;
   }
 
-  const { fn, customArgs, parseJson, jsonParams, category } = registry;
-  let processedArgs = args;
-
-  if (
-    args &&
-    typeof args === 'object' &&
-    'isJson' in args &&
-    (args as { isJson: boolean }).isJson === true
-  ) {
-    const jsonData = (args as unknown as { data: Record<string, unknown> }).data;
-    if (jsonParams) {
-      processedArgs = jsonParams.map((paramName: string) => jsonData[paramName]);
-    } else {
-      processedArgs = [jsonData];
-    }
-  } else if (Array.isArray(args)) {
-    if (toolName === 'create') {
-      processedArgs = [args[0], args.slice(1).join(',')];
-    } else if (toolName === 'search') {
-      processedArgs = [args.join(',').trim()];
-    } else if (parseJson) {
-      processedArgs = args.map((arg, i) => {
-        if (Array.isArray(parseJson) && parseJson[i] && typeof arg === 'string') {
-          const parsed = safeParseJSON(arg);
-          return parsed.success && parsed.data !== null ? parsed.data : arg;
-        }
-        return arg;
-      });
-    }
-  }
+  const { fn, category } = registry;
+  // 参数预处理（customArgs/parseJson/jsonParams）已提取到 registry.preprocessToolArgs，
+  // 与 orchestrator.ts 共用同一份逻辑，避免子智能体场景跳过预处理导致工具异常。
+  const processedArgs = preprocessToolArgs(toolName, args);
 
   try {
     const toolPromise = fn(...(processedArgs as unknown[]));

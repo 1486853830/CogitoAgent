@@ -128,33 +128,61 @@ function saveConfig(config) {
 
 /**
  * 清理端口占用（杀掉占用 9527 的旧进程）
+ * 使用 execFileSync 数组参数而非 execSync 字符串拼接，避免 port 注入 shell 命令。
  */
 function killPortProcess(port = 9527) {
+  // 校验 port 为正整数，防御性编程避免后续拼接被注入
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    console.warn('[主进程] 无效的端口号:', port);
+    return;
+  }
   try {
     if (process.platform === 'win32') {
-      const result = execSync(`netstat -ano | findstr :${port}`, {
-        encoding: 'utf-8',
-        windowsHide: true,
-      });
-      const lines = result.trim().split('\n');
+      // 用 execFileSync 执行 netstat，JS 侧过滤 findstr 逻辑，避免 shell 拼接
+      let result = '';
+      try {
+        result = execFileSync('netstat', ['-ano'], {
+          encoding: 'utf-8',
+          windowsHide: true,
+        });
+      } catch {}
       const pids = new Set();
-      for (const line of lines) {
-        const parts = line.trim().split(/\s+/);
-        const pid = parts[parts.length - 1];
-        if (pid && /^\d+$/.test(pid)) {
-          pids.add(pid);
+      for (const line of result.split('\n')) {
+        // 匹配包含 :port 的行（如 TCP 127.0.0.1:9527 ... LISTENING 1234）
+        if (line.includes(`:${port}`)) {
+          const parts = line.trim().split(/\s+/);
+          const pid = parts[parts.length - 1];
+          if (pid && /^\d+$/.test(pid)) {
+            pids.add(pid);
+          }
         }
       }
       for (const pid of pids) {
         try {
-          execSync(`taskkill /PID ${pid} /F`, { windowsHide: true });
+          execFileSync('taskkill', ['/PID', pid, '/F'], { windowsHide: true });
           console.log(`[主进程] 已清理端口 ${port} 占用进程 (PID: ${pid})`);
         } catch {}
       }
     } else {
       try {
-        execSync(`lsof -t -i :${port} | xargs kill -9`, { windowsHide: true });
-        console.log(`[主进程] 已清理端口 ${port} 占用进程`);
+        // 先取占用端口的 PID 列表，再逐个 kill，避免 xargs 的 shell 拼接
+        const result = execFileSync('lsof', ['-t', '-i', `:${port}`], {
+          encoding: 'utf-8',
+          windowsHide: true,
+        });
+        const pids = result
+          .trim()
+          .split('\n')
+          .map((p) => p.trim())
+          .filter((p) => /^\d+$/.test(p));
+        for (const pid of pids) {
+          try {
+            execFileSync('kill', ['-9', pid], { windowsHide: true });
+          } catch {}
+        }
+        if (pids.length > 0) {
+          console.log(`[主进程] 已清理端口 ${port} 占用进程`);
+        }
       } catch {}
     }
   } catch {}
@@ -292,9 +320,11 @@ function startAgentProcess() {
 
     agentProcess.on('error', (err) => {
       console.error('[主进程] Agent 启动失败:', err.message);
+      // 此前此处 resolve() 导致 launchMainApp 误以为 Agent 就绪，照常创建窗口，
+      // 用户面对无响应聊天且无错误提示。改为 reject 让调用方感知失败。
       if (!resolved) {
         resolved = true;
-        resolve();
+        reject(err);
       }
     });
 
@@ -304,10 +334,11 @@ function startAgentProcess() {
     });
 
     setTimeout(() => {
+      // 超时也视为失败：Agent 30 秒内未就绪说明启动异常，继续创建窗口只会让
+      // 用户面对无后端的 UI。改为 reject 让 launchMainApp 显示错误并退出。
       if (!resolved) {
         resolved = true;
-        console.warn('[主进程] 等待 Agent 超时，继续启动窗口');
-        resolve();
+        reject(new Error('Agent 启动超时（30秒内未就绪）'));
       }
     }, 30000);
   });
@@ -452,6 +483,8 @@ function createMainWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    // 重置标志：macOS 关闭窗口后可通过 dock 重新激活重建窗口
+    mainWindowCreated = false;
   });
 
   mainWindowCreated = true; // 标记主窗口已创建
@@ -514,6 +547,8 @@ function createDashboardWindow() {
 
   dashboardWindow.on('closed', () => {
     dashboardWindow = null;
+    // 重置标志：macOS 关闭窗口后可通过 dock 重新激活重建窗口
+    dashboardWindowCreated = false;
   });
 
   dashboardWindowCreated = true;
@@ -591,6 +626,11 @@ app.on('window-all-closed', () => {
   // 正在从配置向导过渡到主窗口时，不退出也不杀 Agent
   if (isTransitioningToMain) {
     console.log('[主进程] 配置完成，正在启动主窗口...');
+    return;
+  }
+
+  // macOS 惯例：关闭窗口不退出应用，保留在 dock 中可重新激活
+  if (process.platform === 'darwin') {
     return;
   }
 
@@ -965,6 +1005,9 @@ app.whenReady().then(async () => {
 
       // 读取每个会话文件的第一条真实用户消息作为预览
       for (const session of sessions) {
+        // 校验 session.id 防止路径穿越：meta.json 由 agent-bridge 写入 WebSocket 推送的
+        // msg.meta，未校验即落盘。攻击者构造 session.id="../../../etc/passwd" 可读取任意文件。
+        if (!isValidSessionId(session.id)) continue;
         try {
           const sessionFile = path.join(sessionsDir, `${session.id}.json`);
           if (fs.existsSync(sessionFile)) {
@@ -990,6 +1033,12 @@ app.whenReady().then(async () => {
 
   // 切换会话（通过 WebSocket 发送给 Agent）
   ipcMain.on('switch-session', (_event, sessionId) => {
+    // 校验 sessionId 防止命令注入：未校验即拼入 /switch 命令字符串发给 Agent，
+    // 可能触发 Agent 端路径/命令注入。
+    if (!isValidSessionId(sessionId)) {
+      console.warn('[主进程] 拒绝非法 sessionId:', sessionId);
+      return;
+    }
     sendToAgent(`/switch ${sessionId}`);
   });
 
@@ -1103,6 +1152,29 @@ app.whenReady().then(async () => {
 });
 
 /**
+ * 从 persona.md 内容解析 persona ID。
+ * 约定：第一行格式为 "# Name (persona-id)"，取括号内 ID 并将空格替换为连字符
+ * （与 personas 目录名一致，如 "Shaanbei Youth" → "Shaanbei-Youth"）。
+ * 此前此处直接调用未定义的 parsePersonaName 导致 ReferenceError 被外层 try/catch 吞掉，
+ * persona.md 回退解析彻底失效。实现参照 get-persona-media handler 中的同类逻辑。
+ */
+function parsePersonaName(content) {
+  try {
+    const firstLine = content
+      .split('\n')[0]
+      .replace(/^#+\s*/, '')
+      .trim();
+    const match = firstLine.match(/\(([^)]+)\)$/);
+    if (match) {
+      return match[1].trim().replace(/\s+/g, '-');
+    }
+  } catch (e) {
+    console.error('[主进程] 解析 persona 名称失败:', e.message);
+  }
+  return '';
+}
+
+/**
  * 获取当前 persona ID（优先从 .env 读取）
  */
 function getCurrentPersona() {
@@ -1178,6 +1250,14 @@ async function launchMainApp() {
     } else {
       createMainWindow();
     }
+  } catch (e) {
+    // Agent 启动失败/超时：显示错误并退出，避免创建无后端的 UI 窗口
+    console.error('[主进程] launchMainApp 失败:', e.message);
+    dialog.showErrorBox(
+      'Agent 启动失败',
+      `Agent 启动失败: ${e.message}\n\n请检查配置和网络后重试。`,
+    );
+    app.quit();
   } finally {
     isTransitioningToMain = false; // 过渡完成（异常时也必须重置）
   }

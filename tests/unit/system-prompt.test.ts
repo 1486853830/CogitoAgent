@@ -23,6 +23,7 @@ jest.unstable_mockModule('../../src/agent/registry.ts', () => ({
   getToolsForPrompt: () => '',
   getEnabledToolNames: () => [],
   DANGEROUS_OPERATIONS: [],
+  preprocessToolArgs: (_name: string, args: unknown) => args,
 }));
 
 const { buildToolList, buildSystemPrompt } = await import('../../src/agent/system-prompt');

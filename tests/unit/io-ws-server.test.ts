@@ -41,7 +41,7 @@ jest.unstable_mockModule('ws', () => ({
   WebSocketServer: MockWebSocketServer,
 }));
 
-const { startWsServer, broadcast, onMessage, onStatsRequest, stopWsServer } =
+const { startWsServer, broadcast, onMessage, onStatsRequest, stopWsServer, getWsToken } =
   await import('../../src/io/ws-server.ts');
 
 function makeClient(readyState = 1): MockClient {
@@ -141,11 +141,17 @@ describe('io/ws-server.ts', () => {
     });
 
     it('should accept undefined origin from localhost address', async () => {
-      // 空 Origin + 本机回环地址 → 放行（Node ws 客户端不发 Origin）
+      // 空 Origin + 本机回环地址 + 有效 token → 放行（Node ws 客户端不发 Origin 但带 token）
       await startWsServer();
       const verifyClient = lastServerInstance.options.verifyClient;
       const cb = jest.fn();
-      verifyClient({ origin: undefined, req: { socket: { remoteAddress: '127.0.0.1' } } }, cb);
+      verifyClient(
+        {
+          origin: undefined,
+          req: { socket: { remoteAddress: '127.0.0.1' }, url: `/?token=${getWsToken()}` },
+        },
+        cb,
+      );
       expect(cb).toHaveBeenCalledWith(true);
       stopWsServer();
     });

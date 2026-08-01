@@ -63,14 +63,16 @@ function hasGuiBlockingCall(code: string): boolean {
 
 function injectGuiTimeout(code: string): string {
   const guiWrapper = `
-import sys
+import os
 import threading
 
 def _gui_timeout_exit(delay=10):
     import time
     time.sleep(delay)
     print("\\n[提示] GUI 窗口将在 10 秒后自动关闭...")
-    sys.exit(0)
+    # sys.exit(0) 只在守护线程内抛 SystemExit，无法关闭 GUI 主线程；
+    # 改用 os._exit(0) 直接终止整个进程，实现真正的自动关闭。
+    os._exit(0)
 
 _timeout_thread = threading.Thread(target=_gui_timeout_exit, daemon=True)
 _timeout_thread.start()
@@ -150,8 +152,10 @@ async function runPython(code: string): Promise<any> {
           timeout: maxExecutionTime,
           encoding: 'utf8',
           env: secureEnv as any,
-          gid: (process as any).getgid ? (process as any).getgid() : undefined,
-          uid: (process as any).getuid ? (process as any).getuid() : undefined,
+          // 注意：Python 执行当前无真正的沙盒隔离（不同于 runJavaScript 的 isolated-vm）。
+          // 此前传入的 gid/uid 取自当前进程自身，等于零隔离，反而误导维护者以为有权限降级。
+          // 真正的隔离需要容器/cgroups/seccomp 或独立低权限用户，待架构层面解决。
+          // 当前仅通过环境变量清理（PYTHONNOUSERSITE 等）和超时做有限缓解。
         },
         async (error, stdout, stderr) => {
           if (timedOut) return;

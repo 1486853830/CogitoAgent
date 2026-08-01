@@ -1,9 +1,59 @@
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 let wss: WebSocketServer | null = null;
 let messageHandler: ((msg: any, ws: WebSocket) => void) | null = null;
 let statsHandler: ((payload: any) => any) | null = null;
+
+// 每次启动生成随机 token，非浏览器客户端（如 agent-bridge）连接时必须携带。
+// 浏览器客户端仍靠 Origin 白名单校验（前端无法安全存储 token）。
+// 此前仅校验回环地址，本机任意进程都能连 9527 端口伪装 Agent 推送恶意 session-meta-update。
+let wsToken: string = '';
+
+function getWsToken(): string {
+  return wsToken;
+}
+
+function getTokenFilePath(): string {
+  const dataDir = process.env.COGITO_USER_DATA_DIR || process.cwd();
+  return path.join(dataDir, '.ws-token');
+}
+
+function writeTokenFile(): void {
+  try {
+    const tokenPath = getTokenFilePath();
+    fs.writeFileSync(tokenPath, wsToken, 'utf-8');
+    // 限制文件权限仅当前用户可读
+    try {
+      fs.chmodSync(tokenPath, 0o600);
+    } catch {
+      // Windows 上 chmod 无效，忽略
+    }
+  } catch (e) {
+    console.error('[WS] 写入 token 文件失败:', (e as Error).message);
+  }
+}
+
+function readTokenFromRequest(req: any): string | null {
+  // 优先从 header 读取，其次从 URL query 读取
+  const headerToken = req?.headers?.['x-ws-token'];
+  if (typeof headerToken === 'string' && headerToken.length > 0) return headerToken;
+  const url = req?.url || '';
+  try {
+    const idx = url.indexOf('?');
+    if (idx >= 0) {
+      const params = new URLSearchParams(url.slice(idx + 1));
+      const t = params.get('token');
+      if (t) return t;
+    }
+  } catch {
+    // URL 解析失败，忽略
+  }
+  return null;
+}
 
 function isLocalRemoteAddress(remoteAddress: string | undefined): boolean {
   if (!remoteAddress) return false;
@@ -30,6 +80,10 @@ function isValidOrigin(origin: string | undefined): boolean {
 function startWsServer(port = 9527): Promise<WebSocketServer> {
   return new Promise((resolve, reject) => {
     try {
+      // 启动时生成随机 token 并写入文件，供 agent-bridge 读取
+      wsToken = crypto.randomUUID();
+      writeTokenFile();
+
       wss = new WebSocketServer(
         {
           port,
@@ -38,7 +92,7 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
             // 双重校验：
             // 1. Origin 头（浏览器客户端）必须命中本地白名单；
             // 2. 非浏览器客户端（如 Electron agent-bridge 的 Node ws 客户端，
-            //    它不发送 Origin 头）必须来自本机回环地址。
+            //    它不发送 Origin 头）必须来自本机回环地址且携带正确 token。
             //
             // 注：ws 库的 info 对象只有 origin / secure / req 三个属性，
             // 没有 info.socket。remoteAddress 必须从 info.req.socket 取。
@@ -46,8 +100,21 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
             const originOk = isValidOrigin(info.origin);
             const addrOk = isLocalRemoteAddress(remoteAddress);
 
-            if (originOk || addrOk) {
+            // 浏览器客户端：靠 Origin 白名单放行（前端无法安全存储 token）
+            if (originOk) {
               callback(true);
+              return;
+            }
+
+            // 非浏览器客户端：必须来自回环地址且携带正确 token
+            if (addrOk) {
+              const clientToken = readTokenFromRequest(info.req);
+              if (!wsToken || clientToken === wsToken) {
+                callback(true);
+                return;
+              }
+              console.warn('[WS] 拒绝无 token 的本地连接');
+              callback(false, 403, '缺少有效的 ws token');
               return;
             }
 
@@ -187,4 +254,4 @@ function stopWsServer(): void {
   }
 }
 
-export { startWsServer, broadcast, onMessage, onStatsRequest, stopWsServer };
+export { startWsServer, broadcast, onMessage, onStatsRequest, stopWsServer, getWsToken };

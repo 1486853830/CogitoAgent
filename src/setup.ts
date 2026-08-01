@@ -725,6 +725,9 @@ async function runSetup(): Promise<any> {
   rl.close();
 
   // 构建配置
+  // 注意：email/code 字段名映射为正式 Config 类型（EmailConfig/CodeConfig），
+  // 此前直接放入 EmailSetupConfig（host/port）和 CodeSetupConfig（timeout/maxOutput），
+  // 字段名与正式类型不一致，直接消费该返回对象的代码会拿到错误字段名。
   const config = {
     ...DEFAULT_CONFIG,
     api: {
@@ -742,10 +745,23 @@ async function runSetup(): Promise<any> {
     workspace: normalizedWorkspace,
     thinkingInterval,
     mode,
-    email: emailConfig,
+    email: emailConfig
+      ? {
+          smtpHost: emailConfig.host,
+          smtpPort: emailConfig.port,
+          user: emailConfig.user,
+          password: emailConfig.password,
+          from: emailConfig.from,
+        }
+      : undefined,
     ocr: ocrConfig,
     vision: visionConfig,
-    code: codeConfig,
+    code: codeConfig
+      ? {
+          maxExecutionTime: codeConfig.timeout,
+          maxOutputSize: codeConfig.maxOutput,
+        }
+      : undefined,
     security: securityConfig,
     persona: selectedPersona?.name || '',
   };

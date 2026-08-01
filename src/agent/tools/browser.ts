@@ -1,6 +1,8 @@
 /**
  * 浏览器自动化工具 - 延迟加载 playwright
  */
+import { resolveInWorkspace } from './path.ts';
+
 declare const document: any;
 declare const window: any;
 declare const NodeFilter: any;
@@ -28,30 +30,6 @@ async function checkPlaywright(): Promise<boolean> {
 }
 
 /**
- * 生成元素的 XPath
- */
-function getXPath(element: any): string | null {
-  if (!element) return null;
-  if (element.id !== '') return `id("${element.id}")`;
-  if (element === document.body) return '/html/body';
-
-  let ix = 0;
-  const siblings = element.parentNode ? element.parentNode.childNodes : [];
-  for (let i = 0; i < siblings.length; i++) {
-    const sibling = siblings[i];
-    if (sibling === element) {
-      const parentPath = getXPath(element.parentNode);
-      const tagName = element.tagName.toLowerCase();
-      return parentPath ? `${parentPath}/${tagName}[${ix + 1}]` : `/${tagName}[${ix + 1}]`;
-    }
-    if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
-      ix++;
-    }
-  }
-  return null;
-}
-
-/**
  * 捕获页面当前状态（用于后续对比变化）
  */
 async function capturePageState(): Promise<any> {
@@ -59,6 +37,29 @@ async function capturePageState(): Promise<any> {
 
   try {
     const state = await page.evaluate(() => {
+      // getXPath 必须在浏览器上下文内定义：page.evaluate 回调在页面 V8 上下文序列化执行，
+      // 无法访问 Node 模块作用域的函数，外部定义会导致 ReferenceError。
+      function getXPath(element: any): string | null {
+        if (!element) return null;
+        if (element.id !== '') return `id("${element.id}")`;
+        if (element === document.body) return '/html/body';
+
+        let ix = 0;
+        const siblings = element.parentNode ? element.parentNode.childNodes : [];
+        for (let i = 0; i < siblings.length; i++) {
+          const sibling = siblings[i];
+          if (sibling === element) {
+            const parentPath = getXPath(element.parentNode);
+            const tagName = element.tagName.toLowerCase();
+            return parentPath ? `${parentPath}/${tagName}[${ix + 1}]` : `/${tagName}[${ix + 1}]`;
+          }
+          if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
+            ix++;
+          }
+        }
+        return null;
+      }
+
       const forms: any[] = [];
       document
         .querySelectorAll('form, input, select, textarea, button, table')
@@ -553,7 +554,22 @@ async function downloadFile(
   }
 
   try {
-    const { savePath = './downloads', fullPath, timeout = 60000, acceptDownloads = true } = options;
+    let { savePath = './downloads', fullPath } = options;
+    const { timeout = 60000, acceptDownloads = true } = options;
+
+    // 校验下载路径必须在工作区内，防止路径穿越写到工作区外
+    if (fullPath) {
+      const resolved = resolveInWorkspace(fullPath);
+      if (!resolved) {
+        return { success: false, error: 'fullPath 越界：必须位于工作区内' };
+      }
+      fullPath = resolved;
+    }
+    const resolvedSavePath = resolveInWorkspace(savePath);
+    if (!resolvedSavePath) {
+      return { success: false, error: 'savePath 越界：必须位于工作区内' };
+    }
+    savePath = resolvedSavePath;
 
     const fs = await import('fs');
     const path = await import('path');

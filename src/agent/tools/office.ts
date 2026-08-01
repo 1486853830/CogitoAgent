@@ -14,6 +14,7 @@ import {
 import XLSX from 'xlsx';
 import fs from 'fs/promises';
 import path from 'path';
+import { resolveInWorkspace } from './path.ts';
 
 // ==================== PPT ====================
 
@@ -40,6 +41,13 @@ async function createPpt(options: any, ...rest: any[]): Promise<any> {
     if (!outputPath) {
       return { success: false, error: '缺少 outputPath 参数' };
     }
+
+    // 校验路径必须在工作区内，防止路径穿越写入工作区外
+    const resolvedPath = resolveInWorkspace(outputPath);
+    if (!resolvedPath) {
+      return { success: false, error: 'outputPath 越界：必须位于工作区内' };
+    }
+    outputPath = resolvedPath;
 
     const ppt = new pptxgen();
     ppt.author = author;
@@ -149,6 +157,13 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
     if (!outputPath) {
       return { success: false, error: '缺少 outputPath 参数' };
     }
+
+    // 校验路径必须在工作区内，防止路径穿越写入工作区外
+    const resolvedPath = resolveInWorkspace(outputPath);
+    if (!resolvedPath) {
+      return { success: false, error: 'outputPath 越界：必须位于工作区内' };
+    }
+    outputPath = resolvedPath;
 
     const children: any[] = [];
 
@@ -275,6 +290,13 @@ async function createExcel(options: any, ...rest: any[]): Promise<any> {
       return { success: false, error: '缺少 outputPath 参数' };
     }
 
+    // 校验路径必须在工作区内，防止路径穿越写入工作区外
+    const resolvedPath = resolveInWorkspace(outputPath);
+    if (!resolvedPath) {
+      return { success: false, error: 'outputPath 越界：必须位于工作区内' };
+    }
+    outputPath = resolvedPath;
+
     if (sheets.length === 0) {
       sheets = [{ name: 'Sheet1', data: [['No content provided']] }];
     }
@@ -304,6 +326,13 @@ async function readExcel(filePath: string): Promise<any> {
     if (!filePath || typeof filePath !== 'string') {
       return { success: false, error: '缺少 filePath 参数' };
     }
+
+    // 校验路径必须在工作区内，防止路径穿越读取工作区外文件
+    const resolvedPath = resolveInWorkspace(filePath);
+    if (!resolvedPath) {
+      return { success: false, error: 'filePath 越界：必须位于工作区内' };
+    }
+    filePath = resolvedPath;
 
     await fs.access(filePath);
     const wb = XLSX.readFile(filePath);

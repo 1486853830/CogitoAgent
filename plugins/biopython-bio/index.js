@@ -7,7 +7,7 @@
  * 彻底避免命令注入风险。
  */
 
-import { runPython, validateOutputPath } from '../shared/python-runner.js';
+import { runPython, validateOutputPath, validateInputPath } from '../shared/python-runner.js';
 
 const TOOLS = [];
 
@@ -143,6 +143,8 @@ TOOLS.push({
     try {
       // 校验输出路径，防止路径遍历
       validateOutputPath(outputPath);
+      // 校验输入路径，防止任意文件读取（此前仅校验输出，inputPath 可读 /etc/passwd）
+      validateInputPath(inputPath);
       // 白名单校验格式
       const allowedFormats = ['fasta', 'genbank', 'embl', 'swiss', 'fastq', 'phylip'];
       const inFmt = allowedFormats.includes(inputFormat) ? inputFormat : 'fasta';
@@ -242,6 +244,8 @@ TOOLS.push({
   fn: async (pdbPath) => {
     if (!pdbPath) return { success: false, error: '请输入 PDB 文件路径' };
     try {
+      // 校验输入路径，防止任意文件读取
+      validateInputPath(pdbPath);
       const script = `
 import json, sys, os
 from Bio.PDB import PDBParser
@@ -290,6 +294,8 @@ TOOLS.push({
   fn: async (fastaPath) => {
     if (!fastaPath) return { success: false, error: '请输入 FASTA 文件路径' };
     try {
+      // 校验输入路径，防止任意文件读取
+      validateInputPath(fastaPath);
       const script = `
 import json, sys, os
 from Bio import SeqIO
@@ -336,6 +342,8 @@ TOOLS.push({
     try {
       // 校验输出路径，防止路径遍历
       validateOutputPath(outputAln);
+      // 校验输入路径，防止任意文件读取
+      validateInputPath(inputFasta);
       const script = `
 import json, sys, os
 from Bio import AlignIO
