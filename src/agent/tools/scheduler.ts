@@ -359,7 +359,7 @@ function parseCronToMs(cronExpr: string): number {
     if (minute !== '*') {
       // 处理范围表达式 (如 1-5)
       if (minute.includes('-')) {
-        const [start, end] = minute.split('-').map((n) => parseInt(n));
+        const [start, end] = minute.split('-').map((n) => parseInt(n, 10));
         if (!isNaN(start) && !isNaN(end)) {
           // 范围表达式返回最小间隔（分钟）
           return 60000;
@@ -367,7 +367,7 @@ function parseCronToMs(cronExpr: string): number {
       }
       // 处理步进表达式 (如 */5)
       if (minute.startsWith('*/')) {
-        const step = parseInt(minute.slice(2));
+        const step = parseInt(minute.slice(2), 10);
         if (!isNaN(step) && step > 0) {
           return step * 60000;
         }
@@ -376,7 +376,7 @@ function parseCronToMs(cronExpr: string): number {
       if (minute.includes(',')) {
         const values = minute
           .split(',')
-          .map((n) => parseInt(n))
+          .map((n) => parseInt(n, 10))
           .filter((n) => !isNaN(n));
         if (values.length > 0) {
           // 返回最小间隔（分钟）
@@ -386,7 +386,7 @@ function parseCronToMs(cronExpr: string): number {
       // 简单数字（如 "0"、"30"）：cron 语义是"每小时的第 N 分钟"，
       // 不是"每 N 分钟"。固定分钟 + hour=* → 间隔为 1 小时。
       // 此前返回 mins * 60000，导致 "0" 返回 0（被判为无效），"30" 返回 30 分钟（错误）。
-      const mins = parseInt(minute);
+      const mins = parseInt(minute, 10);
       if (!isNaN(mins)) {
         return 3600000; // 1 小时
       }
@@ -400,14 +400,16 @@ function parseCronToMs(cronExpr: string): number {
       }
       // 处理步进表达式 (如 */2)
       if (hour.startsWith('*/')) {
-        const step = parseInt(hour.slice(2));
+        const step = parseInt(hour.slice(2), 10);
         if (!isNaN(step) && step > 0) {
           return step * 3600000;
         }
       }
-      const hrs = parseInt(hour);
+      const hrs = parseInt(hour, 10);
       if (!isNaN(hrs)) {
-        return hrs * 3600000;
+        // minute === '*' 且 hour 是具体数字时，cron 语义是"该小时内的每一分钟"，
+        // 间隔应为 1 分钟（60000ms），而非 hrs * 3600000（后者错误地变成每 N 小时执行一次）。
+        return 60000;
       }
     }
 
@@ -418,7 +420,7 @@ function parseCronToMs(cronExpr: string): number {
   // 自然语言格式：如 "5 minutes"
   const match = cronExpr.match(/(\d+)\s*(seconds?|minutes?|hours?|days?)/i);
   if (match) {
-    const num = parseInt(match[1]);
+    const num = parseInt(match[1], 10);
     const unit = match[2].toLowerCase();
 
     const unitMap: any = {

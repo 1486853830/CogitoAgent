@@ -108,7 +108,12 @@ async function runPython(code: string): Promise<any> {
       }
 
       tmpPath = generateSecureTmpPath('py');
-      await writeSecureTmpFile(tmpPath, processedCode);
+      // writeSecureTmpFile 在发生路径碰撞(EEXIST)时会回退到新路径并以 string 返回，
+      // 必须据此更新 tmpPath，否则后续 execFile 仍指向旧路径，可能执行他人代码或空文件。
+      const writeResult = await writeSecureTmpFile(tmpPath, processedCode);
+      if (typeof writeResult === 'string') {
+        tmpPath = writeResult;
+      }
 
       // 科学模式：允许使用已安装的 Python 科学库
       const cfg: any = loadConfig();

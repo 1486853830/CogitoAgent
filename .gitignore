@@ -12,6 +12,7 @@ config.json
 .env
 .env.local
 .env.*.local
+.ws-token
 
 # Data
 data/

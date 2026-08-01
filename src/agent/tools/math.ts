@@ -30,7 +30,9 @@ async function describe(data: any): Promise<any> {
     const freq: any = {};
     for (const v of values) freq[v] = (freq[v] || 0) + 1;
     const maxFreq = Math.max(...(Object.values(freq) as number[]));
-    const modes = Object.entries(freq).filter(([, c]: any) => c === maxFreq).map(([k]: any) => parseFloat(k));
+    const modes = Object.entries(freq)
+      .filter(([, c]: any) => c === maxFreq)
+      .map(([k]: any) => parseFloat(k));
 
     // 方差和标准差
     const variance = values.reduce((s: number, v: number) => s + (v - mean) ** 2, 0) / (n - 1);
@@ -39,7 +41,9 @@ async function describe(data: any): Promise<any> {
     // 偏度
     let skewness = 0;
     if (std > 0) {
-      skewness = values.reduce((s: number, v: number) => s + Math.pow((v - mean) / std, 3), 0) * n / ((n - 1) * (n - 2));
+      skewness =
+        (values.reduce((s: number, v: number) => s + Math.pow((v - mean) / std, 3), 0) * n) /
+        ((n - 1) * (n - 2));
     }
 
     // 四分位数
@@ -54,7 +58,8 @@ async function describe(data: any): Promise<any> {
 
     return {
       success: true,
-      data: `描述性统计（n=${n}）:\n` +
+      data:
+        `描述性统计（n=${n}）:\n` +
         `  均值: ${mean.toFixed(4)}\n` +
         `  中位数: ${median.toFixed(4)}\n` +
         `  众数: ${modes.length <= 3 ? modes.join(', ') : modes.slice(0, 3).join(', ') + '...'}\n` +
@@ -64,7 +69,7 @@ async function describe(data: any): Promise<any> {
         `  最小值: ${min}\n` +
         `  最大值: ${max}\n` +
         `  范围: ${min} - ${max}\n` +
-        `  Q1: ${q1}, Q3: ${q3}, IQR: ${iqr}`
+        `  Q1: ${q1}, Q3: ${q3}, IQR: ${iqr}`,
     };
   } catch (error: any) {
     return { success: false, error: `统计计算失败: ${error.message}` };
@@ -96,7 +101,9 @@ async function correlation(x: any, y: any): Promise<any> {
     const meanX = xArr.reduce((s: number, v: number) => s + v, 0) / n;
     const meanY = yArr.reduce((s: number, v: number) => s + v, 0) / n;
 
-    let num = 0, denomX = 0, denomY = 0;
+    let num = 0,
+      denomX = 0,
+      denomY = 0;
     for (let i = 0; i < n; i++) {
       const dx = xArr[i] - meanX;
       const dy = yArr[i] - meanY;
@@ -123,7 +130,7 @@ async function correlation(x: any, y: any): Promise<any> {
 
     return {
       success: true,
-      data: `皮尔逊相关系数 r = ${r.toFixed(4)}\n${strength}（${r >= 0 ? '正' : '负'}相关）\nR² = ${(r * r).toFixed(4)}`
+      data: `皮尔逊相关系数 r = ${r.toFixed(4)}\n${strength}（${r >= 0 ? '正' : '负'}相关）\nR² = ${(r * r).toFixed(4)}`,
     };
   } catch (error: any) {
     return { success: false, error: `相关系数计算失败: ${error.message}` };
@@ -160,13 +167,16 @@ async function linearRegression(x: any, y: any): Promise<any> {
     const b = meanY - a * meanX;
 
     // R²
-    const ssRes = yArr.reduce((s: number, v: number, i: number) => s + (v - (a * xArr[i] + b)) ** 2, 0);
+    const ssRes = yArr.reduce(
+      (s: number, v: number, i: number) => s + (v - (a * xArr[i] + b)) ** 2,
+      0,
+    );
     const ssTot = yArr.reduce((s: number, v: number) => s + (v - meanY) ** 2, 0);
     const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
 
     return {
       success: true,
-      data: `线性回归: y = ${a.toFixed(4)}x + ${b.toFixed(4)}\n斜率 a = ${a.toFixed(4)}\n截距 b = ${b.toFixed(4)}\nR² = ${r2.toFixed(4)}\n${r2 >= 0.7 ? '拟合效果良好' : r2 >= 0.3 ? '拟合效果一般' : '拟合效果较差'}`
+      data: `线性回归: y = ${a.toFixed(4)}x + ${b.toFixed(4)}\n斜率 a = ${a.toFixed(4)}\n截距 b = ${b.toFixed(4)}\nR² = ${r2.toFixed(4)}\n${r2 >= 0.7 ? '拟合效果良好' : r2 >= 0.3 ? '拟合效果一般' : '拟合效果较差'}`,
     };
   } catch (error: any) {
     return { success: false, error: `线性回归失败: ${error.message}` };
@@ -194,7 +204,10 @@ async function matrixMultiply(A: any, B: any): Promise<any> {
     const colsB = mB[0].length;
 
     if (colsA !== rowsB) {
-      return { success: false, error: `矩阵维度不匹配: A(${rowsA}×${colsA}), B(${rowsB}×${colsB})` };
+      return {
+        success: false,
+        error: `矩阵维度不匹配: A(${rowsA}×${colsA}), B(${rowsB}×${colsB})`,
+      };
     }
 
     const result: any[] = [];
@@ -211,7 +224,7 @@ async function matrixMultiply(A: any, B: any): Promise<any> {
 
     return {
       success: true,
-      data: `矩阵乘法结果 (${rowsA}×${colsB}):\n${result.map((r: any) => `[${r.join(', ')}]`).join('\n')}`
+      data: `矩阵乘法结果 (${rowsA}×${colsB}):\n${result.map((r: any) => `[${r.join(', ')}]`).join('\n')}`,
     };
   } catch (error: any) {
     return { success: false, error: `矩阵乘法失败: ${error.message}` };
@@ -246,7 +259,7 @@ async function matrixDeterminant(A: any): Promise<any> {
 
     return {
       success: true,
-      data: `行列式 det = ${det.toFixed(4)}`
+      data: `行列式 det = ${det.toFixed(4)}`,
     };
   } catch (error: any) {
     return { success: false, error: `行列式计算失败: ${error.message}` };
@@ -274,7 +287,7 @@ async function matrixInverse(A: any): Promise<any> {
       if (Math.abs(det) < 1e-10) return { success: false, error: '矩阵不可逆（行列式为 0）' };
       inv = [
         [mA[1][1] / det, -mA[0][1] / det],
-        [-mA[1][0] / det, mA[0][0] / det]
+        [-mA[1][0] / det, mA[0][0] / det],
       ];
     } else if (n === 3) {
       const [a, b, c] = mA[0];
@@ -294,7 +307,7 @@ async function matrixInverse(A: any): Promise<any> {
       inv = [
         [A_val / det, D_val / det, G_val / det],
         [B_val / det, E_val / det, H_val / det],
-        [C_val / det, F_val / det, I_val / det]
+        [C_val / det, F_val / det, I_val / det],
       ];
     } else {
       return { success: false, error: '仅支持 2x2 和 3x3 矩阵的逆' };
@@ -305,7 +318,7 @@ async function matrixInverse(A: any): Promise<any> {
 
     return {
       success: true,
-      data: `逆矩阵:\n${formatted.map((r: any) => `[${r.join(', ')}]`).join('\n')}`
+      data: `逆矩阵:\n${formatted.map((r: any) => `[${r.join(', ')}]`).join('\n')}`,
     };
   } catch (error: any) {
     return { success: false, error: `矩阵求逆失败: ${error.message}` };
@@ -330,20 +343,20 @@ async function solveQuadratic(a: any, b: any, c: any): Promise<any> {
       const x2 = (-b - Math.sqrt(discriminant)) / (2 * a);
       return {
         success: true,
-        data: `方程: ${a}x² + ${b}x + ${c} = 0\n判别式: Δ = ${discriminant.toFixed(4)}\n两个实根: x₁ = ${x1.toFixed(4)}, x₂ = ${x2.toFixed(4)}`
+        data: `方程: ${a}x² + ${b}x + ${c} = 0\n判别式: Δ = ${discriminant.toFixed(4)}\n两个实根: x₁ = ${x1.toFixed(4)}, x₂ = ${x2.toFixed(4)}`,
       };
     } else if (discriminant === 0) {
       const x = -b / (2 * a);
       return {
         success: true,
-        data: `方程: ${a}x² + ${b}x + ${c} = 0\n判别式: Δ = 0\n重根: x = ${x.toFixed(4)}`
+        data: `方程: ${a}x² + ${b}x + ${c} = 0\n判别式: Δ = 0\n重根: x = ${x.toFixed(4)}`,
       };
     } else {
       const real = (-b / (2 * a)).toFixed(4);
       const imag = (Math.sqrt(-discriminant) / (2 * a)).toFixed(4);
       return {
         success: true,
-        data: `方程: ${a}x² + ${b}x + ${c} = 0\n判别式: Δ = ${discriminant.toFixed(4)}\n两个复根: x₁ = ${real} + ${imag}i, x₂ = ${real} - ${imag}i`
+        data: `方程: ${a}x² + ${b}x + ${c} = 0\n判别式: Δ = ${discriminant.toFixed(4)}\n两个复根: x₁ = ${real} + ${imag}i, x₂ = ${real} - ${imag}i`,
       };
     }
   } catch (error: any) {
@@ -367,7 +380,7 @@ async function factorial(n: any): Promise<any> {
 
     return {
       success: true,
-      data: `${n}! = ${result.toExponential(6)}（${result}）`
+      data: `${n}! = ${result.toExponential(6)}（${result}）`,
     };
   } catch (error: any) {
     return { success: false, error: `阶乘计算失败: ${error.message}` };
@@ -383,7 +396,7 @@ async function factorial(n: any): Promise<any> {
 async function combination(n: any, k: any): Promise<any> {
   try {
     n = parseInt(n);
-    k = parseInt(k);
+    k = parseInt(k, 10);
     if (isNaN(n) || n < 0) return { success: false, error: 'n 必须为非负整数' };
     if (isNaN(k) || k < 0) return { success: false, error: 'k 必须为非负整数' };
     if (k > n) return { success: false, error: 'k 不能大于 n' };
@@ -393,12 +406,12 @@ async function combination(n: any, k: any): Promise<any> {
     k = Math.min(k, n - k);
     let result = 1;
     for (let i = 1; i <= k; i++) {
-      result = result * (n - k + i) / i;
+      result = (result * (n - k + i)) / i;
     }
 
     return {
       success: true,
-      data: `C(${n}, ${k}) = ${Math.round(result)}`
+      data: `C(${n}, ${k}) = ${Math.round(result)}`,
     };
   } catch (error: any) {
     return { success: false, error: `组合数计算失败: ${error.message}` };
@@ -414,7 +427,7 @@ async function combination(n: any, k: any): Promise<any> {
 async function permutation(n: any, k: any): Promise<any> {
   try {
     n = parseInt(n);
-    k = parseInt(k);
+    k = parseInt(k, 10);
     if (isNaN(n) || n < 0) return { success: false, error: 'n 必须为非负整数' };
     if (isNaN(k) || k < 0) return { success: false, error: 'k 必须为非负整数' };
     if (k > n) return { success: false, error: 'k 不能大于 n' };
@@ -422,12 +435,12 @@ async function permutation(n: any, k: any): Promise<any> {
 
     let result = 1;
     for (let i = 0; i < k; i++) {
-      result *= (n - i);
+      result *= n - i;
     }
 
     return {
       success: true,
-      data: `P(${n}, ${k}) = ${result}`
+      data: `P(${n}, ${k}) = ${result}`,
     };
   } catch (error: any) {
     return { success: false, error: `排列数计算失败: ${error.message}` };
@@ -446,13 +459,44 @@ async function siConvert(value: any, from: any, to: any): Promise<any> {
     if (value === undefined || value === null) return { success: false, error: '请输入数值' };
 
     const prefixes: any = {
-      'Y': 1e24, 'Z': 1e21, 'E': 1e18, 'P': 1e15, 'T': 1e12,
-      'G': 1e9, 'M': 1e6, 'k': 1e3, 'h': 1e2, 'da': 1e1,
-      'd': 1e-1, 'c': 1e-2, 'm': 1e-3, 'μ': 1e-6, 'u': 1e-6,
-      'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'a': 1e-18
+      Y: 1e24,
+      Z: 1e21,
+      E: 1e18,
+      P: 1e15,
+      T: 1e12,
+      G: 1e9,
+      M: 1e6,
+      k: 1e3,
+      h: 1e2,
+      da: 1e1,
+      d: 1e-1,
+      c: 1e-2,
+      m: 1e-3,
+      μ: 1e-6,
+      u: 1e-6,
+      n: 1e-9,
+      p: 1e-12,
+      f: 1e-15,
+      a: 1e-18,
     };
 
-    const baseUnits = ['m', 'g', 's', 'A', 'K', 'mol', 'cd', 'L', 'Hz', 'W', 'V', 'Pa', 'J', 'N', 'B'];
+    const baseUnits = [
+      'm',
+      'g',
+      's',
+      'A',
+      'K',
+      'mol',
+      'cd',
+      'L',
+      'Hz',
+      'W',
+      'V',
+      'Pa',
+      'J',
+      'N',
+      'B',
+    ];
 
     // 尝试解析单位
     const parseUnit = (u: string): any => {
@@ -479,7 +523,10 @@ async function siConvert(value: any, from: any, to: any): Promise<any> {
     if (!fromParsed) return { success: false, error: `无法识别的源单位: ${from}` };
     if (!toParsed) return { success: false, error: `无法识别的目标单位: ${to}` };
     if (fromParsed.base !== toParsed.base) {
-      return { success: false, error: `单位不兼容: ${from} (${fromParsed.base}) → ${to} (${toParsed.base})` };
+      return {
+        success: false,
+        error: `单位不兼容: ${from} (${fromParsed.base}) → ${to} (${toParsed.base})`,
+      };
     }
 
     // 转成基本单位再转目标
@@ -487,8 +534,18 @@ async function siConvert(value: any, from: any, to: any): Promise<any> {
     const result = baseValue / toParsed.factor;
 
     const prefixNames: any = {
-      'G': '吉', 'M': '兆', 'k': '千', 'm': '毫', 'μ': '微', 'u': '微',
-      'n': '纳', 'p': '皮', 'c': '厘', 'd': '分', 'da': '十', 'h': '百'
+      G: '吉',
+      M: '兆',
+      k: '千',
+      m: '毫',
+      μ: '微',
+      u: '微',
+      n: '纳',
+      p: '皮',
+      c: '厘',
+      d: '分',
+      da: '十',
+      h: '百',
     };
 
     const fromName = prefixNames[from[0]] || '';
@@ -496,7 +553,7 @@ async function siConvert(value: any, from: any, to: any): Promise<any> {
 
     return {
       success: true,
-      data: `${value} ${from} = ${result.toExponential(6)} ${to}\n${from} = ${fromParsed.factor} ${fromParsed.base}，${to} = ${toParsed.factor} ${toParsed.base}`
+      data: `${value} ${from} = ${result.toExponential(6)} ${to}\n${from} = ${fromParsed.factor} ${fromParsed.base}，${to} = ${toParsed.factor} ${toParsed.base}`,
     };
   } catch (error: any) {
     return { success: false, error: `SI 换算失败: ${error.message}` };
@@ -514,5 +571,5 @@ export {
   factorial,
   combination,
   permutation,
-  siConvert
+  siConvert,
 };
