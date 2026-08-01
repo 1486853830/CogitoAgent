@@ -322,7 +322,7 @@ async function selectPersona(
   }
 
   // 按编号选择
-  const num = parseInt(trimmed);
+  const num = parseInt(trimmed, 10);
   if (!isNaN(num) && num >= 1 && num <= personas.length) {
     return personas[num - 1];
   }

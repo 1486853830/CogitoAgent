@@ -132,9 +132,6 @@ const AA_MOLECULAR_WEIGHT: any = {
   V: 117.15,
 };
 
-// DNA 碱基分子量（Da）
-const DNA_BASE_MW: any = { A: 313.21, T: 304.2, C: 289.18, G: 329.21 };
-
 // 序列类型字符集
 const DNA_CHARS = new Set('ATCGatcg');
 const RNA_CHARS = new Set('AUCGaucg');
@@ -245,7 +242,7 @@ async function translate(seq: string, readingFrame: any = 0): Promise<any> {
     const cleaned = valid.data;
     const upper = cleaned.toUpperCase();
 
-    const frame = parseInt(readingFrame) || 0;
+    const frame = parseInt(readingFrame, 10) || 0;
     if (frame < 0 || frame > 2) {
       return { success: false, error: '读码框必须为 0、1 或 2' };
     }
@@ -811,7 +808,7 @@ async function codonUsage(seq: string): Promise<any> {
  */
 async function randomSeq(length: any, type: string = 'dna'): Promise<any> {
   try {
-    const len = parseInt(length);
+    const len = parseInt(length, 10);
     if (isNaN(len) || len < 1) {
       return { success: false, error: '序列长度必须为正整数' };
     }

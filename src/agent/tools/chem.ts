@@ -75,7 +75,7 @@ function parseFormula(formula: string): any {
         num += clean[i];
         i++;
       }
-      const multiplier = num ? parseInt(num) : 1;
+      const multiplier = num ? parseInt(num, 10) : 1;
       for (const [el, cnt] of Object.entries(top)) {
         stack[stack.length - 1][el] =
           (stack[stack.length - 1][el] || 0) + (cnt as number) * multiplier;
@@ -105,7 +105,7 @@ function parseFormula(formula: string): any {
         num += clean[i];
         i++;
       }
-      const count = num ? parseInt(num) : 1;
+      const count = num ? parseInt(num, 10) : 1;
       stack[stack.length - 1][sym] = (stack[stack.length - 1][sym] || 0) + count;
     } else {
       i++;
@@ -294,7 +294,7 @@ async function phToH(ph: any): Promise<any> {
 
     const h = Math.pow(10, -ph);
     const parts = h.toExponential(4).split('e');
-    const formatted = `${parts[0]}e${parseInt(parts[1]) < 0 ? '-' : '+'}${Math.abs(parseInt(parts[1])).toString().padStart(2, '0')}`;
+    const formatted = `${parts[0]}e${parseInt(parts[1], 10) < 0 ? '-' : '+'}${Math.abs(parseInt(parts[1], 10)).toString().padStart(2, '0')}`;
     return { success: true, data: `[H⁺] = ${formatted} mol/L` };
   } catch (error: any) {
     return { success: false, error: `H⁺ 计算失败: ${error.message}` };

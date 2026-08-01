@@ -12,20 +12,20 @@ function getCPUInfo(): any {
   let totalIdle = 0;
   let totalTick = 0;
 
-  cpus.forEach(cpu => {
+  cpus.forEach((cpu) => {
     for (const type in cpu.times) {
       totalTick += cpu.times[type as keyof typeof cpu.times];
     }
     totalIdle += cpu.times.idle;
   });
 
-  const usage = ((totalTick - totalIdle) / totalTick * 100).toFixed(2);
+  const usage = (((totalTick - totalIdle) / totalTick) * 100).toFixed(2);
 
   return {
     model,
     cores: totalCores,
     usage: `${usage}%`,
-    usagePercent: parseFloat(usage)
+    usagePercent: parseFloat(usage),
   };
 }
 
@@ -42,7 +42,7 @@ function getMemoryInfo(): any {
     used: formatBytes(used),
     free: formatBytes(free),
     usage: `${((used / total) * 100).toFixed(2)}%`,
-    usagePercent: ((used / total) * 100).toFixed(2)
+    usagePercent: ((used / total) * 100).toFixed(2),
   };
 }
 
@@ -51,46 +51,50 @@ function getMemoryInfo(): any {
  */
 async function getDiskInfoWindows(): Promise<any> {
   return new Promise((resolve) => {
-    execFile('wmic', ['logicaldisk', 'get', 'Size,FreeSpace,DeviceID,VolumeName'], (error: any, stdout: string) => {
-      if (error) {
-        resolve({
-          success: false,
-          error: `获取磁盘信息失败: ${error.message}`
-        });
-        return;
-      }
+    execFile(
+      'wmic',
+      ['logicaldisk', 'get', 'Size,FreeSpace,DeviceID,VolumeName'],
+      (error: any, stdout: string) => {
+        if (error) {
+          resolve({
+            success: false,
+            error: `获取磁盘信息失败: ${error.message}`,
+          });
+          return;
+        }
 
-      const lines = stdout.split('\n').filter(line => line.trim());
-      const drives = [];
+        const lines = stdout.split('\n').filter((line) => line.trim());
+        const drives = [];
 
-      for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].trim().split(/\s+/);
-        if (parts.length >= 3) {
-          const deviceId = parts[0];
-          const freeSpace = parseInt(parts[1]) || 0;
-          const size = parseInt(parts[2]) || 0;
-          const volumeName = parts.slice(3).join(' ') || '';
+        for (let i = 1; i < lines.length; i++) {
+          const parts = lines[i].trim().split(/\s+/);
+          if (parts.length >= 3) {
+            const deviceId = parts[0];
+            const freeSpace = parseInt(parts[1], 10) || 0;
+            const size = parseInt(parts[2], 10) || 0;
+            const volumeName = parts.slice(3).join(' ') || '';
 
-          if (size > 0) {
-            const used = size - freeSpace;
-            drives.push({
-              deviceId,
-              volumeName,
-              total: formatBytes(size),
-              used: formatBytes(used),
-              free: formatBytes(freeSpace),
-              usage: `${((used / size) * 100).toFixed(2)}%`,
-              usagePercent: ((used / size) * 100).toFixed(2)
-            });
+            if (size > 0) {
+              const used = size - freeSpace;
+              drives.push({
+                deviceId,
+                volumeName,
+                total: formatBytes(size),
+                used: formatBytes(used),
+                free: formatBytes(freeSpace),
+                usage: `${((used / size) * 100).toFixed(2)}%`,
+                usagePercent: ((used / size) * 100).toFixed(2),
+              });
+            }
           }
         }
-      }
 
-      resolve({
-        success: true,
-        data: drives
-      });
-    });
+        resolve({
+          success: true,
+          data: drives,
+        });
+      },
+    );
   });
 }
 
@@ -103,12 +107,12 @@ async function getDiskInfoUnix(): Promise<any> {
       if (error) {
         resolve({
           success: false,
-          error: `获取磁盘信息失败: ${error.message}`
+          error: `获取磁盘信息失败: ${error.message}`,
         });
         return;
       }
 
-      const lines = stdout.split('\n').filter(line => line.trim());
+      const lines = stdout.split('\n').filter((line) => line.trim());
       const drives = [];
 
       for (let i = 1; i < lines.length; i++) {
@@ -129,7 +133,7 @@ async function getDiskInfoUnix(): Promise<any> {
               used: formatBytes(used),
               free: formatBytes(free),
               usage: `${usage}%`,
-              usagePercent: parseFloat(usage)
+              usagePercent: parseFloat(usage),
             });
           }
         }
@@ -137,7 +141,7 @@ async function getDiskInfoUnix(): Promise<any> {
 
       resolve({
         success: true,
-        data: drives
+        data: drives,
       });
     });
   });
@@ -147,7 +151,7 @@ async function getDiskInfoUnix(): Promise<any> {
  * 解析人类可读的大小字符串
  */
 function parseHumanReadableSize(sizeStr: string): number {
-  const units: any = { 'B': 1, 'K': 1024, 'M': 1024 ** 2, 'G': 1024 ** 3, 'T': 1024 ** 4 };
+  const units: any = { B: 1, K: 1024, M: 1024 ** 2, G: 1024 ** 3, T: 1024 ** 4 };
   const match = sizeStr.match(/^([\d.]+)([BKMGTP]?)$/i);
 
   if (!match) return 0;
@@ -179,15 +183,15 @@ function getNetworkInfo(): any[] {
   for (const [name, ifaces] of Object.entries(interfaces)) {
     const info: any = {
       name,
-      addresses: []
+      addresses: [],
     };
 
-    ifaces?.forEach(iface => {
+    ifaces?.forEach((iface) => {
       info.addresses.push({
         family: iface.family,
         address: iface.address,
         netmask: iface.netmask,
-        mac: iface.mac
+        mac: iface.mac,
       });
     });
 
@@ -202,36 +206,41 @@ function getNetworkInfo(): any[] {
  */
 async function getProcessesWindows(): Promise<any> {
   return new Promise((resolve) => {
-    execFile('tasklist', ['/fo', 'csv', '/nh'], { encoding: 'utf8' }, (error: any, stdout: string) => {
-      if (error) {
-        resolve({
-          success: false,
-          error: `获取进程列表失败: ${error.message}`
-        });
-        return;
-      }
-
-      const lines = stdout.split('\n').filter(line => line.trim());
-      const processes = [];
-
-      for (const line of lines) {
-        const parts = parseCSVLine(line);
-        if (parts.length >= 4) {
-          processes.push({
-            name: parts[0]?.replace(/"/g, '') || '',
-            pid: parts[1]?.replace(/"/g, '') || '',
-            sessionName: parts[2]?.replace(/"/g, '') || '',
-            sessionNumber: parts[3]?.replace(/"/g, '') || '',
-            memUsage: parts[4]?.replace(/"/g, '') || ''
+    execFile(
+      'tasklist',
+      ['/fo', 'csv', '/nh'],
+      { encoding: 'utf8' },
+      (error: any, stdout: string) => {
+        if (error) {
+          resolve({
+            success: false,
+            error: `获取进程列表失败: ${error.message}`,
           });
+          return;
         }
-      }
 
-      resolve({
-        success: true,
-        data: processes.slice(0, 20)
-      });
-    });
+        const lines = stdout.split('\n').filter((line) => line.trim());
+        const processes = [];
+
+        for (const line of lines) {
+          const parts = parseCSVLine(line);
+          if (parts.length >= 4) {
+            processes.push({
+              name: parts[0]?.replace(/"/g, '') || '',
+              pid: parts[1]?.replace(/"/g, '') || '',
+              sessionName: parts[2]?.replace(/"/g, '') || '',
+              sessionNumber: parts[3]?.replace(/"/g, '') || '',
+              memUsage: parts[4]?.replace(/"/g, '') || '',
+            });
+          }
+        }
+
+        resolve({
+          success: true,
+          data: processes.slice(0, 20),
+        });
+      },
+    );
   });
 }
 
@@ -244,12 +253,12 @@ async function getProcessesUnix(): Promise<any> {
       if (error) {
         resolve({
           success: false,
-          error: `获取进程列表失败: ${error.message}`
+          error: `获取进程列表失败: ${error.message}`,
         });
         return;
       }
 
-      const lines = stdout.split('\n').filter(line => line.trim());
+      const lines = stdout.split('\n').filter((line) => line.trim());
       const processes = [];
 
       for (const line of lines.slice(0, 20)) {
@@ -261,14 +270,14 @@ async function getProcessesUnix(): Promise<any> {
             user: parts[0] || '',
             cpu: parts[2] || '',
             mem: parts[3] || '',
-            command: parts.slice(10).join(' ')
+            command: parts.slice(10).join(' '),
           });
         }
       }
 
       resolve({
         success: true,
-        data: processes
+        data: processes,
       });
     });
   });
@@ -295,7 +304,7 @@ function getSystemInfo(): any {
     hostname: os.hostname(),
     release: os.release(),
     type: os.type(),
-    uptime: formatUptime(os.uptime())
+    uptime: formatUptime(os.uptime()),
   };
 }
 
@@ -309,12 +318,12 @@ function getCurrentProcess(): any {
       rss: formatBytes(process.memoryUsage().rss),
       heapTotal: formatBytes(process.memoryUsage().heapTotal),
       heapUsed: formatBytes(process.memoryUsage().heapUsed),
-      external: formatBytes(process.memoryUsage().external)
+      external: formatBytes(process.memoryUsage().external),
     },
     cpuUsage: process.cpuUsage ? process.cpuUsage() : null,
     argv: process.argv,
     execPath: process.execPath,
-    cwd: process.cwd()
+    cwd: process.cwd(),
   };
 
   return procInfo;
@@ -333,8 +342,8 @@ async function getSystemLoad(): Promise<any> {
     data: {
       cpu,
       memory,
-      disk: disk.success ? disk.data : []
-    }
+      disk: disk.success ? disk.data : [],
+    },
   };
 }
 
@@ -403,7 +412,7 @@ async function monitorSystem(): Promise<any> {
     cpu: getCPUInfo(),
     memory: getMemoryInfo(),
     network: getNetworkInfo(),
-    process: getCurrentProcess()
+    process: getCurrentProcess(),
   };
 
   const diskResult = await getDiskInfo();
@@ -411,7 +420,7 @@ async function monitorSystem(): Promise<any> {
 
   return {
     success: true,
-    data: info
+    data: info,
   };
 }
 
@@ -426,5 +435,5 @@ export {
   getSystemLoad,
   monitorSystem,
   formatBytes,
-  formatUptime
+  formatUptime,
 };

@@ -240,7 +240,7 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
   }
 
   if (options.limit) {
-    const limit = parseInt(options.limit);
+    const limit = parseInt(options.limit, 10);
     if (isNaN(limit) || limit < 0) {
       return {
         success: false,
@@ -251,7 +251,7 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
   }
 
   if (options.offset) {
-    const offset = parseInt(options.offset);
+    const offset = parseInt(options.offset, 10);
     if (isNaN(offset) || offset < 0) {
       return {
         success: false,
@@ -545,8 +545,25 @@ async function getTableSchema(tableName: string): Promise<any> {
   }
 }
 
-async function executeTransaction(sqlStatements: string[]): Promise<any> {
-  for (const sql of sqlStatements) {
+/**
+ * 事务语句类型。
+ * - string：纯 SQL，无参数绑定（保留旧调用方式，向后兼容）
+ * - { sql, params? }：推荐形式，params 通过 prepare+bind 参数化绑定，
+ *   避免将值拼接进 SQL 字符串造成注入（与 executeSQL/insert/update 等保持一致）。
+ */
+type TransactionStatement = string | { sql: string; params?: any[] };
+
+function normalizeStatement(stmt: TransactionStatement): { sql: string; params: any[] } {
+  if (typeof stmt === 'string') {
+    return { sql: stmt, params: [] };
+  }
+  return { sql: stmt.sql, params: Array.isArray(stmt.params) ? stmt.params : [] };
+}
+
+async function executeTransaction(sqlStatements: TransactionStatement[]): Promise<any> {
+  const normalized = sqlStatements.map(normalizeStatement);
+
+  for (const { sql } of normalized) {
     // 用 containsDangerousStatement 按分号拆分逐条校验，防止
     // 'SELECT 1; DROP TABLE users' 这类多语句绕过（原 isDangerousSQL
     // 只看整段开头，SELECT 开头即放行）。
@@ -563,8 +580,20 @@ async function executeTransaction(sqlStatements: string[]): Promise<any> {
 
     database.run('BEGIN TRANSACTION');
 
-    for (const sql of sqlStatements) {
-      database.run(sql);
+    for (const { sql, params } of normalized) {
+      // 有参数时使用 prepare+bind 参数化执行，避免 SQL 注入；
+      // 无参数时沿用 database.run，保持原行为。
+      if (params.length > 0) {
+        const prepared = database.prepare(sql);
+        try {
+          prepared.bind(params);
+          while (prepared.step()) {}
+        } finally {
+          prepared.free();
+        }
+      } else {
+        database.run(sql);
+      }
     }
 
     database.run('COMMIT');

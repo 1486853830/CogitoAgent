@@ -147,8 +147,10 @@ export class FileStorage {
   async getById(id: any, idField: string = 'id'): Promise<any | null> {
     const data = await this.getData();
     const list = Array.isArray(data) ? data : [];
-    const numId = typeof id === 'string' ? parseInt(id) : id;
-    return list.find(item => item[idField] === numId) || null;
+    const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+    // 当 parseInt 结果为 NaN 时使用原始字符串 ID 做精确匹配
+    const lookupId = typeof id === 'string' && isNaN(numId) ? id : numId;
+    return list.find((item) => item[idField] === lookupId) || null;
   }
 
   /**
@@ -161,8 +163,9 @@ export class FileStorage {
   async update(id: any, updates: any, idField: string = 'id'): Promise<any | null> {
     const data = await this.getData();
     const list = Array.isArray(data) ? data : [];
-    const numId = typeof id === 'string' ? parseInt(id) : id;
-    const index = list.findIndex(item => item[idField] === numId);
+    const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+    const lookupId = typeof id === 'string' && isNaN(numId) ? id : numId;
+    const index = list.findIndex((item) => item[idField] === lookupId);
 
     if (index === -1) {
       return null;
@@ -182,8 +185,9 @@ export class FileStorage {
   async delete(id: any, idField: string = 'id'): Promise<boolean> {
     const data = await this.getData();
     const list = Array.isArray(data) ? data : [];
-    const numId = typeof id === 'string' ? parseInt(id) : id;
-    const index = list.findIndex(item => item[idField] === numId);
+    const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+    const lookupId = typeof id === 'string' && isNaN(numId) ? id : numId;
+    const index = list.findIndex((item) => item[idField] === lookupId);
 
     if (index === -1) {
       return false;
