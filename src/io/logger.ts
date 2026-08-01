@@ -10,7 +10,7 @@
  * 文件超过 maxBytes 时自动轮转：app.log -> app.log.1 -> app.log.2 ...
  */
 
-import { appendFileSync, statSync, renameSync, existsSync, mkdirSync } from 'fs';
+import { appendFileSync, statSync, renameSync, existsSync, mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
 
 const LOG_LEVELS: Record<string, number> = {
@@ -75,7 +75,12 @@ function rotateIfNeeded(): void {
     try {
       renameSync(LOG_FILE, `${LOG_FILE}.1`);
     } catch {
-      // 轮转失败：尝试清空主文件避免无限增长
+      // 轮转失败：清空主文件避免无限增长
+      try {
+        writeFileSync(LOG_FILE, '', 'utf-8');
+      } catch {
+        // 清空失败也忽略
+      }
     }
   } catch {
     // 轮转整体失败：忽略

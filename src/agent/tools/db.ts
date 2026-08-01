@@ -176,32 +176,37 @@ async function executeSQL(sql: string, params: unknown[] = []): Promise<QueryRes
 
     const stmt = database.prepare(sql);
 
-    if (params.length > 0) {
-      stmt.bind(params);
-    }
+    try {
+      if (params.length > 0) {
+        stmt.bind(params);
+      }
 
-    const results = [];
-    while (stmt.step()) {
-      results.push(stmt.getAsObject());
-    }
-    stmt.free();
+      const results = [];
+      while (stmt.step()) {
+        results.push(stmt.getAsObject());
+      }
+      stmt.free();
 
-    const changes = database.getRowsModified();
+      const changes = database.getRowsModified();
 
-    if (sql.trim().toUpperCase().startsWith('SELECT')) {
-      return {
-        success: true,
-        data: results,
-      };
-    } else {
-      await saveDB();
-      return {
-        success: true,
-        data: {
-          changes: changes,
-          lastID: database.lastInsertRowid ? database.lastInsertRowid() : null,
-        },
-      };
+      if (sql.trim().toUpperCase().startsWith('SELECT')) {
+        return {
+          success: true,
+          data: results,
+        };
+      } else {
+        await saveDB();
+        return {
+          success: true,
+          data: {
+            changes: changes,
+            lastID: database.lastInsertRowid ? database.lastInsertRowid() : null,
+          },
+        };
+      }
+    } catch (err: unknown) {
+      stmt.free();
+      throw err;
     }
   } catch (err: unknown) {
     return {
@@ -555,10 +560,15 @@ async function getTableSchema(tableName: string): Promise<QueryResult> {
     const database = await getDB();
     const results = [];
     const stmt = database.prepare(sql);
-    while (stmt.step()) {
-      results.push(stmt.getAsObject());
+    try {
+      while (stmt.step()) {
+        results.push(stmt.getAsObject());
+      }
+      stmt.free();
+    } catch (err: unknown) {
+      stmt.free();
+      throw err;
     }
-    stmt.free();
     return { success: true, data: results };
   } catch (err: unknown) {
     return {

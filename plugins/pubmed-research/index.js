@@ -351,7 +351,7 @@ TOOLS.push({
       if (articles.length === 0) return { success: false, error: '未找到该文献' };
 
       const a = articles[0];
-      const authors = a.authors.split(', ');
+      const authors = a.authors ? a.authors.split(', ') : [];
 
       let citation = '';
 

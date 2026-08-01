@@ -106,8 +106,14 @@ const _replyCallbacks = new Map<string, (reply: string) => void>();
 let _currentReplyKey: string | null = null;
 
 const MAX_CONSECUTIVE_CYCLES = 8;
+const MAX_REPLY_CALLBACKS = 100;
 
 function setReplyCallback(key: string, cb: (reply: string) => void): void {
+  if (_replyCallbacks.size >= MAX_REPLY_CALLBACKS) {
+    // 超过上限时删除最早设置的条目，防止内存泄漏
+    const firstKey = _replyCallbacks.keys().next().value;
+    if (firstKey !== undefined) _replyCallbacks.delete(firstKey);
+  }
   _replyCallbacks.set(key, cb);
 }
 
@@ -124,6 +130,7 @@ function deliverReply(reply: string): void {
 function extractCleanReply(text: string): string {
   return text
     .replace(/\[TOOL\][\s\S]*?\[\/TOOL\]/g, '')
+    .replace(/\[WAIT\]/g, '')
     .split('\n')
     .filter(
       (line) => !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
@@ -338,10 +345,12 @@ function handleUserInput(input: string, replyKey?: string): void {
         println('[成功] 对话历史已清空', 'green');
         setPendingConfirmation(null);
         state.current = STATE.THINKING;
+        scheduleNextCycle();
       } else if (response === 'n' || response === 'no' || response === '拒绝') {
         println('[取消] 操作已取消', 'gray');
         setPendingConfirmation(null);
         state.current = STATE.THINKING;
+        scheduleNextCycle();
       } else {
         println(
           `[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 取消`,
@@ -394,10 +403,8 @@ function handleUserInput(input: string, replyKey?: string): void {
       broadcast('agent-state', { state: 'thinking' });
       scheduleNextCycle();
     } else {
-      println('[取消] 没有消息，继续思考', 'gray');
-      state.current = STATE.THINKING;
-      broadcast('agent-state', { state: 'thinking' });
-      scheduleNextCycle();
+      println('[取消] 没有消息，返回等待输入', 'gray');
+      return;
     }
     return;
   }
@@ -440,7 +447,6 @@ async function streamAndAccumulateResponse(messages: Message[]): Promise<StreamR
     }
     const chunk = iterResult.value as StreamChunk;
     if (shouldStop) {
-      shouldStop = false;
       printBlank();
       return { fullResponse, usage, stopped: true };
     }
@@ -538,7 +544,8 @@ async function executeAllToolCalls(
 
     if (result.success) {
       const isEmpty =
-        !result.data ||
+        result.data === undefined ||
+        result.data === null ||
         (typeof result.data === 'string' && result.data.trim() === '') ||
         (Array.isArray(result.data) && result.data.length === 0) ||
         (typeof result.data === 'object' && Object.keys(result.data).length === 0);

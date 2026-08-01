@@ -112,7 +112,7 @@ TOOLS.push({
   fn: async (smiles, radius = 2, nBits = 2048) => {
     if (!smiles) return { success: false, error: '请输入 SMILES 字符串' };
     try {
-      const r = Math.max(1, parseInt(radius) || 2);
+      const r = Math.max(1, parseInt(radius) || (radius === 0 ? 0 : 2));
       const n = Math.max(32, Math.min(4096, parseInt(nBits) || 2048));
       const script = `
 import json, sys

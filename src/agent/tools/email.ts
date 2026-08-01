@@ -112,18 +112,25 @@ async function sendTemplateEmail(
   templateName: string,
   data: Record<string, unknown>,
 ): Promise<{ success: boolean; data?: string; error?: string }> {
+  const escapeHtml = (s: unknown): string =>
+    String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
   const templates: Record<string, { text: string; html: string }> = {
     welcome: {
       text: `欢迎使用 CogitoAgent！\n\n您好，感谢您的注册。\n\n用户名: ${data.username}\n邮箱: ${data.email}\n\n祝您使用愉快！`,
-      html: `<h1>欢迎使用 CogitoAgent！</h1><p>您好，感谢您的注册。</p><p>用户名: ${data.username}</p><p>邮箱: ${data.email}</p><p>祝您使用愉快！</p>`,
+      html: `<h1>欢迎使用 CogitoAgent！</h1><p>您好，感谢您的注册。</p><p>用户名: ${escapeHtml(data.username)}</p><p>邮箱: ${escapeHtml(data.email)}</p><p>祝您使用愉快！</p>`,
     },
     notification: {
       text: `通知\n\n${data.message}\n\n时间: ${data.time || new Date().toLocaleString()}`,
-      html: `<h2>通知</h2><p>${data.message}</p><p>时间: ${data.time || new Date().toLocaleString()}</p>`,
+      html: `<h2>通知</h2><p>${escapeHtml(data.message)}</p><p>时间: ${escapeHtml(data.time) || new Date().toLocaleString()}</p>`,
     },
     error: {
       text: `错误通知\n\n错误信息: ${data.error}\n\n堆栈: ${data.stack || 'N/A'}\n\n时间: ${new Date().toLocaleString()}`,
-      html: `<h2>错误通知</h2><p>错误信息: ${data.error}</p><p>堆栈: ${data.stack || 'N/A'}</p><p>时间: ${new Date().toLocaleString()}</p>`,
+      html: `<h2>错误通知</h2><p>错误信息: ${escapeHtml(data.error)}</p><p>堆栈: ${escapeHtml(data.stack) || 'N/A'}</p><p>时间: ${new Date().toLocaleString()}</p>`,
     },
   };
 

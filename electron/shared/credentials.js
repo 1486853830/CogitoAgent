@@ -32,6 +32,9 @@ let cachedKey = null;
 /**
  * 派生机器密钥（基于 hostname + username + appId + 固定 salt）
  * 缓存以避免重复 PBKDF2 计算。
+ *
+ * 注意：硬编码 salt + 机器特征派生密钥的保护强度等同于混淆。
+ * 对于更高安全要求的场景，建议使用专用的密钥管理服务（如 Keytar / 系统密钥链）。
  */
 function deriveMachineKey() {
   if (cachedKey) return cachedKey;

@@ -182,10 +182,9 @@ class AgentOrchestrator {
       agentId: tasks[i].agentId,
       task: tasks[i].task,
       success: r.status === 'fulfilled' && r.value.success,
-      result:
-        r.status === 'fulfilled'
-          ? r.value
-          : { error: (r as PromiseRejectedResult).reason?.message },
+      data: r.status === 'fulfilled' ? r.value.data : undefined,
+      error:
+        r.status === 'fulfilled' ? r.value.error : (r as PromiseRejectedResult).reason?.message,
     }));
   }
 
@@ -508,6 +507,7 @@ class AgentOrchestrator {
 
     for (let i = 0; i < this.maxIterations; i++) {
       agent.iterationCount = i + 1;
+      agent.state = 'thinking';
       this._broadcastClusterState();
 
       // 调用 LLM

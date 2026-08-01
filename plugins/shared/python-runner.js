@@ -61,6 +61,7 @@ async function detectPython() {
 export async function runPython(script, inputData, timeout = 30000) {
   const cmd = await detectPython();
   return new Promise((resolve, reject) => {
+    let killed = false;
     const child = execFile(
       cmd,
       ['-c', script],
@@ -75,6 +76,18 @@ export async function runPython(script, inputData, timeout = 30000) {
         }
       },
     );
+    // 超时后先 SIGTERM，再强制 SIGKILL（taskkill /F），防止 C 扩展僵尸进程
+    child.on('timeout', () => {
+      if (killed) return;
+      killed = true;
+      setTimeout(() => {
+        try {
+          execFile('taskkill', ['/f', '/t', '/pid', String(child.pid)]);
+        } catch (_) {
+          // 进程可能已结束
+        }
+      }, 1000);
+    });
     if (child.stdin) {
       // 避免 EPIPE 等流错误导致进程崩溃
       child.stdin.on('error', () => {});

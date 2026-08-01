@@ -297,7 +297,7 @@ async function phFromH(h: number): Promise<{ success: boolean; data?: string; er
     let type;
     if (ph < 0) type = '强酸';
     else if (ph < 7) type = '酸性';
-    else if (ph === 7) type = '中性';
+    else if (Math.abs(ph - 7) < 1e-10) type = '中性';
     else if (ph <= 14) type = '碱性';
     else type = '强碱';
 

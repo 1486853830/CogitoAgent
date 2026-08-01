@@ -1,18 +1,21 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { resolveInWorkspace } from './path.ts';
 
 /**
  * 读取 CSV 文件
  */
-async function readCSV(
-  filePath: string,
-): Promise<{
+async function readCSV(filePath: string): Promise<{
   success: boolean;
   data?: { headers: string[]; rows: Record<string, string>[] };
   error?: string;
 }> {
   try {
-    const content = await fs.readFile(filePath, 'utf-8');
+    const resolvedPath = resolveInWorkspace(filePath);
+    if (!resolvedPath) {
+      return { success: false, error: `路径不在工作区内: ${filePath}` };
+    }
+    const content = await fs.readFile(resolvedPath, 'utf-8');
     const lines = content.split('\n').filter((line) => line.trim());
 
     if (lines.length === 0) {
@@ -83,7 +86,11 @@ async function writeCSV(
   rows: Record<string, string>[],
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    const dir = path.dirname(filePath);
+    const resolvedPath = resolveInWorkspace(filePath);
+    if (!resolvedPath) {
+      return { success: false, error: `路径不在工作区内: ${filePath}` };
+    }
+    const dir = path.dirname(resolvedPath);
     if (
       !(await fs
         .access(dir)
@@ -106,11 +113,11 @@ async function writeCSV(
       lines.push(values.join(','));
     }
 
-    await fs.writeFile(filePath, lines.join('\n'), 'utf-8');
+    await fs.writeFile(resolvedPath, lines.join('\n'), 'utf-8');
 
     return {
       success: true,
-      data: `CSV 文件已写入: ${filePath}`,
+      data: `CSV 文件已写入: ${resolvedPath}`,
     };
   } catch (e: unknown) {
     return {
@@ -127,7 +134,11 @@ async function readJSON(
   filePath: string,
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
   try {
-    const content = await fs.readFile(filePath, 'utf-8');
+    const resolvedPath = resolveInWorkspace(filePath);
+    if (!resolvedPath) {
+      return { success: false, error: `路径不在工作区内: ${filePath}` };
+    }
+    const content = await fs.readFile(resolvedPath, 'utf-8');
     const data = JSON.parse(content);
 
     return {
@@ -151,7 +162,11 @@ async function writeJSON(
   pretty: boolean = true,
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    const dir = path.dirname(filePath);
+    const resolvedPath = resolveInWorkspace(filePath);
+    if (!resolvedPath) {
+      return { success: false, error: `路径不在工作区内: ${filePath}` };
+    }
+    const dir = path.dirname(resolvedPath);
     if (
       !(await fs
         .access(dir)
@@ -163,11 +178,11 @@ async function writeJSON(
 
     const content = pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data);
 
-    await fs.writeFile(filePath, content, 'utf-8');
+    await fs.writeFile(resolvedPath, content, 'utf-8');
 
     return {
       success: true,
-      data: `JSON 文件已写入: ${filePath}`,
+      data: `JSON 文件已写入: ${resolvedPath}`,
     };
   } catch (e: unknown) {
     return {

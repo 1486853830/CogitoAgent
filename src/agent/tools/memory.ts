@@ -19,7 +19,12 @@ function safeParseId(id: any): number | null {
  */
 async function loadMemory(): Promise<void> {
   try {
-    if (await fs.access(MEMORY_FILE).then(() => true).catch(() => false)) {
+    if (
+      await fs
+        .access(MEMORY_FILE)
+        .then(() => true)
+        .catch(() => false)
+    ) {
       const data = await fs.readFile(MEMORY_FILE, 'utf-8');
       memories = JSON.parse(data);
     }
@@ -37,7 +42,12 @@ async function loadMemory(): Promise<void> {
 async function saveMemory(): Promise<boolean> {
   const dir = path.dirname(MEMORY_FILE);
   try {
-    if (!(await fs.access(dir).then(() => true).catch(() => false))) {
+    if (
+      !(await fs
+        .access(dir)
+        .then(() => true)
+        .catch(() => false))
+    ) {
       await fs.mkdir(dir, { recursive: true });
     }
     await fs.writeFile(MEMORY_FILE, JSON.stringify(memories, null, 2), 'utf-8');
@@ -46,14 +56,18 @@ async function saveMemory(): Promise<boolean> {
     const error = new Error(`[记忆] 保存失败: ${e.message}`);
     (error as any).code = 'MEMORY_SAVE_FAILED';
     console.error(error.message);
-    throw error;  // 重新抛出错误，让调用者知道保存失败
+    throw error; // 重新抛出错误，让调用者知道保存失败
   }
 }
 
 /**
  * 添加记忆
  */
-async function addMemory(content: string, tags: any[] = [], category: string = 'general'): Promise<any> {
+async function addMemory(
+  content: string,
+  tags: any[] = [],
+  category: string = 'general',
+): Promise<any> {
   await loadMemory();
 
   // 参数验证和转换
@@ -62,11 +76,11 @@ async function addMemory(content: string, tags: any[] = [], category: string = '
   const memory = {
     id: Date.now(),
     content,
-    tags: processedTags.map(t => String(t).toLowerCase()),
+    tags: processedTags.map((t) => String(t).toLowerCase()),
     category: String(category).toLowerCase(),
     createdAt: new Date().toISOString(),
     accessedAt: new Date().toISOString(),
-    accessCount: 0
+    accessCount: 0,
   };
 
   memories.push(memory);
@@ -74,7 +88,7 @@ async function addMemory(content: string, tags: any[] = [], category: string = '
 
   return {
     success: true,
-    data: memory
+    data: memory,
   };
 }
 
@@ -87,7 +101,7 @@ async function searchMemory(query: string, limit: number = 10): Promise<any> {
   const queryLower = query.toLowerCase();
 
   const results = memories
-    .map(memory => {
+    .map((memory) => {
       let score = 0;
 
       if (memory.content.toLowerCase().includes(queryLower)) {
@@ -106,12 +120,12 @@ async function searchMemory(query: string, limit: number = 10): Promise<any> {
 
       return { ...memory, score };
     })
-    .filter(m => m.score > 0)
+    .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
-  results.forEach(r => {
-    const idx = memories.findIndex(m => m.id === r.id);
+  results.forEach((r) => {
+    const idx = memories.findIndex((m) => m.id === r.id);
     if (idx !== -1) {
       memories[idx].accessCount++;
       memories[idx].accessedAt = new Date().toISOString();
@@ -122,7 +136,7 @@ async function searchMemory(query: string, limit: number = 10): Promise<any> {
 
   return {
     success: true,
-    data: results
+    data: results,
   };
 }
 
@@ -134,12 +148,12 @@ async function getAllMemories(category: string | null = null): Promise<any> {
 
   let filtered = memories;
   if (category) {
-    filtered = filtered.filter(m => m.category === category.toLowerCase());
+    filtered = filtered.filter((m) => m.category === category.toLowerCase());
   }
 
   return {
     success: true,
-    data: filtered
+    data: filtered,
   };
 }
 
@@ -153,15 +167,15 @@ async function getMemory(id: any): Promise<any> {
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const memory = memories.find(m => m.id === numId);
+  const memory = memories.find((m) => m.id === numId);
   if (!memory) {
     return {
       success: false,
-      error: `记忆不存在: ${id}`
+      error: `记忆不存在: ${id}`,
     };
   }
 
@@ -171,7 +185,7 @@ async function getMemory(id: any): Promise<any> {
 
   return {
     success: true,
-    data: memory
+    data: memory,
   };
 }
 
@@ -185,15 +199,15 @@ async function updateMemory(id: any, updates: any): Promise<any> {
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const memory = memories.find(m => m.id === numId);
+  const memory = memories.find((m) => m.id === numId);
   if (!memory) {
     return {
       success: false,
-      error: `记忆不存在: ${id}`
+      error: `记忆不存在: ${id}`,
     };
   }
 
@@ -206,7 +220,7 @@ async function updateMemory(id: any, updates: any): Promise<any> {
 
   return {
     success: true,
-    data: memory
+    data: memory,
   };
 }
 
@@ -220,15 +234,15 @@ async function deleteMemory(id: any): Promise<any> {
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const index = memories.findIndex(m => m.id === numId);
+  const index = memories.findIndex((m) => m.id === numId);
   if (index === -1) {
     return {
       success: false,
-      error: `记忆不存在: ${id}`
+      error: `记忆不存在: ${id}`,
     };
   }
 
@@ -237,7 +251,7 @@ async function deleteMemory(id: any): Promise<any> {
 
   return {
     success: true,
-    data: `记忆已删除`
+    data: `记忆已删除`,
   };
 }
 
@@ -251,12 +265,10 @@ async function getMemoryStats(): Promise<any> {
     total: memories.length,
     byCategory: {},
     topTags: {},
-    mostAccessed: memories
-      .sort((a, b) => b.accessCount - a.accessCount)
-      .slice(0, 5)
+    mostAccessed: [...memories].sort((a, b) => b.accessCount - a.accessCount).slice(0, 5),
   };
 
-  memories.forEach(memory => {
+  memories.forEach((memory) => {
     stats.byCategory[memory.category] = (stats.byCategory[memory.category] || 0) + 1;
 
     memory.tags.forEach((tag: string) => {
@@ -271,7 +283,7 @@ async function getMemoryStats(): Promise<any> {
 
   return {
     success: true,
-    data: stats
+    data: stats,
   };
 }
 
@@ -285,21 +297,21 @@ async function getRelatedMemories(id: any, limit: number = 5): Promise<any> {
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const memory = memories.find(m => m.id === numId);
+  const memory = memories.find((m) => m.id === numId);
   if (!memory) {
     return {
       success: false,
-      error: `记忆不存在: ${id}`
+      error: `记忆不存在: ${id}`,
     };
   }
 
   const related = memories
-    .filter(m => m.id !== numId)
-    .map(m => {
+    .filter((m) => m.id !== numId)
+    .map((m) => {
       let score = 0;
       memory.tags.forEach((tag: string) => {
         if (m.tags.includes(tag)) {
@@ -311,13 +323,13 @@ async function getRelatedMemories(id: any, limit: number = 5): Promise<any> {
       }
       return { ...m, score };
     })
-    .filter(m => m.score > 0)
+    .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
   return {
     success: true,
-    data: related
+    data: related,
   };
 }
 
@@ -330,7 +342,7 @@ async function clearMemory(): Promise<any> {
 
   return {
     success: true,
-    data: '所有记忆已清空'
+    data: '所有记忆已清空',
   };
 }
 
@@ -343,5 +355,5 @@ export {
   deleteMemory,
   getMemoryStats,
   getRelatedMemories,
-  clearMemory
+  clearMemory,
 };

@@ -278,4 +278,4 @@ async function formatCode(code: string, language: string = 'javascript'): Promis
   }
 }
 
-export { executeCode, executeFile, runJavaScript, runPython, formatCode };
+export { executeCode, executeFile, runJavaScript, runPython, formatCode, findPythonExecutable };

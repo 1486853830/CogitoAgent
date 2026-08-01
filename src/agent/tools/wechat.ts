@@ -43,6 +43,7 @@ let wechatState: WechatState = {
 let messageHandler:
   ((msg: { from: string; text: string; contextToken: string; raw: unknown }) => void) | null = null;
 let pollingActive = false;
+let pollingGeneration = 0;
 
 /**
  * Custom API POST — bypasses SDK's apiFetch which sets Content-Length
@@ -260,10 +261,12 @@ async function startWechatPolling(
 
   messageHandler = handler;
   pollingActive = true;
+  pollingGeneration++;
+  const currentGeneration = pollingGeneration;
   let getUpdatesBuf = '';
 
   const pollLoop = async () => {
-    if (!pollingActive) return;
+    if (!pollingActive || currentGeneration !== pollingGeneration) return;
 
     try {
       const data = await wechatApiPost('ilink/bot/getupdates', {
