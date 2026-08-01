@@ -1,22 +1,26 @@
-# CogitoAgent
+<div align="center">
+
+# 🧠 CogitoAgent
 
 > **Think Continuously · Act Autonomously · Stay Private**
+>
+> _Your AI agent that lives in your computer — not in the cloud._
 
-Cogito, ergo sum — CogitoAgent is not just a tool; it is your autonomous thinking partner in your local environment.
+[![Gitee](https://img.shields.io/badge/Gitee-国内镜像-c71d23?style=flat-square&logo=gitee)](https://gitee.com/cnt-code/cogito-agent)
+[![GitHub](https://img.shields.io/badge/GitHub-国际镜像-181717?style=flat-square&logo=github)](https://github.com/SnowLeopard-io/CogitoAgent)
+[![Version](https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square)](<>)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript)](<>)
+[![Node](https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js)](<>)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](<>)
+[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square)](<>)
 
-**CogitoAgent** is a cloud-driven, locally-executed agent framework that integrates file management, knowledge mining, system operations, code execution, and web connectivity. It runs directly within the working directory configured by the user, powered by the LLM API of your choice for thinking and decision-making — **your workspace files stay local**, keeping your file assets secure while providing a continuously operating intelligent assistant service.
+</div>
+
+Cogito, ergo sum — **CogitoAgent is not just a tool; it is your autonomous AI agent that lives in your computer.**
+
+Unlike cloud-dependent agents that upload your files to third-party servers, CogitoAgent runs directly in your local workspace. Powered by the LLM API of your choice, it **thinks continuously**, **explores autonomously**, and **executes 200+ tools** — all while keeping your data private and secure.
 
 ![CogitoAgent dashboard](introduction/electron-dashboard.png)
-
-Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Continuously**, **Explore Autonomously**, and **Execute Tools**, capable of proactively discovering and organizing your local file assets in the background, with additional capabilities available through an extensible toolset.
-
-<p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square" alt="Version"></a>
-  <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript" alt="TypeScript"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js" alt="Node"></a>
-  <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=flat-square" alt="Status"></a>
-</p>
 
 ---
 
@@ -37,6 +41,26 @@ Unlike traditional chatbots, CogitoAgent possesses the ability to **Think Contin
 | **Agent Cluster**               | Sub-agent creation, task delegation, and multi-agent collaboration                                                                                                      |
 | **Monitor Panel**               | Dedicated window for real-time cluster topology, thought chain, and tool stats                                                                                          |
 | **WeChat Integration**          | QR code login, message sending/receiving, dedicated session, tool bubble display                                                                                        |
+
+### Comparison with Other AI Agents
+
+| Feature                              |   CogitoAgent    |     AutoGPT      |  Claude Code  |      Cline       |
+| ------------------------------------ | :--------------: | :--------------: | :-----------: | :--------------: |
+| **Privacy (files stay local)**       |        ✅        |        ❌        |      ❌       |        ⚠️        |
+| **Continuous thinking (auto-cycle)** |      ✅ 3s       |        ❌        |      ❌       |        ❌        |
+| **Desktop GUI (Electron)**           |        ✅        |        ❌        |      ❌       |        ❌        |
+| **MCP Protocol support**             |    ✅ Server     |        ❌        |   ✅ Client   |    ✅ Client     |
+| **Plugin system**                    | ✅ Dynamic load  |        ✅        |      ❌       |        ❌        |
+| **Agent Cluster (sub-agents)**       |        ✅        |        ❌        |      ❌       |        ❌        |
+| **WeChat integration**               |        ✅        |        ❌        |      ❌       |        ❌        |
+| **Code sandbox (isolated-vm)**       |        ✅        |        ❌        |      ❌       |        ❌        |
+| **200+ built-in tools**              |        ✅        |        ❌        |      ❌       |        ❌        |
+| **Multi-session + auto-compress**    |        ✅        |        ❌        |      ❌       |        ❌        |
+| **Docker support**                   |        ✅        |        ✅        |      ❌       |        ✅        |
+| **Open source**                      |  ✅ Apache 2.0   |      ✅ MIT      |      ❌       |  ✅ Apache 2.0   |
+| **Free to use**                      | ✅ (BYO LLM key) | ✅ (BYO LLM key) | ❌ (paid API) | ✅ (BYO LLM key) |
+
+> **Privacy note**: CogitoAgent never uploads your files to any cloud. Only conversation context is sent to the LLM API you specify. Your workspace stays yours.
 
 ---
 
