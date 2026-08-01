@@ -309,11 +309,12 @@ async function executeTool(
 function handleUserInput(input: string, replyKey?: string): void {
   consecutiveCycleCount = 0;
 
-  // 记录本轮回复目标：微信消息附带发送方作为 key，按来源隔离回调；
-  // 非微信输入（桌面/CLI）清空回复目标，回复走终端而非微信通道。
+  // 记录本轮回复目标：调用方传入 replyKey 时按来源隔离回调（微信通道）；
+  // 未传入时一律清空，回复走终端而非微信通道——不依赖输入格式判断，
+  // 避免微信格式消息漏传 replyKey 时 _currentReplyKey 保留旧值导致回复错发。
   if (replyKey !== undefined) {
     _currentReplyKey = replyKey;
-  } else if (!input.startsWith('[微信消息')) {
+  } else {
     _currentReplyKey = null;
   }
 
