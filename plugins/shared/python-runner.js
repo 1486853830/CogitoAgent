@@ -1,0 +1,111 @@
+/**
+ * 共享工具：Python 脚本执行与输出路径校验
+ * 供 biopython-bio、rdkit-chem 等插件复用，避免重复实现
+ *
+ * 安全设计：
+ * - 所有用户输入通过 stdin 传递 JSON，不使用字符串拼接，避免命令注入
+ * - 使用异步 execFile（非 execFileSync），不阻塞事件循环
+ * - 错误信息保留 stderr，便于排查
+ * - Python 命令启动时探测一次并缓存（python3 / python / py）
+ */
+
+import path from 'path';
+import { execFile } from 'child_process';
+
+// 缓存的 Python 命令，首次调用时探测；null 表示尚未探测
+let pythonCmd = null;
+const PYTHON_CANDIDATES = ['python3', 'python', 'py'];
+
+/**
+ * 探测单个候选命令是否可用（能成功返回 --version 即可）
+ * 注意：Python 2 把 --version 写到 stderr，Python 3 写到 stdout，两者都要接受
+ */
+function probe(cmd) {
+  return new Promise((resolve) => {
+    execFile(cmd, ['--version'], { timeout: 5000 }, (err, stdout, stderr) => {
+      if (err) {
+        resolve(false);
+        return;
+      }
+      const out = (stdout || '') + (stderr || '');
+      resolve(out.length > 0);
+    });
+  });
+}
+
+/**
+ * 探测可用的 Python 可执行文件并缓存结果
+ * 遍历候选列表，返回第一个能成功执行 --version 的命令
+ * 若全部失败，回退到 'python'（执行时若失败由调用方处理）
+ */
+async function detectPython() {
+  if (pythonCmd !== null) return pythonCmd;
+  for (const cmd of PYTHON_CANDIDATES) {
+    if (await probe(cmd)) {
+      pythonCmd = cmd;
+      return pythonCmd;
+    }
+  }
+  // 没找到任何候选，回退到 python（执行时若失败由调用方处理）
+  pythonCmd = 'python';
+  return pythonCmd;
+}
+
+/**
+ * 异步执行 Python 脚本，通过 stdin 传递 JSON 参数
+ * @param {string} script - Python 脚本（不含用户输入）
+ * @param {object} inputData - 传递给脚本的 JSON 数据
+ * @param {number} timeout - 超时毫秒
+ * @returns {Promise<string>} - 脚本 stdout 输出
+ */
+export async function runPython(script, inputData, timeout = 30000) {
+  const cmd = await detectPython();
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      cmd,
+      ['-c', script],
+      { timeout, maxBuffer: 1024 * 1024 * 10, encoding: 'utf8' },
+      (error, stdout, stderr) => {
+        if (error) {
+          // 错误信息保留 stderr，便于排查（C5）
+          const detail = stderr ? stderr.trim() : error.message;
+          reject(new Error(`Failed to run Python: ${detail}`));
+        } else {
+          resolve(stdout);
+        }
+      },
+    );
+    if (child.stdin) {
+      // 避免 EPIPE 等流错误导致进程崩溃
+      child.stdin.on('error', () => {});
+      child.stdin.end(JSON.stringify(inputData || {}));
+    }
+  });
+}
+
+/**
+ * 校验输出路径：拒绝绝对路径和 .. 路径遍历，可选校验扩展名
+ * @param {string} p - 输出路径
+ * @param {string} [allowedExt] - 允许的扩展名（如 '.png'）
+ */
+export function validateOutputPath(p, allowedExt) {
+  if (!p || typeof p !== 'string') throw new Error('输出路径不能为空');
+  // 拒绝绝对路径和 .. 遍历
+  if (path.isAbsolute(p) || p.includes('..')) {
+    throw new Error('输出路径必须为相对路径且不能包含 ..');
+  }
+  if (allowedExt && !p.toLowerCase().endsWith(allowedExt.toLowerCase())) {
+    throw new Error(`输出路径必须以 ${allowedExt} 结尾`);
+  }
+}
+
+/**
+ * 检查 Python 是否可用（忽略缓存，真实探测所有候选）
+ * @returns {Promise<boolean>}
+ */
+export async function checkPython() {
+  for (const cmd of PYTHON_CANDIDATES) {
+    if (await probe(cmd)) return true;
+  }
+  return false;
+}

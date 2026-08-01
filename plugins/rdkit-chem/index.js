@@ -7,38 +7,9 @@
  * 彻底避免命令注入风险。
  */
 
+import { runPython, validateOutputPath } from '../shared/python-runner.js';
+
 const TOOLS = [];
-
-/**
- * 安全执行 Python 脚本，通过 stdin 传递 JSON 参数
- * @param {string} script - Python 脚本（不含用户输入）
- * @param {object} inputData - 传递给脚本的 JSON 数据
- * @param {number} timeout - 超时毫秒
- */
-async function runPython(script, inputData, timeout = 30000) {
-  try {
-    const { execFileSync } = await import('child_process');
-    return execFileSync('python', ['-c', script], {
-      encoding: 'utf8',
-      timeout,
-      input: JSON.stringify(inputData),
-    });
-  } catch (error) {
-    throw new Error(`Failed to run Python: ${error.message}`);
-  }
-}
-
-// ============================================
-// 辅助函数：检查 RDKit 是否可用
-// ============================================
-async function checkRdkit() {
-  try {
-    await runPython(`from rdkit import Chem; print("ok")`, {});
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // ============================================
 // 工具：分子基本信息
@@ -103,6 +74,8 @@ TOOLS.push({
     if (!smiles) return { success: false, error: '请输入 SMILES 字符串' };
     if (!outputPath) return { success: false, error: '请指定输出文件路径' };
     try {
+      // 校验输出路径，防止路径遍历
+      validateOutputPath(outputPath, '.png');
       const script = `
 import json, sys, os
 from rdkit import Chem
@@ -258,6 +231,7 @@ else:
 export default TOOLS;
 
 export const metadata = {
+  // name 为简短名（与目录名一致）；package.json.name 使用带前缀的 npm 风格 cogito-plugin-rdkit-chem
   name: 'rdkit-chem',
   version: '1.0.0',
   author: 'CogitoAgent AI for Science',

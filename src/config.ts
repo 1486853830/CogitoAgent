@@ -119,7 +119,7 @@ function loadEnvFile(): void {
             value = value.slice(1, -1);
           }
         }
-        process.env[key] = value;
+        if (process.env[key] === undefined) process.env[key] = value;
       }
     } catch (e) {
       console.error(`[配置] 读取 .env 文件失败: ${(e as Error).message}`);
@@ -305,6 +305,8 @@ function deepMerge(
 }
 
 function loadConfig(): Config {
+  // 缓存短路：避免每次调用都读盘解析。需刷新时调用 reloadConfig()。
+  if (config) return config;
   try {
     const configFile = getConfigFile();
     if (existsSync(configFile)) {
@@ -345,6 +347,15 @@ function loadConfig(): Config {
   }
 
   return config;
+}
+
+/**
+ * 强制刷新配置缓存：清空缓存后重新执行 loadConfig。
+ * 供 saveConfig / setup 保存配置后需要立即感知新值时调用。
+ */
+function reloadConfig(): Config {
+  config = null;
+  return loadConfig();
 }
 
 function sanitizeConfig(configInput: Config): Config {
@@ -401,6 +412,7 @@ function isConfigured(): boolean {
 
 export {
   loadConfig,
+  reloadConfig,
   loadEnvConfig,
   saveConfig,
   isConfigured,

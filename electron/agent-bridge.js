@@ -26,7 +26,7 @@ function setUserDataDir(dir) {
  * 连接 WebSocket 服务
  */
 function connect() {
-  if (ws && ws.readyState === WebSocket.OPEN) return;
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
 
   console.log('[AgentBridge] 正在连接 Agent...');
   ws = new WebSocket(WS_URL);
@@ -51,10 +51,12 @@ function connect() {
             fs.mkdirSync(path.dirname(metaPath), { recursive: true });
             const tempFile = metaPath + '.tmp';
             fs.writeFileSync(tempFile, JSON.stringify(msg.meta, null, 2), 'utf-8');
-            if (fs.existsSync(metaPath)) {
-              fs.unlinkSync(metaPath);
+            try {
+              fs.renameSync(tempFile, metaPath);
+            } catch {
+              fs.copyFileSync(tempFile, metaPath);
+              fs.unlinkSync(tempFile);
             }
-            fs.renameSync(tempFile, metaPath);
             console.log('[AgentBridge] 会话元数据已更新');
             connectedWindows.forEach((win) => {
               if (!win.isDestroyed()) {

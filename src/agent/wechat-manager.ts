@@ -8,10 +8,15 @@ import {
   setWechatSessionId,
   addWechatMessage,
   getWechatMessages,
-  wechatState
+  wechatState,
 } from './tools/wechat.ts';
 import { handleUserInput, setReplyCallback } from './Agent.ts';
-import { getOrCreateWechatSession, switchSession, getCurrentSession, setConversationHistory } from './session.ts';
+import {
+  getOrCreateWechatSession,
+  switchSession,
+  getCurrentSession,
+  setConversationHistory,
+} from './session.ts';
 import { broadcast } from '../io/ws-server.ts';
 
 interface WechatMessage {
@@ -27,6 +32,8 @@ interface SessionData {
 
 const WECHAT_SESSIONS = new Map<string, SessionData>();
 
+let cleanupInterval: ReturnType<typeof setInterval> | null = null;
+
 function syncWechatHistoryToSession(): void {
   const msgs = getWechatMessages();
   const history: Array<{ role: string; content: string }> = [];
@@ -34,12 +41,12 @@ function syncWechatHistoryToSession(): void {
     if (msg.direction === 'received') {
       history.push({
         role: 'user',
-        content: `[微信消息 来自 ${msg.from}] ${msg.text}`
+        content: `[微信消息 来自 ${msg.from}] ${msg.text}`,
       });
     } else if (msg.direction === 'sent') {
       history.push({
         role: 'assistant',
-        content: msg.text
+        content: msg.text,
       });
     }
   }
@@ -67,7 +74,7 @@ async function handleWechatMessage(message: WechatMessage): Promise<void> {
     direction: 'received',
     from,
     text,
-    timestamp
+    timestamp,
   });
 
   if (text.trim() === '/new') {
@@ -81,7 +88,12 @@ async function handleWechatMessage(message: WechatMessage): Promise<void> {
     switchSession(wechatSid);
     syncWechatHistoryToSession();
     broadcast('wechat-state', {
-      data: { connected: true, accountId: wechatState.accountId, polling: true, sessionId: wechatSid }
+      data: {
+        connected: true,
+        accountId: wechatState.accountId,
+        polling: true,
+        sessionId: wechatSid,
+      },
     });
   }
 
@@ -102,7 +114,7 @@ async function handleWechatMessage(message: WechatMessage): Promise<void> {
         direction: 'sent',
         from,
         text: replyText,
-        timestamp: replyTimestamp
+        timestamp: replyTimestamp,
       });
     }
   });
@@ -131,8 +143,8 @@ async function initWechatChannel(): Promise<void> {
         data: {
           connected: true,
           accountId: status.data.accountId,
-          polling: true
-        }
+          polling: true,
+        },
       });
     } else {
       console.error('[微信通道] 启动消息轮询失败:', result.error);
@@ -143,8 +155,8 @@ async function initWechatChannel(): Promise<void> {
       data: {
         connected: false,
         accountId: null,
-        polling: false
-      }
+        polling: false,
+      },
     });
   }
 }
@@ -160,8 +172,8 @@ async function manualLoginWechat(): Promise<any> {
           connected: true,
           accountId: wechatState.accountId,
           polling: false,
-          sessionId
-        }
+          sessionId,
+        },
       });
 
       setTimeout(async () => {
@@ -173,8 +185,8 @@ async function manualLoginWechat(): Promise<any> {
                 connected: true,
                 accountId: wechatState.accountId,
                 polling: true,
-                sessionId
-              }
+                sessionId,
+              },
             });
           }
         } catch (e: any) {
@@ -186,8 +198,8 @@ async function manualLoginWechat(): Promise<any> {
         data: {
           connected: false,
           accountId: null,
-          polling: false
-        }
+          polling: false,
+        },
       });
     }
 
@@ -198,8 +210,8 @@ async function manualLoginWechat(): Promise<any> {
       data: {
         connected: false,
         accountId: null,
-        polling: false
-      }
+        polling: false,
+      },
     });
     return { success: false, error: e.message };
   }
@@ -213,8 +225,8 @@ async function manualLogoutWechat(): Promise<any> {
     data: {
       connected: false,
       accountId: null,
-      polling: false
-    }
+      polling: false,
+    },
   });
 
   return result;
@@ -240,9 +252,20 @@ function cleanupInactiveSessions(maxAgeMs = 30 * 60 * 1000): void {
   }
 }
 
-setInterval(() => {
-  cleanupInactiveSessions();
-}, 5 * 60 * 1000);
+cleanupInterval = setInterval(
+  () => {
+    cleanupInactiveSessions();
+  },
+  5 * 60 * 1000,
+);
+cleanupInterval.unref();
+
+export function stopWechatCleanup(): void {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
+}
 
 export {
   initWechatChannel,
@@ -250,5 +273,5 @@ export {
   manualLogoutWechat,
   getWechatStatus,
   getWechatSessionCount,
-  WECHAT_SESSIONS
+  WECHAT_SESSIONS,
 };

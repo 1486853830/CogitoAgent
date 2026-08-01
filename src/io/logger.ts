@@ -2,6 +2,10 @@
  * 日志模块
  * 支持分级输出：DEBUG、INFO、WARN、ERROR
  * 替换 console.log，提供统一的日志管理
+ *
+ * 已知限制：当前仅输出到 console，无文件落盘能力。完整文件 transport 涉及
+ * 轮转/异步写入/路径管理等架构性改动，需单独迭代实现。
+ * TODO(B15): 增加可选的文件 transport 以支持持久化日志。
  */
 
 const LOG_LEVELS: Record<string, number> = {

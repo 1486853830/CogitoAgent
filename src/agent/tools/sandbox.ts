@@ -542,11 +542,13 @@ async function runPythonSandbox(code: string): Promise<any> {
       const cfg = loadConfig();
       const scientificMode = cfg.code?.scientificMode === true;
 
-      const secureEnv: any = {
-        ...process.env,
+      const secureEnv: Record<string, string | undefined> = {
+        HOME: process.env.HOME || process.env.USERPROFILE || '',
+        TMPDIR: os.tmpdir(),
+        TEMP: os.tmpdir(),
         PYTHONUNBUFFERED: '1',
-        PYTHONHASHSEED: '0',
         PYTHONDONTWRITEBYTECODE: '1',
+        PYTHONHASHSEED: '0',
         PATH: process.env.PATH || '',
       };
 

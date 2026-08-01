@@ -34,7 +34,7 @@ const ThoughtManager = {
     if (data.type === 'add') {
       this.trace.push(data.step);
     } else if (data.type === 'update') {
-      const idx = this.trace.findIndex(s => s.id === data.step.id);
+      const idx = this.trace.findIndex((s) => s.id === data.step.id);
       if (idx !== -1) this.trace[idx] = { ...this.trace[idx], ...data.step };
     } else if (data.type === 'clear') {
       this.trace = [];
@@ -51,15 +51,16 @@ const ThoughtManager = {
       return;
     }
 
-    el.innerHTML = this.trace.map(step => {
-      const details = step.details || {};
-      const detailsText = Object.entries(details)
-        .filter(([k]) => k !== 'success' && k !== 'isEmpty' && k !== 'error' && k !== 'args')
-        .map(([k, v]) => `${k}: ${typeof v === 'number' ? v : JSON.stringify(v).slice(0, 30)}`)
-        .join(', ');
-      const argsText = details.args ? JSON.stringify(details.args).slice(0, 50) : '';
+    el.innerHTML = this.trace
+      .map((step) => {
+        const details = step.details || {};
+        const detailsText = Object.entries(details)
+          .filter(([k]) => k !== 'success' && k !== 'isEmpty' && k !== 'error' && k !== 'args')
+          .map(([k, v]) => `${k}: ${typeof v === 'number' ? v : JSON.stringify(v).slice(0, 30)}`)
+          .join(', ');
+        const argsText = details.args ? JSON.stringify(details.args).slice(0, 50) : '';
 
-      return `
+        return `
         <div class="thought-step ${step.status}">
           <div class="thought-step-content">
             <div class="thought-step-name">${SharedUtils.escapeHtml(step.name)}</div>
@@ -71,7 +72,8 @@ const ThoughtManager = {
           </div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
 
     el.scrollTop = el.scrollHeight;
   },
@@ -127,16 +129,28 @@ const StatsManager = {
     if (!this.chart) return;
 
     const categoryMap = {
-      file: '文件', web: '网络', system: '系统', browser: '浏览器',
-      code: '代码', git: 'Git', task: '任务', memory: '记忆',
-      data: '数据', db: '数据库', email: '邮件', monitor: '监控',
-      scheduler: '定时', ocr: 'OCR', vision: '视觉', office: 'Office'
+      file: '文件',
+      web: '网络',
+      system: '系统',
+      browser: '浏览器',
+      code: '代码',
+      git: 'Git',
+      task: '任务',
+      memory: '记忆',
+      data: '数据',
+      db: '数据库',
+      email: '邮件',
+      monitor: '监控',
+      scheduler: '定时',
+      ocr: 'OCR',
+      vision: '视觉',
+      office: 'Office',
     };
 
-    const filtered = data.filter(d => d.callCount > 0);
-    const names = filtered.map(d => categoryMap[d.category] || d.category);
-    const values = filtered.map(d => d.callCount);
-    const rates = filtered.map(d => d.successRate);
+    const filtered = data.filter((d) => d.callCount > 0);
+    const names = filtered.map((d) => categoryMap[d.category] || d.category);
+    const values = filtered.map((d) => d.callCount);
+    const rates = filtered.map((d) => d.successRate);
 
     this.chart.setOption({
       tooltip: {
@@ -145,31 +159,33 @@ const StatsManager = {
         formatter: (params) => {
           const idx = params[0].dataIndex;
           return `${names[idx]}<br/>调用次数: ${values[idx]}<br/>成功率: ${rates[idx]}%`;
-        }
+        },
       },
       grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
       xAxis: {
         type: 'category',
         data: names,
         axisLabel: { color: '#94a3b8', fontSize: 10, rotate: 30 },
-        axisLine: { lineStyle: { color: 'rgba(148,163,184,0.1)' } }
+        axisLine: { lineStyle: { color: 'rgba(148,163,184,0.1)' } },
       },
       yAxis: {
         type: 'value',
         axisLabel: { color: '#94a3b8', fontSize: 10 },
-        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.05)' } }
+        splitLine: { lineStyle: { color: 'rgba(148,163,184,0.05)' } },
       },
-      series: [{
-        type: 'bar',
-        data: values.map((val, idx) => ({
-          value: val,
-          itemStyle: {
-            color: `rgba(59, 130, 246, ${0.4 + (rates[idx] / 100) * 0.6})`,
-            borderRadius: [4, 4, 0, 0]
-          }
-        })),
-        barWidth: '60%'
-      }]
+      series: [
+        {
+          type: 'bar',
+          data: values.map((val, idx) => ({
+            value: val,
+            itemStyle: {
+              color: `rgba(59, 130, 246, ${0.4 + (rates[idx] / 100) * 0.6})`,
+              borderRadius: [4, 4, 0, 0],
+            },
+          })),
+          barWidth: '60%',
+        },
+      ],
     });
   },
 
@@ -178,9 +194,10 @@ const StatsManager = {
     const rateEl = document.getElementById('statSuccessRate');
     if (totalEl && data.totalToolCalls !== undefined) totalEl.textContent = data.totalToolCalls;
     if (rateEl && data.totalToolCalls !== undefined) {
-      const rate = data.totalToolCalls > 0
-        ? Math.round((data.totalToolCalls - (data.failCount || 0)) / data.totalToolCalls * 100)
-        : 0;
+      const rate =
+        data.totalToolCalls > 0
+          ? Math.round(((data.totalToolCalls - (data.failCount || 0)) / data.totalToolCalls) * 100)
+          : 0;
       rateEl.textContent = rate + '%';
     }
   },
@@ -202,7 +219,7 @@ const ClusterManager = {
     const topologyContainer = document.getElementById('clusterTopology');
     if (!clusterList) return;
 
-    const status = data.totalAgents !== undefined ? data : (data.data || data);
+    const status = data.totalAgents !== undefined ? data : data.data || data;
 
     if (!status || !status.agents || status.agents.length === 0) {
       clusterList.innerHTML = '';
@@ -216,16 +233,23 @@ const ClusterManager = {
 
     this._renderTopology(status.agents);
 
-    const stateIcons = { idle: '💤', thinking: '🧠', tool_executing: '🛠️', done: '✅', error: '❌' };
+    const stateIcons = {
+      idle: '💤',
+      thinking: '🧠',
+      tool_executing: '🛠️',
+      done: '✅',
+      error: '❌',
+    };
 
-    clusterList.innerHTML = status.agents.map(agent => {
-      const icon = stateIcons[agent.state] || '🤖';
-      const timeAgo = agent.lastActiveAt
-        ? Math.round((Date.now() - new Date(agent.lastActiveAt).getTime()) / 1000)
-        : 0;
-      const timeStr = timeAgo < 60 ? `${timeAgo}秒前` : `${Math.round(timeAgo / 60)}分钟前`;
+    clusterList.innerHTML = status.agents
+      .map((agent) => {
+        const icon = stateIcons[agent.state] || '🤖';
+        const timeAgo = agent.lastActiveAt
+          ? Math.round((Date.now() - new Date(agent.lastActiveAt).getTime()) / 1000)
+          : 0;
+        const timeStr = timeAgo < 60 ? `${timeAgo}秒前` : `${Math.round(timeAgo / 60)}分钟前`;
 
-      return `
+        return `
         <div class="cluster-agent-card">
           <div class="cluster-agent-header">
             <span class="cluster-agent-name">${icon} ${SharedUtils.escapeHtml(agent.name)}</span>
@@ -246,13 +270,14 @@ const ClusterManager = {
             </span>
           </div>
           <div style="font-size:10px;color:var(--text-muted);display:flex;justify-content:space-between;">
-            <span>ID: ${agent.id}</span>
+            <span>ID: ${SharedUtils.escapeHtml(agent.id)}</span>
             <span>${timeStr}</span>
           </div>
           ${agent.hasError ? `<div style="font-size:10px;color:#f87171;margin-top:2px;">错误: ${SharedUtils.escapeHtml(agent.error)}</div>` : ''}
         </div>
       `;
-    }).join('');
+      })
+      .join('');
 
     clusterList.scrollTop = clusterList.scrollHeight;
   },
@@ -289,7 +314,7 @@ const ClusterManager = {
         y: cy + radius * Math.sin(angle),
         label: agent.name,
         state: agent.state,
-        persona: agent.persona
+        persona: agent.persona,
       };
     });
 
@@ -313,9 +338,10 @@ const ClusterManager = {
         const pulse = Math.sin(now / 500) * 0.3 + 0.7;
         ctx.beginPath();
         ctx.arc(node.x, node.y, 24, 0, Math.PI * 2);
-        ctx.fillStyle = node.state === 'thinking'
-          ? `rgba(99, 102, 241, ${pulse * 0.3})`
-          : `rgba(245, 158, 11, ${pulse * 0.3})`;
+        ctx.fillStyle =
+          node.state === 'thinking'
+            ? `rgba(99, 102, 241, ${pulse * 0.3})`
+            : `rgba(245, 158, 11, ${pulse * 0.3})`;
         ctx.fill();
       }
     }
@@ -323,8 +349,12 @@ const ClusterManager = {
 
   _drawNode(ctx, x, y, label, state, size) {
     const colors = {
-      idle: '#6b7280', thinking: '#6366f1', tool_executing: '#f59e0b',
-      done: '#10b981', error: '#f87171', center: '#6366f1'
+      idle: '#6b7280',
+      thinking: '#6366f1',
+      tool_executing: '#f59e0b',
+      done: '#10b981',
+      error: '#f87171',
+      center: '#6366f1',
     };
     const color = colors[state] || '#6b7280';
 

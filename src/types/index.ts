@@ -135,6 +135,9 @@ export type ToolCategory =
   | 'cluster'
   | 'wechat'
   | 'gis'
+  // bio/chem 为内置工具分类（见 registry.ts）；bioinformatics/chemistry 为插件
+  // 工具分类（见 plugins/biopython-bio、plugins/rdkit-chem）。二者语义重叠但都在
+  // 使用，不可合并/删除；新增工具时请按 内置/插件 选择正确分类，避免误用。
   | 'bio'
   | 'med'
   | 'chem'

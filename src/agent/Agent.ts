@@ -9,6 +9,7 @@ import {
   compressHistory,
   initializeSession,
   estimateTokens,
+  resetConversation,
 } from './session.ts';
 import {
   init,
@@ -301,6 +302,7 @@ function handleUserInput(input: string): void {
     const pendingConf = getPendingConfirmation();
     if (pendingConf?.type === 'clearHistory') {
       if (response === 'y' || response === 'yes' || response === '确认') {
+        resetConversation();
         println('[成功] 对话历史已清空', 'green');
         setPendingConfirmation(null);
         state.current = STATE.THINKING;
@@ -651,12 +653,19 @@ async function thinkCycle(): Promise<void> {
       status: 'failed',
       details: { error: (error as Error).message },
     });
-    _replyCallback = null;
+    if (_replyCallback) {
+      _replyCallback('抱歉，处理您的消息时出错：' + (error as Error).message);
+      _replyCallback = null;
+    }
     if (shouldStop) {
       shouldStop = false;
       return;
     }
     println(`[错误] ${(error as Error).message}`, 'red');
+    state.current = STATE.AWAITING_INPUT;
+    broadcast('agent-reply', { type: 'end', nextAction: 'wait' });
+    broadcast('agent-state', { state: 'idle' });
+    showPrompt();
   } finally {
     isProcessing = false;
   }

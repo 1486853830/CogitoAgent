@@ -10,14 +10,24 @@ const TOOLS = [];
 
 const ENTREZ_BASE = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils';
 
+// 可选 NCBI API key，设置后可提升速率限制（从 3 req/s 到 10 req/s）
+const API_KEY = process.env.NCBI_API_KEY;
+
 /**
  * 执行 Entrez API 查询
  */
 async function entrezFetch(url) {
   const https = await import('https');
+  // 若存在 API key 且 URL 尚未携带，则自动拼接
+  const finalUrl = API_KEY && !url.includes('api_key=') ? `${url}&api_key=${API_KEY}` : url;
   return new Promise((resolve, reject) => {
     https
-      .get(url, { timeout: 15000 }, (res) => {
+      .get(finalUrl, { timeout: 15000 }, (res) => {
+        // 检测 HTTP 错误状态码（4xx/5xx），避免把错误响应体当成功数据
+        if (res.statusCode && res.statusCode >= 400) {
+          reject(new Error('HTTP ' + res.statusCode + ': ' + res.statusMessage));
+          return;
+        }
         let data = '';
         res.on('data', (chunk) => (data += chunk));
         res.on('end', () => resolve(data));
@@ -54,6 +64,13 @@ function stripXmlTags(str) {
       out += ch;
     }
   }
+  // 解码 XML 实体（&amp; 必须最后替换，避免 &amp;lt; 被二次解码成 <）
+  out = out
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
   return out.trim();
 }
 
@@ -258,10 +275,15 @@ TOOLS.push({
       }
 
       let dateRange = '';
+      const currentYear = new Date().getFullYear();
       if (mindate && maxdate) {
         dateRange = `&mindate=${encodeURIComponent(mindate)}&maxdate=${encodeURIComponent(maxdate)}&datetype=pdat`;
       } else if (mindate) {
-        dateRange = `&mindate=${encodeURIComponent(mindate)}&maxdate=3000&datetype=pdat`;
+        // 仅下限时，上限用当前年份（替代硬编码的 3000）
+        dateRange = `&mindate=${encodeURIComponent(mindate)}&maxdate=${currentYear}&datetype=pdat`;
+      } else if (maxdate) {
+        // 仅上限时，下限用 1900（PubMed 早期覆盖起点），避免 maxdate 被静默丢弃
+        dateRange = `&mindate=1900&maxdate=${encodeURIComponent(maxdate)}&datetype=pdat`;
       }
 
       const searchUrl = `${ENTREZ_BASE}/esearch.fcgi?db=pubmed&term=${encodeURIComponent(searchQuery)}${dateRange}&retmax=${max}&retmode=xml&sort=relevance`;
@@ -317,6 +339,8 @@ TOOLS.push({
     const cleanPmid = String(pmid).replace(/\D/g, '');
     if (!cleanPmid) return { success: false, error: 'PMID 应为数字' };
     try {
+      // 查表前统一转小写，避免大写格式名（如 'AMA'）静默回退到 NLM
+      format = String(format).toLowerCase();
       const formats = { ama: 'AMA', apa: 'APA', mla: 'MLA', nlm: 'NLM' };
       const fmt = (formats[format] || 'NLM').toLowerCase();
 
@@ -345,7 +369,8 @@ TOOLS.push({
 
       return {
         success: true,
-        data: `引用格式 [${format.toUpperCase()}]:\n\n${citation}\n\n${a.doi ? `DOI: https://doi.org/${a.doi}` : `https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/`}`,
+        // 标签使用实际选用的格式（fmt），而非原始输入，保证标签与内容一致
+        data: `引用格式 [${fmt.toUpperCase()}]:\n\n${citation}\n\n${a.doi ? `DOI: https://doi.org/${a.doi}` : `https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/`}`,
       };
     } catch (error) {
       return { success: false, error: `引用生成失败: ${error.message}` };

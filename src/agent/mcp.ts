@@ -6,7 +6,14 @@
  */
 
 import { createServer, Server, IncomingMessage, ServerResponse } from 'http';
-import { TOOL_REGISTRY, getToolRegistry, getToolsByCategory, hasTool } from './registry.ts';
+import crypto from 'crypto';
+import {
+  TOOL_REGISTRY,
+  getToolRegistry,
+  getToolsByCategory,
+  hasTool,
+  isDangerousOperation,
+} from './registry.ts';
 import { executeTool } from './Agent.ts';
 import { parseArgs, parseToolCall, parseAllToolCalls } from './tool-parser.ts';
 import {
@@ -76,6 +83,7 @@ class MCPServer {
   server: Server | null;
   initialized: boolean;
   serverInfo: ServerInfo;
+  authToken: string;
 
   constructor(port = 3001, agent?: any) {
     this.port = port;
@@ -87,6 +95,8 @@ class MCPServer {
       version: '1.0.0',
       protocolVersion: MCP_VERSION,
     };
+    // 启动时生成随机鉴权 token，客户端需通过 Authorization: Bearer <token> 访问
+    this.authToken = crypto.randomUUID();
   }
 
   /**
@@ -95,11 +105,12 @@ class MCPServer {
   start(): Promise<number> {
     return new Promise((resolve, reject) => {
       this.server = createServer((req: IncomingMessage, res: ServerResponse) => {
-        // CORS 头
-        res.setHeader('Access-Control-Allow-Origin', '*');
+        // CORS 头（不开放通配 *，仅允许本地调试来源）
+        res.setHeader('Access-Control-Allow-Origin', 'http://localhost');
         res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
+        // 预检请求不校验鉴权
         if (req.method === 'OPTIONS') {
           res.writeHead(200);
           res.end();
@@ -126,11 +137,12 @@ class MCPServer {
           });
           req.on('end', async () => {
             try {
-              const response = await this.handleRequest(body);
+              const response = await this.handleRequest(body, req);
               res.writeHead(200, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify(response));
             } catch (error: any) {
-              res.writeHead(500, { 'Content-Type': 'application/json' });
+              const statusCode = error.statusCode || 500;
+              res.writeHead(statusCode, { 'Content-Type': 'application/json' });
               res.end(
                 JSON.stringify(
                   this.errorResponse(null, MCP_ERROR_CODES.INTERNAL_ERROR, error.message),
@@ -150,8 +162,10 @@ class MCPServer {
         reject(err);
       });
 
-      this.server.listen(this.port, () => {
-        console.log(`[MCP] Server started on http://localhost:${this.port}`);
+      // 仅绑定本地回环地址，避免暴露到 0.0.0.0
+      this.server.listen(this.port, '127.0.0.1', () => {
+        console.log(`[MCP] Server started on http://127.0.0.1:${this.port}`);
+        console.log(`[MCP] Auth token: ${this.authToken}`);
         resolve(this.port);
       });
     });
@@ -177,7 +191,21 @@ class MCPServer {
   /**
    * 处理 JSON-RPC 请求
    */
-  async handleRequest(body: string): Promise<JsonRpcResponse | JsonRpcResponse[] | null> {
+  async handleRequest(
+    body: string,
+    req?: IncomingMessage,
+  ): Promise<JsonRpcResponse | JsonRpcResponse[] | null> {
+    // Bearer token 鉴权（预检 OPTIONS 在上层已跳过，不会进入此处）
+    // HTTP 请求总是传入 req，因此远程调用必走鉴权；受信任的进程内调用可省略 req。
+    if (req) {
+      const authHeader = req.headers['authorization'] || '';
+      if (authHeader !== `Bearer ${this.authToken}`) {
+        const err = new Error('Unauthorized: invalid or missing Bearer token') as any;
+        err.statusCode = 401;
+        throw err;
+      }
+    }
+
     let request: any;
 
     try {
@@ -327,6 +355,22 @@ class MCPServer {
 
     if (!hasTool(name)) {
       return this.errorResponse(id, MCP_ERROR_CODES.TOOL_NOT_FOUND, `Tool not found: ${name}`);
+    }
+
+    if (isDangerousOperation(name)) {
+      return {
+        jsonrpc: MCP_VERSION,
+        id,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: 'MCP 不允许执行危险操作，请在终端中执行',
+            },
+          ],
+          isError: true,
+        },
+      };
     }
 
     try {

@@ -208,7 +208,9 @@ function switchSession(sessionId: string): {
   }
 
   archiveCurrentSession();
-  saveSession(currentSessionId!, conversationHistory);
+  if (currentSessionId) {
+    saveSession(currentSessionId, conversationHistory);
+  }
 
   currentSessionId = sessionId;
   meta.activeId = sessionId;

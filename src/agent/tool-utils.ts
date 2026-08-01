@@ -63,6 +63,14 @@ function formatToolResult(tool: string, data: unknown): string {
 }
 
 function classifyToolError(error: Error & { code?: string }): string {
+  if (error.code === 'EACCES' || error.code === 'EPERM') {
+    return 'permission';
+  }
+
+  if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
+    return 'timeout';
+  }
+
   if (
     error.code === 'ENOTFOUND' ||
     error.code === 'ECONNREFUSED' ||
@@ -79,14 +87,6 @@ function classifyToolError(error: Error & { code?: string }): string {
     error.code === 'ENOTDIR'
   ) {
     return 'filesystem';
-  }
-
-  if (error.code === 'EACCES' || error.code === 'EPERM') {
-    return 'permission';
-  }
-
-  if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
-    return 'timeout';
   }
 
   return 'unknown';

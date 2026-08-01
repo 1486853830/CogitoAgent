@@ -1,5 +1,5 @@
 import {
-  loadConfig,
+  reloadConfig,
   loadEnvConfig,
   saveConfig,
   isConfigured,
@@ -269,7 +269,7 @@ describe('config.ts', () => {
   describe('loadConfig', () => {
     it('should return defaults merged with env when no config file', () => {
       process.env.COGITO_API_KEY = 'env-key';
-      const cfg = loadConfig();
+      const cfg = reloadConfig();
       expect(cfg.api.apiKey).toBe('env-key');
       expect(cfg.api.provider).toBe('');
       expect(cfg.chat.maxTokens).toBe(131072);
@@ -285,7 +285,7 @@ describe('config.ts', () => {
         }),
         'utf-8',
       );
-      const cfg = loadConfig();
+      const cfg = reloadConfig();
       expect(cfg.api.provider).toBe('openai');
       expect(cfg.api.model).toBe('gpt-4');
       expect(cfg.api.apiKey).toBe('');
@@ -302,7 +302,7 @@ describe('config.ts', () => {
         'utf-8',
       );
       process.env.COGITO_API_KEY = 'env-key';
-      const cfg = loadConfig();
+      const cfg = reloadConfig();
       // env overrides file
       expect(cfg.api.apiKey).toBe('env-key');
       expect(cfg.api.provider).toBe('file-provider');
@@ -310,7 +310,7 @@ describe('config.ts', () => {
 
     it('should fall back to defaults on parse error', () => {
       writeFileSync(path.join(testConfigDir, 'config.json'), 'invalid-json{', 'utf-8');
-      const cfg = loadConfig();
+      const cfg = reloadConfig();
       expect(cfg.api.provider).toBe('');
       expect(cfg.chat.maxTokens).toBe(131072);
     });
@@ -318,6 +318,7 @@ describe('config.ts', () => {
 
   describe('isConfigured', () => {
     it('should return false when api fields are empty', () => {
+      reloadConfig();
       expect(isConfigured()).toBe(false);
     });
 
@@ -326,6 +327,7 @@ describe('config.ts', () => {
       process.env.COGITO_API_BASE_URL = 'https://api.test.com';
       process.env.COGITO_API_PROVIDER = 'openai';
       process.env.COGITO_MODEL = 'gpt-4';
+      reloadConfig();
       expect(isConfigured()).toBe(true);
     });
 
@@ -333,6 +335,7 @@ describe('config.ts', () => {
       process.env.COGITO_API_KEY = 'key';
       process.env.COGITO_API_PROVIDER = 'openai';
       // baseURL and model not set
+      reloadConfig();
       expect(isConfigured()).toBe(false);
     });
   });

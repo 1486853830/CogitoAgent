@@ -5,10 +5,12 @@ import { runSetup } from './setup.ts';
 import { start } from './agent/Agent.ts';
 import { exec } from 'child_process';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 function openWelcomePage(): void {
   const introPath = path.join(process.cwd(), 'index.html');
-  const url = `file://${introPath}`;
+  // Windows 路径含反斜杠，直接拼 file:// 会生成非法 URL；pathToFileURL 正确处理跨平台路径
+  const url = pathToFileURL(introPath).href;
 
   const isWindows = process.platform === 'win32';
   const isMac = process.platform === 'darwin';

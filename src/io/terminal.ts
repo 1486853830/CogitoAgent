@@ -228,7 +228,8 @@ async function exit(): Promise<void> {
   // 调用清理回调
   if (cleanupCallback) {
     try {
-      await cleanupCallback();
+      // 加超时兜底：清理回调挂起会导致 exit 永久阻塞
+      await Promise.race([cleanupCallback(), new Promise((resolve) => setTimeout(resolve, 5000))]);
     } catch (e) {
       console.error('清理失败:', (e as Error).message);
     }

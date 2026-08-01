@@ -97,6 +97,7 @@ const presetBtns = document.querySelectorAll('.preset-btn');
 let currentStep = 1;
 const totalSteps = 5;
 let isReconfigureMode = false;
+let configSubmitTimer = null;
 
 // 默认工作区路径
 let defaultWorkspace = '';
@@ -392,6 +393,15 @@ function submitConfig() {
 
   // 发送配置到主进程
   window.electronAPI.submitConfig(config);
+
+  // 超时保护：若 10 秒内未收到主进程响应，恢复按钮并提示
+  if (configSubmitTimer) clearTimeout(configSubmitTimer);
+  configSubmitTimer = setTimeout(() => {
+    configSubmitTimer = null;
+    btnNext.disabled = false;
+    btnNext.textContent = '完成配置';
+    showError('配置保存超时，请重试');
+  }, 10000);
 }
 
 /**

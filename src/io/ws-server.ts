@@ -70,6 +70,9 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
       );
 
       wss.on('error', (err) => {
+        // Promise 已 resolve 后 reject 是 no-op；此处始终记日志，避免运行期
+        // error 事件被静默吞没（启动期错误仍会 reject 让调用方感知）。
+        console.error('[WS] 服务错误:', err.message);
         reject(err);
       });
 
@@ -132,7 +135,15 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
                 }
               }
             } else if (messageHandler) {
-              messageHandler(msg, ws);
+              // messageHandler 可能是 async，其返回的 Promise rejection 不会被
+              // 上面的 try-catch 捕获，需显式接住，否则成为 unhandledRejection。
+              // 其类型签名声明返回 void，但运行时可能返回 Promise，故此处用 any 探测。
+              const r = messageHandler(msg, ws) as any;
+              if (r && typeof r.then === 'function') {
+                r.catch((e: unknown) =>
+                  console.error('[WS] 消息处理错误:', (e as Error)?.message || e),
+                );
+              }
             }
           } catch (e) {
             console.error('[WS] 消息解析失败:', (e as Error).message);
@@ -169,6 +180,8 @@ function broadcast(type: string, data: Record<string, unknown>): void {
 
 function stopWsServer(): void {
   if (wss) {
+    // 先关闭已有连接（1001=Going Away），仅 wss.close() 不会主动断开 clients
+    wss.clients.forEach((c) => c.close(1001));
     wss.close();
     wss = null;
   }
