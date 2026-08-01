@@ -5,7 +5,7 @@
 import { jest } from '@jest/globals';
 
 // Mock 外部依赖
-jest.unstable_mockModule('../src/agent/tools/code.js', () => ({
+jest.unstable_mockModule('../src/agent/tools/code.ts', () => ({
   runJavaScript: jest.fn(),
   runPython: jest.fn(),
   executeCode: jest.fn(),
@@ -17,7 +17,7 @@ describe('代码执行模块', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    codeModule = await import('../src/agent/tools/code.js');
+    codeModule = await import('../src/agent/tools/code.ts');
   });
 
   describe('runJavaScript', () => {

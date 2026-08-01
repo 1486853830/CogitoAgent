@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import path from 'path';
 import os from 'os';
 import type { Config } from './types/index.ts';
@@ -360,4 +360,49 @@ function isConfigured(): boolean {
   return !!(cfg.api.provider && cfg.api.apiKey && cfg.api.baseURL && cfg.api.model);
 }
 
-export { loadConfig, loadEnvConfig, isConfigured, deepMerge, CONFIG_FILE, DEFAULT_CONFIG };
+function reloadConfig(): Config {
+  config = null;
+  return loadConfig();
+}
+
+function saveConfig(cfg: Config): boolean {
+  try {
+    const sanitized = JSON.parse(JSON.stringify(cfg)) as Record<string, unknown>;
+    if (sanitized.api && typeof sanitized.api === 'object') {
+      delete (sanitized.api as Record<string, unknown>).apiKey;
+    }
+    if (sanitized.email && typeof sanitized.email === 'object') {
+      delete (sanitized.email as Record<string, unknown>).password;
+    }
+    if (sanitized.models && typeof sanitized.models === 'object') {
+      for (const key of Object.keys(sanitized.models as Record<string, unknown>)) {
+        const model = (sanitized.models as Record<string, unknown>)[key] as
+          Record<string, unknown> | undefined;
+        if (model && typeof model === 'object') {
+          delete model.apiKey;
+        }
+      }
+    }
+    if (sanitized.ocr && typeof sanitized.ocr === 'object') {
+      delete (sanitized.ocr as Record<string, unknown>).apiKey;
+    }
+    if (sanitized.vision && typeof sanitized.vision === 'object') {
+      delete (sanitized.vision as Record<string, unknown>).apiKey;
+    }
+    writeFileSync(getConfigFile(), JSON.stringify(sanitized, null, 2), 'utf-8');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export {
+  loadConfig,
+  reloadConfig,
+  saveConfig,
+  loadEnvConfig,
+  isConfigured,
+  deepMerge,
+  CONFIG_FILE,
+  DEFAULT_CONFIG,
+};

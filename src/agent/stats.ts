@@ -328,7 +328,9 @@ function resetStats(): void {
 }
 
 initStats();
-await loadStats();
+(async () => {
+  await loadStats();
+})();
 
 export {
   recordToolCall,
