@@ -316,12 +316,12 @@ async function molecularWeight(
 
     let type: string;
 
-    if (isValidProtein) {
-      type = '蛋白质';
-    } else if (isValidDNA) {
+    if (isValidDNA) {
       type = 'DNA';
     } else if (isValidRNA) {
       type = 'RNA';
+    } else if (isValidProtein) {
+      type = '蛋白质';
     } else {
       return { success: false, error: '序列包含无效字符' };
     }
@@ -529,7 +529,7 @@ async function hairpinCheck(
       sequence: string;
     }> = [];
 
-    for (let i = 0; i < upper.length - minStem * 2 - minLoop; i++) {
+    for (let i = 0; i <= upper.length - minStem * 2 - minLoop; i++) {
       for (
         let stemLen = minStem;
         stemLen <= Math.min(10, Math.floor((upper.length - i - minLoop) / 2));
@@ -547,11 +547,8 @@ async function hairpinCheck(
           hairpins.push({
             position: i + 1,
             stemLength: stemLen,
-            loopLength: i + stemLen * 2 + minLoop - (i + stemLen) - stemLen,
-            sequence: upper.substring(
-              i,
-              i + stemLen * 2 + minLoop + (i + stemLen * 2 + minLoop - (i + stemLen) - stemLen),
-            ),
+            loopLength: minLoop,
+            sequence: upper.substring(i, i + stemLen * 2 + minLoop),
           });
           break; // 只记录每个位置最长的
         }

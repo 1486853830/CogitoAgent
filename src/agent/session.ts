@@ -48,7 +48,23 @@ function saveMeta(meta: SessionMeta): void {
   }
 }
 
+/**
+ * 校验 sessionId 是否包含路径遍历字符（.. 或路径分隔符）
+ */
+function isValidSessionId(sessionId: string): boolean {
+  return (
+    !sessionId.includes('..') &&
+    !sessionId.includes('/') &&
+    !sessionId.includes(path.sep) &&
+    !sessionId.includes('\\')
+  );
+}
+
 function loadSession(sessionId: string): Message[] {
+  if (!isValidSessionId(sessionId)) {
+    console.error(`[会话] 非法 sessionId: ${sessionId}`);
+    return [];
+  }
   const filePath = path.join(SESSIONS_DIR, `${sessionId}.json`);
   try {
     if (existsSync(filePath)) {
@@ -62,6 +78,10 @@ function loadSession(sessionId: string): Message[] {
 }
 
 function saveSession(sessionId: string, messages: Message[]): void {
+  if (!isValidSessionId(sessionId)) {
+    console.error(`[会话] 非法 sessionId: ${sessionId}`);
+    return;
+  }
   const filePath = path.join(SESSIONS_DIR, `${sessionId}.json`);
   try {
     ensureDir();
@@ -200,6 +220,9 @@ function switchSession(sessionId: string): {
   error?: string;
   session?: SessionInfo;
 } {
+  if (!isValidSessionId(sessionId)) {
+    return { success: false, error: '非法的会话 ID' };
+  }
   const meta = loadMeta();
   const session = meta.sessions.find((s) => s.id === sessionId);
 
@@ -246,6 +269,9 @@ function switchSession(sessionId: string): {
 }
 
 function deleteSession(sessionId: string): { success: boolean; error?: string } {
+  if (!isValidSessionId(sessionId)) {
+    return { success: false, error: '非法的会话 ID' };
+  }
   const meta = loadMeta();
   const index = meta.sessions.findIndex((s) => s.id === sessionId);
 
@@ -288,6 +314,9 @@ function renameSession(
   sessionId: string,
   newName: string,
 ): { success: boolean; error?: string; session?: SessionInfo } {
+  if (!isValidSessionId(sessionId)) {
+    return { success: false, error: '非法的会话 ID' };
+  }
   const meta = loadMeta();
   const session = meta.sessions.find((s) => s.id === sessionId);
 

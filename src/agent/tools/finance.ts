@@ -8,7 +8,9 @@
 function toNum(v: unknown): number | unknown {
   if (v === undefined || v === null) return v;
   const n = Number(v);
-  return isNaN(n) ? v : n;
+  const result = isNaN(n) ? v : n;
+  if (typeof result === 'number' && isNaN(result)) return v;
+  return result;
 }
 
 /**
@@ -328,7 +330,7 @@ async function amortizationSchedule(
       );
 
       if (i === 12 && months > 24) {
-        lines.push('...（省略中间还款计划，完整 ${months} 期）');
+        lines.push(`...（省略中间还款计划，完整 ${months} 期）`);
         // 跳到最后一期
         i = months - 1;
       }

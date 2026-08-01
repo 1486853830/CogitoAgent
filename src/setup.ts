@@ -417,7 +417,7 @@ async function configureEmail(rl: readline.Interface): Promise<EmailSetupConfig 
 
   return {
     host: host.trim(),
-    port: port.trim() ? parseInt(port.trim(), 10) : 587,
+    port: port.trim() ? parseInt(port.trim(), 10) || 587 : 587,
     user: user.trim(),
     password: password.trim(),
     from: from.trim(),
@@ -518,8 +518,8 @@ async function configureCode(rl: readline.Interface): Promise<CodeSetupConfig | 
   );
 
   return {
-    timeout: timeout.trim() ? parseInt(timeout.trim(), 10) : 30000,
-    maxOutput: maxOutput.trim() ? parseInt(maxOutput.trim(), 10) : 100000,
+    timeout: timeout.trim() ? parseInt(timeout.trim(), 10) || 30000 : 30000,
+    maxOutput: maxOutput.trim() ? parseInt(maxOutput.trim(), 10) || 100000 : 100000,
   };
 }
 

@@ -83,7 +83,8 @@ async function* streamChat(
     try {
       const cfg = loadConfig();
 
-      const response = await fetch(`${cfg.api.baseURL}/chat/completions`, {
+      const baseURL = cfg.api.baseURL.replace(/\/+$/, '');
+      const response = await fetch(`${baseURL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +98,7 @@ async function* streamChat(
           model: cfg.api.model,
           stream: true,
           stream_options: { include_usage: true },
-          max_tokens: cfg.chat?.maxTokens ?? 384000,
+          max_tokens: cfg.chat?.maxTokens ?? 131072,
           temperature: cfg.chat?.temperature ?? 0.7,
           top_p: cfg.chat?.topP ?? 0.7,
           top_k: cfg.chat?.topK ?? 50,

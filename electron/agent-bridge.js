@@ -65,6 +65,10 @@ function readWsToken() {
 function connect() {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
 
+  // 确保任何连接尝试（包括重连）都设置 shouldReconnect = true，
+  // 避免在尚未触达 open 状态时 close 事件因 shouldReconnect 为 false 而跳过重连调度
+  shouldReconnect = true;
+
   console.log('[AgentBridge] 正在连接 Agent...');
   // 携带 token 通过 ws-server 的非浏览器客户端校验
   const token = readWsToken();

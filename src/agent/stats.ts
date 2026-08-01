@@ -114,7 +114,8 @@ async function loadStats(): Promise<void> {
 
 let saveStatsTimer: ReturnType<typeof setTimeout> | null = null;
 
-async function saveStats(): Promise<void> {
+/** 同步调度延迟保存——注意：此函数不等待写入完成，调用方不应依赖写入结果。 */
+function saveStats(): void {
   if (saveStatsTimer) return;
   saveStatsTimer = setTimeout(async () => {
     saveStatsTimer = null;
@@ -126,6 +127,22 @@ async function saveStats(): Promise<void> {
       console.error('[Stats] 保存统计数据失败:', (e as Error).message);
     }
   }, 100);
+}
+
+/**
+ * 检查日期是否变更，若跨日则统一重置所有 today 计数器
+ */
+function checkAndResetDay(): void {
+  const today = new Date().toISOString().split('T')[0];
+  if (sessionStats.lastDate !== today) {
+    sessionStats.lastDate = today;
+    sessionStats.todaySessions = 0;
+    sessionStats.todayMessages = 0;
+    sessionStats.todayToolCalls = 0;
+    sessionStats.todayInputTokens = 0;
+    sessionStats.todayOutputTokens = 0;
+    sessionStats.todayTokens = 0;
+  }
 }
 
 function recordToolCall(
@@ -164,38 +181,23 @@ function recordToolCall(
 
   sessionStats.totalToolCalls++;
 
-  const today = new Date().toISOString().split('T')[0];
-  if (sessionStats.lastDate !== today) {
-    sessionStats.lastDate = today;
-    sessionStats.todayToolCalls = 1;
-  } else {
-    sessionStats.todayToolCalls++;
-  }
+  checkAndResetDay();
+  sessionStats.todayToolCalls++;
 
   saveStats();
 }
 
 function recordSession(): void {
   sessionStats.totalSessions++;
-  const today = new Date().toISOString().split('T')[0];
-  if (sessionStats.lastDate !== today) {
-    sessionStats.lastDate = today;
-    sessionStats.todaySessions = 1;
-  } else {
-    sessionStats.todaySessions++;
-  }
+  checkAndResetDay();
+  sessionStats.todaySessions++;
   saveStats();
 }
 
 function recordMessage(): void {
   sessionStats.totalMessages++;
-  const today = new Date().toISOString().split('T')[0];
-  if (sessionStats.lastDate !== today) {
-    sessionStats.lastDate = today;
-    sessionStats.todayMessages = 1;
-  } else {
-    sessionStats.todayMessages++;
-  }
+  checkAndResetDay();
+  sessionStats.todayMessages++;
   saveStats();
 }
 
@@ -213,20 +215,10 @@ function recordTokenUsage(inputTokens: number, outputTokens: number): void {
   sessionStats.totalOutputTokens += output;
   sessionStats.totalTokens += total;
 
-  const today = new Date().toISOString().split('T')[0];
-  if (sessionStats.lastDate !== today) {
-    sessionStats.lastDate = today;
-    sessionStats.todayInputTokens = input;
-    sessionStats.todayOutputTokens = output;
-    sessionStats.todayTokens = total;
-    sessionStats.todaySessions = 0;
-    sessionStats.todayMessages = 0;
-    sessionStats.todayToolCalls = 0;
-  } else {
-    sessionStats.todayInputTokens += input;
-    sessionStats.todayOutputTokens += output;
-    sessionStats.todayTokens += total;
-  }
+  checkAndResetDay();
+  sessionStats.todayInputTokens += input;
+  sessionStats.todayOutputTokens += output;
+  sessionStats.todayTokens += total;
 
   saveStats();
 }

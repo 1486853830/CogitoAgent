@@ -79,7 +79,6 @@ function isValidOrigin(origin: string | undefined): boolean {
     /^https:\/\/localhost(:\d+)?$/,
     /^http:\/\/127\.0\.0\.1(:\d+)?$/,
     /^https:\/\/127\.0\.0\.1(:\d+)?$/,
-    /^file:\/\//,
   ];
   return !!origin && localhostPatterns.some((pattern) => pattern.test(origin));
 }
@@ -160,6 +159,22 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
           console.error('[WS] 连接错误:', err.message);
         });
 
+        // 心跳检测：每 30 秒 ping 一次，若 10 秒内未收到 pong 则断开
+        (ws as any).__isAlive = true;
+        ws.on('pong', () => {
+          (ws as any).__isAlive = true;
+        });
+        const heartbeatInterval = setInterval(() => {
+          if ((ws as any).__isAlive === false) {
+            console.log('[WS] 心跳超时，断开连接');
+            clearInterval(heartbeatInterval);
+            ws.terminate();
+            return;
+          }
+          (ws as any).__isAlive = false;
+          ws.ping();
+        }, 30000);
+
         ws.on('message', (raw) => {
           try {
             const msg = JSON.parse(raw.toString());
@@ -224,6 +239,7 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
 
         ws.on('close', () => {
           console.log('[WS] 客户端已断开');
+          clearInterval(heartbeatInterval);
         });
       });
     } catch (err) {
@@ -254,11 +270,11 @@ function broadcast(type: string, data: Record<string, unknown>): void {
   });
 }
 
-function stopWsServer(): void {
+async function stopWsServer(): Promise<void> {
   if (wss) {
     // 先关闭已有连接（1001=Going Away），仅 wss.close() 不会主动断开 clients
     wss.clients.forEach((c) => c.close(1001));
-    wss.close();
+    await new Promise<void>((resolve) => wss!.close(() => resolve()));
     wss = null;
   }
 }

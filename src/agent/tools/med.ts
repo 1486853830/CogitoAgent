@@ -684,7 +684,14 @@ async function anionGap(
   hco3: number,
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    if (!na || !cl || !hco3) {
+    if (
+      na === undefined ||
+      na === null ||
+      cl === undefined ||
+      cl === null ||
+      hco3 === undefined ||
+      hco3 === null
+    ) {
       return { success: false, error: '所有参数都必须提供' };
     }
     const ag = na - (cl + hco3);

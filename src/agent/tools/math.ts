@@ -209,6 +209,10 @@ async function matrixMultiply(
       return { success: false, error: '两个参数都必须是矩阵（二维数组）' };
     }
 
+    if (mA.length === 0 || mB.length === 0) {
+      return { success: false, error: '矩阵不能为空' };
+    }
+
     const rowsA = mA.length;
     const colsA = mA[0].length;
     const rowsB = mB.length;
@@ -254,6 +258,10 @@ async function matrixDeterminant(
     const mA = typeof A === 'string' ? JSON.parse(A) : A;
     const n = mA.length;
 
+    if (n === 0) {
+      return { success: false, error: '矩阵不能为空' };
+    }
+
     if (n !== mA[0].length) {
       return { success: false, error: '矩阵必须是方阵' };
     }
@@ -290,6 +298,10 @@ async function matrixInverse(
   try {
     const mA = typeof A === 'string' ? JSON.parse(A) : A;
     const n = mA.length;
+
+    if (n === 0) {
+      return { success: false, error: '矩阵不能为空' };
+    }
 
     if (n !== mA[0].length) {
       return { success: false, error: '矩阵必须是方阵' };

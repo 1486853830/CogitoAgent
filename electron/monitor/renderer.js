@@ -147,6 +147,7 @@ const StatsManager = {
       office: 'Office',
     };
 
+    if (!Array.isArray(data)) return;
     const filtered = data.filter((d) => d.callCount > 0);
     const names = filtered.map((d) => categoryMap[d.category] || d.category);
     const values = filtered.map((d) => d.callCount);

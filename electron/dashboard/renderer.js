@@ -590,6 +590,8 @@ const NavManager = {
   /**
    * 切换到指定会话
    */
+  _sessionSwitchGeneration: 0,
+
   async switchToSession(sessionId) {
     if (AppState.isProcessing) {
       ToastManager.warning('AI 正在思考中，请等待回复完成后再切换会话');
@@ -597,6 +599,9 @@ const NavManager = {
     }
 
     console.log('[NavManager] 切换到会话:', sessionId);
+
+    // 递增 generation 用于取消旧异步回调
+    const gen = ++this._sessionSwitchGeneration;
 
     SkillsManager.hide();
 
@@ -615,6 +620,7 @@ const NavManager = {
     if (AppState.wechatSessionId && sessionId === AppState.wechatSessionId) {
       try {
         const wechatHistory = await window.electronAPI?.getWechatHistory();
+        if (gen !== this._sessionSwitchGeneration) return; // 已取消
         if (wechatHistory && wechatHistory.length > 0) {
           for (const msg of wechatHistory) {
             if (msg.direction === 'received') {
@@ -634,6 +640,7 @@ const NavManager = {
       try {
         console.log('[NavManager] 正在加载历史消息, sessionId:', sessionId);
         const history = await window.electronAPI?.getSessionHistory(sessionId);
+        if (gen !== this._sessionSwitchGeneration) return; // 已取消
         console.log('[NavManager] 历史消息加载完成, 条数:', history?.length);
 
         if (history && history.length > 0) {
@@ -656,6 +663,8 @@ const NavManager = {
         console.error('[NavManager] 加载历史消息失败:', e);
       }
     }
+
+    if (gen !== this._sessionSwitchGeneration) return; // 已取消
 
     // 发送切换命令给 Agent（这会更新 meta.activeId）
     window.electronAPI?.switchSession(sessionId);
@@ -1414,7 +1423,7 @@ const ChatManager = {
     if (isFinal) {
       // 最终渲染：全量 Markdown + 移除光标
       bubble.classList.remove('typing-cursor');
-      bubble.innerHTML = Utils.renderMarkdown(text);
+      bubble.innerHTML = Utils.sanitizeHtml(Utils.renderMarkdown(text));
       this._streamBubble = null;
       this._streamBuffer = '';
       this._streamLastLen = 0;

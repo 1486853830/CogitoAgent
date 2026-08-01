@@ -467,6 +467,9 @@ function createMainWindow() {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       event.preventDefault();
       shell.openExternal(url);
+    } else {
+      // 拦截 file:///data:/about: 等非 http 协议
+      event.preventDefault();
     }
   });
 
@@ -622,7 +625,7 @@ function createMonitorWindow() {
 }
 
 // 当所有窗口关闭时退出
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
   // 正在从配置向导过渡到主窗口时，不退出也不杀 Agent
   if (isTransitioningToMain) {
     console.log('[主进程] 配置完成，正在启动主窗口...');
@@ -634,8 +637,8 @@ app.on('window-all-closed', () => {
     return;
   }
 
-  // 停止 Agent 进程
-  stopAgentProcess();
+  // 等待 Agent 进程清理完成后再退出
+  await stopAgentProcess();
 
   // 只有在配置向导阶段（setupWindow 存在且 mainWindow 从未创建过）才等待
   // 否则退出应用
@@ -646,9 +649,12 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', async (e) => {
+  if (isQuitting) return;
+  e.preventDefault();
   isQuitting = true;
-  stopAgentProcess();
+  await stopAgentProcess();
+  app.quit();
 });
 
 app.whenReady().then(async () => {
@@ -712,7 +718,10 @@ app.whenReady().then(async () => {
   // ===== IPC: 配置向导相关 =====
 
   // 提交配置
+  let isSetupConfiguring = false;
   ipcMain.on('setup-submit-config', async (_event, config) => {
+    if (isSetupConfiguring) return; // 防重入
+    isSetupConfiguring = true;
     console.log('[主进程] 收到配置提交:', config.api?.model);
 
     const success = saveConfig(config);
@@ -739,13 +748,17 @@ app.whenReady().then(async () => {
             mainWindow.reload();
           }
           isReconfiguring = false;
+          isSetupConfiguring = false;
         }, 500);
+      } else {
+        isSetupConfiguring = false;
       }
     } else {
       setupWindow?.webContents.send('setup-config-result', {
         success: false,
         error: '保存配置失败',
       });
+      isSetupConfiguring = false;
     }
   });
 

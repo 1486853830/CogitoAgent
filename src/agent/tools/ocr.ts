@@ -47,7 +47,7 @@ async function callVLApi(
   }
 
   const baseURL =
-    (ocrCfg.baseURL as string) || ((cfg.api as Record<string, unknown>).baseURL as string);
+    (ocrCfg.baseURL as string) || ((cfg.api as Record<string, unknown>)?.baseURL as string);
   const model = (ocrCfg.model as string) || 'InternVL3-78B';
 
   const url = baseURL.endsWith('/') ? `${baseURL}chat/completions` : `${baseURL}/chat/completions`;

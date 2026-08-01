@@ -10,6 +10,7 @@ interface ThoughtTraceStep {
 }
 
 let thoughtTrace: ThoughtTraceStep[] = [];
+const MAX_TRACE_STEPS = 200;
 
 function traceStep(
   name: string,
@@ -25,6 +26,9 @@ function traceStep(
     duration: 0,
   };
   thoughtTrace.push(step);
+  if (thoughtTrace.length > MAX_TRACE_STEPS) {
+    thoughtTrace.splice(0, thoughtTrace.length - MAX_TRACE_STEPS);
+  }
   broadcast('thought-trace', { action: 'add', step });
   return step;
 }

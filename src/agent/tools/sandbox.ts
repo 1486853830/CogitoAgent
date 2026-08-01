@@ -15,6 +15,7 @@ import {
   writeSecureTmpFile,
   cleanupTmpFile,
 } from './code-exec-utils.ts';
+import { findPythonExecutable } from './code.ts';
 
 /**
  * 动态加载 isolated-vm（原生模块可能在 Electron 等环境中不可用）
@@ -470,8 +471,10 @@ async function runPythonSandbox(code: string): Promise<any> {
           process.env.PATH?.split(path.delimiter).slice(0, 3).join(path.delimiter) || '';
       }
 
+      const pythonExec = findPythonExecutable();
+
       execFile(
-        'python',
+        pythonExec,
         [tmpPath],
         {
           timeout: maxExecutionTime,

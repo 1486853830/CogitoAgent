@@ -25,7 +25,11 @@ import { encrypt as encryptCredential } from './credentials.js';
  */
 export function buildEnvLines(config) {
   const c = config || {};
-  const q = (v) => `"${v === undefined || v === null ? '' : v}"`;
+  const q = (v) => {
+    const s = v === undefined || v === null ? '' : String(v);
+    // 转义双引号和换行符，防止破坏 .env 结构
+    return `"${s.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
+  };
   const pwd = encryptCredential(c.email?.password || '');
 
   return [
