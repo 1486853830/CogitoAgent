@@ -26,23 +26,27 @@ const CHINA_BBOX = { minLng: 73.66, maxLng: 135.05, minLat: 3.86, maxLat: 53.55 
 
 function transformLat(x: number, y: number): number {
   let ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
-  ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
-  ret += (20.0 * Math.sin(y * PI) + 40.0 * Math.sin(y / 3.0 * PI)) * 2.0 / 3.0;
-  ret += (160.0 * Math.sin(y / 12.0 * PI) + 320.0 * Math.sin(y * PI / 30.0)) * 2.0 / 3.0;
+  ret += ((20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0) / 3.0;
+  ret += ((20.0 * Math.sin(y * PI) + 40.0 * Math.sin((y / 3.0) * PI)) * 2.0) / 3.0;
+  ret += ((160.0 * Math.sin((y / 12.0) * PI) + 320.0 * Math.sin((y * PI) / 30.0)) * 2.0) / 3.0;
   return ret;
 }
 
 function transformLon(x: number, y: number): number {
   let ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
-  ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
-  ret += (20.0 * Math.sin(x * PI) + 40.0 * Math.sin(x / 3.0 * PI)) * 2.0 / 3.0;
-  ret += (150.0 * Math.sin(x / 12.0 * PI) + 300.0 * Math.sin(x / 30.0 * PI)) * 2.0 / 3.0;
+  ret += ((20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0) / 3.0;
+  ret += ((20.0 * Math.sin(x * PI) + 40.0 * Math.sin((x / 3.0) * PI)) * 2.0) / 3.0;
+  ret += ((150.0 * Math.sin((x / 12.0) * PI) + 300.0 * Math.sin((x / 30.0) * PI)) * 2.0) / 3.0;
   return ret;
 }
 
 function isOutOfChina(lng: number, lat: number): boolean {
-  return (lng < CHINA_BBOX.minLng || lng > CHINA_BBOX.maxLng ||
-          lat < CHINA_BBOX.minLat || lat > CHINA_BBOX.maxLat);
+  return (
+    lng < CHINA_BBOX.minLng ||
+    lng > CHINA_BBOX.maxLng ||
+    lat < CHINA_BBOX.minLat ||
+    lat > CHINA_BBOX.maxLat
+  );
 }
 
 /**
@@ -54,15 +58,15 @@ function wgs84ToGcj02(lng: number, lat: number): { lng: number; lat: number } {
   }
   let dLat = transformLat(lng - 105.0, lat - 35.0);
   let dLng = transformLon(lng - 105.0, lat - 35.0);
-  const radLat = lat / 180.0 * PI;
+  const radLat = (lat / 180.0) * PI;
   let magic = Math.sin(radLat);
   magic = 1 - EE * magic * magic;
   const sqrtMagic = Math.sqrt(magic);
-  dLat = (dLat * 180.0) / ((A * (1 - EE)) / (magic * sqrtMagic) * PI);
-  dLng = (dLng * 180.0) / (A / sqrtMagic * Math.cos(radLat) * PI);
+  dLat = (dLat * 180.0) / (((A * (1 - EE)) / (magic * sqrtMagic)) * PI);
+  dLng = (dLng * 180.0) / ((A / sqrtMagic) * Math.cos(radLat) * PI);
   return {
     lng: lng + dLng,
-    lat: lat + dLat
+    lat: lat + dLat,
   };
 }
 
@@ -76,7 +80,7 @@ function gcj02ToWgs84(lng: number, lat: number): { lng: number; lat: number } {
   const gcj = wgs84ToGcj02(lng, lat);
   return {
     lng: 2 * lng - gcj.lng,
-    lat: 2 * lat - gcj.lat
+    lat: 2 * lat - gcj.lat,
   };
 }
 
@@ -90,7 +94,7 @@ function gcj02ToBd09(lng: number, lat: number): { lng: number; lat: number } {
   const theta = Math.atan2(y, x) + 0.000003 * Math.cos(x * PI);
   return {
     lng: z * Math.cos(theta) + 0.0065,
-    lat: z * Math.sin(theta) + 0.006
+    lat: z * Math.sin(theta) + 0.006,
   };
 }
 
@@ -104,7 +108,7 @@ function bd09ToGcj02(lng: number, lat: number): { lng: number; lat: number } {
   const theta = Math.atan2(y, x) - 0.000003 * Math.cos(x * PI);
   return {
     lng: z * Math.cos(theta),
-    lat: z * Math.sin(theta)
+    lat: z * Math.sin(theta),
   };
 }
 
@@ -118,15 +122,18 @@ function bd09ToGcj02(lng: number, lat: number): { lng: number; lat: number } {
  * @param {number} lat - 纬度
  * @returns {Promise<Object>} 结果对象
  */
-async function isInChina(lng: any, lat: any): Promise<any> {
+async function isInChina(
+  lng: number,
+  lat: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const result = !isOutOfChina(lng, lat);
     return {
       success: true,
-      data: result ? '坐标在中国大陆范围内' : '坐标不在中国大陆范围内'
+      data: result ? '坐标在中国大陆范围内' : '坐标不在中国大陆范围内',
     };
-  } catch (error: any) {
-    return { success: false, error: `判断失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `判断失败: ${(error as Error).message}` };
   }
 }
 
@@ -138,7 +145,12 @@ async function isInChina(lng: any, lat: any): Promise<any> {
  * @param {string} to - 目标坐标系：'wgs84' | 'gcj02' | 'bd09'
  * @returns {Promise<Object>} 结果对象
  */
-async function convertCoord(lng: any, lat: any, from: any, to: any): Promise<any> {
+async function convertCoord(
+  lng: number,
+  lat: number,
+  from: string,
+  to: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     lng = Number(lng);
     lat = Number(lat);
@@ -152,14 +164,14 @@ async function convertCoord(lng: any, lat: any, from: any, to: any): Promise<any
     if (!validSystems.includes(fromNorm) || !validSystems.includes(toNorm)) {
       return {
         success: false,
-        error: `不支持的坐标系: ${from} → ${to}，仅支持 wgs84、gcj02、bd09`
+        error: `不支持的坐标系: ${from} → ${to}，仅支持 wgs84、gcj02、bd09`,
       };
     }
 
     if (fromNorm === toNorm) {
       return {
         success: true,
-        data: `坐标系无需转换: (${lng}, ${lat})`
+        data: `坐标系无需转换: (${lng}, ${lat})`,
       };
     }
 
@@ -183,10 +195,10 @@ async function convertCoord(lng: any, lat: any, from: any, to: any): Promise<any
 
     return {
       success: true,
-      data: `坐标转换完成: ${from}(${lng}, ${lat}) → ${to}(${result.lng.toFixed(6)}, ${result.lat.toFixed(6)})`
+      data: `坐标转换完成: ${from}(${lng}, ${lat}) → ${to}(${result.lng.toFixed(6)}, ${result.lat.toFixed(6)})`,
     };
-  } catch (error: any) {
-    return { success: false, error: `坐标转换失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `坐标转换失败: ${(error as Error).message}` };
   }
 }
 
@@ -199,18 +211,25 @@ async function convertCoord(lng: any, lat: any, from: any, to: any): Promise<any
  * @param {string} [unit='km'] - 单位：'m'（米）或 'km'（千米）
  * @returns {Promise<Object>} 结果对象
  */
-async function calcDistance(lng1: any, lat1: any, lng2: any, lat2: any, unit: any = 'km'): Promise<any> {
+async function calcDistance(
+  lng1: number,
+  lat1: number,
+  lng2: number,
+  lat2: number,
+  unit: string = 'km',
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    const toRad = (deg: number) => deg * PI / 180;
+    const toRad = (deg: number) => (deg * PI) / 180;
     const dLng = toRad(lng2 - lng1);
     const dLat = toRad(lat2 - lat1);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     const unitNorm = unit.toLowerCase();
-    let distance, unitLabel;
+    let distance: number;
+    let unitLabel: string;
     if (unitNorm === 'm') {
       distance = EARTH_RADIUS_M * c;
       unitLabel = '米';
@@ -221,10 +240,10 @@ async function calcDistance(lng1: any, lat1: any, lng2: any, lat2: any, unit: an
 
     return {
       success: true,
-      data: `两点距离: ${distance.toFixed(4)} ${unitLabel}`
+      data: `两点距离: ${distance.toFixed(4)} ${unitLabel}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `距离计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `距离计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -233,7 +252,9 @@ async function calcDistance(lng1: any, lat1: any, lng2: any, lat2: any, unit: an
  * @param {Array|string} coordinates - 坐标数组或 JSON 字符串 [[lng,lat], ...]
  * @returns {Promise<Object>} 结果对象
  */
-async function calcArea(coordinates: any): Promise<any> {
+async function calcArea(
+  coordinates: number[][] | string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const coords = typeof coordinates === 'string' ? JSON.parse(coordinates) : coordinates;
 
@@ -242,10 +263,12 @@ async function calcArea(coordinates: any): Promise<any> {
     }
 
     // 确保首尾闭合
-    const ring = coords.length > 0 &&
+    const ring =
+      coords.length > 0 &&
       coords[0][0] === coords[coords.length - 1][0] &&
       coords[0][1] === coords[coords.length - 1][1]
-      ? coords : [...coords, coords[0]];
+        ? coords
+        : [...coords, coords[0]];
 
     // 使用 Shoelace 公式计算平面面积
     let area = 0;
@@ -257,14 +280,15 @@ async function calcArea(coordinates: any): Promise<any> {
 
     // 粗略估算球面面积（平方千米）
     // 将经纬度差转换为弧度，再乘以地球半径平方
-    const avgLat = ring.reduce((sum: number, p: any) => sum + p[1], 0) / ring.length;
-    const radLat = avgLat * PI / 180;
-    const lngScale = EARTH_RADIUS_KM * Math.cos(radLat) * PI / 180;
-    const latScale = EARTH_RADIUS_KM * PI / 180;
+    const avgLat = ring.reduce((sum: number, p: number[]) => sum + p[1], 0) / ring.length;
+    const radLat = (avgLat * PI) / 180;
+    const lngScale = (EARTH_RADIUS_KM * Math.cos(radLat) * PI) / 180;
+    const latScale = (EARTH_RADIUS_KM * PI) / 180;
     const areaKm2 = area * lngScale * latScale;
 
     // 选择合适的单位
-    let displayArea, unit;
+    let displayArea: number;
+    let unit: string;
     if (areaKm2 >= 1) {
       displayArea = areaKm2;
       unit = '平方千米';
@@ -278,10 +302,10 @@ async function calcArea(coordinates: any): Promise<any> {
 
     return {
       success: true,
-      data: `多边形面积: ${displayArea.toFixed(4)} ${unit}（平面面积: ${area.toFixed(4)}）`
+      data: `多边形面积: ${displayArea.toFixed(4)} ${unit}（平面面积: ${area.toFixed(4)}）`,
     };
-  } catch (error: any) {
-    return { success: false, error: `面积计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `面积计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -290,7 +314,9 @@ async function calcArea(coordinates: any): Promise<any> {
  * @param {Array|string} coordinates - 坐标数组或 JSON 字符串
  * @returns {Promise<Object>} 结果对象
  */
-async function calcCenter(coordinates: any): Promise<any> {
+async function calcCenter(
+  coordinates: number[][] | string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const coords = typeof coordinates === 'string' ? JSON.parse(coordinates) : coordinates;
 
@@ -298,7 +324,8 @@ async function calcCenter(coordinates: any): Promise<any> {
       return { success: false, error: '坐标数组不能为空' };
     }
 
-    let sumLng = 0, sumLat = 0;
+    let sumLng = 0,
+      sumLat = 0;
     for (const point of coords) {
       sumLng += point[0];
       sumLat += point[1];
@@ -309,10 +336,10 @@ async function calcCenter(coordinates: any): Promise<any> {
 
     return {
       success: true,
-      data: `质心坐标: (${centerLng.toFixed(6)}, ${centerLat.toFixed(6)})`
+      data: `质心坐标: (${centerLng.toFixed(6)}, ${centerLat.toFixed(6)})`,
     };
-  } catch (error: any) {
-    return { success: false, error: `质心计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `质心计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -323,7 +350,11 @@ async function calcCenter(coordinates: any): Promise<any> {
  * @param {Array|string} polygon - 多边形坐标数组或 JSON 字符串
  * @returns {Promise<Object>} 结果对象
  */
-async function pointInPolygon(lng: any, lat: any, polygon: any): Promise<any> {
+async function pointInPolygon(
+  lng: number,
+  lat: number,
+  polygon: number[][] | string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const ring = typeof polygon === 'string' ? JSON.parse(polygon) : polygon;
 
@@ -335,23 +366,22 @@ async function pointInPolygon(lng: any, lat: any, polygon: any): Promise<any> {
     let inside = false;
     const n = ring.length;
     for (let i = 0, j = n - 1; i < n; j = i++) {
-      const xi = ring[i][0], yi = ring[i][1];
-      const xj = ring[j][0], yj = ring[j][1];
+      const xi = ring[i][0],
+        yi = ring[i][1];
+      const xj = ring[j][0],
+        yj = ring[j][1];
 
-      if ((yi > lat) !== (yj > lat) &&
-          lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) {
+      if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
         inside = !inside;
       }
     }
 
     return {
       success: true,
-      data: inside
-        ? `点 (${lng}, ${lat}) 在多边形内部`
-        : `点 (${lng}, ${lat}) 在多边形外部`
+      data: inside ? `点 (${lng}, ${lat}) 在多边形内部` : `点 (${lng}, ${lat}) 在多边形外部`,
     };
-  } catch (error: any) {
-    return { success: false, error: `判断失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `判断失败: ${(error as Error).message}` };
   }
 }
 
@@ -360,34 +390,47 @@ async function pointInPolygon(lng: any, lat: any, polygon: any): Promise<any> {
  * @param {string} filePath - GeoJSON 文件路径
  * @returns {Promise<Object>} 结果对象
  */
-async function readGeoJSON(filePath: string): Promise<any> {
+async function readGeoJSON(
+  filePath: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const basePath = getBasePath();
   const fullPath = path.isAbsolute(filePath) ? filePath : path.join(basePath, filePath);
 
   try {
     const content = await fs.readFile(fullPath, 'utf-8');
-    const data = JSON.parse(content);
+    const data = JSON.parse(content) as Record<string, unknown>;
 
-    if (data.type !== 'FeatureCollection' && data.type !== 'Feature' && !data.type?.endsWith('Geometry')) {
+    if (
+      data.type !== 'FeatureCollection' &&
+      data.type !== 'Feature' &&
+      !(data.type as string)?.endsWith('Geometry')
+    ) {
       return { success: false, error: '不是有效的 GeoJSON 格式' };
     }
 
     // 提取统计信息
     let featureCount = 0;
-    const geometryTypes: any = {};
-    let bounds: any = null;
+    const geometryTypes: Record<string, number> = {};
+    let bounds: { minLng: number; maxLng: number; minLat: number; maxLat: number } | null = null;
 
-    const features = data.type === 'FeatureCollection' ? data.features :
-                     data.type === 'Feature' ? [data] : [];
+    const features =
+      data.type === 'FeatureCollection'
+        ? (data.features as Record<string, unknown>[])
+        : data.type === 'Feature'
+          ? [data as Record<string, unknown>]
+          : [];
 
     for (const feature of features) {
       featureCount++;
-      const geomType = feature.geometry?.type || 'Unknown';
+      const geomType = ((feature.geometry as Record<string, unknown>)?.type as string) || 'Unknown';
       geometryTypes[geomType] = (geometryTypes[geomType] || 0) + 1;
 
       // 计算范围
-      const coords = extractCoords(feature.geometry);
-      for (const [clng, clat] of coords) {
+      const coords = extractCoords(feature.geometry as Record<string, unknown>);
+      for (const coord of coords) {
+        const coordArr = coord as number[];
+        const clng = coordArr[0] as number;
+        const clat = coordArr[1] as number;
         if (!bounds) {
           bounds = { minLng: clng, maxLng: clng, minLat: clat, maxLat: clat };
         } else {
@@ -403,39 +446,45 @@ async function readGeoJSON(filePath: string): Promise<any> {
       type: data.type,
       featureCount,
       geometryTypes,
-      bounds: bounds ? {
-        lngRange: [bounds.minLng.toFixed(6), bounds.maxLng.toFixed(6)],
-        latRange: [bounds.minLat.toFixed(6), bounds.maxLat.toFixed(6)]
-      } : null,
-      properties: features.length > 0 ? Object.keys(features[0].properties || {}) : []
+      bounds: bounds
+        ? {
+            lngRange: [bounds.minLng.toFixed(6), bounds.maxLng.toFixed(6)],
+            latRange: [bounds.minLat.toFixed(6), bounds.maxLat.toFixed(6)],
+          }
+        : null,
+      properties:
+        features.length > 0
+          ? Object.keys((features[0].properties as Record<string, unknown>) || {})
+          : [],
     };
 
     return {
       success: true,
-      data: JSON.stringify(summary, null, 2)
+      data: JSON.stringify(summary, null, 2),
     };
-  } catch (error: any) {
-    return { success: false, error: `读取 GeoJSON 失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `读取 GeoJSON 失败: ${(error as Error).message}` };
   }
 }
 
 /**
  * 递归提取 GeoJSON 几何中的所有坐标
  */
-function extractCoords(geometry: any): any[] {
+function extractCoords(geometry: Record<string, unknown>): unknown[] {
   if (!geometry) return [];
   if (geometry.type === 'Point') return [geometry.coordinates];
-  if (geometry.type === 'MultiPoint' || geometry.type === 'LineString') return geometry.coordinates;
+  if (geometry.type === 'MultiPoint' || geometry.type === 'LineString')
+    return geometry.coordinates as unknown[];
   if (geometry.type === 'MultiLineString' || geometry.type === 'Polygon') {
-    const coords = [];
-    for (const ring of geometry.coordinates) {
+    const coords: unknown[] = [];
+    for (const ring of geometry.coordinates as unknown[][]) {
       coords.push(...ring);
     }
     return coords;
   }
   if (geometry.type === 'MultiPolygon') {
-    const coords = [];
-    for (const polygon of geometry.coordinates) {
+    const coords: unknown[] = [];
+    for (const polygon of geometry.coordinates as unknown[][][]) {
       for (const ring of polygon) {
         coords.push(...ring);
       }
@@ -443,8 +492,8 @@ function extractCoords(geometry: any): any[] {
     return coords;
   }
   if (geometry.type === 'GeometryCollection') {
-    const coords = [];
-    for (const geom of geometry.geometries || []) {
+    const coords: unknown[] = [];
+    for (const geom of (geometry.geometries as Record<string, unknown>[]) || []) {
       coords.push(...extractCoords(geom));
     }
     return coords;
@@ -458,13 +507,16 @@ function extractCoords(geometry: any): any[] {
  * @param {Object|string} filter - 过滤条件 JSON 对象或字符串，如 {"name": "北京"}
  * @returns {Promise<Object>} 结果对象
  */
-async function queryGeoJSON(filePath: string, filter: any): Promise<any> {
+async function queryGeoJSON(
+  filePath: string,
+  filter: Record<string, string> | string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const basePath = getBasePath();
   const fullPath = path.isAbsolute(filePath) ? filePath : path.join(basePath, filePath);
 
   try {
     const content = await fs.readFile(fullPath, 'utf-8');
-    const data = JSON.parse(content);
+    const data = JSON.parse(content) as Record<string, unknown>;
 
     if (data.type !== 'FeatureCollection') {
       return { success: false, error: '仅支持 FeatureCollection 类型查询' };
@@ -472,14 +524,16 @@ async function queryGeoJSON(filePath: string, filter: any): Promise<any> {
 
     const conditions = typeof filter === 'string' ? JSON.parse(filter) : filter;
 
-    const matched = data.features.filter((feature: any) => {
-      for (const [key, value] of Object.entries(conditions)) {
-        const propValue = feature.properties?.[key];
-        if (propValue === undefined) return false;
-        if (String(propValue).toLowerCase() !== String(value).toLowerCase()) return false;
-      }
-      return true;
-    });
+    const matched = (data.features as Record<string, unknown>[]).filter(
+      (feature: Record<string, unknown>) => {
+        for (const [key, value] of Object.entries(conditions)) {
+          const propValue = (feature.properties as Record<string, unknown>)?.[key];
+          if (propValue === undefined) return false;
+          if (String(propValue).toLowerCase() !== String(value).toLowerCase()) return false;
+        }
+        return true;
+      },
+    );
 
     if (matched.length === 0) {
       return { success: true, data: '未找到匹配的要素' };
@@ -489,15 +543,15 @@ async function queryGeoJSON(filePath: string, filter: any): Promise<any> {
       type: 'FeatureCollection',
       features: matched,
       matched: matched.length,
-      total: data.features.length
+      total: (data.features as unknown[]).length,
     };
 
     return {
       success: true,
-      data: JSON.stringify(result, null, 2).slice(0, 30000)
+      data: JSON.stringify(result, null, 2).slice(0, 30000),
     };
-  } catch (error: any) {
-    return { success: false, error: `查询失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `查询失败: ${(error as Error).message}` };
   }
 }
 
@@ -506,53 +560,55 @@ async function queryGeoJSON(filePath: string, filter: any): Promise<any> {
  * @param {string} filePath - GeoJSON 文件路径
  * @returns {Promise<Object>} 结果对象
  */
-async function geoJSONStats(filePath: string): Promise<any> {
+async function geoJSONStats(
+  filePath: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const basePath = getBasePath();
   const fullPath = path.isAbsolute(filePath) ? filePath : path.join(basePath, filePath);
 
   try {
     const content = await fs.readFile(fullPath, 'utf-8');
-    const data = JSON.parse(content);
+    const data = JSON.parse(content) as Record<string, unknown>;
 
     if (data.type !== 'FeatureCollection') {
       return { success: false, error: '仅支持 FeatureCollection 统计' };
     }
 
-    const features = data.features || [];
+    const features = (data.features || []) as Record<string, unknown>[];
     const total = features.length;
 
     // 几何类型统计
-    const geomTypes: any = {};
+    const geomTypes: Record<string, number> = {};
     for (const f of features) {
-      const type = f.geometry?.type || 'Unknown';
+      const type = ((f.geometry as Record<string, unknown>)?.type as string) || 'Unknown';
       geomTypes[type] = (geomTypes[type] || 0) + 1;
     }
 
     // 属性字段统计
-    const propFields: any = {};
+    const propFields: Record<string, number> = {};
     for (const f of features) {
       if (f.properties) {
-        for (const key of Object.keys(f.properties)) {
+        for (const key of Object.keys(f.properties as Record<string, unknown>)) {
           propFields[key] = (propFields[key] || 0) + 1;
         }
       }
     }
 
     // 属性值唯一值统计（前几个字段）
-    const propSample: any = {};
+    const propSample: Record<string, unknown> = {};
     const topFields = Object.keys(propFields).slice(0, 5);
     for (const field of topFields) {
-      const values = new Set();
+      const values = new Set<string>();
       for (const f of features) {
-        const val = f.properties?.[field];
+        const val = (f.properties as Record<string, unknown>)?.[field];
         if (val !== undefined && val !== null) {
           values.add(String(val));
         }
       }
       propSample[field] = {
-        fillRate: `${((values.size > 0 ? features.filter((f: any) => f.properties?.[field] !== undefined && f.properties?.[field] !== null).length : 0) / total * 100).toFixed(1)}%`,
+        fillRate: `${(((values.size > 0 ? features.filter((f: Record<string, unknown>) => (f.properties as Record<string, unknown>)?.[field] !== undefined && (f.properties as Record<string, unknown>)?.[field] !== null).length : 0) / total) * 100).toFixed(1)}%`,
         uniqueValues: values.size,
-        samples: [...values].slice(0, 5)
+        samples: [...values].slice(0, 5),
       };
     }
 
@@ -561,15 +617,15 @@ async function geoJSONStats(filePath: string): Promise<any> {
       geometryTypes: geomTypes,
       propertyFields: Object.keys(propFields),
       propertyStats: propSample,
-      hasBounds: features.length > 0
+      hasBounds: features.length > 0,
     };
 
     return {
       success: true,
-      data: JSON.stringify(stats, null, 2)
+      data: JSON.stringify(stats, null, 2),
     };
-  } catch (error: any) {
-    return { success: false, error: `统计失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `统计失败: ${(error as Error).message}` };
   }
 }
 
@@ -579,27 +635,36 @@ async function geoJSONStats(filePath: string): Promise<any> {
  * @param {string} csvPath - 输出 CSV 路径
  * @returns {Promise<Object>} 结果对象
  */
-async function geoJSONToCSV(geojsonPath: string, csvPath: string): Promise<any> {
+async function geoJSONToCSV(
+  geojsonPath: string,
+  csvPath: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const basePath = getBasePath();
-  const fullGeojsonPath = path.isAbsolute(geojsonPath) ? geojsonPath : path.join(basePath, geojsonPath);
+  const fullGeojsonPath = path.isAbsolute(geojsonPath)
+    ? geojsonPath
+    : path.join(basePath, geojsonPath);
   const fullCsvPath = path.isAbsolute(csvPath) ? csvPath : path.join(basePath, csvPath);
 
   try {
     const content = await fs.readFile(fullGeojsonPath, 'utf-8');
-    const data = JSON.parse(content);
+    const data = JSON.parse(content) as Record<string, unknown>;
 
-    const features = data.type === 'FeatureCollection' ? data.features :
-                     data.type === 'Feature' ? [data] : [];
+    const features =
+      data.type === 'FeatureCollection'
+        ? (data.features as Record<string, unknown>[])
+        : data.type === 'Feature'
+          ? [data as Record<string, unknown>]
+          : [];
 
     if (features.length === 0) {
       return { success: false, error: '没有要素可导出' };
     }
 
     // 收集所有属性字段
-    const allFields = new Set(['geometry_type']);
+    const allFields = new Set<string>(['geometry_type']);
     for (const f of features) {
       if (f.properties) {
-        for (const key of Object.keys(f.properties)) {
+        for (const key of Object.keys(f.properties as Record<string, unknown>)) {
           allFields.add(key);
         }
       }
@@ -609,11 +674,11 @@ async function geoJSONToCSV(geojsonPath: string, csvPath: string): Promise<any> 
     // 构建 CSV
     const csvLines = [fields.join(',')];
     for (const f of features) {
-      const row = fields.map(field => {
+      const row = fields.map((field) => {
         if (field === 'geometry_type') {
-          return f.geometry?.type || '';
+          return ((f.geometry as Record<string, unknown>)?.type as string) || '';
         }
-        const val = f.properties?.[field];
+        const val = (f.properties as Record<string, unknown>)?.[field];
         if (val === undefined || val === null) return '';
         const strVal = String(val);
         if (strVal.includes(',') || strVal.includes('"') || strVal.includes('\n')) {
@@ -631,10 +696,10 @@ async function geoJSONToCSV(geojsonPath: string, csvPath: string): Promise<any> 
 
     return {
       success: true,
-      data: `已导出 ${features.length} 个要素的属性到 CSV: ${fullCsvPath}`
+      data: `已导出 ${features.length} 个要素的属性到 CSV: ${fullCsvPath}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `导出 CSV 失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `导出 CSV 失败: ${(error as Error).message}` };
   }
 }
 
@@ -644,17 +709,26 @@ async function geoJSONToCSV(geojsonPath: string, csvPath: string): Promise<any> 
  * @param {string} kmlPath - 输出 KML 路径
  * @returns {Promise<Object>} 结果对象
  */
-async function geoJSONToKML(geojsonPath: string, kmlPath: string): Promise<any> {
+async function geoJSONToKML(
+  geojsonPath: string,
+  kmlPath: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const basePath = getBasePath();
-  const fullGeojsonPath = path.isAbsolute(geojsonPath) ? geojsonPath : path.join(basePath, geojsonPath);
+  const fullGeojsonPath = path.isAbsolute(geojsonPath)
+    ? geojsonPath
+    : path.join(basePath, geojsonPath);
   const fullKmlPath = path.isAbsolute(kmlPath) ? kmlPath : path.join(basePath, kmlPath);
 
   try {
     const content = await fs.readFile(fullGeojsonPath, 'utf-8');
-    const data = JSON.parse(content);
+    const data = JSON.parse(content) as Record<string, unknown>;
 
-    const features = data.type === 'FeatureCollection' ? data.features :
-                     data.type === 'Feature' ? [data] : [];
+    const features =
+      data.type === 'FeatureCollection'
+        ? (data.features as Record<string, unknown>[])
+        : data.type === 'Feature'
+          ? [data as Record<string, unknown>]
+          : [];
 
     let kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -662,11 +736,14 @@ async function geoJSONToKML(geojsonPath: string, kmlPath: string): Promise<any> 
 `;
 
     for (const feature of features) {
-      const name = feature.properties?.name || feature.properties?.Name || 'Unnamed';
-      const desc = feature.properties?.description || '';
+      const name =
+        ((feature.properties as Record<string, unknown>)?.name as string) ||
+        ((feature.properties as Record<string, unknown>)?.Name as string) ||
+        'Unnamed';
+      const desc = ((feature.properties as Record<string, unknown>)?.description as string) || '';
 
       kml += `  <Placemark>\n    <name>${escapeXml(name)}</name>\n    <description>${escapeXml(String(desc))}</description>\n`;
-      kml += geomToKML(feature.geometry, '    ');
+      kml += geomToKML(feature.geometry as Record<string, unknown>, '    ');
       kml += `  </Placemark>\n`;
     }
 
@@ -678,33 +755,39 @@ async function geoJSONToKML(geojsonPath: string, kmlPath: string): Promise<any> 
 
     return {
       success: true,
-      data: `已导出 ${features.length} 个要素到 KML: ${fullKmlPath}`
+      data: `已导出 ${features.length} 个要素到 KML: ${fullKmlPath}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `导出 KML 失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `导出 KML 失败: ${(error as Error).message}` };
   }
 }
 
-function escapeXml(str: any): string {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+function escapeXml(str: unknown): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
-function geomToKML(geometry: any, indent: string): string {
+function geomToKML(geometry: Record<string, unknown>, indent: string): string {
   if (!geometry) return '';
   switch (geometry.type) {
     case 'Point':
-      return `${indent}<Point><coordinates>${geometry.coordinates[0]},${geometry.coordinates[1]},0</coordinates></Point>\n`;
+      return `${indent}<Point><coordinates>${(geometry.coordinates as number[])[0]},${(geometry.coordinates as number[])[1]},0</coordinates></Point>\n`;
     case 'MultiPoint':
     case 'LineString': {
-      const coords = geometry.coordinates.map((c: any) => `${c[0]},${c[1]},0`).join(' ');
+      const coords = (geometry.coordinates as number[][])
+        .map((c: number[]) => `${c[0]},${c[1]},0`)
+        .join(' ');
       return `${indent}<LineString><coordinates>${coords}</coordinates></LineString>\n`;
     }
     case 'Polygon': {
       let result = `${indent}<Polygon>\n`;
-      for (let i = 0; i < geometry.coordinates.length; i++) {
-        const ring = geometry.coordinates[i];
-        const coords = ring.map((c: any) => `${c[0]},${c[1]},0`).join(' ');
+      for (let i = 0; i < (geometry.coordinates as number[][][]).length; i++) {
+        const ring = (geometry.coordinates as number[][][])[i];
+        const coords = ring.map((c: number[]) => `${c[0]},${c[1]},0`).join(' ');
         const tag = i === 0 ? 'outerBoundaryIs' : 'innerBoundaryIs';
         result += `${indent}  <${tag}><LinearRing><coordinates>${coords}</coordinates></LinearRing></${tag}>\n`;
       }
@@ -727,5 +810,5 @@ export {
   queryGeoJSON,
   geoJSONStats,
   geoJSONToCSV,
-  geoJSONToKML
+  geoJSONToKML,
 };

@@ -37,7 +37,8 @@ let cleanupInterval: ReturnType<typeof setInterval> | null = null;
 function syncWechatHistoryToSession(): void {
   const msgs = getWechatMessages();
   const history: Array<{ role: string; content: string }> = [];
-  for (const msg of msgs) {
+  for (const msgRaw of msgs) {
+    const msg = msgRaw as Record<string, unknown>;
     if (msg.direction === 'received') {
       history.push({
         role: 'user',
@@ -46,7 +47,7 @@ function syncWechatHistoryToSession(): void {
     } else if (msg.direction === 'sent') {
       history.push({
         role: 'assistant',
-        content: msg.text,
+        content: msg.text as string,
       });
     }
   }
@@ -128,8 +129,8 @@ async function initWechatChannel(): Promise<void> {
 
   const status = await getWechatStatus();
 
-  if (status.success && status.data.loggedIn) {
-    console.log(`[微信通道] 已登录账号: ${status.data.accountId}`);
+  if (status.success && status.data!.loggedIn) {
+    console.log(`[微信通道] 已登录账号: ${status.data!.accountId}`);
 
     if (!wechatState.wechatSessionId) {
       const sid = getOrCreateWechatSession();
@@ -142,7 +143,7 @@ async function initWechatChannel(): Promise<void> {
       broadcast('wechat-state', {
         data: {
           connected: true,
-          accountId: status.data.accountId,
+          accountId: status.data!.accountId,
           polling: true,
         },
       });

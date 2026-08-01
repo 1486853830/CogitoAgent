@@ -1,4 +1,5 @@
 import { loadConfig } from '../../config.ts';
+import type { Config } from '../../types/index.ts';
 
 /**
  * 发送邮件
@@ -7,9 +8,9 @@ async function sendEmail(
   to: string,
   subject: string,
   body: string,
-  options: any = {},
-): Promise<any> {
-  const cfg: any = loadConfig();
+  options: Record<string, unknown> = {},
+): Promise<{ success: boolean; data?: string; error?: string }> {
+  const cfg: Config = loadConfig();
   const emailConfig = cfg.email || {};
 
   if (
@@ -24,7 +25,11 @@ async function sendEmail(
     };
   }
 
-  const nodemailer: any = await import('nodemailer');
+  const nodemailer: {
+    createTransport: (opts: Record<string, unknown>) => {
+      sendMail: (opts: Record<string, unknown>) => Promise<{ messageId: string }>;
+    };
+  } = await import('nodemailer');
 
   try {
     const transporter = nodemailer.createTransport({
@@ -56,10 +61,10 @@ async function sendEmail(
       success: true,
       data: `邮件发送成功！Message ID: ${info.messageId}`,
     };
-  } catch (e: any) {
+  } catch (e: unknown) {
     return {
       success: false,
-      error: `发送邮件失败: ${e.message}`,
+      error: `发送邮件失败: ${(e as Error).message}`,
     };
   }
 }
@@ -67,14 +72,22 @@ async function sendEmail(
 /**
  * 发送简单文本邮件
  */
-async function sendTextEmail(to: string, subject: string, body: string): Promise<any> {
+async function sendTextEmail(
+  to: string,
+  subject: string,
+  body: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await sendEmail(to, subject, body);
 }
 
 /**
  * 发送 HTML 邮件
  */
-async function sendHtmlEmail(to: string, subject: string, htmlBody: string): Promise<any> {
+async function sendHtmlEmail(
+  to: string,
+  subject: string,
+  htmlBody: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await sendEmail(to, subject, '', { html: htmlBody });
 }
 
@@ -85,8 +98,8 @@ async function sendEmailWithAttachments(
   to: string,
   subject: string,
   body: string,
-  attachments: any,
-): Promise<any> {
+  attachments: unknown[],
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await sendEmail(to, subject, body, { attachments });
 }
 
@@ -97,9 +110,9 @@ async function sendTemplateEmail(
   to: string,
   subject: string,
   templateName: string,
-  data: any,
-): Promise<any> {
-  const templates: any = {
+  data: Record<string, unknown>,
+): Promise<{ success: boolean; data?: string; error?: string }> {
+  const templates: Record<string, { text: string; html: string }> = {
     welcome: {
       text: `欢迎使用 CogitoAgent！\n\n您好，感谢您的注册。\n\n用户名: ${data.username}\n邮箱: ${data.email}\n\n祝您使用愉快！`,
       html: `<h1>欢迎使用 CogitoAgent！</h1><p>您好，感谢您的注册。</p><p>用户名: ${data.username}</p><p>邮箱: ${data.email}</p><p>祝您使用愉快！</p>`,
@@ -128,12 +141,18 @@ async function sendTemplateEmail(
 /**
  * 检查邮件配置
  */
-async function checkEmailConfig(): Promise<any> {
-  const cfg: any = loadConfig();
+async function checkEmailConfig(): Promise<{
+  success: boolean;
+  data?: { smtpHost: string; smtpPort: number; user: string; from: string };
+  error?: string;
+}> {
+  const cfg: Config = loadConfig();
   const emailConfig = cfg.email || {};
 
   const required = ['smtpHost', 'smtpPort', 'user', 'password'];
-  const missing = required.filter((key) => !emailConfig[key]);
+  const missing = required.filter(
+    (key) => !(emailConfig as unknown as Record<string, unknown>)[key],
+  );
 
   if (missing.length > 0) {
     return {

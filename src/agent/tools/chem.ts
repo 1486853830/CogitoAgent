@@ -7,7 +7,18 @@
 // ============================================
 // 元素周期表（常用元素）
 // ============================================
-const ELEMENTS: any = {
+const ELEMENTS: Record<
+  string,
+  {
+    z: number;
+    mass: number;
+    symbol: string;
+    name: string;
+    nameEn: string;
+    period: number;
+    group: number;
+  }
+> = {
   H: { z: 1, mass: 1.008, symbol: 'H', name: '氢', nameEn: 'Hydrogen', period: 1, group: 1 },
   He: { z: 2, mass: 4.003, symbol: 'He', name: '氦', nameEn: 'Helium', period: 1, group: 18 },
   Li: { z: 3, mass: 6.941, symbol: 'Li', name: '锂', nameEn: 'Lithium', period: 2, group: 1 },
@@ -56,9 +67,9 @@ const ELEMENTS: any = {
  * 解析化学分子式，返回元素组成
  * 支持：H2SO4, Ca(OH)2, CuSO4·5H2O, CH3COOH
  */
-function parseFormula(formula: string): any {
+function parseFormula(formula: string): Record<string, number> {
   const clean = formula.replace(/[·∙⋅]/g, '.').trim();
-  const stack: any[] = [{}];
+  const stack: Record<string, number>[] = [{}];
   let i = 0;
 
   while (i < clean.length) {
@@ -68,7 +79,7 @@ function parseFormula(formula: string): any {
       stack.push({});
       i++;
     } else if (ch === ')') {
-      const top = stack.pop();
+      const top = stack.pop()!;
       i++;
       let num = '';
       while (i < clean.length && /\d/.test(clean[i])) {
@@ -124,7 +135,9 @@ function parseFormula(formula: string): any {
  * @param {string} symbol - 元素符号
  * @returns {Promise<Object>}
  */
-async function elementInfo(symbol: string): Promise<any> {
+async function elementInfo(
+  symbol: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const sym = symbol.trim();
     const el = ELEMENTS[sym];
@@ -135,8 +148,8 @@ async function elementInfo(symbol: string): Promise<any> {
       success: true,
       data: `${el.symbol} (${el.nameEn}) ${el.name}\n原子序数: ${el.z}\n原子量: ${el.mass} g/mol\n周期: ${el.period}，族: ${el.group}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `查询失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `查询失败: ${(error as Error).message}` };
   }
 }
 
@@ -145,11 +158,13 @@ async function elementInfo(symbol: string): Promise<any> {
  * @param {string} formula - 化学分子式，如 H2SO4、Ca(OH)2
  * @returns {Promise<Object>}
  */
-async function molWeight(formula: string): Promise<any> {
+async function molWeight(
+  formula: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const elements = parseFormula(formula);
     let total = 0;
-    const details: any[] = [];
+    const details: string[] = [];
 
     for (const [el, cnt] of Object.entries(elements)) {
       const m = ELEMENTS[el].mass * (cnt as number);
@@ -161,8 +176,8 @@ async function molWeight(formula: string): Promise<any> {
       success: true,
       data: `${formula} 分子量: ${total.toFixed(3)} g/mol\n${details.join('\n')}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `分子量计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `分子量计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -171,11 +186,13 @@ async function molWeight(formula: string): Promise<any> {
  * @param {string} formula - 化学分子式
  * @returns {Promise<Object>}
  */
-async function elementComposition(formula: string): Promise<any> {
+async function elementComposition(
+  formula: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const elements = parseFormula(formula);
     let total = 0;
-    const weights: any = {};
+    const weights: Record<string, number> = {};
 
     for (const [el, cnt] of Object.entries(elements)) {
       const w = ELEMENTS[el].mass * (cnt as number);
@@ -185,13 +202,13 @@ async function elementComposition(formula: string): Promise<any> {
 
     const lines = [`${formula} 元素组成（总分子量: ${total.toFixed(3)} g/mol）:\n`];
     for (const [el, w] of Object.entries(weights)) {
-      const pct = (((w as number) / total) * 100).toFixed(2);
-      lines.push(`  ${el}: ${ELEMENTS[el].name}  ${(w as number).toFixed(3)} g/mol (${pct}%)`);
+      const pct = ((w / total) * 100).toFixed(2);
+      lines.push(`  ${el}: ${ELEMENTS[el].name}  ${w.toFixed(3)} g/mol (${pct}%)`);
     }
 
     return { success: true, data: lines.join('\n') };
-  } catch (error: any) {
-    return { success: false, error: `元素组成计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `元素组成计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -201,15 +218,18 @@ async function elementComposition(formula: string): Promise<any> {
  * @param {number} volume - 溶液体积（L）
  * @returns {Promise<Object>}
  */
-async function molarity(moles: any, volume: any): Promise<any> {
+async function molarity(
+  moles: number,
+  volume: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!moles || moles <= 0) return { success: false, error: '物质的量必须为正数' };
     if (!volume || volume <= 0) return { success: false, error: '体积必须为正数' };
 
     const M = moles / volume;
     return { success: true, data: `浓度: ${M.toFixed(4)} mol/L (M)` };
-  } catch (error: any) {
-    return { success: false, error: `浓度计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `浓度计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -221,7 +241,12 @@ async function molarity(moles: any, volume: any): Promise<any> {
  * @param {number} v2 - 目标体积（不传则求）
  * @returns {Promise<Object>}
  */
-async function dilution(c1: any, v1: any, c2: any, v2: any): Promise<any> {
+async function dilution(
+  c1: number,
+  v1: number,
+  c2: number | undefined | null,
+  v2: number | undefined | null,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!c1 || c1 <= 0) return { success: false, error: '初始浓度必须为正数' };
     if (!v1 || v1 <= 0) return { success: false, error: '初始体积必须为正数' };
@@ -255,8 +280,8 @@ async function dilution(c1: any, v1: any, c2: any, v2: any): Promise<any> {
     } else {
       return { success: false, error: '请至少提供 C2 或 V2 中的一个' };
     }
-  } catch (error: any) {
-    return { success: false, error: `稀释计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `稀释计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -265,7 +290,7 @@ async function dilution(c1: any, v1: any, c2: any, v2: any): Promise<any> {
  * @param {number} h - 氢离子浓度（mol/L）
  * @returns {Promise<Object>}
  */
-async function phFromH(h: any): Promise<any> {
+async function phFromH(h: number): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!h || h <= 0) return { success: false, error: 'H⁺ 浓度必须为正数' };
     const ph = -Math.log10(h);
@@ -277,8 +302,8 @@ async function phFromH(h: any): Promise<any> {
     else type = '强碱';
 
     return { success: true, data: `pH = ${ph.toFixed(2)}（${type}）` };
-  } catch (error: any) {
-    return { success: false, error: `pH 计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `pH 计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -287,7 +312,9 @@ async function phFromH(h: any): Promise<any> {
  * @param {number} ph - pH 值
  * @returns {Promise<Object>}
  */
-async function phToH(ph: any): Promise<any> {
+async function phToH(
+  ph: number | undefined | null,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (ph === undefined || ph === null) return { success: false, error: '请输入 pH 值' };
     if (ph < 0 || ph > 14) return { success: false, error: 'pH 值应在 0-14 之间' };
@@ -296,8 +323,8 @@ async function phToH(ph: any): Promise<any> {
     const parts = h.toExponential(4).split('e');
     const formatted = `${parts[0]}e${parseInt(parts[1], 10) < 0 ? '-' : '+'}${Math.abs(parseInt(parts[1], 10)).toString().padStart(2, '0')}`;
     return { success: true, data: `[H⁺] = ${formatted} mol/L` };
-  } catch (error: any) {
-    return { success: false, error: `H⁺ 计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `H⁺ 计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -310,7 +337,12 @@ async function phToH(ph: any): Promise<any> {
  * @param {number} T - 温度（K，可省略）
  * @returns {Promise<Object>}
  */
-async function idealGasLaw(P: any, V: any, n: any, T: any): Promise<any> {
+async function idealGasLaw(
+  P: number | undefined | null,
+  V: number | undefined | null,
+  n: number | undefined | null,
+  T: number | undefined | null,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const R = 0.082057; // L·atm/(mol·K)
     const params = [
@@ -332,27 +364,27 @@ async function idealGasLaw(P: any, V: any, n: any, T: any): Promise<any> {
       let result, unit;
 
       if (Pv === null) {
-        result = (nv * R * Tv) / Vv;
+        result = (nv! * R * Tv!) / Vv!;
         unit = 'atm';
       } else if (Vv === null) {
-        result = (nv * R * Tv) / Pv;
+        result = (nv! * R * Tv!) / Pv;
         unit = 'L';
       } else if (nv === null) {
-        result = (Pv * Vv) / (R * Tv);
+        result = (Pv * Vv!) / (R * Tv!);
         unit = 'mol';
       } else {
-        result = (Pv * Vv) / (nv * R);
+        result = (Pv * Vv!) / (nv! * R);
         unit = 'K';
       }
 
       return {
         success: true,
-        data: `PV = nRT\n${params.map((p) => `${p.name} = ${p.val !== null && p.val !== undefined ? p.val : result.toFixed(4)} ${p.unit}`).join(', ')}`,
+        data: `PV = nRT\n${params.map((p) => `${p.name} = ${p.val !== null && p.val !== undefined ? p.val : (result as number).toFixed(4)} ${p.unit}`).join(', ')}`,
       };
     } else if (missing.length === 0) {
       // 验证
-      const lhs = P * V;
-      const rhs = n * R * T;
+      const lhs = P! * V!;
+      const rhs = n! * R * T!;
       return {
         success: true,
         data: `验证: PV = ${P}×${V} = ${lhs.toFixed(4)}\nnRT = ${n}×${R}×${T} = ${rhs.toFixed(4)}\n相差: ${Math.abs(lhs - rhs).toFixed(4)}`,
@@ -360,8 +392,8 @@ async function idealGasLaw(P: any, V: any, n: any, T: any): Promise<any> {
     }
 
     return { success: false, error: '未知错误' };
-  } catch (error: any) {
-    return { success: false, error: `气体定律计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `气体定律计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -372,7 +404,11 @@ async function idealGasLaw(P: any, V: any, n: any, T: any): Promise<any> {
  * @param {number} P - 压强（atm）
  * @returns {Promise<Object>}
  */
-async function gasDensity(mw: any, T: any, P: any): Promise<any> {
+async function gasDensity(
+  mw: number,
+  T: number,
+  P: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!mw || mw <= 0) return { success: false, error: '分子量必须为正数' };
     if (!T || T <= 0) return { success: false, error: '温度必须为正数（K）' };
@@ -384,8 +420,8 @@ async function gasDensity(mw: any, T: any, P: any): Promise<any> {
       success: true,
       data: `气体密度: ${density.toFixed(4)} g/L (${(density * 1000).toFixed(4)} mg/L)\nT=${T}K, P=${P}atm, MW=${mw} g/mol`,
     };
-  } catch (error: any) {
-    return { success: false, error: `气体密度计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `气体密度计算失败: ${(error as Error).message}` };
   }
 }
 

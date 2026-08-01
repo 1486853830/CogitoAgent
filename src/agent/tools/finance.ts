@@ -5,7 +5,7 @@
  */
 
 // 工具函数：将参数转为数字，NaN 时返回原值
-function toNum(v: any): any {
+function toNum(v: unknown): number | unknown {
   if (v === undefined || v === null) return v;
   const n = Number(v);
   return isNaN(n) ? v : n;
@@ -19,9 +19,17 @@ function toNum(v: any): any {
  * @param {number} t - 年数
  * @returns {Promise<Object>}
  */
-async function compoundInterest(P: any, r: any, n: any, t: any): Promise<any> {
+async function compoundInterest(
+  P: number,
+  r: number,
+  n: number,
+  t: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    P = toNum(P); r = toNum(r); n = toNum(n); t = toNum(t);
+    P = toNum(P) as number;
+    r = toNum(r) as number;
+    n = toNum(n) as number;
+    t = toNum(t) as number;
     if (!P || P <= 0) return { success: false, error: '本金必须为正数' };
     if (r === undefined || r === null || isNaN(r)) return { success: false, error: '请输入利率' };
     if (!n || n <= 0) return { success: false, error: '复利次数必须为正数' };
@@ -32,10 +40,10 @@ async function compoundInterest(P: any, r: any, n: any, t: any): Promise<any> {
 
     return {
       success: true,
-      data: `终值: ${A.toFixed(2)}\n本金: ${P.toFixed(2)}\n利息: ${interest.toFixed(2)}\n年利率: ${(r * 100).toFixed(2)}%，${n}次/年，${t}年`
+      data: `终值: ${A.toFixed(2)}\n本金: ${P.toFixed(2)}\n利息: ${interest.toFixed(2)}\n年利率: ${(r * 100).toFixed(2)}%，${n}次/年，${t}年`,
     };
-  } catch (error: any) {
-    return { success: false, error: `复利计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `复利计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -46,17 +54,26 @@ async function compoundInterest(P: any, r: any, n: any, t: any): Promise<any> {
  * @param {number} n - 期数
  * @returns {Promise<Object>}
  */
-async function presentValue(FV: any, r: any, n: any): Promise<any> {
+async function presentValue(
+  FV: number,
+  r: number,
+  n: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    FV = toNum(FV); r = toNum(r); n = toNum(n);
+    FV = toNum(FV) as number;
+    r = toNum(r) as number;
+    n = toNum(n) as number;
     if (!FV || FV <= 0) return { success: false, error: '终值必须为正数' };
     if (r === undefined || r === null || isNaN(r)) return { success: false, error: '请输入折现率' };
     if (!n || n <= 0) return { success: false, error: '期数必须为正数' };
 
     const PV = FV / Math.pow(1 + r, n);
-    return { success: true, data: `现值: ${PV.toFixed(2)}（折现率 ${(r * 100).toFixed(2)}%，${n} 期）` };
-  } catch (error: any) {
-    return { success: false, error: `现值计算失败: ${error.message}` };
+    return {
+      success: true,
+      data: `现值: ${PV.toFixed(2)}（折现率 ${(r * 100).toFixed(2)}%，${n} 期）`,
+    };
+  } catch (error: unknown) {
+    return { success: false, error: `现值计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -67,23 +84,29 @@ async function presentValue(FV: any, r: any, n: any): Promise<any> {
  * @param {number} n - 期数
  * @returns {Promise<Object>}
  */
-async function futureValueAnnuity(PMT: any, r: any, n: any): Promise<any> {
+async function futureValueAnnuity(
+  PMT: number,
+  r: number,
+  n: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    PMT = toNum(PMT); r = toNum(r); n = toNum(n);
+    PMT = toNum(PMT) as number;
+    r = toNum(r) as number;
+    n = toNum(n) as number;
     if (!PMT || PMT <= 0) return { success: false, error: '每期支付额必须为正数' };
     if (r === undefined || r === null || isNaN(r)) return { success: false, error: '请输入利率' };
     if (!n || n <= 0) return { success: false, error: '期数必须为正数' };
 
-    const FV = PMT * (Math.pow(1 + r, n) - 1) / r;
+    const FV = (PMT * (Math.pow(1 + r, n) - 1)) / r;
     const totalPayments = PMT * n;
     const interest = FV - totalPayments;
 
     return {
       success: true,
-      data: `年金终值: ${FV.toFixed(2)}\n总投入: ${totalPayments.toFixed(2)}\n总收益: ${interest.toFixed(2)}`
+      data: `年金终值: ${FV.toFixed(2)}\n总投入: ${totalPayments.toFixed(2)}\n总收益: ${interest.toFixed(2)}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `年金终值计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `年金终值计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -93,9 +116,12 @@ async function futureValueAnnuity(PMT: any, r: any, n: any): Promise<any> {
  * @param {Array|string} cashflows - 现金流数组或 JSON 字符串（第0项为初始投资，负值）
  * @returns {Promise<Object>}
  */
-async function npv(rate: any, cashflows: any): Promise<any> {
+async function npv(
+  rate: number,
+  cashflows: number[] | string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    rate = toNum(rate);
+    rate = toNum(rate) as number;
     const flows = typeof cashflows === 'string' ? JSON.parse(cashflows) : cashflows;
     if (!Array.isArray(flows) || flows.length < 2) {
       return { success: false, error: '现金流至少需要 2 期' };
@@ -106,13 +132,15 @@ async function npv(rate: any, cashflows: any): Promise<any> {
       total += flows[i] / Math.pow(1 + rate, i);
     }
 
-    const totalInvestment = Math.abs(flows.filter((f: number) => f < 0).reduce((s: number, v: number) => s + v, 0));
+    const totalInvestment = Math.abs(
+      flows.filter((f: number) => f < 0).reduce((s: number, v: number) => s + v, 0),
+    );
     return {
       success: true,
-      data: `NPV: ${total.toFixed(4)}\n总投资: ${totalInvestment.toFixed(2)}\n${total >= 0 ? '✅ 项目可行（NPV ≥ 0）' : '❌ 项目不可行（NPV < 0）'}`
+      data: `NPV: ${total.toFixed(4)}\n总投资: ${totalInvestment.toFixed(2)}\n${total >= 0 ? '✅ 项目可行（NPV ≥ 0）' : '❌ 项目不可行（NPV < 0）'}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `NPV 计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `NPV 计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -121,7 +149,9 @@ async function npv(rate: any, cashflows: any): Promise<any> {
  * @param {Array|string} cashflows - 现金流数组或 JSON 字符串
  * @returns {Promise<Object>}
  */
-async function irr(cashflows: any): Promise<any> {
+async function irr(
+  cashflows: number[] | string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const flows = typeof cashflows === 'string' ? JSON.parse(cashflows) : cashflows;
     if (!Array.isArray(flows) || flows.length < 2) {
@@ -138,13 +168,13 @@ async function irr(cashflows: any): Promise<any> {
       let dnpv = 0;
       for (let i = 0; i < flows.length; i++) {
         npvVal += flows[i] / Math.pow(1 + guess, i);
-        dnpv -= i * flows[i] / Math.pow(1 + guess, i + 1);
+        dnpv -= (i * flows[i]) / Math.pow(1 + guess, i + 1);
       }
 
       if (Math.abs(npvVal) < tolerance) {
         return {
           success: true,
-          data: `IRR: ${(guess * 100).toFixed(2)}%`
+          data: `IRR: ${(guess * 100).toFixed(2)}%`,
         };
       }
 
@@ -154,10 +184,10 @@ async function irr(cashflows: any): Promise<any> {
 
     return {
       success: true,
-      data: `IRR: ${(guess * 100).toFixed(2)}%（近似值）`
+      data: `IRR: ${(guess * 100).toFixed(2)}%（近似值）`,
     };
-  } catch (error: any) {
-    return { success: false, error: `IRR 计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `IRR 计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -166,7 +196,9 @@ async function irr(cashflows: any): Promise<any> {
  * @param {Array|string} cashflows - 现金流数组或 JSON 字符串
  * @returns {Promise<Object>}
  */
-async function paybackPeriod(cashflows: any): Promise<any> {
+async function paybackPeriod(
+  cashflows: number[] | string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const flows = typeof cashflows === 'string' ? JSON.parse(cashflows) : cashflows;
     if (!Array.isArray(flows) || flows.length < 2) {
@@ -181,7 +213,7 @@ async function paybackPeriod(cashflows: any): Promise<any> {
         const prevCumulative = cumulative - flows[i];
         if (prevCumulative < 0 && flows[i] > 0) {
           const fraction = -prevCumulative / flows[i];
-          const period = (i - 1) + fraction;
+          const period = i - 1 + fraction;
           return { success: true, data: `回收期: ${period.toFixed(2)} 期` };
         }
         return { success: true, data: `回收期: ${i} 期（在第 ${i} 期刚好回收）` };
@@ -189,8 +221,8 @@ async function paybackPeriod(cashflows: any): Promise<any> {
     }
 
     return { success: true, data: `在 ${flows.length} 期内未能回收投资` };
-  } catch (error: any) {
-    return { success: false, error: `回收期计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `回收期计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -200,19 +232,23 @@ async function paybackPeriod(cashflows: any): Promise<any> {
  * @param {number} cost - 成本
  * @returns {Promise<Object>}
  */
-async function roi(gain: any, cost: any): Promise<any> {
+async function roi(
+  gain: number,
+  cost: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    gain = toNum(gain); cost = toNum(cost);
+    gain = toNum(gain) as number;
+    cost = toNum(cost) as number;
     if (!cost || cost <= 0) return { success: false, error: '成本必须为正数' };
     if (gain === undefined || gain === null) return { success: false, error: '请输入收益' };
 
     const value = ((gain - cost) / cost) * 100;
     return {
       success: true,
-      data: `ROI: ${value.toFixed(2)}%\n收益: ${gain.toFixed(2)}，成本: ${cost.toFixed(2)}，净利润: ${(gain - cost).toFixed(2)}`
+      data: `ROI: ${value.toFixed(2)}%\n收益: ${gain.toFixed(2)}，成本: ${cost.toFixed(2)}，净利润: ${(gain - cost).toFixed(2)}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `ROI 计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `ROI 计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -223,25 +259,33 @@ async function roi(gain: any, cost: any): Promise<any> {
  * @param {number} months - 贷款期数（月）
  * @returns {Promise<Object>}
  */
-async function loanPayment(principal: any, annualRate: any, months: any): Promise<any> {
+async function loanPayment(
+  principal: number,
+  annualRate: number,
+  months: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    principal = toNum(principal); annualRate = toNum(annualRate); months = toNum(months);
+    principal = toNum(principal) as number;
+    annualRate = toNum(annualRate) as number;
+    months = toNum(months) as number;
     if (!principal || principal <= 0) return { success: false, error: '本金必须为正数' };
-    if (annualRate === undefined || annualRate === null || isNaN(annualRate)) return { success: false, error: '请输入年利率' };
+    if (annualRate === undefined || annualRate === null || isNaN(annualRate))
+      return { success: false, error: '请输入年利率' };
     if (!months || months <= 0) return { success: false, error: '期数必须为正数' };
 
     const monthlyRate = annualRate / 12;
-    const payment = principal * monthlyRate * Math.pow(1 + monthlyRate, months) /
+    const payment =
+      (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) /
       (Math.pow(1 + monthlyRate, months) - 1);
     const totalPayment = payment * months;
     const totalInterest = totalPayment - principal;
 
     return {
       success: true,
-      data: `月供: ${payment.toFixed(2)}\n总还款: ${totalPayment.toFixed(2)}\n总利息: ${totalInterest.toFixed(2)}\n年利率: ${(annualRate * 100).toFixed(2)}%，${months} 个月`
+      data: `月供: ${payment.toFixed(2)}\n总还款: ${totalPayment.toFixed(2)}\n总利息: ${totalInterest.toFixed(2)}\n年利率: ${(annualRate * 100).toFixed(2)}%，${months} 个月`,
     };
-  } catch (error: any) {
-    return { success: false, error: `贷款计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `贷款计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -252,15 +296,23 @@ async function loanPayment(principal: any, annualRate: any, months: any): Promis
  * @param {number} months - 期数
  * @returns {Promise<Object>}
  */
-async function amortizationSchedule(principal: any, annualRate: any, months: any): Promise<any> {
+async function amortizationSchedule(
+  principal: number,
+  annualRate: number,
+  months: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    principal = toNum(principal); annualRate = toNum(annualRate); months = toNum(months);
+    principal = toNum(principal) as number;
+    annualRate = toNum(annualRate) as number;
+    months = toNum(months) as number;
     if (!principal || principal <= 0) return { success: false, error: '本金必须为正数' };
-    if (annualRate === undefined || annualRate === null || isNaN(annualRate) || annualRate <= 0) return { success: false, error: '请输入有效年利率' };
+    if (annualRate === undefined || annualRate === null || isNaN(annualRate) || annualRate <= 0)
+      return { success: false, error: '请输入有效年利率' };
     if (months > 360) return { success: false, error: '期数不能超过 360' };
 
     const monthlyRate = annualRate / 12;
-    const payment = principal * monthlyRate * Math.pow(1 + monthlyRate, months) /
+    const payment =
+      (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) /
       (Math.pow(1 + monthlyRate, months) - 1);
     let balance = principal;
     const lines = ['期次 | 月供 | 偿还本金 | 偿还利息 | 剩余本金'];
@@ -271,7 +323,9 @@ async function amortizationSchedule(principal: any, annualRate: any, months: any
       const principalPaid = payment - interest;
       balance -= principalPaid;
       if (balance < 0) balance = 0;
-      lines.push(`${i} | ${payment.toFixed(2)} | ${principalPaid.toFixed(2)} | ${interest.toFixed(2)} | ${balance.toFixed(2)}`);
+      lines.push(
+        `${i} | ${payment.toFixed(2)} | ${principalPaid.toFixed(2)} | ${interest.toFixed(2)} | ${balance.toFixed(2)}`,
+      );
 
       if (i === 12 && months > 24) {
         lines.push('...（省略中间还款计划，完整 ${months} 期）');
@@ -282,10 +336,10 @@ async function amortizationSchedule(principal: any, annualRate: any, months: any
 
     return {
       success: true,
-      data: `还款计划表（${months} 期，月供 ${payment.toFixed(2)}）:\n\n${lines.join('\n')}`
+      data: `还款计划表（${months} 期，月供 ${payment.toFixed(2)}）:\n\n${lines.join('\n')}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `还款计划计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `还款计划计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -296,16 +350,20 @@ async function amortizationSchedule(principal: any, annualRate: any, months: any
  * @param {number} months - 期数
  * @returns {Promise<Object>}
  */
-async function totalInterest(principal: any, annualRate: any, months: any): Promise<any> {
+async function totalInterest(
+  principal: number,
+  annualRate: number,
+  months: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const result = await loanPayment(principal, annualRate, months);
     if (!result.success) return result;
     // 从 loanPayment 结果中提取总利息
-    const match = result.data.match(/总利息: ([\d.]+)/);
+    const match = result.data!.match(/总利息: ([\d.]+)/);
     const interest = match ? parseFloat(match[1]) : 0;
     return { success: true, data: `总利息: ${interest.toFixed(2)}` };
-  } catch (error: any) {
-    return { success: false, error: `总利息计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `总利息计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -315,15 +373,18 @@ async function totalInterest(principal: any, annualRate: any, months: any): Prom
  * @param {number} period - 周期
  * @returns {Promise<Object>}
  */
-async function movingAverage(data: any, period: any): Promise<any> {
+async function movingAverage(
+  data: number[] | string,
+  period: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    period = toNum(period);
+    period = toNum(period) as number;
     const values = typeof data === 'string' ? JSON.parse(data) : data;
     if (!Array.isArray(values) || values.length < period) {
       return { success: false, error: `数据长度必须大于等于周期 ${period}` };
     }
 
-    const result: any[] = [];
+    const result: number[] = [];
     for (let i = period - 1; i < values.length; i++) {
       const sum = values.slice(i - period + 1, i + 1).reduce((s: number, v: number) => s + v, 0);
       result.push(parseFloat((sum / period).toFixed(4)));
@@ -331,10 +392,10 @@ async function movingAverage(data: any, period: any): Promise<any> {
 
     return {
       success: true,
-      data: `移动平均线（${period} 期）:\n原始数据: ${values.length} 个\n结果: ${result.length} 个\n${result.slice(0, 20).join(', ')}${result.length > 20 ? `\n...（共 ${result.length} 个值）` : ''}`
+      data: `移动平均线（${period} 期）:\n原始数据: ${values.length} 个\n结果: ${result.length} 个\n${result.slice(0, 20).join(', ')}${result.length > 20 ? `\n...（共 ${result.length} 个值）` : ''}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `移动平均计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `移动平均计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -343,7 +404,9 @@ async function movingAverage(data: any, period: any): Promise<any> {
  * @param {Array|string} prices - 价格序列数组或 JSON 字符串
  * @returns {Promise<Object>}
  */
-async function volatility(prices: any): Promise<any> {
+async function volatility(
+  prices: number[] | string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const vals = typeof prices === 'string' ? JSON.parse(prices) : prices;
     if (!Array.isArray(vals) || vals.length < 3) {
@@ -351,21 +414,22 @@ async function volatility(prices: any): Promise<any> {
     }
 
     // 计算对数收益率
-    const returns: any[] = [];
+    const returns: number[] = [];
     for (let i = 1; i < vals.length; i++) {
       returns.push(Math.log(vals[i] / vals[i - 1]));
     }
 
     const mean = returns.reduce((s: number, v: number) => s + v, 0) / returns.length;
-    const variance = returns.reduce((s: number, v: number) => s + (v - mean) ** 2, 0) / (returns.length - 1);
+    const variance =
+      returns.reduce((s: number, v: number) => s + (v - mean) ** 2, 0) / (returns.length - 1);
     const std = Math.sqrt(variance);
 
     return {
       success: true,
-      data: `波动率（标准差）: ${(std * 100).toFixed(2)}%\n年化波动率: ${(std * Math.sqrt(252) * 100).toFixed(2)}%（按 252 个交易日）\n数据点数: ${vals.length}，收益率个数: ${returns.length}`
+      data: `波动率（标准差）: ${(std * 100).toFixed(2)}%\n年化波动率: ${(std * Math.sqrt(252) * 100).toFixed(2)}%（按 252 个交易日）\n数据点数: ${vals.length}，收益率个数: ${returns.length}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `波动率计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `波动率计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -381,5 +445,5 @@ export {
   amortizationSchedule,
   totalInterest,
   movingAverage,
-  volatility
+  volatility,
 };

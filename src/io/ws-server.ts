@@ -5,8 +5,12 @@ import fs from 'fs';
 import path from 'path';
 
 let wss: WebSocketServer | null = null;
-let messageHandler: ((msg: any, ws: WebSocket) => void) | null = null;
-let statsHandler: ((payload: any) => any) | null = null;
+let messageHandler: ((msg: Record<string, unknown>, ws: WebSocket) => void) | null = null;
+let statsHandler:
+  | ((
+      payload: Record<string, unknown>,
+    ) => Record<string, unknown> | Promise<Record<string, unknown>>)
+  | null = null;
 
 // 每次启动生成随机 token，非浏览器客户端（如 agent-bridge）连接时必须携带。
 // 浏览器客户端仍靠 Origin 白名单校验（前端无法安全存储 token）。
@@ -32,12 +36,15 @@ function writeTokenFile(): void {
     } catch {
       // Windows 上 chmod 无效，忽略
     }
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('[WS] 写入 token 文件失败:', (e as Error).message);
   }
 }
 
-function readTokenFromRequest(req: any): string | null {
+function readTokenFromRequest(req: {
+  headers?: Record<string, string | string[] | undefined>;
+  url?: string;
+}): string | null {
   // 优先从 header 读取，其次从 URL query 读取
   const headerToken = req?.headers?.['x-ws-token'];
   if (typeof headerToken === 'string' && headerToken.length > 0) return headerToken;
@@ -162,7 +169,7 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
                 // Promise 结果必须带 .catch，否则 rejection 成为 unhandledRejection；
                 // ws.send 失败也需吞错避免抛出。
                 result
-                  .then((data: any) => {
+                  .then((data: Record<string, unknown>) => {
                     try {
                       ws.send(
                         JSON.stringify({
@@ -171,15 +178,12 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
                           ...data,
                         }),
                       );
-                    } catch (e) {
+                    } catch (e: unknown) {
                       console.error('[WS] stats-response 发送失败:', (e as Error).message);
                     }
                   })
-                  .catch((err: any) => {
-                    console.error(
-                      '[WS] stats 处理失败:',
-                      err && err.message ? err.message : String(err),
-                    );
+                  .catch((err: unknown) => {
+                    console.error('[WS] stats 处理失败:', (err as Error)?.message || String(err));
                     try {
                       ws.send(
                         JSON.stringify({
@@ -197,14 +201,15 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
                   ws.send(
                     JSON.stringify({ type: 'stats-response', requestId: msg.requestId, ...result }),
                   );
-                } catch (e) {
+                } catch (e: unknown) {
                   console.error('[WS] stats-response 发送失败:', (e as Error).message);
                 }
               }
             } else if (messageHandler) {
               // messageHandler 可能是 async，其返回的 Promise rejection 不会被
               // 上面的 try-catch 捕获，需显式接住，否则成为 unhandledRejection。
-              // 其类型签名声明返回 void，但运行时可能返回 Promise，故此处用 any 探测。
+              // 其类型签名声明返回 void，但运行时可能返回 Promise，故此处用 any 断言以支持 then/catch。
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const r = messageHandler(msg, ws) as any;
               if (r && typeof r.then === 'function') {
                 r.catch((e: unknown) =>
@@ -212,7 +217,7 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
                 );
               }
             }
-          } catch (e) {
+          } catch (e: unknown) {
             console.error('[WS] 消息解析失败:', (e as Error).message);
           }
         });
@@ -227,11 +232,15 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
   });
 }
 
-function onMessage(handler: (msg: any, ws: WebSocket) => void): void {
+function onMessage(handler: (msg: Record<string, unknown>, ws: WebSocket) => void): void {
   messageHandler = handler;
 }
 
-function onStatsRequest(handler: (payload: any) => any): void {
+function onStatsRequest(
+  handler: (
+    payload: Record<string, unknown>,
+  ) => Record<string, unknown> | Promise<Record<string, unknown>>,
+): void {
   statsHandler = handler;
 }
 

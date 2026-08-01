@@ -11,35 +11,44 @@ import { getBasePath } from './path.ts';
 // ============================================
 // 医学单位换算系数表
 // ============================================
-const UNIT_CONVERSIONS: any = {
-  'glucose': {
-    'mg/dL': 1, 'mmol/L': 0.0555,
-    label: '葡萄糖'
+const UNIT_CONVERSIONS: Record<string, unknown> = {
+  glucose: {
+    'mg/dL': 1,
+    'mmol/L': 0.0555,
+    label: '葡萄糖',
   },
-  'creatinine': {
-    'mg/dL': 1, 'μmol/L': 88.4, 'umol/L': 88.4,
-    label: '肌酐'
+  creatinine: {
+    'mg/dL': 1,
+    'μmol/L': 88.4,
+    'umol/L': 88.4,
+    label: '肌酐',
   },
-  'bun': {
-    'mg/dL': 1, 'mmol/L': 0.357,
-    label: '尿素氮'
+  bun: {
+    'mg/dL': 1,
+    'mmol/L': 0.357,
+    label: '尿素氮',
   },
-  'bilirubin': {
-    'mg/dL': 1, 'μmol/L': 17.1, 'umol/L': 17.1,
-    label: '胆红素'
+  bilirubin: {
+    'mg/dL': 1,
+    'μmol/L': 17.1,
+    'umol/L': 17.1,
+    label: '胆红素',
   },
-  'calcium': {
-    'mg/dL': 1, 'mmol/L': 0.2495,
-    label: '钙'
+  calcium: {
+    'mg/dL': 1,
+    'mmol/L': 0.2495,
+    label: '钙',
   },
-  'cholesterol': {
-    'mg/dL': 1, 'mmol/L': 0.0259,
-    label: '胆固醇'
+  cholesterol: {
+    'mg/dL': 1,
+    'mmol/L': 0.0259,
+    label: '胆固醇',
   },
-  'triglycerides': {
-    'mg/dL': 1, 'mmol/L': 0.0113,
-    label: '甘油三酯'
-  }
+  triglycerides: {
+    'mg/dL': 1,
+    'mmol/L': 0.0113,
+    label: '甘油三酯',
+  },
 };
 
 // ============================================
@@ -52,7 +61,10 @@ const UNIT_CONVERSIONS: any = {
  * @param {number} height - 身高（m）
  * @returns {Promise<Object>}
  */
-async function bmi(weight: any, height: any): Promise<any> {
+async function bmi(
+  weight: number,
+  height: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!weight || !height || weight <= 0 || height <= 0) {
       return { success: false, error: '体重和身高必须为正数' };
@@ -60,7 +72,7 @@ async function bmi(weight: any, height: any): Promise<any> {
     const value = weight / (height * height);
     const rounded = Math.round(value * 10) / 10;
 
-    let category;
+    let category: string;
     if (rounded < 18.5) category = '偏瘦';
     else if (rounded < 24) category = '正常范围';
     else if (rounded < 28) category = '超重';
@@ -68,10 +80,10 @@ async function bmi(weight: any, height: any): Promise<any> {
 
     return {
       success: true,
-      data: `BMI: ${rounded} (${category})`
+      data: `BMI: ${rounded} (${category})`,
     };
-  } catch (error: any) {
-    return { success: false, error: `BMI 计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `BMI 计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -82,14 +94,19 @@ async function bmi(weight: any, height: any): Promise<any> {
  * @param {string} [formula='mosteller'] - 公式：'mosteller' | 'dubois' | 'haycock'
  * @returns {Promise<Object>}
  */
-async function bsa(weight: any, height: any, formula: string = 'mosteller'): Promise<any> {
+async function bsa(
+  weight: number,
+  height: number,
+  formula: string = 'mosteller',
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!weight || !height || weight <= 0 || height <= 0) {
       return { success: false, error: '体重和身高必须为正数' };
     }
 
     const f = formula.toLowerCase().trim();
-    let value, formulaName;
+    let value: number;
+    let formulaName: string;
 
     switch (f) {
       case 'mosteller':
@@ -105,15 +122,18 @@ async function bsa(weight: any, height: any, formula: string = 'mosteller'): Pro
         formulaName = 'Haycock';
         break;
       default:
-        return { success: false, error: `不支持的公式: ${formula}，仅支持 mosteller、dubois、haycock` };
+        return {
+          success: false,
+          error: `不支持的公式: ${formula}，仅支持 mosteller、dubois、haycock`,
+        };
     }
 
     return {
       success: true,
-      data: `BSA (${formulaName}): ${value.toFixed(4)} m²`
+      data: `BSA (${formulaName}): ${value.toFixed(4)} m²`,
     };
-  } catch (error: any) {
-    return { success: false, error: `BSA 计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `BSA 计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -124,7 +144,11 @@ async function bsa(weight: any, height: any, formula: string = 'mosteller'): Pro
  * @param {string} gender - 性别：'male' 或 'female'
  * @returns {Promise<Object>}
  */
-async function egfr(creatinine: any, age: any, gender: any): Promise<any> {
+async function egfr(
+  creatinine: number,
+  age: number,
+  gender: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!creatinine || creatinine <= 0) return { success: false, error: '肌酐值必须为正数' };
     if (!age || age <= 0 || age > 150) return { success: false, error: '年龄无效' };
@@ -136,22 +160,22 @@ async function egfr(creatinine: any, age: any, gender: any): Promise<any> {
 
     const cr = creatinine;
     const isFemale = g === 'female';
-    let k, a, scale;
+    let k: number, a: number, scale: number;
 
     if (isFemale) {
       scale = 0.7;
-      a = cr <= 0.7 ? -0.241 : -1.200;
+      a = cr <= 0.7 ? -0.241 : -1.2;
       k = 1.012;
     } else {
       scale = 0.9;
-      a = cr <= 0.9 ? -0.302 : -1.200;
+      a = cr <= 0.9 ? -0.302 : -1.2;
       k = 1.0;
     }
 
     const value = 142 * Math.pow(cr / scale, a) * Math.pow(0.9938, age) * k;
     const rounded = Math.round(value);
 
-    let stage;
+    let stage: string;
     if (rounded >= 90) stage = 'G1（正常或升高）';
     else if (rounded >= 60) stage = 'G2（轻度下降）';
     else if (rounded >= 45) stage = 'G3a（轻到中度下降）';
@@ -161,10 +185,10 @@ async function egfr(creatinine: any, age: any, gender: any): Promise<any> {
 
     return {
       success: true,
-      data: `eGFR (CKD-EPI 2021): ${rounded} mL/min/1.73m²\nCKD 分期: ${stage}`
+      data: `eGFR (CKD-EPI 2021): ${rounded} mL/min/1.73m²\nCKD 分期: ${stage}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `eGFR 计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `eGFR 计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -176,7 +200,12 @@ async function egfr(creatinine: any, age: any, gender: any): Promise<any> {
  * @param {string} gender - 性别：'male' 或 'female'
  * @returns {Promise<Object>}
  */
-async function crcl(creatinine: any, age: any, weight: any, gender: any): Promise<any> {
+async function crcl(
+  creatinine: number,
+  age: number,
+  weight: number,
+  gender: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!creatinine || creatinine <= 0) return { success: false, error: '肌酐值必须为正数' };
     if (!age || age <= 0 || age > 150) return { success: false, error: '年龄无效' };
@@ -193,10 +222,10 @@ async function crcl(creatinine: any, age: any, weight: any, gender: any): Promis
 
     return {
       success: true,
-      data: `CrCl (Cockcroft-Gault): ${rounded} mL/min`
+      data: `CrCl (Cockcroft-Gault): ${rounded} mL/min`,
     };
-  } catch (error: any) {
-    return { success: false, error: `CrCl 计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `CrCl 计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -209,9 +238,15 @@ async function crcl(creatinine: any, age: any, weight: any, gender: any): Promis
  * @param {string} encephalopathy - 肝性脑病：'none' | 'grade1-2' | 'grade3-4'
  * @returns {Promise<Object>}
  */
-async function childPugh(bilirubin: any, albumin: any, inr: any, ascites: any, encephalopathy: any): Promise<any> {
+async function childPugh(
+  bilirubin: number,
+  albumin: number,
+  inr: number,
+  ascites: string,
+  encephalopathy: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    const points: any = {};
+    const points: Record<string, number> = {};
 
     // 胆红素评分
     if (bilirubin < 2) points.bilirubin = 1;
@@ -240,18 +275,18 @@ async function childPugh(bilirubin: any, albumin: any, inr: any, ascites: any, e
     else if (e === 'grade1-2' || e === '1-2级' || e === 'i-ii') points.encephalopathy = 2;
     else points.encephalopathy = 3;
 
-    const total = Object.values(points).reduce((s: number, v: any) => s + v, 0);
-    let grade;
+    const total = Object.values(points).reduce((s: number, v: number) => s + v, 0);
+    let grade: string;
     if (total <= 6) grade = 'A（代偿期）';
     else if (total <= 9) grade = 'B（轻度失代偿）';
     else grade = 'C（重度失代偿）';
 
     return {
       success: true,
-      data: `Child-Pugh 评分: ${total} 分\n分级: ${grade}\n胆红素: ${points.bilirubin}分, 白蛋白: ${points.albumin}分, INR: ${points.inr}分, 腹水: ${points.ascites}分, 肝性脑病: ${points.encephalopathy}分`
+      data: `Child-Pugh 评分: ${total} 分\n分级: ${grade}\n胆红素: ${points.bilirubin}分, 白蛋白: ${points.albumin}分, INR: ${points.inr}分, 腹水: ${points.ascites}分, 肝性脑病: ${points.encephalopathy}分`,
     };
-  } catch (error: any) {
-    return { success: false, error: `Child-Pugh 计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `Child-Pugh 计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -266,7 +301,11 @@ async function childPugh(bilirubin: any, albumin: any, inr: any, ascites: any, e
  * @param {string} [unit='mg'] - 单位
  * @returns {Promise<Object>}
  */
-async function calculateDose(weight: any, dosePerKg: any, unit: string = 'mg'): Promise<any> {
+async function calculateDose(
+  weight: number,
+  dosePerKg: number,
+  unit: string = 'mg',
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!weight || weight <= 0) return { success: false, error: '体重必须为正数' };
     if (!dosePerKg || dosePerKg <= 0) return { success: false, error: '剂量必须为正数' };
@@ -274,10 +313,10 @@ async function calculateDose(weight: any, dosePerKg: any, unit: string = 'mg'): 
     const total = weight * dosePerKg;
     return {
       success: true,
-      data: `单次剂量: ${total.toFixed(2)} ${unit}（${dosePerKg} ${unit}/kg × ${weight} kg）`
+      data: `单次剂量: ${total.toFixed(2)} ${unit}（${dosePerKg} ${unit}/kg × ${weight} kg）`,
     };
-  } catch (error: any) {
-    return { success: false, error: `剂量计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `剂量计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -288,7 +327,11 @@ async function calculateDose(weight: any, dosePerKg: any, unit: string = 'mg'): 
  * @param {string} [unit='mg'] - 单位
  * @returns {Promise<Object>}
  */
-async function bsaDose(bsaValue: any, dosePerM2: any, unit: string = 'mg'): Promise<any> {
+async function bsaDose(
+  bsaValue: number,
+  dosePerM2: number,
+  unit: string = 'mg',
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!bsaValue || bsaValue <= 0) return { success: false, error: '体表面积必须为正数' };
     if (!dosePerM2 || dosePerM2 <= 0) return { success: false, error: '剂量必须为正数' };
@@ -296,10 +339,10 @@ async function bsaDose(bsaValue: any, dosePerM2: any, unit: string = 'mg'): Prom
     const total = bsaValue * dosePerM2;
     return {
       success: true,
-      data: `BSA 剂量: ${total.toFixed(2)} ${unit}（${dosePerM2} ${unit}/m² × ${bsaValue.toFixed(4)} m²）`
+      data: `BSA 剂量: ${total.toFixed(2)} ${unit}（${dosePerM2} ${unit}/m² × ${bsaValue.toFixed(4)} m²）`,
     };
-  } catch (error: any) {
-    return { success: false, error: `BSA 剂量计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `BSA 剂量计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -310,13 +353,18 @@ async function bsaDose(bsaValue: any, dosePerM2: any, unit: string = 'mg'): Prom
  * @param {string} [timeUnit='h'] - 时间单位：'h'（小时）或 'min'（分钟）
  * @returns {Promise<Object>}
  */
-async function infusionRate(volume: any, time: any, timeUnit: string = 'h'): Promise<any> {
+async function infusionRate(
+  volume: number,
+  time: number,
+  timeUnit: string = 'h',
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!volume || volume <= 0) return { success: false, error: '液体总量必须为正数' };
     if (!time || time <= 0) return { success: false, error: '时间必须为正数' };
 
     const unit = timeUnit.toLowerCase().trim();
-    let rate, unitLabel;
+    let rate: number;
+    let unitLabel: string;
 
     if (unit === 'h' || unit === 'hour' || unit === '小时') {
       rate = volume / time;
@@ -327,18 +375,21 @@ async function infusionRate(volume: any, time: any, timeUnit: string = 'h'): Pro
       const ratePerHour = rate * 60;
       return {
         success: true,
-        data: `输液速度: ${rate.toFixed(1)} ${unitLabel}（约 ${ratePerHour.toFixed(1)} mL/h）`
+        data: `输液速度: ${rate.toFixed(1)} ${unitLabel}（约 ${ratePerHour.toFixed(1)} mL/h）`,
       };
     } else {
-      return { success: false, error: `不支持的时间单位: ${timeUnit}，仅支持 h（小时）或 min（分钟）` };
+      return {
+        success: false,
+        error: `不支持的时间单位: ${timeUnit}，仅支持 h（小时）或 min（分钟）`,
+      };
     }
 
     return {
       success: true,
-      data: `输液速度: ${rate.toFixed(1)} ${unitLabel}`
+      data: `输液速度: ${rate.toFixed(1)} ${unitLabel}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `输液速度计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `输液速度计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -348,7 +399,10 @@ async function infusionRate(volume: any, time: any, timeUnit: string = 'h'): Pro
  * @param {string} gender - 性别：'male' 或 'female'
  * @returns {Promise<Object>}
  */
-async function idealBodyWeight(height: any, gender: any): Promise<any> {
+async function idealBodyWeight(
+  height: number,
+  gender: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!height || height <= 0) return { success: false, error: '身高必须为正数' };
 
@@ -358,7 +412,7 @@ async function idealBodyWeight(height: any, gender: any): Promise<any> {
     }
 
     const excess = height - 152;
-    let ibw;
+    let ibw: number;
     if (g === 'male') {
       ibw = 50 + 0.9 * excess;
     } else {
@@ -367,10 +421,10 @@ async function idealBodyWeight(height: any, gender: any): Promise<any> {
 
     return {
       success: true,
-      data: `理想体重 (Devine): ${ibw.toFixed(1)} kg`
+      data: `理想体重 (Devine): ${ibw.toFixed(1)} kg`,
     };
-  } catch (error: any) {
-    return { success: false, error: `理想体重计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `理想体重计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -385,41 +439,127 @@ async function idealBodyWeight(height: any, gender: any): Promise<any> {
  * @param {string} to - 目标单位
  * @returns {Promise<Object>}
  */
-async function convertUnit(value: any, from: any, to: any): Promise<any> {
+async function convertUnit(
+  value: number,
+  from: string,
+  to: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (value === undefined || value === null) {
       return { success: false, error: '请输入数值' };
     }
 
-    const fromNorm = from.toLowerCase().trim().replace(/[^a-z0-9/]/g, '');
-    const toNorm = to.toLowerCase().trim().replace(/[^a-z0-9/]/g, '');
+    const fromNorm = from
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9/]/g, '');
+    const toNorm = to
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9/]/g, '');
 
     // 生化换算
-    const conversions: any[] = [
+    const conversions: {
+      test: (f: string, t: string) => boolean;
+      calc: (v: number) => number;
+      label: string;
+    }[] = [
       // 葡萄糖 mg/dL ↔ mmol/L
-      { test: (f: string, t: string) => (f.includes('mg/dl') || f === 'mg%') && (t === 'mmol/l' || t === 'mmoll'), calc: (v: number) => v * 0.0555, label: '葡萄糖' },
-      { test: (f: string, t: string) => (f === 'mmol/l' || f === 'mmoll') && (t.includes('mg/dl') || t === 'mg%'), calc: (v: number) => v / 0.0555, label: '葡萄糖' },
+      {
+        test: (f: string, t: string) =>
+          (f.includes('mg/dl') || f === 'mg%') && (t === 'mmol/l' || t === 'mmoll'),
+        calc: (v: number) => v * 0.0555,
+        label: '葡萄糖',
+      },
+      {
+        test: (f: string, t: string) =>
+          (f === 'mmol/l' || f === 'mmoll') && (t.includes('mg/dl') || t === 'mg%'),
+        calc: (v: number) => v / 0.0555,
+        label: '葡萄糖',
+      },
       // 肌酐 mg/dL ↔ μmol/L
-      { test: (f: string, t: string) => f.includes('mg/dl') && (t.includes('μmol/l') || t.includes('umol/l')), calc: (v: number) => v * 88.4, label: '肌酐' },
-      { test: (f: string, t: string) => (f.includes('μmol/l') || f.includes('umol/l')) && t.includes('mg/dl'), calc: (v: number) => v / 88.4, label: '肌酐' },
+      {
+        test: (f: string, t: string) =>
+          f.includes('mg/dl') && (t.includes('μmol/l') || t.includes('umol/l')),
+        calc: (v: number) => v * 88.4,
+        label: '肌酐',
+      },
+      {
+        test: (f: string, t: string) =>
+          (f.includes('μmol/l') || f.includes('umol/l')) && t.includes('mg/dl'),
+        calc: (v: number) => v / 88.4,
+        label: '肌酐',
+      },
       // 尿素氮 mg/dL ↔ mmol/L
-      { test: (f: string, t: string) => f.includes('mg/dl') && t.includes('mmol/l'), calc: (v: number) => v * 0.357, label: '尿素氮' },
-      { test: (f: string, t: string) => f.includes('mmol/l') && t.includes('mg/dl'), calc: (v: number) => v / 0.357, label: '尿素氮' },
+      {
+        test: (f: string, t: string) => f.includes('mg/dl') && t.includes('mmol/l'),
+        calc: (v: number) => v * 0.357,
+        label: '尿素氮',
+      },
+      {
+        test: (f: string, t: string) => f.includes('mmol/l') && t.includes('mg/dl'),
+        calc: (v: number) => v / 0.357,
+        label: '尿素氮',
+      },
       // 胆红素 mg/dL ↔ μmol/L
-      { test: (f: string, t: string) => f.includes('mg/dl') && (t.includes('μmol/l') || t.includes('umol/l')), calc: (v: number) => v * 17.1, label: '胆红素' },
-      { test: (f: string, t: string) => (f.includes('μmol/l') || f.includes('umol/l')) && t.includes('mg/dl'), calc: (v: number) => v / 17.1, label: '胆红素' },
+      {
+        test: (f: string, t: string) =>
+          f.includes('mg/dl') && (t.includes('μmol/l') || t.includes('umol/l')),
+        calc: (v: number) => v * 17.1,
+        label: '胆红素',
+      },
+      {
+        test: (f: string, t: string) =>
+          (f.includes('μmol/l') || f.includes('umol/l')) && t.includes('mg/dl'),
+        calc: (v: number) => v / 17.1,
+        label: '胆红素',
+      },
       // 钙 mg/dL ↔ mmol/L
-      { test: (f: string, t: string) => f.includes('mg/dl') && t.includes('mmol/l'), calc: (v: number) => v * 0.2495, label: '钙' },
-      { test: (f: string, t: string) => f.includes('mmol/l') && t.includes('mg/dl'), calc: (v: number) => v / 0.2495, label: '钙' },
+      {
+        test: (f: string, t: string) => f.includes('mg/dl') && t.includes('mmol/l'),
+        calc: (v: number) => v * 0.2495,
+        label: '钙',
+      },
+      {
+        test: (f: string, t: string) => f.includes('mmol/l') && t.includes('mg/dl'),
+        calc: (v: number) => v / 0.2495,
+        label: '钙',
+      },
       // 胆固醇 mg/dL ↔ mmol/L
-      { test: (f: string, t: string) => f.includes('mg/dl') && t.includes('mmol/l'), calc: (v: number) => v * 0.0259, label: '胆固醇' },
-      { test: (f: string, t: string) => f.includes('mmol/l') && t.includes('mg/dl'), calc: (v: number) => v / 0.0259, label: '胆固醇' },
+      {
+        test: (f: string, t: string) => f.includes('mg/dl') && t.includes('mmol/l'),
+        calc: (v: number) => v * 0.0259,
+        label: '胆固醇',
+      },
+      {
+        test: (f: string, t: string) => f.includes('mmol/l') && t.includes('mg/dl'),
+        calc: (v: number) => v / 0.0259,
+        label: '胆固醇',
+      },
       // 甘油三酯 mg/dL ↔ mmol/L
-      { test: (f: string, t: string) => f.includes('mg/dl') && t.includes('mmol/l'), calc: (v: number) => v * 0.0113, label: '甘油三酯' },
-      { test: (f: string, t: string) => f.includes('mmol/l') && t.includes('mg/dl'), calc: (v: number) => v / 0.0113, label: '甘油三酯' },
+      {
+        test: (f: string, t: string) => f.includes('mg/dl') && t.includes('mmol/l'),
+        calc: (v: number) => v * 0.0113,
+        label: '甘油三酯',
+      },
+      {
+        test: (f: string, t: string) => f.includes('mmol/l') && t.includes('mg/dl'),
+        calc: (v: number) => v / 0.0113,
+        label: '甘油三酯',
+      },
       // 血压 mmHg ↔ kPa
-      { test: (f: string, t: string) => (f.includes('mmhg') || f === 'mmhg') && (t.includes('kpa') || t === 'kpa'), calc: (v: number) => v * 0.1333, label: '血压' },
-      { test: (f: string, t: string) => (f.includes('kpa') || f === 'kpa') && (t.includes('mmhg') || t === 'mmhg'), calc: (v: number) => v / 0.1333, label: '血压' },
+      {
+        test: (f: string, t: string) =>
+          (f.includes('mmhg') || f === 'mmhg') && (t.includes('kpa') || t === 'kpa'),
+        calc: (v: number) => v * 0.1333,
+        label: '血压',
+      },
+      {
+        test: (f: string, t: string) =>
+          (f.includes('kpa') || f === 'kpa') && (t.includes('mmhg') || t === 'mmhg'),
+        calc: (v: number) => v / 0.1333,
+        label: '血压',
+      },
     ];
 
     for (const conv of conversions) {
@@ -427,14 +567,17 @@ async function convertUnit(value: any, from: any, to: any): Promise<any> {
         const result = conv.calc(value);
         return {
           success: true,
-          data: `${conv.label}: ${value} ${from} = ${result.toFixed(4)} ${to}`
+          data: `${conv.label}: ${value} ${from} = ${result.toFixed(4)} ${to}`,
         };
       }
     }
 
-    return { success: false, error: `不支持的换算对: ${from} → ${to}。支持：葡萄糖、肌酐、尿素氮、胆红素、钙、胆固醇、甘油三酯的 mg/dL↔mmol/L 互转，以及 mmHg↔kPa` };
-  } catch (error: any) {
-    return { success: false, error: `单位换算失败: ${error.message}` };
+    return {
+      success: false,
+      error: `不支持的换算对: ${from} → ${to}。支持：葡萄糖、肌酐、尿素氮、胆红素、钙、胆固醇、甘油三酯的 mg/dL↔mmol/L 互转，以及 mmHg↔kPa`,
+    };
+  } catch (error: unknown) {
+    return { success: false, error: `单位换算失败: ${(error as Error).message}` };
   }
 }
 
@@ -445,7 +588,11 @@ async function convertUnit(value: any, from: any, to: any): Promise<any> {
  * @param {string} to - 目标单位
  * @returns {Promise<Object>}
  */
-async function temperatureConvert(value: any, from: any, to: any): Promise<any> {
+async function temperatureConvert(
+  value: number,
+  from: string,
+  to: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (value === undefined || value === null) {
       return { success: false, error: '请输入温度值' };
@@ -453,9 +600,8 @@ async function temperatureConvert(value: any, from: any, to: any): Promise<any> 
 
     const f = from.toLowerCase().trim();
     const t = to.toLowerCase().trim();
-    const validUnits = ['c', 'celsius', '℃', 'f', 'fahrenheit', '℉', 'k', 'kelvin', 'k'];
 
-    const normalize = (u: string): any => {
+    const normalize = (u: string): string | null => {
       if (u === 'c' || u === 'celsius' || u === '℃') return 'c';
       if (u === 'f' || u === 'fahrenheit' || u === '℉') return 'f';
       if (u === 'k' || u === 'kelvin') return 'k';
@@ -469,23 +615,31 @@ async function temperatureConvert(value: any, from: any, to: any): Promise<any> 
     }
 
     // 先转摄氏度
-    let celsius;
+    let celsius: number;
     if (fromUnit === 'c') celsius = value;
-    else if (fromUnit === 'f') celsius = (value - 32) * 5 / 9;
+    else if (fromUnit === 'f') celsius = ((value - 32) * 5) / 9;
     else celsius = value - 273.15;
 
     // 从摄氏度转目标
-    let result, unitLabel;
-    if (toUnit === 'c') { result = celsius; unitLabel = '℃'; }
-    else if (toUnit === 'f') { result = celsius * 9 / 5 + 32; unitLabel = '℉'; }
-    else { result = celsius + 273.15; unitLabel = 'K'; }
+    let result: number;
+    let unitLabel: string;
+    if (toUnit === 'c') {
+      result = celsius;
+      unitLabel = '℃';
+    } else if (toUnit === 'f') {
+      result = (celsius * 9) / 5 + 32;
+      unitLabel = '℉';
+    } else {
+      result = celsius + 273.15;
+      unitLabel = 'K';
+    }
 
     return {
       success: true,
-      data: `${value}${fromUnit === 'c' ? '℃' : fromUnit === 'f' ? '℉' : 'K'} = ${result.toFixed(2)} ${unitLabel}`
+      data: `${value}${fromUnit === 'c' ? '℃' : fromUnit === 'f' ? '℉' : 'K'} = ${result.toFixed(2)} ${unitLabel}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `温度换算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `温度换算失败: ${(error as Error).message}` };
   }
 }
 
@@ -499,7 +653,10 @@ async function temperatureConvert(value: any, from: any, to: any): Promise<any> 
  * @param {number} dbp - 舒张压（mmHg）
  * @returns {Promise<Object>}
  */
-async function meanArterialPressure(sbp: any, dbp: any): Promise<any> {
+async function meanArterialPressure(
+  sbp: number,
+  dbp: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!sbp || !dbp || sbp <= 0 || dbp <= 0) {
       return { success: false, error: '血压值必须为正数' };
@@ -507,10 +664,10 @@ async function meanArterialPressure(sbp: any, dbp: any): Promise<any> {
     const map = (sbp + 2 * dbp) / 3;
     return {
       success: true,
-      data: `MAP: ${Math.round(map)} mmHg（SBP ${sbp}, DBP ${dbp}）`
+      data: `MAP: ${Math.round(map)} mmHg（SBP ${sbp}, DBP ${dbp}）`,
     };
-  } catch (error: any) {
-    return { success: false, error: `MAP 计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `MAP 计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -521,23 +678,27 @@ async function meanArterialPressure(sbp: any, dbp: any): Promise<any> {
  * @param {number} hco3 - 碳酸氢根（mmol/L）
  * @returns {Promise<Object>}
  */
-async function anionGap(na: any, cl: any, hco3: any): Promise<any> {
+async function anionGap(
+  na: number,
+  cl: number,
+  hco3: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!na || !cl || !hco3) {
       return { success: false, error: '所有参数都必须提供' };
     }
     const ag = na - (cl + hco3);
-    let interpretation;
+    let interpretation: string;
     if (ag < 8) interpretation = '偏低（可能为低白蛋白血症）';
     else if (ag <= 12) interpretation = '正常范围';
     else interpretation = '升高（提示阴离子间隙性代谢性酸中毒）';
 
     return {
       success: true,
-      data: `阴离子间隙: ${ag.toFixed(1)} mmol/L（${interpretation}）`
+      data: `阴离子间隙: ${ag.toFixed(1)} mmol/L（${interpretation}）`,
     };
-  } catch (error: any) {
-    return { success: false, error: `阴离子间隙计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `阴离子间隙计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -547,18 +708,22 @@ async function anionGap(na: any, cl: any, hco3: any): Promise<any> {
  * @param {number} albumin - 白蛋白（g/dL）
  * @returns {Promise<Object>}
  */
-async function correctedCalcium(calcium: any, albumin: any): Promise<any> {
+async function correctedCalcium(
+  calcium: number,
+  albumin: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!calcium || calcium <= 0) return { success: false, error: '血钙值必须为正数' };
-    if (albumin === undefined || albumin === null) return { success: false, error: '请提供白蛋白值' };
+    if (albumin === undefined || albumin === null)
+      return { success: false, error: '请提供白蛋白值' };
 
     const corrected = calcium + 0.8 * (4 - albumin);
     return {
       success: true,
-      data: `校正钙: ${corrected.toFixed(2)} mg/dL（实测 ${calcium} mg/dL，白蛋白 ${albumin} g/dL）`
+      data: `校正钙: ${corrected.toFixed(2)} mg/dL（实测 ${calcium} mg/dL，白蛋白 ${albumin} g/dL）`,
     };
-  } catch (error: any) {
-    return { success: false, error: `校正钙计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `校正钙计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -568,7 +733,10 @@ async function correctedCalcium(calcium: any, albumin: any): Promise<any> {
  * @param {number} fio2 - 吸入氧浓度（百分比 21-100，或小数 0.21-1.0）
  * @returns {Promise<Object>}
  */
-async function oxygenIndex(pao2: any, fio2: any): Promise<any> {
+async function oxygenIndex(
+  pao2: number,
+  fio2: number,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!pao2 || pao2 <= 0) return { success: false, error: 'PaO2 必须为正数' };
     if (!fio2 || fio2 <= 0) return { success: false, error: 'FiO2 必须为正数' };
@@ -582,7 +750,7 @@ async function oxygenIndex(pao2: any, fio2: any): Promise<any> {
     const pfRatio = pao2 / fio2Decimal;
     const rounded = Math.round(pfRatio);
 
-    let interpretation;
+    let interpretation: string;
     if (rounded >= 400) interpretation = '正常';
     else if (rounded >= 300) interpretation = '轻度低氧血症';
     else if (rounded >= 200) interpretation = '中度低氧血症（符合 ARDS 标准）';
@@ -590,10 +758,10 @@ async function oxygenIndex(pao2: any, fio2: any): Promise<any> {
 
     return {
       success: true,
-      data: `PaO₂/FiO₂: ${rounded} mmHg（${interpretation}）`
+      data: `PaO₂/FiO₂: ${rounded} mmHg（${interpretation}）`,
     };
-  } catch (error: any) {
-    return { success: false, error: `氧合指数计算失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `氧合指数计算失败: ${(error as Error).message}` };
   }
 }
 
@@ -607,7 +775,9 @@ async function oxygenIndex(pao2: any, fio2: any): Promise<any> {
  * @param {string} filePath - 文件路径
  * @returns {Promise<Object>}
  */
-async function parseVitalSigns(filePath: string): Promise<any> {
+async function parseVitalSigns(
+  filePath: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const basePath = getBasePath();
   const fullPath = path.isAbsolute(filePath) ? filePath : path.join(basePath, filePath);
 
@@ -618,13 +788,13 @@ async function parseVitalSigns(filePath: string): Promise<any> {
       return { success: false, error: '文件至少需要表头行和一行数据' };
     }
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const records: any[] = [];
+    const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+    const records: Record<string, string | number>[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const vals = lines[i].split(',').map(v => v.trim());
+      const vals = lines[i].split(',').map((v) => v.trim());
       if (vals.length !== headers.length) continue;
-      const record: any = {};
+      const record: Record<string, string | number> = {};
       for (let j = 0; j < headers.length; j++) {
         const num = parseFloat(vals[j]);
         record[headers[j]] = isNaN(num) ? vals[j] : num;
@@ -637,41 +807,47 @@ async function parseVitalSigns(filePath: string): Promise<any> {
     }
 
     // 识别常见字段
-    const fieldMap: any = {
+    const fieldMap: Record<string, { label: string; unit: string }> = {
       hr: { label: '心率', unit: 'bpm' },
       temp: { label: '体温', unit: '℃' },
       rr: { label: '呼吸频率', unit: '次/min' },
       spo2: { label: '血氧饱和度', unit: '%' },
       bp_sys: { label: '收缩压', unit: 'mmHg' },
-      bp_dia: { label: '舒张压', unit: 'mmHg' }
+      bp_dia: { label: '舒张压', unit: 'mmHg' },
     };
 
-    const summary: any = {};
+    const summary: Record<string, unknown> = {};
     for (const [field, meta] of Object.entries(fieldMap)) {
-      const values = records.map(r => r[field]).filter(v => typeof v === 'number' && !isNaN(v));
+      const values = records
+        .map((r) => r[field])
+        .filter((v) => typeof v === 'number' && !isNaN(v)) as number[];
       if (values.length > 0) {
         const avg = values.reduce((s: number, v: number) => s + v, 0) / values.length;
         const min = Math.min(...values);
         const max = Math.max(...values);
-        summary[(meta as any).label] = {
+        summary[meta.label] = {
           avg: avg.toFixed(1),
           min: min,
           max: max,
-          unit: (meta as any).unit,
-          count: values.length
+          unit: meta.unit,
+          count: values.length,
         };
       }
     }
 
     return {
       success: true,
-      data: `共 ${records.length} 条记录\n` +
-        Object.entries(summary).map(([name, s]: any) =>
-          `  ${name}: ${s.avg} ${s.unit}（范围 ${s.min}-${s.max}，${s.count} 次测量）`
-        ).join('\n')
+      data:
+        `共 ${records.length} 条记录\n` +
+        Object.entries(summary)
+          .map(([name, s]) => {
+            const si = s as { avg: string; unit: string; min: number; max: number; count: number };
+            return `  ${name}: ${si.avg} ${si.unit}（范围 ${si.min}-${si.max}，${si.count} 次测量）`;
+          })
+          .join('\n'),
     };
-  } catch (error: any) {
-    return { success: false, error: `解析生命体征失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `解析生命体征失败: ${(error as Error).message}` };
   }
 }
 
@@ -680,7 +856,9 @@ async function parseVitalSigns(filePath: string): Promise<any> {
  * @param {string} filePath - 文件路径
  * @returns {Promise<Object>}
  */
-async function vitalsReport(filePath: string): Promise<any> {
+async function vitalsReport(
+  filePath: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const basePath = getBasePath();
   const fullPath = path.isAbsolute(filePath) ? filePath : path.join(basePath, filePath);
 
@@ -691,13 +869,13 @@ async function vitalsReport(filePath: string): Promise<any> {
       return { success: false, error: '文件至少需要表头行和一行数据' };
     }
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const records: any[] = [];
+    const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+    const records: Record<string, string | number>[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const vals = lines[i].split(',').map(v => v.trim());
+      const vals = lines[i].split(',').map((v) => v.trim());
       if (vals.length !== headers.length) continue;
-      const record: any = {};
+      const record: Record<string, string | number> = {};
       for (let j = 0; j < headers.length; j++) {
         const num = parseFloat(vals[j]);
         record[headers[j]] = isNaN(num) ? vals[j] : num;
@@ -710,20 +888,24 @@ async function vitalsReport(filePath: string): Promise<any> {
     }
 
     // 整体统计
-    const numericFields = Object.keys(records[0]).filter(k =>
-      typeof records[0][k] === 'number'
-    );
+    const numericFields = Object.keys(records[0]).filter((k) => typeof records[0][k] === 'number');
 
-    const stats: any = {};
+    const stats: Record<string, unknown> = {};
     for (const field of numericFields) {
-      const values = records.map(r => r[field]).filter(v => !isNaN(v)).sort((a: number, b: number) => a - b);
+      const values = records
+        .map((r) => r[field])
+        .filter((v) => !isNaN(v as number))
+        .sort((a, b) => (a as number) - (b as number)) as number[];
       if (values.length === 0) continue;
       const sum = values.reduce((s: number, v: number) => s + v, 0);
       const mean = sum / values.length;
-      const median = values.length % 2 === 0
-        ? (values[values.length / 2 - 1] + values[values.length / 2]) / 2
-        : values[Math.floor(values.length / 2)];
-      const std = Math.sqrt(values.reduce((s: number, v: number) => s + (v - mean) ** 2, 0) / values.length);
+      const median =
+        values.length % 2 === 0
+          ? (values[values.length / 2 - 1] + values[values.length / 2]) / 2
+          : values[Math.floor(values.length / 2)];
+      const std = Math.sqrt(
+        values.reduce((s: number, v: number) => s + (v - mean) ** 2, 0) / values.length,
+      );
 
       stats[field] = {
         mean: mean.toFixed(2),
@@ -731,22 +913,35 @@ async function vitalsReport(filePath: string): Promise<any> {
         std: std.toFixed(2),
         min: values[0],
         max: values[values.length - 1],
-        count: values.length
+        count: values.length,
       };
     }
 
     return {
       success: true,
-      data: `生命体征统计报告（共 ${records.length} 条记录，${Object.keys(stats).length} 个指标）:\n\n` +
-        Object.entries(stats).map(([field, s]: any) =>
-          `  ${field}:\n` +
-          `    均值: ${s.mean}，中位数: ${s.median}\n` +
-          `    标准差: ${s.std}，范围: ${s.min} - ${s.max}\n` +
-          `    有效测量: ${s.count} 次`
-        ).join('\n\n')
+      data:
+        `生命体征统计报告（共 ${records.length} 条记录，${Object.keys(stats).length} 个指标）:\n\n` +
+        Object.entries(stats)
+          .map(([field, s]) => {
+            const si = s as {
+              mean: string;
+              median: string;
+              std: string;
+              min: number;
+              max: number;
+              count: number;
+            };
+            return (
+              `  ${field}:\n` +
+              `    均值: ${si.mean}，中位数: ${si.median}\n` +
+              `    标准差: ${si.std}，范围: ${si.min} - ${si.max}\n` +
+              `    有效测量: ${si.count} 次`
+            );
+          })
+          .join('\n\n'),
     };
-  } catch (error: any) {
-    return { success: false, error: `生成报告失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `生成报告失败: ${(error as Error).message}` };
   }
 }
 
@@ -767,5 +962,5 @@ export {
   correctedCalcium,
   oxygenIndex,
   parseVitalSigns,
-  vitalsReport
+  vitalsReport,
 };
