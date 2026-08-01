@@ -3,24 +3,15 @@ import fs from 'fs/promises';
 import fsSync from 'fs';
 import path from 'path';
 import os from 'os';
-import crypto from 'crypto';
 import { loadConfig } from '../../config.ts';
 import { resolveInWorkspace } from './path.ts';
 import { runJavaScriptSandbox } from './sandbox.ts';
-
-function getCodeLimits(): { maxExecutionTime: number; maxOutputSize: number } {
-  const cfg: any = loadConfig();
-  return {
-    maxExecutionTime: cfg.code?.maxExecutionTime ?? 30000,
-    maxOutputSize: cfg.code?.maxOutputSize ?? 100000,
-  };
-}
-
-function generateSecureTmpPath(ext: string): string {
-  const tmpDir = os.tmpdir();
-  const randomName = `cogito_${crypto.randomUUID()}_${Date.now()}`;
-  return path.join(tmpDir, `${randomName}.${ext}`);
-}
+import {
+  getCodeLimits,
+  generateSecureTmpPath,
+  writeSecureTmpFile,
+  cleanupTmpFile,
+} from './code-exec-utils.ts';
 
 function findPythonExecutable(): string {
   const candidates = ['python', 'python3', 'python.exe', 'python3.exe'];
@@ -48,26 +39,6 @@ function findPythonExecutable(): string {
   return 'python';
 }
 
-async function writeSecureTmpFile(filePath: string, content: string): Promise<boolean | string> {
-  try {
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    const fd = await fs.open(filePath, 'wx');
-    try {
-      await fd.writeFile(content, 'utf8');
-    } finally {
-      await fd.close();
-    }
-    return true;
-  } catch (error: any) {
-    if (error.code === 'EEXIST') {
-      const newPath = generateSecureTmpPath(path.extname(filePath).slice(1) || 'tmp');
-      await fs.writeFile(newPath, content, 'utf8');
-      return newPath;
-    }
-    throw error;
-  }
-}
-
 async function runJavaScript(code: string): Promise<any> {
   // 安全决策：JavaScript 执行统一走 isolated-vm 沙箱（见 sandbox.ts）。
   // 此前基于 Node 原生 vm 模块的实现并非安全沙箱——攻击者可通过原型链
@@ -75,14 +46,6 @@ async function runJavaScript(code: string): Promise<any> {
   // 执行任意代码（RCE）。isolated-vm 使用独立 V8 堆，从机制上阻断逃逸。
   const { maxExecutionTime } = getCodeLimits();
   return runJavaScriptSandbox(code, maxExecutionTime);
-}
-
-async function cleanupTmpFile(tmpPath: string | null): Promise<void> {
-  if (tmpPath) {
-    try {
-      await fs.unlink(tmpPath);
-    } catch {}
-  }
 }
 
 function hasGuiBlockingCall(code: string): boolean {

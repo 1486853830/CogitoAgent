@@ -13,8 +13,8 @@
  *  - isolated-vm 为强安全依赖。runJavaScriptSandbox 在 isolated-vm 不可用时
  *    会直接拒绝执行（不再静默降级到不安全的 vm 模块）。本测试使用真实的
  *    isolated-vm 原生绑定执行 runJavaScriptSandbox / runJavaScriptIsolated。
- *  - createJavaScriptSandbox / runJavaScriptFallback 仍作为工具函数保留并单独
- *    覆盖，它们不再被 runJavaScriptSandbox 调用。
+ *  - createJavaScriptSandbox 仍作为工具函数保留并单独覆盖，
+ *    它不再被 runJavaScriptSandbox 调用（已删除 vm 降级路径 runJavaScriptFallback）。
  *  - runPythonSandbox 会把 PATH 截断为前 3 项，因此在 beforeAll 中把 python
  *    所在目录前置到 PATH，保证真实执行可用。
  */
