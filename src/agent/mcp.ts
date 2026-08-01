@@ -376,6 +376,14 @@ class MCPServer {
     try {
       const result = await executeTool(name, args || []);
 
+      // 仅返回工具数据/错误文本，不序列化 ToolExecutionResult 的内部元数据
+      // （toolName/timestamp/success 等），避免浪费 MCP 客户端的 token 预算
+      const text = result.success
+        ? typeof result.data === 'object'
+          ? JSON.stringify(result.data, null, 2)
+          : String(result.data ?? '')
+        : String(result.error ?? '未知错误');
+
       return {
         jsonrpc: MCP_VERSION,
         id,
@@ -383,7 +391,7 @@ class MCPServer {
           content: [
             {
               type: 'text',
-              text: typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result),
+              text,
             },
           ],
           isError: result?.success === false,

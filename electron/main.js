@@ -11,10 +11,8 @@ import { spawn, execSync, execFileSync } from 'child_process';
 import { initAgentBridge, sendToAgent, setUserDataDir } from './agent-bridge.js';
 import fs from 'fs';
 import os from 'os';
-import {
-  encrypt as encryptCredential,
-  decrypt as decryptCredential,
-} from './shared/credentials.js';
+import { decrypt as decryptCredential } from './shared/credentials.js';
+import { writeEnvConfig } from './shared/config-writer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -112,155 +110,14 @@ function saveConfig(config) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(configData, null, 2), 'utf-8');
     console.log('[主进程] 配置已保存到 config.json');
 
-    // 保存 .env 文件
-    const envPath = path.join(USER_DATA_DIR, '.env');
-    const envLines = [
-      '# CogitoAgent 配置文件',
-      '# 由设置向导自动生成',
-      '',
-      '# ============================================',
-      '# API 配置（必需）',
-      '# ============================================',
-      '',
-      '# API 密钥（必需）',
-      `COGITO_API_KEY=${config.api?.apiKey || ''}`,
-      '',
-      '# API 服务地址（可选，默认根据 provider 自动设置）',
-      `COGITO_API_BASE_URL=${config.api?.baseURL || ''}`,
-      '',
-      '# API 服务商名称（可选，支持: openai, moark, anthropic, google）',
-      `COGITO_API_PROVIDER=${config.api?.provider || 'custom'}`,
-      '',
-      '# 模型名称（可选）',
-      `COGITO_MODEL=${config.api?.model || ''}`,
-      '',
-      '# ============================================',
-      '# 思考间隔配置（可选）',
-      '# ============================================',
-      '',
-      '# 自动思考间隔时间（毫秒），最小值 1000',
-      `COGITO_THINKING_INTERVAL=${config.thinkingInterval || 3000}`,
-      '',
-      '# ============================================',
-      '# 启动模式配置（可选）',
-      '# ============================================',
-      '',
-      '# 启动模式: desktop（桌面宠物模式）/ dashboard（工作台模式）',
-      `COGITO_MODE=${config.mode || 'desktop'}`,
-      '',
-      '# ============================================',
-      '# 数据库配置（可选）',
-      '# ============================================',
-      '',
-      '# SQLite 数据库文件路径',
-      `COGITO_DATABASE_PATH=${config.database?.path || './data/example.db'}`,
-      '',
-      '# ============================================',
-      '# 邮件配置（可选）',
-      '# ============================================',
-      '',
-      '# SMTP 服务器地址',
-      `COGITO_EMAIL_HOST=${config.email?.host || ''}`,
-      '',
-      '# SMTP 端口',
-      `COGITO_EMAIL_PORT=${config.email?.port || 587}`,
-      '',
-      '# 邮箱用户名',
-      `COGITO_EMAIL_USER=${config.email?.user || ''}`,
-      '',
-      '# 邮箱密码（已加密存储，请勿手动编辑）',
-      `COGITO_EMAIL_PASSWORD=${encryptCredential(config.email?.password || '')}`,
-      '',
-      '# 发件人邮箱地址',
-      `COGITO_EMAIL_FROM=${config.email?.from || ''}`,
-      '',
-      '# ============================================',
-      '# OCR 图像文字识别配置（可选）',
-      '# ============================================',
-      '',
-      '# OCR API 密钥',
-      `COGITO_OCR_API_KEY=${config.ocr?.apiKey || ''}`,
-      '',
-      '# OCR API 服务地址',
-      `COGITO_OCR_API_BASE_URL=${config.ocr?.baseURL || ''}`,
-      '',
-      '# OCR 模型名称',
-      `COGITO_OCR_MODEL=${config.ocr?.model || 'InternVL3-78B'}`,
-      '',
-      '# OCR 服务商名称',
-      `COGITO_OCR_PROVIDER=${config.ocr?.provider || ''}`,
-      '',
-      '# ============================================',
-      '# 视觉分析配置（可选）',
-      '# ============================================',
-      '',
-      '# 视觉分析 API 密钥（可选，默认回退到 COGITO_API_KEY）',
-      `COGITO_VISION_API_KEY=${config.vision?.apiKey || ''}`,
-      '',
-      '# 视觉分析 API 服务地址（可选，默认使用 COGITO_API_BASE_URL）',
-      `COGITO_VISION_API_BASE_URL=${config.vision?.baseURL || ''}`,
-      '',
-      '# 视觉模型名称（可选，默认 InternVL3-78B）',
-      `COGITO_VISION_MODEL=${config.vision?.model || 'InternVL3-78B'}`,
-      '',
-      '# ============================================',
-      '# 代码执行配置（可选）',
-      '# ============================================',
-      '',
-      '# 代码执行超时时间（毫秒）',
-      `COGITO_CODE_TIMEOUT=${config.code?.timeout || 30000}`,
-      '',
-      '# 代码输出最大大小（字符）',
-      `COGITO_CODE_MAX_OUTPUT=${config.code?.maxOutput || 100000}`,
-      '',
-      '# 是否启用科学计算模式（默认关闭）',
-      `COGITO_CODE_SCIENTIFIC_MODE=${config.code?.scientificMode ? 'true' : 'false'}`,
-      '',
-      '# 已安装的科学库（逗号分隔）',
-      `COGITO_CODE_SCIENTIFIC_LIBRARIES=${config.code?.scientificLibraries || ''}`,
-      '',
-      '# ============================================',
-      '# 安全配置（可选）',
-      '# ============================================',
-      '',
-      '# 是否启用危险操作确认（默认启用）',
-      `COGITO_CONFIRM_DANGEROUS=${config.security?.confirmDangerous !== false ? 'true' : 'false'}`,
-      '',
-      '# 是否启用代码沙盒模式（默认启用）',
-      `COGITO_SANDBOX_MODE=${config.security?.sandboxMode !== false ? 'true' : 'false'}`,
-      '',
-      '# ============================================',
-      '# 工作区配置（可选）',
-      '# ============================================',
-      '',
-      '# 工作区根路径',
-      `COGITO_WORKSPACE=${config.workspace || os.homedir()}`,
-      '',
-      '# ============================================',
-      '# 人设配置（可选）',
-      '# ============================================',
-      '',
-      '# 人设名称（对应 personas/ 目录下的文件夹名称）',
-      `COGITO_PERSONA=${config.persona || ''}`,
-    ];
-
-    fs.writeFileSync(envPath, envLines.join('\n'), 'utf-8');
-    try {
-      if (process.platform === 'win32') {
-        // 使用 execFileSync+数组参数避免 shell 注入（用户名可能含特殊字符）；
-        // 权限设为 :RW 而非 :R，否则下次 saveConfig 写入会因只读而失败。
-        execFileSync(
-          'icacls',
-          [envPath, '/inheritance:r', '/grant:r', `${os.userInfo().username}:RW`],
-          { windowsHide: true },
-        );
-      } else {
-        fs.chmodSync(envPath, 0o600);
-      }
-    } catch {
-      console.warn('[主进程] 无法设置 .env 文件权限');
+    // 保存 .env 文件：字段集、引号格式、邮箱密码加密、文件权限统一由
+    // electron/shared/config-writer.js 实现，CLI 与桌面端共用，避免再分叉。
+    const envOk = writeEnvConfig(config, { dataDir: USER_DATA_DIR });
+    if (envOk) {
+      console.log('[主进程] 配置已保存到 .env');
+    } else {
+      console.warn('[主进程] .env 保存失败');
     }
-    console.log('[主进程] 配置已保存到 .env');
 
     return true;
   } catch (e) {

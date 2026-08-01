@@ -209,17 +209,6 @@ function printToolBlock(content: string, title = '工具调用'): void {
 }
 
 /**
- * 等待用户确认
- */
-function waitForConfirm(question: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    rl!.question(`${question} (yes/no): `, (answer) => {
-      resolve(answer.toLowerCase() === 'yes');
-    });
-  });
-}
-
-/**
  * 退出
  */
 async function exit(): Promise<void> {
@@ -297,7 +286,6 @@ export {
   resetContentTag,
   printToolBlock,
   rainbow,
-  waitForConfirm,
   exit,
   onCleanup,
   COLORS,

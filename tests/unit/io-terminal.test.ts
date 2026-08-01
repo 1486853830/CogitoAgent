@@ -31,7 +31,6 @@ const {
   resetContentTag,
   printToolBlock,
   rainbow,
-  waitForConfirm,
   exit,
   onCleanup,
   COLORS,
@@ -290,20 +289,6 @@ describe('io/terminal.ts', () => {
         exitSpy.mockRestore();
         jest.useRealTimers();
       }
-    });
-  });
-
-  describe('waitForConfirm', () => {
-    it('should resolve true when answer is yes', async () => {
-      init(() => {});
-      mockRl.question.mockImplementation((_q: string, cb: (a: string) => void) => cb('yes'));
-      await expect(waitForConfirm('continue?')).resolves.toBe(true);
-    });
-
-    it('should resolve false when answer is not yes', async () => {
-      init(() => {});
-      mockRl.question.mockImplementation((_q: string, cb: (a: string) => void) => cb('no'));
-      await expect(waitForConfirm('continue?')).resolves.toBe(false);
     });
   });
 
