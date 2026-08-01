@@ -6,10 +6,8 @@
 >
 > _Your AI agent that lives in your computer — not in the cloud._
 
-[![Gitee](https://img.shields.io/badge/Gitee-国内镜像-c71d23?style=flat-square&logo=gitee)](https://gitee.com/cnt-code/cogito-agent)
-[![GitHub](https://img.shields.io/badge/GitHub-国际镜像-181717?style=flat-square&logo=github)](https://github.com/SnowLeopard-io/CogitoAgent)
-[![npm](https://img.shields.io/npm/v/cogitoagent?style=flat-square&logo=npm)](https://www.npmjs.com/package/cogitoagent)
-[![npm downloads](https://img.shields.io/npm/dm/cogitoagent?style=flat-square&logo=npm)](https://www.npmjs.com/package/cogitoagent)
+[![Gitee](https://img.shields.io/badge/Gitee-China-c71d23?style=flat-square&logo=gitee)](https://gitee.com/cnt-code/cogito-agent)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github)](https://github.com/SnowLeopard-io/CogitoAgent)
 [![Version](https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square)](<>)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript)](<>)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js)](<>)
