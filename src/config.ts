@@ -2,6 +2,9 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import path from 'path';
 import os from 'os';
 import type { Config } from './types/index.ts';
+// 复用 electron 端的凭据加密实现，避免重复代码。
+// .env 中的邮箱密码由 main.js 在 saveConfig 时加密，src 端读取后需解密。
+import { decrypt as decryptCredential } from '../electron/shared/credentials.js';
 
 function getConfigDir(): string {
   return process.env.COGITO_USER_DATA_DIR || process.cwd();
@@ -170,7 +173,8 @@ function loadEnvConfig(): Partial<Config> {
     emailConfig.user = process.env.COGITO_EMAIL_USER;
   }
   if (process.env.COGITO_EMAIL_PASSWORD) {
-    emailConfig.password = process.env.COGITO_EMAIL_PASSWORD;
+    // .env 中存储的密码可能是加密格式（enc:v1:...）或旧版明文，decrypt 会自动识别
+    emailConfig.password = decryptCredential(process.env.COGITO_EMAIL_PASSWORD);
   }
   if (process.env.COGITO_EMAIL_FROM) {
     emailConfig.from = process.env.COGITO_EMAIL_FROM;

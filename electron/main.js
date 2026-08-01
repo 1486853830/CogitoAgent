@@ -11,6 +11,10 @@ import { spawn, execSync, execFileSync } from 'child_process';
 import { initAgentBridge, sendToAgent, setUserDataDir } from './agent-bridge.js';
 import fs from 'fs';
 import os from 'os';
+import {
+  encrypt as encryptCredential,
+  decrypt as decryptCredential,
+} from './shared/credentials.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -164,9 +168,8 @@ function saveConfig(config) {
       '# 邮箱用户名',
       `COGITO_EMAIL_USER=${config.email?.user || ''}`,
       '',
-      '# 邮箱密码',
-      // TODO: 改用系统 keychain 存储密码，避免明文存储敏感凭据
-      `COGITO_EMAIL_PASSWORD=${config.email?.password || ''}`,
+      '# 邮箱密码（已加密存储，请勿手动编辑）',
+      `COGITO_EMAIL_PASSWORD=${encryptCredential(config.email?.password || '')}`,
       '',
       '# 发件人邮箱地址',
       `COGITO_EMAIL_FROM=${config.email?.from || ''}`,
@@ -857,7 +860,7 @@ app.whenReady().then(async () => {
         host: env['COGITO_EMAIL_HOST'] || '',
         port: env['COGITO_EMAIL_PORT'] || '',
         user: env['COGITO_EMAIL_USER'] || '',
-        password: env['COGITO_EMAIL_PASSWORD'] || '',
+        password: decryptCredential(env['COGITO_EMAIL_PASSWORD'] || ''),
         from: env['COGITO_EMAIL_FROM'] || '',
       },
       ocr: {

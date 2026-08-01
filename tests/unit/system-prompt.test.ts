@@ -4,7 +4,7 @@ const mockGetEnabledCategories = jest.fn();
 const mockGetToolsByCategory = jest.fn();
 const mockGetAllCategories = jest.fn();
 
-jest.unstable_mockModule('../../src/agent/registry', () => ({
+jest.unstable_mockModule('../../src/agent/registry.ts', () => ({
   getEnabledCategories: mockGetEnabledCategories,
   getToolsByCategory: mockGetToolsByCategory,
   getAllCategories: mockGetAllCategories,
@@ -18,6 +18,11 @@ jest.unstable_mockModule('../../src/agent/registry', () => ({
   getToolRegistry: () => ({}),
   hasTool: () => false,
   getToolNames: () => [],
+  isDangerousOperation: () => false,
+  isConfirmEnabled: () => false,
+  getToolsForPrompt: () => '',
+  getEnabledToolNames: () => [],
+  DANGEROUS_OPERATIONS: [],
 }));
 
 const { buildToolList, buildSystemPrompt } = await import('../../src/agent/system-prompt');
