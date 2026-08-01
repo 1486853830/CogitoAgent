@@ -5,4 +5,13 @@ contact_links:
     about: 提问、交流想法或寻求帮助 / Ask questions, share ideas, or get help
   - name: 📖 文档 / Documentation
     url: https://github.com/SnowLeopard-io/CogitoAgent/blob/main/README.md
-    about: 查阅项目 README 了解基本用法
+    about: 查阅项目 README 了解基本用法 / Check the README for basic usage
+  - name: 🤝 贡献指南 / Contributing Guide
+    url: https://github.com/SnowLeopard-io/CogitoAgent/blob/main/CONTRIBUTING.md
+    about: 了解如何贡献代码 / Learn how to contribute
+  - name: 🗺 路线图 / Roadmap
+    url: https://github.com/SnowLeopard-io/CogitoAgent/blob/main/ROADMAP.md
+    about: 查看项目未来规划 / See the project roadmap
+  - name: 🔒 报告安全漏洞 / Report a Security Vulnerability
+    url: https://github.com/SnowLeopard-io/CogitoAgent/security/advisories/new
+    about: 通过安全渠道报告漏洞 / Report vulnerabilities confidentially

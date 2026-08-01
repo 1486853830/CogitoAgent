@@ -21,6 +21,20 @@
 
 ## How to Contribute / 如何贡献
 
+### 🚀 5-Minute Quick Start / 5 分钟快速贡献
+
+> 想快速体验贡献流程？以下是新手最快上手的方式。
+> Want to experience the contribution process quickly? Here's the fastest way for beginners.
+
+1. **找一个新手任务** — 查看 [good first issue](https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) 标签
+2. **Fork 仓库** — 点击 GitHub 右上角的 Fork 按钮
+3. **克隆到本地** — `git clone https://github.com/你的用户名/CogitoAgent.git`
+4. **创建分支** — `git checkout -b fix/your-bug-fix`
+5. **修改代码** — 可以是文档、测试、或简单的 bug 修复
+6. **提交 PR** — 在 GitHub 上创建 Pull Request，等待审查
+
+---
+
 ### 1. 寻找任务 / Find a Task
 
 - 查看 [Issues](https://github.com/SnowLeopard-io/CogitoAgent/issues) 页面，寻找标有 `good first issue` 或 `help wanted` 标签的任务
