@@ -14,7 +14,7 @@ import {
   searchOnPage,
   findElements,
   searchOnEngine,
-  downloadFile
+  downloadFile,
 } from './browser.ts';
 import { executeCode, executeFile, runJavaScript, runPython, formatCode } from './code.ts';
 import {
@@ -38,7 +38,7 @@ import {
   gitConfigUser,
   gitReset,
   gitStash,
-  gitStashPop
+  gitStashPop,
 } from './git.ts';
 import {
   createTask,
@@ -49,7 +49,7 @@ import {
   completeTask,
   splitTask,
   getTaskStats,
-  clearTasks
+  clearTasks,
 } from './task.ts';
 import {
   addMemory,
@@ -60,7 +60,7 @@ import {
   deleteMemory,
   getMemoryStats,
   getRelatedMemories,
-  clearMemory
+  clearMemory,
 } from './memory.ts';
 import {
   readCSV,
@@ -71,7 +71,7 @@ import {
   jsonToCSV,
   queryData,
   analyzeData,
-  sortData
+  sortData,
 } from './data.ts';
 import {
   executeSQL,
@@ -84,7 +84,7 @@ import {
   getTables,
   getTableSchema,
   executeTransaction,
-  closeDB
+  closeDB,
 } from './db.ts';
 import {
   sendEmail,
@@ -92,7 +92,7 @@ import {
   sendHtmlEmail,
   sendEmailWithAttachments,
   sendTemplateEmail,
-  checkEmailConfig
+  checkEmailConfig,
 } from './email.ts';
 import {
   getCPUInfo,
@@ -105,7 +105,7 @@ import {
   getSystemLoad,
   monitorSystem,
   formatBytes,
-  formatUptime
+  formatUptime,
 } from './monitor.ts';
 import {
   addScheduleTask,
@@ -115,7 +115,7 @@ import {
   updateScheduleTask,
   toggleScheduleTask,
   startScheduler,
-  stopScheduler
+  stopScheduler,
 } from './scheduler.ts';
 import { FileStorage, createStorage } from './storage.ts';
 import { ocr, ocrBatch } from './ocr.ts';
@@ -126,7 +126,7 @@ import {
   createJavaScriptSandbox,
   runJavaScriptSandbox,
   runPythonSandbox,
-  executeCodeSandbox
+  executeCodeSandbox,
 } from './sandbox.ts';
 import {
   spawnAgent,
@@ -138,7 +138,7 @@ import {
   getAgent,
   panelDiscussion,
   pipeline,
-  voting
+  voting,
 } from './cluster.ts';
 import {
   loginWechat,
@@ -148,7 +148,7 @@ import {
   sendWechatMessage,
   sendWechatImage,
   getWechatStatus,
-  generateWechatQRCode
+  generateWechatQRCode,
 } from './wechat.ts';
 import {
   convertCoord,
@@ -161,7 +161,7 @@ import {
   queryGeoJSON,
   geoJSONStats,
   geoJSONToCSV,
-  geoJSONToKML
+  geoJSONToKML,
 } from './gis.ts';
 import {
   dnaComplement,
@@ -178,7 +178,7 @@ import {
   parseFASTQ,
   fastaToCSV,
   codonUsage,
-  randomSeq
+  randomSeq,
 } from './bio.ts';
 import {
   bmi,
@@ -197,7 +197,7 @@ import {
   correctedCalcium,
   oxygenIndex,
   parseVitalSigns,
-  vitalsReport
+  vitalsReport,
 } from './med.ts';
 import {
   elementInfo,
@@ -208,7 +208,7 @@ import {
   phFromH,
   phToH,
   idealGasLaw,
-  gasDensity
+  gasDensity,
 } from './chem.ts';
 import {
   compoundInterest,
@@ -222,7 +222,7 @@ import {
   amortizationSchedule,
   totalInterest,
   movingAverage,
-  volatility
+  volatility,
 } from './finance.ts';
 import {
   describe,
@@ -235,7 +235,7 @@ import {
   factorial,
   combination,
   permutation,
-  siConvert
+  siConvert,
 } from './math.ts';
 
 export {
@@ -459,275 +459,5 @@ export {
   factorial,
   combination,
   permutation,
-  siConvert
+  siConvert,
 };
-
-// ============================================
-// 工具元数据定义（用于自动生成注册表）
-// ============================================
-const TOOL_METADATA: any = {
-  // 文件操作
-  ls: { argCount: 1 },
-  read: { argCount: 1 },
-  copy: { argCount: 2 },
-  mkdir: { argCount: 1 },
-  create: { argCount: 2, customArgs: true },
-
-  // 网络
-  search: { argCount: 1, customArgs: true },
-  browse: { argCount: 1 },
-  fetchPage: { argCount: 1 },
-
-  // 系统
-  listApps: { argCount: 0 },
-  openApp: { argCount: 1 },
-  closeApp: { argCount: 1 },
-
-  // 浏览器自动化
-  initBrowser: { argCount: 1 },
-  clickElement: { argCount: 2 },
-  fillField: { argCount: 3 },
-  selectOption: { argCount: 2 },
-  viewChanges: { argCount: 0 },
-  getPageContent: { argCount: 0 },
-  takeScreenshot: { argCount: 1 },
-  closeBrowser: { argCount: 0 },
-  searchOnPage: { argCount: 2 },
-  findElements: { argCount: 2 },
-  searchOnEngine: { argCount: 2 },
-  downloadFile: { argCount: 3 },
-
-  // 代码执行
-  executeCode: { argCount: 2 },
-  executeFile: { argCount: 2 },
-  runJavaScript: { argCount: 1 },
-  runPython: { argCount: 1 },
-  formatCode: { argCount: 2 },
-
-  // Git
-  gitInit: { argCount: 1 },
-  gitClone: { argCount: 3 },
-  gitAdd: { argCount: 2 },
-  gitCommit: { argCount: 2 },
-  gitPush: { argCount: 3 },
-  gitPull: { argCount: 3 },
-  gitStatus: { argCount: 1 },
-  gitLog: { argCount: 2 },
-  gitBranchCreate: { argCount: 2 },
-  gitBranchDelete: { argCount: 2 },
-  gitBranchList: { argCount: 1 },
-  gitCheckout: { argCount: 2 },
-  gitCheckoutNew: { argCount: 2 },
-  gitMerge: { argCount: 3 },
-  gitDiff: { argCount: 2 },
-  gitRemoteAdd: { argCount: 3 },
-  gitRemoteList: { argCount: 1 },
-  gitConfigUser: { argCount: 3 },
-  gitReset: { argCount: 2 },
-  gitStash: { argCount: 1 },
-  gitStashPop: { argCount: 1 },
-
-  // 任务管理
-  createTask: { argCount: 4 },
-  getTasks: { argCount: 0 },
-  getTask: { argCount: 1 },
-  updateTask: { argCount: 2 },
-  deleteTask: { argCount: 1 },
-  completeTask: { argCount: 1 },
-  splitTask: { argCount: 2 },
-  getTaskStats: { argCount: 0 },
-  clearTasks: { argCount: 0 },
-
-  // 记忆系统
-  addMemory: { argCount: 3 },
-  searchMemory: { argCount: 2 },
-  getAllMemories: { argCount: 1 },
-  getMemory: { argCount: 1 },
-  updateMemory: { argCount: 2 },
-  deleteMemory: { argCount: 1 },
-  getMemoryStats: { argCount: 0 },
-  getRelatedMemories: { argCount: 1 },
-  clearMemory: { argCount: 0 },
-
-  // 数据处理
-  readCSV: { argCount: 1 },
-  writeCSV: { argCount: 3 },
-  readJSON: { argCount: 1 },
-  writeJSON: { argCount: 2 },
-  csvToJSON: { argCount: 2 },
-  jsonToCSV: { argCount: 2 },
-  queryData: { argCount: 2 },
-  analyzeData: { argCount: 1 },
-  sortData: { argCount: 3 },
-
-  // 数据库
-  executeSQL: { argCount: 2 },
-  query: { argCount: 3 },
-  insert: { argCount: 2 },
-  update: { argCount: 3 },
-  deleteData: { argCount: 2 },
-  createTable: { argCount: 2 },
-  dropTable: { argCount: 1 },
-  getTables: { argCount: 0 },
-  getTableSchema: { argCount: 1 },
-  executeTransaction: { argCount: 1 },
-  closeDB: { argCount: 0 },
-
-  // 邮件
-  sendEmail: { argCount: 4 },
-  sendTextEmail: { argCount: 3 },
-  sendHtmlEmail: { argCount: 3 },
-  sendEmailWithAttachments: { argCount: 4 },
-  sendTemplateEmail: { argCount: 3 },
-  checkEmailConfig: { argCount: 0 },
-
-  // 系统监控
-  getCPUInfo: { argCount: 0 },
-  getMemoryInfo: { argCount: 0 },
-  getDiskInfo: { argCount: 0 },
-  getNetworkInfo: { argCount: 0 },
-  getProcesses: { argCount: 0 },
-  getSystemInfo: { argCount: 0 },
-  getCurrentProcess: { argCount: 0 },
-  getSystemLoad: { argCount: 0 },
-  monitorSystem: { argCount: 0 },
-  formatBytes: { argCount: 1 },
-  formatUptime: { argCount: 1 },
-
-  // 定时任务
-  addScheduleTask: { argCount: 4 },
-  removeScheduleTask: { argCount: 1 },
-  getScheduleTasks: { argCount: 0 },
-  getScheduleTask: { argCount: 1 },
-  updateScheduleTask: { argCount: 2 },
-  toggleScheduleTask: { argCount: 1 },
-  startScheduler: { argCount: 0 },
-  stopScheduler: { argCount: 0 },
-
-  // 存储
-  createStorage: { argCount: 2 },
-
-  // OCR 图像文字识别
-  ocr: { argCount: 1 },
-  ocrBatch: { argCount: 1 },
-
-  // 视觉分析
-  vision: { argCount: 2 },
-  visionFromUrl: { argCount: 2 },
-
-  // PPT 创建
-  createPpt: { argCount: 1 },
-  createWord: { argCount: 1 },
-  createExcel: { argCount: 1 },
-  readExcel: { argCount: 1 },
-
-  // 集群管理
-  spawnAgent: { argCount: 3 },
-  delegateTask: { argCount: 2 },
-  getClusterStatus: { argCount: 0 },
-  stopAgent: { argCount: 1 },
-  stopAllAgents: { argCount: 0 },
-  parallelExecute: { argCount: 1 },
-  getAgent: { argCount: 1 },
-  panelDiscussion: { argCount: 2 },
-  pipeline: { argCount: 1 },
-  voting: { argCount: 2 },
-
-  // 微信消息
-  loginWechat: { argCount: 0 },
-  logoutWechat: { argCount: 0 },
-  sendWechatMessage: { argCount: 2 },
-  sendWechatImage: { argCount: 2 },
-  getWechatStatus: { argCount: 0 },
-  generateWechatQRCode: { argCount: 0 },
-
-  // GIS 地理信息
-  convertCoord: { argCount: 4 },
-  calcDistance: { argCount: 5 },
-  calcArea: { argCount: 1, customArgs: true },
-  calcCenter: { argCount: 1, customArgs: true },
-  pointInPolygon: { argCount: 3, customArgs: true },
-  isInChina: { argCount: 2 },
-  readGeoJSON: { argCount: 1 },
-  queryGeoJSON: { argCount: 2, customArgs: true },
-  geoJSONStats: { argCount: 1 },
-  geoJSONToCSV: { argCount: 2 },
-  geoJSONToKML: { argCount: 2 },
-
-  // 生命科学
-  dnaComplement: { argCount: 1 },
-  dnaReverseComplement: { argCount: 1 },
-  rnaTranscribe: { argCount: 1 },
-  translate: { argCount: 2 },
-  gcContent: { argCount: 1 },
-  molecularWeight: { argCount: 1 },
-  hammingDistance: { argCount: 2 },
-  levenshteinDistance: { argCount: 2 },
-  tmEstimate: { argCount: 1 },
-  hairpinCheck: { argCount: 1 },
-  parseFASTA: { argCount: 1 },
-  parseFASTQ: { argCount: 1 },
-  fastaToCSV: { argCount: 2 },
-  codonUsage: { argCount: 1 },
-  randomSeq: { argCount: 2 },
-
-  // 医学
-  bmi: { argCount: 2 },
-  bsa: { argCount: 3 },
-  egfr: { argCount: 3 },
-  crcl: { argCount: 4 },
-  childPugh: { argCount: 5 },
-  calculateDose: { argCount: 3 },
-  bsaDose: { argCount: 3 },
-  infusionRate: { argCount: 3 },
-  idealBodyWeight: { argCount: 2 },
-  convertUnit: { argCount: 3 },
-  temperatureConvert: { argCount: 3 },
-  meanArterialPressure: { argCount: 2 },
-  anionGap: { argCount: 3 },
-  correctedCalcium: { argCount: 2 },
-  oxygenIndex: { argCount: 2 },
-  parseVitalSigns: { argCount: 1 },
-  vitalsReport: { argCount: 1 },
-
-  // 化学
-  elementInfo: { argCount: 1 },
-  molWeight: { argCount: 1, customArgs: true },
-  elementComposition: { argCount: 1, customArgs: true },
-  molarity: { argCount: 2 },
-  dilution: { argCount: 4 },
-  phFromH: { argCount: 1 },
-  phToH: { argCount: 1 },
-  idealGasLaw: { argCount: 4 },
-  gasDensity: { argCount: 3 },
-
-  // 金融
-  compoundInterest: { argCount: 4 },
-  presentValue: { argCount: 3 },
-  futureValueAnnuity: { argCount: 3 },
-  npv: { argCount: 2, customArgs: true },
-  irr: { argCount: 1, customArgs: true },
-  paybackPeriod: { argCount: 1, customArgs: true },
-  roi: { argCount: 2 },
-  loanPayment: { argCount: 3 },
-  amortizationSchedule: { argCount: 3 },
-  totalInterest: { argCount: 3 },
-  movingAverage: { argCount: 2, customArgs: true },
-  volatility: { argCount: 1, customArgs: true },
-
-  // 数学/统计
-  describe: { argCount: 1, customArgs: true },
-  correlation: { argCount: 2, customArgs: true },
-  linearRegression: { argCount: 2, customArgs: true },
-  matrixMultiply: { argCount: 2, customArgs: true },
-  matrixDeterminant: { argCount: 1, customArgs: true },
-  matrixInverse: { argCount: 1, customArgs: true },
-  solveQuadratic: { argCount: 3 },
-  factorial: { argCount: 1 },
-  combination: { argCount: 2 },
-  permutation: { argCount: 2 },
-  siConvert: { argCount: 3 },
-};
-
-// 导出工具元数据（供 registry.js 参考）
-export { TOOL_METADATA };
