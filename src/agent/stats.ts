@@ -112,14 +112,20 @@ async function loadStats(): Promise<void> {
   }
 }
 
+let saveStatsTimer: ReturnType<typeof setTimeout> | null = null;
+
 async function saveStats(): Promise<void> {
-  try {
-    const dir = path.dirname(STATS_FILE);
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(STATS_FILE, JSON.stringify({ toolStats, sessionStats }, null, 2));
-  } catch (e) {
-    console.error('[Stats] 保存统计数据失败:', (e as Error).message);
-  }
+  if (saveStatsTimer) return;
+  saveStatsTimer = setTimeout(async () => {
+    saveStatsTimer = null;
+    try {
+      const dir = path.dirname(STATS_FILE);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(STATS_FILE, JSON.stringify({ toolStats, sessionStats }, null, 2));
+    } catch (e) {
+      console.error('[Stats] 保存统计数据失败:', (e as Error).message);
+    }
+  }, 100);
 }
 
 function recordToolCall(

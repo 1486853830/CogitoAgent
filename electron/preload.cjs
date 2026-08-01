@@ -8,7 +8,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // 发送用户消息给 agent
   sendMessage: (text) => ipcRenderer.send('user-message', text),
-  
+
   // 发送统计数据请求
   sendStatsRequest: (data) => ipcRenderer.send('stats-request', data),
 
@@ -16,34 +16,45 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
   maximizeWindow: () => ipcRenderer.send('window-maximize'),
   closeWindow: () => ipcRenderer.send('window-close'),
-  
+
   // 窗口移动（用于拖拽视频）
   moveWindow: (x, y) => ipcRenderer.send('window-move', { x, y }),
 
   // 监听 agent 的回复
   onReply: (callback) => {
-    ipcRenderer.on('agent-reply', (_event, data) => callback(data));
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('agent-reply', listener);
+    return () => ipcRenderer.removeListener('agent-reply', listener);
   },
 
   // 监听 agent 状态变化
   onStateChange: (callback) => {
-    ipcRenderer.on('agent-state', (_event, state) => callback(state));
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('agent-state', listener);
+    return () => ipcRenderer.removeListener('agent-state', listener);
   },
 
   // 监听思维链消息
   on: (channel, callback) => {
+    const listener = (_event, data) => callback(data);
     if (channel === 'thought-trace') {
-      ipcRenderer.on('thought-trace', (_event, data) => callback(data));
+      ipcRenderer.on('thought-trace', listener);
+      return () => ipcRenderer.removeListener('thought-trace', listener);
     } else if (channel === 'stats-response') {
-      ipcRenderer.on('stats-response', (_event, data) => callback(data));
+      ipcRenderer.on('stats-response', listener);
+      return () => ipcRenderer.removeListener('stats-response', listener);
     } else if (channel === 'cluster-state') {
-      ipcRenderer.on('cluster-state', (_event, data) => callback(data));
+      ipcRenderer.on('cluster-state', listener);
+      return () => ipcRenderer.removeListener('cluster-state', listener);
     }
+    return () => {};
   },
 
   // 监听历史消息
   onHistory: (callback) => {
-    ipcRenderer.on('agent-history', (_event, messages) => callback(messages));
+    const listener = (_event, messages) => callback(messages);
+    ipcRenderer.on('agent-history', listener);
+    return () => ipcRenderer.removeListener('agent-history', listener);
   },
 
   // 请求历史消息
@@ -67,12 +78,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 监听配置结果
   onConfigResult: (callback) => {
-    ipcRenderer.on('setup-config-result', (_event, data) => callback(data));
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('setup-config-result', listener);
+    return () => ipcRenderer.removeListener('setup-config-result', listener);
   },
 
   // 监听重新配置模式
   onSetupReconfigureMode: (callback) => {
-    ipcRenderer.on('setup-reconfigure-mode', (_event, isReconfigure) => callback(isReconfigure));
+    const listener = (_event, isReconfigure) => callback(isReconfigure);
+    ipcRenderer.on('setup-reconfigure-mode', listener);
+    return () => ipcRenderer.removeListener('setup-reconfigure-mode', listener);
   },
 
   // 请求选择目录
@@ -80,7 +95,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 监听目录选择结果
   onDirectorySelected: (callback) => {
-    ipcRenderer.on('setup-directory-selected', (_event, path) => callback(path));
+    const listener = (_event, path) => callback(path);
+    ipcRenderer.on('setup-directory-selected', listener);
+    return () => ipcRenderer.removeListener('setup-directory-selected', listener);
   },
 
   // 启动主应用
@@ -117,44 +134,63 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ===== 微信相关 IPC =====
   // 登录微信
   loginWechat: () => ipcRenderer.send('wechat-login'),
-  
+
   // 登出微信
   logoutWechat: () => ipcRenderer.send('wechat-logout'),
-  
+
   // 请求微信状态
   requestWechatStatus: () => ipcRenderer.send('wechat-request-status'),
 
   // 获取微信历史消息
   getWechatHistory: () => ipcRenderer.invoke('get-wechat-history'),
-  
+
   // 监听微信状态变化
   onWechatState: (callback) => {
-    ipcRenderer.on('wechat-state', (_event, state) => callback(state));
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('wechat-state', listener);
+    return () => ipcRenderer.removeListener('wechat-state', listener);
   },
-  
+
   // 监听微信消息
   onWechatMessage: (callback) => {
-    ipcRenderer.on('wechat-message', (_event, message) => callback(message));
+    const listener = (_event, message) => callback(message);
+    ipcRenderer.on('wechat-message', listener);
+    return () => ipcRenderer.removeListener('wechat-message', listener);
   },
 
   // 监听微信二维码
   onWechatQRCode: (callback) => {
-    ipcRenderer.on('wechat-qrcode', (_event, data) => callback(data));
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('wechat-qrcode', listener);
+    return () => ipcRenderer.removeListener('wechat-qrcode', listener);
   },
 
   // 监听微信登录状态
   onWechatLoginStatus: (callback) => {
-    ipcRenderer.on('wechat-login-status', (_event, data) => callback(data));
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('wechat-login-status', listener);
+    return () => ipcRenderer.removeListener('wechat-login-status', listener);
   },
 
   // 监听人设切换事件
   onPersonaSwitched: (callback) => {
-    ipcRenderer.on('persona-switched', (_event, data) => callback(data));
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('persona-switched', listener);
+    return () => ipcRenderer.removeListener('persona-switched', listener);
+  },
+
+  // 监听会话列表更新（meta.json 刷新后推送）
+  onSessionUpdated: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('session-updated', listener);
+    return () => ipcRenderer.removeListener('session-updated', listener);
   },
 
   // ===== Token 用量相关 IPC =====
   // 监听 token 用量推送（每轮 AI 回复后推送）
   onTokenUsage: (callback) => {
-    ipcRenderer.on('token-usage', (_event, data) => callback(data));
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('token-usage', listener);
+    return () => ipcRenderer.removeListener('token-usage', listener);
   },
 });

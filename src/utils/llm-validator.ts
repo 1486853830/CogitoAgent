@@ -31,9 +31,10 @@ export function safeParseLLM(raw: string) {
 export function parseLLMResponse(raw: string): LLMResponse {
   const result = safeParseLLM(raw);
   if (!result.success) {
+    console.warn('[LLM] 解析失败:', result.error, '原始内容片段:', raw?.slice(0, 200));
     return {
       action: 'answer',
-      payload: { text: '抱歉，当前响应格式异常，已自动重试。' },
+      payload: { text: '抱歉，当前响应格式异常，请重试。' },
     };
   }
   return result.data as LLMResponse;

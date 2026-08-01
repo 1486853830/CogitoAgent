@@ -7,23 +7,9 @@
  * 彻底避免命令注入风险。
  */
 
-const TOOLS = [];
+import { runPython, validateOutputPath } from '../shared/python-runner.js';
 
-/**
- * 安全执行 Python 脚本，通过 stdin 传递 JSON 参数
- */
-async function runPython(script, inputData, timeout = 30000) {
-  try {
-    const { execFileSync } = await import('child_process');
-    return execFileSync('python', ['-c', script], {
-      encoding: 'utf8',
-      timeout,
-      input: JSON.stringify(inputData),
-    });
-  } catch (error) {
-    throw new Error(`Failed to run Python: ${error.message}`);
-  }
-}
+const TOOLS = [];
 
 // ============================================
 // 工具：序列全局比对（Needleman-Wunsch）
@@ -35,9 +21,14 @@ TOOLS.push({
   fn: async (seq1, seq2, matchScore = 1, mismatchScore = -1, gapScore = -2) => {
     if (!seq1 || !seq2) return { success: false, error: '请输入两个序列' };
     try {
-      const ms = parseFloat(matchScore) || 1;
-      const mms = parseFloat(mismatchScore) || -1;
-      const gs = parseFloat(gapScore) || -2;
+      // 注意：parseFloat(x) || default 会把 0 当 falsy，必须用 isNaN 判断
+      const num = (v, d) => {
+        const n = parseFloat(v);
+        return isNaN(n) ? d : n;
+      };
+      const ms = num(matchScore, 1);
+      const mms = num(mismatchScore, -1);
+      const gs = num(gapScore, -2);
       const script = `
 import json, sys
 from Bio.Seq import Seq
@@ -128,6 +119,7 @@ try:
 except Exception as e:
     print(f"BLAST 搜索失败: {e}")
     print("提示: BLAST 需要网络连接，请确保能访问 NCBI 服务器。")
+    sys.exit(1)
 `;
       const result = await runPython(script, { sequence, program: prog, database: db }, 60000);
       return { success: true, data: result.trim() };
@@ -149,6 +141,8 @@ TOOLS.push({
       return { success: false, error: '请指定输入和输出文件路径' };
     }
     try {
+      // 校验输出路径，防止路径遍历
+      validateOutputPath(outputPath);
       // 白名单校验格式
       const allowedFormats = ['fasta', 'genbank', 'embl', 'swiss', 'fastq', 'phylip'];
       const inFmt = allowedFormats.includes(inputFormat) ? inputFormat : 'fasta';
@@ -189,7 +183,7 @@ TOOLS.push({
   category: 'bioinformatics',
   fn: async (accession) => {
     if (!accession) return { success: false, error: '请输入 GenBank 登录号' };
-    // 只允许字母数字和点号
+    // 只允许字母数字、点号、下划线和连字符
     const cleanAcc = String(accession).replace(/[^A-Za-z0-9._-]/g, '');
     if (!cleanAcc) return { success: false, error: '无效的登录号' };
     try {
@@ -228,6 +222,7 @@ try:
         
 except Exception as e:
     print(f"获取失败: {e}")
+    sys.exit(1)
 `;
       const result = await runPython(script, { accession: cleanAcc });
       return { success: true, data: result.trim() };
@@ -274,7 +269,7 @@ for model in structure:
             if coords:
                 center = sum(coords, coords[0].zero()) / len(coords)
                 print(f"    质心: ({center[0]:.2f}, {center[1]:.2f}, {center[2]:.2f})")
-        except:
+        except Exception:
             pass
 `;
       const result = await runPython(script, { pdbPath });
@@ -339,6 +334,8 @@ TOOLS.push({
       return { success: false, error: '请指定输入 FASTA 和输出比对文件路径' };
     }
     try {
+      // 校验输出路径，防止路径遍历
+      validateOutputPath(outputAln);
       const script = `
 import json, sys, os
 from Bio import AlignIO
@@ -369,6 +366,7 @@ print(f"比对长度: {alignment.get_alignment_length()}")
 export default TOOLS;
 
 export const metadata = {
+  // name 为简短名（与目录名一致）；package.json.name 使用带前缀的 npm 风格 cogito-plugin-biopython-bio
   name: 'biopython-bio',
   version: '1.0.0',
   author: 'CogitoAgent AI for Science',

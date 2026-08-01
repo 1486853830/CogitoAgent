@@ -631,7 +631,10 @@ describe('mcp.ts', () => {
             port,
             method: 'POST',
             path: '/',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${server.authToken}`,
+            },
           },
           (res) => {
             let body = '';
@@ -723,7 +726,10 @@ describe('mcp.ts', () => {
             port,
             method: 'POST',
             path: '/',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${server.authToken}`,
+            },
           },
           (res) => {
             let body = '';

@@ -46,45 +46,41 @@ function parseArgs(
   }
 
   if (trimmed.includes('"') || trimmed.includes("'")) {
-    try {
-      const args: string[] = [];
-      let current = '';
-      let inQuote = false;
-      let quoteChar = '';
+    const args: string[] = [];
+    let current = '';
+    let inQuote = false;
+    let quoteChar = '';
 
-      for (let i = 0; i < trimmed.length; i++) {
-        const char = trimmed[i];
+    for (let i = 0; i < trimmed.length; i++) {
+      const char = trimmed[i];
 
-        if ((char === '"' || char === "'") && !inQuote) {
-          inQuote = true;
-          quoteChar = char;
-          current += char;
-        } else if (char === quoteChar && inQuote) {
-          inQuote = false;
-          quoteChar = '';
-          current += char;
-        } else if (char === ',' && !inQuote) {
-          args.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
-      }
-
-      if (current.trim()) {
+      if ((char === '"' || char === "'") && !inQuote) {
+        inQuote = true;
+        quoteChar = char;
+        current += char;
+      } else if (char === quoteChar && inQuote) {
+        inQuote = false;
+        quoteChar = '';
+        current += char;
+      } else if (char === ',' && !inQuote) {
         args.push(current.trim());
+        current = '';
+      } else {
+        current += char;
       }
-
-      return args.map((arg) => {
-        const p = arg.trim();
-        if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
-          return p.slice(1, -1);
-        }
-        return p;
-      });
-    } catch {
-      // continue
     }
+
+    if (current.trim()) {
+      args.push(current.trim());
+    }
+
+    return args.map((arg) => {
+      const p = arg.trim();
+      if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
+        return p.slice(1, -1);
+      }
+      return p;
+    });
   }
 
   const result: unknown[] = [];

@@ -1086,6 +1086,11 @@ const ChatManager = {
       window.electronAPI.onHistory((history) => this.loadHistory(history));
     }
 
+    // 监听会话列表更新（meta.json 刷新后由主进程推送）
+    if (window.electronAPI?.onSessionUpdated) {
+      window.electronAPI.onSessionUpdated(() => NavManager.loadSessions());
+    }
+
     // 请求历史
     if (window.electronAPI?.requestHistory) {
       window.electronAPI.requestHistory();
@@ -1185,6 +1190,16 @@ const ChatManager = {
 
     window.electronAPI?.sendMessage('/stop');
     console.log('[ChatManager] 发送停止命令');
+
+    // 超时保护：若 8 秒后仍处于处理态，强制恢复按钮状态
+    if (this._stopTimer) clearTimeout(this._stopTimer);
+    this._stopTimer = setTimeout(() => {
+      this._stopTimer = null;
+      if (AppState.isProcessing) {
+        console.warn('[ChatManager] 停止命令超时，强制恢复');
+        AppState.setProcessing(false);
+      }
+    }, 8000);
   },
 
   addMessage(type, content, extra = {}) {

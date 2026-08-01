@@ -138,31 +138,31 @@ describe('llm-validator.ts', () => {
     it('should return default answer for invalid JSON', () => {
       const response = parseLLMResponse('invalid json');
       expect(response.action).toBe('answer');
-      expect(response.payload).toEqual({ text: '抱歉，当前响应格式异常，已自动重试。' });
+      expect(response.payload).toEqual({ text: '抱歉，当前响应格式异常，请重试。' });
     });
 
     it('should return default answer for invalid action type', () => {
       const response = parseLLMResponse('{"action": "invalid"}');
       expect(response.action).toBe('answer');
-      expect(response.payload).toEqual({ text: '抱歉，当前响应格式异常，已自动重试。' });
+      expect(response.payload).toEqual({ text: '抱歉，当前响应格式异常，请重试。' });
     });
 
     it('should return default answer for missing action', () => {
       const response = parseLLMResponse('{"payload": {"text": "hello"}}');
       expect(response.action).toBe('answer');
-      expect(response.payload).toEqual({ text: '抱歉，当前响应格式异常，已自动重试。' });
+      expect(response.payload).toEqual({ text: '抱歉，当前响应格式异常，请重试。' });
     });
 
     it('should return default answer for empty string', () => {
       const response = parseLLMResponse('');
       expect(response.action).toBe('answer');
-      expect(response.payload).toEqual({ text: '抱歉，当前响应格式异常，已自动重试。' });
+      expect(response.payload).toEqual({ text: '抱歉，当前响应格式异常，请重试。' });
     });
 
     it('should return default answer for undefined input', () => {
       const response = parseLLMResponse(undefined as any);
       expect(response.action).toBe('answer');
-      expect(response.payload).toEqual({ text: '抱歉，当前响应格式异常，已自动重试。' });
+      expect(response.payload).toEqual({ text: '抱歉，当前响应格式异常，请重试。' });
     });
   });
 

@@ -6,7 +6,7 @@
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import { streamChat } from '../api/client.ts';
-import { TOOL_REGISTRY } from './registry.ts';
+import { TOOL_REGISTRY, isDangerousOperation } from './registry.ts';
 import { broadcast } from '../io/ws-server.ts';
 import { parseAllToolCalls } from './tool-parser.ts';
 
@@ -18,14 +18,14 @@ class SubAgent {
   persona: string;
   name: string;
   instruction: string;
-  state: string;        // idle | thinking | tool_executing | done | error
-  messages: any[];          // 对话历史
-  result: any;          // 最终结果
+  state: string; // idle | thinking | tool_executing | done | error
+  messages: any[]; // 对话历史
+  result: any; // 最终结果
   createdAt: string;
   lastActiveAt: string;
-  toolCalls: number;          // 工具调用次数
-  error: string | null;           // 错误信息
-  iterationCount: number;     // 思考迭代次数
+  toolCalls: number; // 工具调用次数
+  error: string | null; // 错误信息
+  iterationCount: number; // 思考迭代次数
 
   constructor(id: string, persona: string, name: string, instruction: string) {
     this.id = id;
@@ -72,8 +72,8 @@ interface PipelineStep {
 class AgentOrchestrator {
   agents: Map<string, SubAgent>;
   counter: number;
-  maxIterations: number;      // 单个任务最大迭代次数
-  maxToolOutput: number;   // 工具输出最大长度
+  maxIterations: number; // 单个任务最大迭代次数
+  maxToolOutput: number; // 工具输出最大长度
 
   constructor() {
     this.agents = new Map();
@@ -88,7 +88,11 @@ class AgentOrchestrator {
    * @param name - 智能体显示名称
    * @param instruction - 角色指令/职责描述
    */
-  async spawnAgent(personaName: string, name?: string, instruction?: string): Promise<OperationResult> {
+  async spawnAgent(
+    personaName: string,
+    name?: string,
+    instruction?: string,
+  ): Promise<OperationResult> {
     personaName = personaName || 'Assistant';
     name = name || `${personaName}_${this.counter + 1}`;
     instruction = instruction || '';
@@ -113,8 +117,8 @@ class AgentOrchestrator {
         name,
         persona: personaName,
         instruction: instruction || '(无)',
-        createdAt: agent.createdAt
-      }
+        createdAt: agent.createdAt,
+      },
     };
   }
 
@@ -145,7 +149,10 @@ class AgentOrchestrator {
       // 构建消息列表
       const messages = [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `## 你的任务\n\n${task}\n\n请根据你的角色定位和可用工具，完成上述任务。` }
+        {
+          role: 'user',
+          content: `## 你的任务\n\n${task}\n\n请根据你的角色定位和可用工具，完成上述任务。`,
+        },
       ];
 
       // 执行智能体的思考-行动循环
@@ -156,7 +163,6 @@ class AgentOrchestrator {
       this._broadcastClusterState();
 
       return { success: true, data: result };
-
     } catch (error: any) {
       agent.state = 'error';
       agent.error = error.message;
@@ -170,13 +176,16 @@ class AgentOrchestrator {
    */
   async parallelExecute(tasks: ParallelTask[]): Promise<any[]> {
     const results = await Promise.allSettled(
-      tasks.map(t => this.delegateTask(t.agentId, t.task))
+      tasks.map((t) => this.delegateTask(t.agentId, t.task)),
     );
     return results.map((r, i) => ({
       agentId: tasks[i].agentId,
       task: tasks[i].task,
       success: r.status === 'fulfilled' && r.value.success,
-      result: r.status === 'fulfilled' ? r.value : { error: (r as PromiseRejectedResult).reason?.message }
+      result:
+        r.status === 'fulfilled'
+          ? r.value
+          : { error: (r as PromiseRejectedResult).reason?.message },
     }));
   }
 
@@ -186,13 +195,17 @@ class AgentOrchestrator {
    * @param agentIds - 参与讨论的智能体 ID 列表
    * @param moderatorInstruction - 主持人指令（可选）
    */
-  async panelDiscussion(topic: string, agentIds: string[], moderatorInstruction = ''): Promise<OperationResult> {
+  async panelDiscussion(
+    topic: string,
+    agentIds: string[],
+    moderatorInstruction = '',
+  ): Promise<OperationResult> {
     if (!agentIds || agentIds.length === 0) {
       return { success: false, error: '请至少指定一个智能体参与讨论' };
     }
 
     // 验证所有智能体存在
-    const invalidIds = agentIds.filter(id => !this.agents.has(id));
+    const invalidIds = agentIds.filter((id) => !this.agents.has(id));
     if (invalidIds.length > 0) {
       return { success: false, error: `智能体不存在: ${invalidIds.join(', ')}` };
     }
@@ -201,7 +214,6 @@ class AgentOrchestrator {
     const opinions: any[] = [];
     for (const agentId of agentIds) {
       const agent = this.agents.get(agentId)!;
-      agent.state = 'thinking';
       this._broadcastClusterState();
 
       const instruction = moderatorInstruction
@@ -215,7 +227,7 @@ class AgentOrchestrator {
           agentName: agent.name,
           persona: agent.persona,
           success: result.success,
-          response: result.success ? result.data : result.error
+          response: result.success ? result.data : result.error,
         });
       } catch (error: any) {
         opinions.push({
@@ -223,7 +235,7 @@ class AgentOrchestrator {
           agentName: agent.name,
           persona: agent.persona,
           success: false,
-          response: error.message
+          response: error.message,
         });
       }
     }
@@ -233,8 +245,8 @@ class AgentOrchestrator {
       data: {
         topic,
         participantCount: agentIds.length,
-        opinions
-      }
+        opinions,
+      },
     };
   }
 
@@ -247,9 +259,12 @@ class AgentOrchestrator {
     }
 
     // 验证所有智能体存在
-    const invalidIds = steps.filter(s => !this.agents.has(s.agentId));
+    const invalidIds = steps.filter((s) => !this.agents.has(s.agentId));
     if (invalidIds.length > 0) {
-      return { success: false, error: `智能体不存在: ${invalidIds.map(s => s.agentId).join(', ')}` };
+      return {
+        success: false,
+        error: `智能体不存在: ${invalidIds.map((s) => s.agentId).join(', ')}`,
+      };
     }
 
     const pipelineResults: any[] = [];
@@ -260,9 +275,7 @@ class AgentOrchestrator {
       const agent = this.agents.get(step.agentId)!;
       const stepName = step.name || `步骤 ${i + 1} (${agent.name})`;
 
-      const taskWithContext = context
-        ? `${step.task}\n\n---\n[上一步结果]\n${context}`
-        : step.task;
+      const taskWithContext = context ? `${step.task}\n\n---\n[上一步结果]\n${context}` : step.task;
 
       try {
         const result = await this.delegateTask(step.agentId, taskWithContext);
@@ -271,7 +284,7 @@ class AgentOrchestrator {
           stepName,
           agentId: step.agentId,
           agentName: agent.name,
-          success: result.success
+          success: result.success,
         };
 
         if (result.success) {
@@ -291,7 +304,7 @@ class AgentOrchestrator {
           agentId: step.agentId,
           agentName: agent.name,
           success: false,
-          error: error.message
+          error: error.message,
         });
         return { success: false, data: { step: i + 1, error: error.message, pipelineResults } };
       }
@@ -302,8 +315,8 @@ class AgentOrchestrator {
       data: {
         totalSteps: steps.length,
         finalResult: context,
-        pipelineResults
-      }
+        pipelineResults,
+      },
     };
   }
 
@@ -313,30 +326,34 @@ class AgentOrchestrator {
    * @param agentIds - 参与投票的智能体 ID 列表
    * @param options - 选项列表（可选）
    */
-  async voting(question: string, agentIds: string[], options: string[] = []): Promise<OperationResult> {
+  async voting(
+    question: string,
+    agentIds: string[],
+    options: string[] = [],
+  ): Promise<OperationResult> {
     if (!agentIds || agentIds.length === 0) {
       return { success: false, error: '请至少指定一个智能体参与投票' };
     }
 
-    const invalidIds = agentIds.filter(id => !this.agents.has(id));
+    const invalidIds = agentIds.filter((id) => !this.agents.has(id));
     if (invalidIds.length > 0) {
       return { success: false, error: `智能体不存在: ${invalidIds.join(', ')}` };
     }
 
-    const optionsText = options.length > 0
-      ? `\n\n选项：\n${options.map((o, i) => `${i + 1}. ${o}`).join('\n')}\n\n请从以上选项中选择一个，并说明理由。`
-      : '';
+    const optionsText =
+      options.length > 0
+        ? `\n\n选项：\n${options.map((o, i) => `${i + 1}. ${o}`).join('\n')}\n\n请从以上选项中选择一个，并说明理由。`
+        : '';
 
     const votes: any[] = [];
     for (const agentId of agentIds) {
       const agent = this.agents.get(agentId)!;
-      agent.state = 'thinking';
       this._broadcastClusterState();
 
       try {
         const result = await this.delegateTask(
           agentId,
-          `## 投票\n\n问题：${question}${optionsText}\n\n请给出你的投票和理由。格式：\n投票：[你的选择]\n理由：...`
+          `## 投票\n\n问题：${question}${optionsText}\n\n请给出你的投票和理由。格式：\n投票：[你的选择]\n理由：...`,
         );
 
         // 从结果中提取投票
@@ -360,7 +377,7 @@ class AgentOrchestrator {
           persona: agent.persona,
           success: result.success,
           vote: vote || '未明确投票',
-          reasoning: reasoning || (result.success ? result.data : result.error)
+          reasoning: reasoning || (result.success ? result.data : result.error),
         });
       } catch (error: any) {
         votes.push({
@@ -369,7 +386,7 @@ class AgentOrchestrator {
           persona: agent.persona,
           success: false,
           vote: '错误',
-          reasoning: error.message
+          reasoning: error.message,
         });
       }
     }
@@ -388,8 +405,8 @@ class AgentOrchestrator {
         question,
         totalVotes: votes.length,
         tally,
-        votes
-      }
+        votes,
+      },
     };
   }
 
@@ -422,7 +439,7 @@ class AgentOrchestrator {
    * 获取集群状态
    */
   getClusterStatus(): ClusterStatus {
-    const agentList = Array.from(this.agents.values()).map(a => ({
+    const agentList = Array.from(this.agents.values()).map((a) => ({
       id: a.id,
       name: a.name,
       persona: a.persona,
@@ -433,7 +450,7 @@ class AgentOrchestrator {
       lastActiveAt: a.lastActiveAt,
       hasResult: a.result !== null,
       hasError: a.error !== null,
-      error: a.error
+      error: a.error,
     }));
 
     const stateCounts: Record<string, number> = {};
@@ -444,7 +461,7 @@ class AgentOrchestrator {
     return {
       totalAgents: agentList.length,
       byState: stateCounts,
-      agents: agentList
+      agents: agentList,
     };
   }
 
@@ -466,7 +483,7 @@ class AgentOrchestrator {
       createdAt: agent.createdAt,
       lastActiveAt: agent.lastActiveAt,
       result: agent.result,
-      error: agent.error
+      error: agent.error,
     };
   }
 
@@ -518,13 +535,19 @@ class AgentOrchestrator {
           continue;
         }
 
+        if (isDangerousOperation(tc.tool)) {
+          toolResults.push(`[工具错误 - ${agent.name}]: 子智能体不允许执行危险操作`);
+          continue;
+        }
+
         try {
           const result = await registry.fn(...(Array.isArray(tc.args) ? tc.args : [tc.args]));
           const data = result?.data ?? result ?? '执行完成（无返回值）';
           const text = typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data);
-          const truncated = text.length > this.maxToolOutput
-            ? text.slice(0, this.maxToolOutput) + '\n\n... [输出过长，已截断]'
-            : text;
+          const truncated =
+            text.length > this.maxToolOutput
+              ? text.slice(0, this.maxToolOutput) + '\n\n... [输出过长，已截断]'
+              : text;
           toolResults.push(`[工具结果 - ${agent.name}]: ${truncated}`);
         } catch (error: any) {
           toolResults.push(`[工具错误 - ${agent.name}]: ${error.message}`);
@@ -567,7 +590,7 @@ class AgentOrchestrator {
 ${agent.instruction ? `## 角色指令\n${agent.instruction}\n` : ''}
 ## 可用工具
 你拥有以下工具可供使用：
-${toolNames.map(t => `  - \`${t}\``).join('\n')}
+${toolNames.map((t) => `  - \`${t}\``).join('\n')}
 
 ## 工作方式
 1. 使用 [TOOL] 语法调用工具，例如：\`[TOOL] read(file.txt) [/TOOL]\`
@@ -600,8 +623,4 @@ ${toolNames.map(t => `  - \`${t}\``).join('\n')}
 // ============================================
 const orchestrator = new AgentOrchestrator();
 
-export {
-  AgentOrchestrator,
-  SubAgent,
-  orchestrator
-};
+export { AgentOrchestrator, SubAgent, orchestrator };

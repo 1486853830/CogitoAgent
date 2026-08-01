@@ -135,6 +135,10 @@ function validateGitArgs(args: any[]): boolean {
     }
 
     // 非选项参数应该是普通字符串（路径、消息等）
+    // 拒绝 ext:: 等远程辅助协议传输（RCE 风险，如 ext::sh -c calc.exe）
+    if (arg.startsWith('ext::') || arg.includes('::')) {
+      return false;
+    }
     // 禁止常见的注入字符
     if (/[;&|`$<>!(){}[\]\\*?\n\r]/.test(arg)) {
       return false;

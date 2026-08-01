@@ -88,24 +88,30 @@ function initApp() {
 }
 
 function bindEvents() {
-  btnSend.addEventListener('click', sendMessage);
-  inputEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
+  if (btnSend) btnSend.addEventListener('click', sendMessage);
+  if (inputEl) {
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  }
 
-  btnDashboard.addEventListener('click', () => {
-    window.electronAPI?.switchToDashboard();
-  });
+  if (btnDashboard) {
+    btnDashboard.addEventListener('click', () => {
+      window.electronAPI?.switchToDashboard();
+    });
+  }
 
   document.addEventListener('click', () => {
-    inputEl.focus();
+    if (inputEl) inputEl.focus();
   });
 
-  characterEl.addEventListener('click', handleCharacterClick);
-  characterEl.addEventListener('mousedown', handleCharacterDragStart);
+  if (characterEl) {
+    characterEl.addEventListener('click', handleCharacterClick);
+    characterEl.addEventListener('mousedown', handleCharacterDragStart);
+  }
   document.addEventListener('mousemove', handleCharacterDragMove);
   document.addEventListener('mouseup', handleCharacterDragEnd);
 }

@@ -9,12 +9,26 @@ import { println, printDivider, printTag } from '../io/terminal.ts';
 import { loadConfig } from '../config.ts';
 import { getToolNames, getToolsByCategory } from './registry.ts';
 import * as tools from './tools/index.ts';
-import { listSessions, getCurrentSession, createNewSession, switchSession, deleteSession, renameSession, resetConversation, updateSystemPrompt } from './session.ts';
+import {
+  listSessions,
+  getCurrentSession,
+  createNewSession,
+  switchSession,
+  deleteSession,
+  renameSession,
+  resetConversation,
+  updateSystemPrompt,
+} from './session.ts';
 import { orchestrator } from './orchestrator.ts';
 import { manualLoginWechat, manualLogoutWechat, getWechatStatus } from './wechat-manager.ts';
 import { getSessionStats } from './stats.ts';
 import { broadcast } from '../io/ws-server.ts';
-import { printClusterStatus, handleSpawnCommand, handleDelegateCommand } from './cluster-commands.ts';
+import {
+  printClusterStatus,
+  handleSpawnCommand,
+  handleDelegateCommand,
+} from './cluster-commands.ts';
+import { STATE, setPendingConfirmation, state } from './state.ts';
 
 // 命令帮助文本
 const HELP_TEXT = `
@@ -315,7 +329,8 @@ function printStatus(): void {
   const clusterStatus = orchestrator.getClusterStatus();
   if (clusterStatus.totalAgents > 0) {
     const byState = Object.entries(clusterStatus.byState)
-      .map(([s, c]) => `${s}: ${c}`).join(', ');
+      .map(([s, c]) => `${s}: ${c}`)
+      .join(', ');
     println(`  智能体集群: ${clusterStatus.totalAgents} 个活跃 (${byState})`, 'white');
   }
 
@@ -324,8 +339,14 @@ function printStatus(): void {
   println('');
   printDivider('-', 'gray');
   println('  Token 用量', 'cyan');
-  println(`    累计: 输入 ${s.totalInputTokens.toLocaleString()} / 输出 ${s.totalOutputTokens.toLocaleString()} / 总计 ${s.totalTokens.toLocaleString()}`, 'white');
-  println(`    今日: 输入 ${s.todayInputTokens.toLocaleString()} / 输出 ${s.todayOutputTokens.toLocaleString()} / 总计 ${s.todayTokens.toLocaleString()}`, 'white');
+  println(
+    `    累计: 输入 ${s.totalInputTokens.toLocaleString()} / 输出 ${s.totalOutputTokens.toLocaleString()} / 总计 ${s.totalTokens.toLocaleString()}`,
+    'white',
+  );
+  println(
+    `    今日: 输入 ${s.todayInputTokens.toLocaleString()} / 输出 ${s.todayOutputTokens.toLocaleString()} / 总计 ${s.todayTokens.toLocaleString()}`,
+    'white',
+  );
 
   println('');
   printDivider('=', 'cyan');
@@ -340,6 +361,8 @@ function printClearConfirm(): void {
   println('  ⚠️  确定要清空对话历史吗？此操作不可撤销', 'yellow');
   println(`  输入 ${printTag('y', 'bgGreen')} 确认清空, ${printTag('n', 'bgRed')} 取消`, 'yellow');
   println('');
+  setPendingConfirmation({ toolName: '', args: [], type: 'clearHistory' });
+  state.current = STATE.AWAITING_CONFIRMATION;
 }
 
 /**
@@ -354,9 +377,9 @@ function switchPersona(personaName: string): void {
     println(`[错误] Persona "${personaName}" 不存在`, 'red');
     println(`  可用 Persona 列表:`, 'gray');
     const dirs = readdirSync(path.resolve(process.cwd(), 'personas'), { withFileTypes: true })
-      .filter(dir => dir.isDirectory())
-      .map(dir => dir.name);
-    dirs.forEach(d => println(`    ${d}`, 'gray'));
+      .filter((dir) => dir.isDirectory())
+      .map((dir) => dir.name);
+    dirs.forEach((d) => println(`    ${d}`, 'gray'));
     return;
   }
 
@@ -395,8 +418,8 @@ function switchPersona(personaName: string): void {
 function listPersonas(): void {
   const personasDir = path.resolve(process.cwd(), 'personas');
   const dirs = readdirSync(personasDir, { withFileTypes: true })
-    .filter(dir => dir.isDirectory())
-    .map(dir => dir.name);
+    .filter((dir) => dir.isDirectory())
+    .map((dir) => dir.name);
 
   println('');
   printDivider('─', 'cyan');
@@ -408,7 +431,11 @@ function listPersonas(): void {
     let firstLine = '(无描述)';
     if (existsSync(personaPath)) {
       const content = readFileSync(personaPath, 'utf-8');
-      firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim() || '(无描述)';
+      firstLine =
+        content
+          .split('\n')[0]
+          .replace(/^#+\s*/, '')
+          .trim() || '(无描述)';
     }
     println(`  ${printTag(dir, 'bgBlue')} ${firstLine}`, 'gray');
   }
@@ -497,7 +524,10 @@ function printSessions(): void {
     for (const s of sessions) {
       const marker = s.isActive ? printTag('当前', 'bgGreen') : '     ';
       const date = new Date(s.lastActiveAt).toLocaleString('zh-CN', {
-        month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
       });
       println(`  ${marker}  ${s.name}`, 'white');
       println(`         ID: ${s.id}`, 'gray');
@@ -533,5 +563,5 @@ export {
   toggleDebug,
   printSessions,
   printClusterStatus,
-  HELP_TEXT
+  HELP_TEXT,
 };

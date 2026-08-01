@@ -25,7 +25,7 @@ async function search(content: string): Promise<{ success: boolean; data?: any; 
 
   const body: Record<string, any> = {
     content,
-    model: 'search'
+    model: 'search',
   };
 
   // 只在有值时才加这两个字段
@@ -37,25 +37,33 @@ async function search(content: string): Promise<{ success: boolean; data?: any; 
   }
 
   try {
-    const response = await fetch(searchURL, {
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${cfg.api.apiKey}`
-      },
-      method: "POST",
-      body: JSON.stringify(body)
-    });
+    // fetch 默认无超时，服务端不响应时会永久挂起；用 AbortController 限制 30s。
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+    try {
+      const response = await fetch(searchURL, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cfg.api.apiKey}`,
+        },
+        method: 'POST',
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      const text = await response.text();
-      return {
-        success: false,
-        error: `搜索请求失败 (${response.status}): ${response.statusText}\n响应: ${text.slice(0, 200)}`
-      };
+      if (!response.ok) {
+        const text = await response.text();
+        return {
+          success: false,
+          error: `搜索请求失败 (${response.status}): ${response.statusText}\n响应: ${text.slice(0, 200)}`,
+        };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } finally {
+      clearTimeout(timer);
     }
-
-    const data = await response.json();
-    return { success: true, data };
   } catch (error) {
     return { success: false, error: (error as Error).message };
   }

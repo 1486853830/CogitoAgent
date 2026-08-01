@@ -109,6 +109,9 @@ function switchProvider(
   error?: string;
   data?: { provider: string; model: string; baseURL: string };
 } {
+  // 已废弃运行时告警：本模块整体已废弃（见文件顶部），且 switchProvider 不会
+  // 持久化配置。请改用配置文件。不在此强制加持久化以避免改动过大。
+  console.warn('[models] switchProvider 已废弃，请使用配置文件');
   const cfg = loadConfig();
 
   if (!providers[provider]) {
@@ -166,10 +169,10 @@ async function* chat(
     })),
     model: model,
     stream: true,
-    max_tokens: options.maxTokens || cfg.chat.maxTokens,
-    temperature: options.temperature || cfg.chat.temperature,
-    top_p: options.topP || cfg.chat.topP,
-    frequency_penalty: options.frequencyPenalty || cfg.chat.frequencyPenalty,
+    max_tokens: options.maxTokens ?? cfg.chat.maxTokens,
+    temperature: options.temperature ?? cfg.chat.temperature,
+    top_p: options.topP ?? cfg.chat.topP,
+    frequency_penalty: options.frequencyPenalty ?? cfg.chat.frequencyPenalty,
   };
 
   if (options.topK !== undefined) {

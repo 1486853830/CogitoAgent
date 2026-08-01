@@ -38,6 +38,14 @@ const PERSONA_FILE = path.join(USER_DATA_DIR, 'persona.md');
 const CSP_HEADER = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; media-src 'self' https:; connect-src 'self' http://localhost:9527; object-src 'none'; frame-src 'none';`;
 
 /**
+ * 校验 session id 格式，防止路径遍历与命令注入
+ * 实际格式：sess_ + base36时间戳 + 8位hex（见 src/agent/session.ts generateId）
+ */
+function isValidSessionId(id) {
+  return typeof id === 'string' && /^sess_[A-Za-z0-9_-]+$/.test(id);
+}
+
+/**
  * 检查是否已配置
  */
 function isConfigured() {
@@ -157,6 +165,7 @@ function saveConfig(config) {
       `COGITO_EMAIL_USER=${config.email?.user || ''}`,
       '',
       '# 邮箱密码',
+      // TODO: 改用系统 keychain 存储密码，避免明文存储敏感凭据
       `COGITO_EMAIL_PASSWORD=${config.email?.password || ''}`,
       '',
       '# 发件人邮箱地址',
@@ -404,7 +413,7 @@ function startAgentProcess() {
     });
   }
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let resolved = false;
 
     agentProcess.stdout.on('data', (data) => {
@@ -449,7 +458,11 @@ function startAgentProcess() {
  */
 function stopAgentProcess() {
   if (agentProcess) {
-    agentProcess.stdin.write('exit\n');
+    try {
+      agentProcess.stdin.write('exit\n');
+    } catch (e) {
+      console.warn('[主进程] 写入 exit 指令失败:', e.message);
+    }
     setTimeout(() => {
       if (agentProcess) {
         agentProcess.kill();
@@ -671,6 +684,22 @@ function createMonitorWindow() {
     });
   });
   monitorWindow.loadFile(path.join(__dirname, 'monitor', 'index.html'));
+
+  // 拦截链接导航：所有外部链接在系统浏览器中打开，不在 Electron 内加载
+  monitorWindow.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
+  // 拦截新窗口打开（如 target="_blank"）
+  monitorWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
 
   initAgentBridge(monitorWindow);
 
@@ -1100,6 +1129,7 @@ app.whenReady().then(async () => {
 
   // 获取指定会话的历史消息（排除 system prompt 和系统注入的工具结果消息）
   ipcMain.handle('get-session-history', (_event, sessionId) => {
+    if (!isValidSessionId(sessionId)) return [];
     const sessionFile = path.join(USER_DATA_DIR, 'data', 'sessions', `${sessionId}.json`);
     try {
       if (fs.existsSync(sessionFile)) {
@@ -1123,7 +1153,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('open-external', async (_event, url) => {
     try {
       const parsed = new URL(url);
-      if (!['http:', 'https:', 'mailto:', 'ftp:', 'file:'].includes(parsed.protocol)) {
+      if (!['http:', 'https:', 'mailto:', 'ftp:'].includes(parsed.protocol)) {
         throw new Error('不支持的协议');
       }
       if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
@@ -1212,16 +1242,8 @@ function getCurrentPersona() {
   // 回退到从 persona.md 获取
   try {
     if (fs.existsSync(PERSONA_FILE)) {
-      const content = fs.readFileSync(PERSONA_FILE, 'utf-8');
-      const firstLine = content
-        .split('\n')[0]
-        .replace(/^#+\s*/, '')
-        .trim();
-      const match = firstLine.match(/\(([^)]+)\)$/);
-      if (match) {
-        currentPersona = match[1].trim();
-        return currentPersona;
-      }
+      currentPersona = parsePersonaName(fs.readFileSync(PERSONA_FILE, 'utf-8'));
+      if (currentPersona) return currentPersona;
     }
   } catch (e) {
     console.error('[主进程] 读取 persona.md 失败:', e.message);
@@ -1246,35 +1268,37 @@ async function launchMainApp() {
     return;
   }
 
-  // 先关闭配置向导窗口（如果存在）
-  if (setupWindow) {
-    isTransitioningToMain = true; // 防止 window-all-closed 误退出
-    setupWindow.close();
-    setupWindow = null;
+  try {
+    // 先关闭配置向导窗口（如果存在）
+    if (setupWindow) {
+      isTransitioningToMain = true; // 防止 window-all-closed 误退出
+      setupWindow.close();
+      setupWindow = null;
+    }
+
+    // 读取当前 persona
+    getCurrentPersona();
+    if (currentPersona) {
+      console.log('[主进程] 当前 persona:', currentPersona);
+    }
+
+    // 读取启动模式
+    const envConfig = loadEnvFile();
+    const mode = envConfig['COGITO_MODE'] || process.env.COGITO_MODE || 'dashboard';
+    currentMode = mode;
+    console.log('[主进程] 启动模式:', mode);
+
+    killPortProcess(9527);
+    console.log('[主进程] 正在启动终端 Agent...');
+    await startAgentProcess();
+    console.log('[主进程] Agent 就绪，创建窗口');
+
+    if (mode === 'dashboard') {
+      createDashboardWindow();
+    } else {
+      createMainWindow();
+    }
+  } finally {
+    isTransitioningToMain = false; // 过渡完成（异常时也必须重置）
   }
-
-  // 读取当前 persona
-  getCurrentPersona();
-  if (currentPersona) {
-    console.log('[主进程] 当前 persona:', currentPersona);
-  }
-
-  // 读取启动模式
-  const envConfig = loadEnvFile();
-  const mode = envConfig['COGITO_MODE'] || process.env.COGITO_MODE || 'dashboard';
-  currentMode = mode;
-  console.log('[主进程] 启动模式:', mode);
-
-  killPortProcess(9527);
-  console.log('[主进程] 正在启动终端 Agent...');
-  await startAgentProcess();
-  console.log('[主进程] Agent 就绪，创建窗口');
-
-  if (mode === 'dashboard') {
-    createDashboardWindow();
-  } else {
-    createMainWindow();
-  }
-
-  isTransitioningToMain = false; // 过渡完成
 }

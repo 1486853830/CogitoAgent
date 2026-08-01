@@ -110,9 +110,9 @@ describe('tool-utils.ts', () => {
       expect(classifyToolError(error)).toBe('filesystem');
     });
 
-    it('should return filesystem for EACCES', () => {
+    it('should return permission for EACCES', () => {
       const error = Object.assign(new Error('permission denied'), { code: 'EACCES' });
-      expect(classifyToolError(error)).toBe('filesystem');
+      expect(classifyToolError(error)).toBe('permission');
     });
 
     it('should return timeout for timeout message', () => {

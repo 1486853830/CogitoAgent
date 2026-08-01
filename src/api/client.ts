@@ -24,6 +24,10 @@ function sleep(ms: number): Promise<void> {
  * 判断是否为网络错误
  */
 function isNetworkError(error: any): boolean {
+  // undici 把具体错误放在 cause 中（'fetch failed' 时 error.code 为 undefined）
+  if (error?.cause && isNetworkError(error.cause)) return true;
+  // undici 的 'fetch failed' 通常抛 TypeError
+  if (error?.name === 'TypeError' && /fetch/i.test(error?.message || '')) return true;
   return (
     error.code === 'ECONNREFUSED' ||
     error.code === 'ENOTFOUND' ||
@@ -73,6 +77,8 @@ async function* streamChat(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    // 流式阶段一旦开始 yield 便不再重试，否则已输出内容会重复
+    let streamStarted = false;
 
     try {
       const cfg = loadConfig();
@@ -155,6 +161,7 @@ async function* streamChat(
             const delta = choices[0].delta;
             if (!delta) continue;
 
+            streamStarted = true;
             yield {
               content: delta.content || null,
               reasoning: delta.reasoning_content || null,
@@ -175,6 +182,8 @@ async function* streamChat(
       }
       return capturedUsage;
     } catch (error: any) {
+      // 已开始输出后不再重试（避免重复 yield 已输出内容），直接抛错交调用方处理
+      if (streamStarted) throw error;
       retryCount++;
 
       const status = error?.status as number | undefined;
@@ -215,7 +224,8 @@ async function* streamChat(
     }
   }
 
-  return null;
+  // 循环内所有路径均 return/throw/continue，控制流不会到达此处
+  throw new Error('unreachable');
 }
 
 export { streamChat, estimateTokens };
