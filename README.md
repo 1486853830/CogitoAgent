@@ -8,11 +8,14 @@
 
 [![Gitee](https://img.shields.io/badge/Gitee-国内镜像-c71d23?style=flat-square&logo=gitee)](https://gitee.com/cnt-code/cogito-agent)
 [![GitHub](https://img.shields.io/badge/GitHub-国际镜像-181717?style=flat-square&logo=github)](https://github.com/SnowLeopard-io/CogitoAgent)
+[![npm](https://img.shields.io/npm/v/cogitoagent?style=flat-square&logo=npm)](https://www.npmjs.com/package/cogitoagent)
+[![npm downloads](https://img.shields.io/npm/dm/cogitoagent?style=flat-square&logo=npm)](https://www.npmjs.com/package/cogitoagent)
 [![Version](https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square)](<>)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript)](<>)
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js)](<>)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](<>)
 [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square)](<>)
+[![CI](https://img.shields.io/github/actions/workflow/status/SnowLeopard-io/CogitoAgent/.github/workflows/ci-cd.yml?style=flat-square&label=CI)](https://github.com/SnowLeopard-io/CogitoAgent/actions)
 [![Good First Issue](https://img.shields.io/badge/Good%20First%20Issue-help%20wanted-green?style=flat-square)](https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22)
 [![Roadmap](https://img.shields.io/badge/Roadmap-路线图-ff6b6b?style=flat-square)](ROADMAP.md)
 
@@ -21,6 +24,7 @@
 <p align="center">
   <a href="README.md">English</a> · <a href="README.zh.md">中文</a> ·
   <a href="ROADMAP.md">Roadmap</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
   <a href="CODE_OF_CONDUCT.md">Code of Conduct</a>
 </p>
@@ -92,6 +96,15 @@ Unlike cloud-dependent agents that upload your files to third-party servers, Cog
 
 ```bash
 git clone https://github.com/SnowLeopard-io/CogitoAgent.git
+cd cogito-agent
+npm install
+npm start
+```
+
+If you're in China, use the Gitee mirror for faster download:
+
+```bash
+git clone https://gitee.com/cnt-code/cogito-agent.git
 cd cogito-agent
 npm install
 npm start
@@ -542,52 +555,19 @@ docker-compose up -d
 
 ## Changelog
 
-### v2.3.2
+See [CHANGELOG.md](CHANGELOG.md) for a full version history.
 
-- **Full TypeScript migration** — 54 JS files migrated to TypeScript with type safety and compile-time error detection
-- 6 new professional tool modules with 75 tools
-- GIS: coordinate conversion, distance/area calculation, GeoJSON processing (11 tools)
-- Life Science: DNA/RNA/protein sequence analysis, FASTA/FASTQ parsing (15 tools)
-- Medicine: clinical scoring, drug dosage, physiological parameters, unit conversion (17 tools)
-- Chemistry: molecular weight, periodic table, pH, gas laws (9 tools)
-- Finance: compound interest, NPV/IRR, loan calculation, volatility (12 tools)
-- Math/Stats: descriptive stats, regression, matrix operations, combinatorics (11 tools)
-- CI/CD pipelines: GitHub Actions and Gitee Pipeline support
-- **Security Hardening** — Content Security Policy (CSP), URL validation for `openExternal`, `execFile` replacement for `exec` to prevent command injection
-- **Session Management Fix** — Fixed session creation failure by routing metadata writes through Electron main process
-- **Configuration Persistence** — Session and config files now stored in user data directory for proper write permissions
-- **CI/CD Improvements** — Node.js 20 deprecation resolution, Docker build label fix, dependency installation optimization
-- **Electron Build** — Chinese mirror support for Electron binary download, NSIS installer configuration
+---
 
-### v2.3.1
+## Community
 
-- WeChat iLink protocol integration with QR code login and message sending/receiving
-- WeChat dedicated permanent session, click "WeChat Channel" to auto-connect and load
-- WeChat message dual-write mechanism: stored in both `weichat.json` and session history
-- Messages displayed as tool call bubbles, clearly distinguishing send/receive directions
-- Fixed persona switching bug that accidentally cleared session history
+Join the CogitoAgent community:
 
-### v2.3.0
+- [GitHub Issues](https://github.com/SnowLeopard-io/CogitoAgent/issues) — Report bugs and request features
+- [GitHub Discussions](https://github.com/SnowLeopard-io/CogitoAgent/discussions) — Ask questions and share ideas
+- [Gitee](https://gitee.com/cnt-code/cogito-agent) — Chinese mirror repository
 
-- Multi-session management, tool category on-demand loading, auto context compression
-- Sandbox upgrade — deep freezing of built-in objects
-- New tracing.js, retry.js, MCP protocol, plugin system
-- New OCR and Vision analysis tools
-- Statistics module for tool usage tracking
-- Thought chain visualization
-
-### v2.2.0
-
-- Agent.js modularized, logger.js with log levels
-
-### v2.1.0
-
-- Removed vm2, switched to Node.js native vm module
-
-### v2.0.0
-
-- Code execution engine, Git, task management, memory system
-- Data processing, SQLite, email, monitoring, scheduled tasks
+We welcome all contributions, feedback, and ideas!
 
 ---
 

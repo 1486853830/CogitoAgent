@@ -1,11 +1,53 @@
 {
   "name": "cogitoagent",
   "version": "2.3.2",
-  "description": "CogitoAgent - 持续思考的智能体",
+  "description": "CogitoAgent - 持续思考的智能体 / Think Continuously, Act Autonomously, Stay Private",
   "author": "雪豹同志@cnt-code/Snow leopard (@SnowLeopard-io)",
   "license": "Apache-2.0",
   "main": "electron/main.js",
   "type": "module",
+  "files": [
+    "src/",
+    "electron/",
+    "personas/",
+    "plugins/",
+    "introduction/",
+    "workflows/",
+    "tsconfig.json",
+    "tsconfig.test.json",
+    "eslint.config.mjs",
+    "jest.config.mjs",
+    ".prettierrc",
+    ".env.example",
+    "Dockerfile",
+    "docker-compose.yml",
+    "electron-builder.yml",
+    "index.html"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SnowLeopard-io/CogitoAgent.git"
+  },
+  "homepage": "https://github.com/SnowLeopard-io/CogitoAgent#readme",
+  "bugs": {
+    "url": "https://github.com/SnowLeopard-io/CogitoAgent/issues"
+  },
+  "keywords": [
+    "ai-agent",
+    "autonomous-ai",
+    "llm",
+    "typescript",
+    "electron",
+    "privacy-first",
+    "local-ai",
+    "agent-framework",
+    "mcp",
+    "tool-execution",
+    "multi-agent"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "start": "chcp 65001 > nul && cross-env COGITO_MODE=dashboard electron .",
     "electron": "chcp 65001 > nul && cross-env COGITO_MODE=dashboard electron .",
@@ -23,7 +65,9 @@
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,js,json}\"",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prepublishOnly": "npm run typecheck && npm test",
+    "publish:npm": "npm publish --access public"
   },
   "lint-staged": {
     "*.{ts,js}": [
@@ -49,6 +93,7 @@
     "pptxgenjs": "^4.0.1",
     "qrcode": "^1.5.4",
     "sql.js": "^1.10.0",
+    "tsx": "^4.23.1",
     "ws": "^8.21.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "zod": "^4.4.3"
@@ -72,7 +117,6 @@
     "lint-staged": "^16.4.0",
     "prettier": "^3.9.5",
     "ts-jest": "^29.4.11",
-    "tsx": "^4.23.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.64.0"
   },

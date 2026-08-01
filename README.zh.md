@@ -13,18 +13,22 @@
 <p align="center">
   <a href="https://github.com/SnowLeopard-io/CogitoAgent"><img src="https://img.shields.io/badge/GitHub-国际镜像-181717?style=flat-square&logo=github" alt="GitHub"></a>
   <a href="https://gitee.com/cnt-code/cogito-agent"><img src="https://img.shields.io/badge/Gitee-国内镜像-c71d23?style=flat-square&logo=gitee" alt="Gitee"></a>
+  <a href="https://www.npmjs.com/package/cogitoagent"><img src="https://img.shields.io/npm/v/cogitoagent?style=flat-square&logo=npm" alt="npm"></a>
+  <a href="https://www.npmjs.com/package/cogitoagent"><img src="https://img.shields.io/npm/dm/cogitoagent?style=flat-square&logo=npm" alt="npm downloads"></a>
   <a href="#"><img src="https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square" alt="Version"></a>
   <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript" alt="TypeScript"></a>
   <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js" alt="Node"></a>
   <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=flat-square" alt="Status"></a>
   <a href="#"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square" alt="PRs Welcome"></a>
+  <a href="https://github.com/SnowLeopard-io/CogitoAgent/actions"><img src="https://img.shields.io/github/actions/workflow/status/SnowLeopard-io/CogitoAgent/.github/workflows/ci-cd.yml?style=flat-square&label=CI" alt="CI"></a>
   <a href="https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22"><img src="https://img.shields.io/badge/Good%20First%20Issue-help%20wanted-green?style=flat-square" alt="Good First Issue"></a>
 </p>
 
 <p align="center">
   <a href="README.md">English</a> · <a href="README.zh.md">中文</a> ·
   <a href="ROADMAP.md">路线图</a> ·
+  <a href="CHANGELOG.md">更新日志</a> ·
   <a href="CONTRIBUTING.md">贡献指南</a> ·
   <a href="CODE_OF_CONDUCT.md">行为准则</a>
 </p>
@@ -520,47 +524,19 @@ docker-compose up -d
 
 ## 更新日志
 
-### v2.3.2
+详见 [CHANGELOG.md](CHANGELOG.md) 完整版本历史。
 
-- **核心 TypeScript 化** — 全量 54 个 JS 文件迁移至 TypeScript，类型安全，编译时错误检测
-- 新增 6 个专业工具模块，共 75 个工具
-- GIS 地理信息：坐标转换、距离面积计算、GeoJSON 处理（11个工具）
-- 生命科学：DNA/RNA/蛋白质序列分析、FASTA/FASTQ 解析（15个工具）
-- 医学：临床评分、药物剂量、生理参数、单位换算（17个工具）
-- 化学：分子量、元素周期表、pH、气体定律（9个工具）
-- 金融：复利、NPV/IRR、贷款计算、波动率（12个工具）
-- 数学统计：描述统计、回归、矩阵运算、组合数学（11个工具）
-- CI/CD 流水线：GitHub Actions 和 Gitee 流水线双支持
+---
 
-### v2.3.1
+## 社区交流
 
-- 微信 iLink 协议集成，支持扫码登录、消息收发
-- 微信专属永久会话，点击"微信通道"自动连接并加载
-- 微信消息双写机制：同时存储到 `weichat.json` 和会话历史
-- 消息以工具调用气泡样式展示，清晰区分收发方向
-- 修复 persona 切换时误清空会话历史的问题
+欢迎加入 CogitoAgent 社区：
 
-### v2.3.0
+- [GitHub Issues](https://github.com/SnowLeopard-io/CogitoAgent/issues) — 报告 Bug 和请求功能
+- [GitHub Discussions](https://github.com/SnowLeopard-io/CogitoAgent/discussions) — 提问和交流想法
+- [Gitee](https://gitee.com/cnt-code/cogito-agent) — 国内镜像仓库
 
-- 多会话管理、工具分类按需加载、自动上下文压缩
-- 沙箱升级 —— 内置对象深度冻结
-- 新增 tracing.js、retry.js、MCP 协议、插件系统
-- 新增 OCR 和视觉分析工具
-- 统计模块，工具使用追踪
-- 思维链可视化
-
-### v2.2.0
-
-- Agent.js 模块化，logger.js 支持日志级别
-
-### v2.1.0
-
-- 移除 vm2，切换为 Node.js 原生 vm 模块
-
-### v2.0.0
-
-- 代码执行引擎、Git、任务管理、记忆系统
-- 数据处理、SQLite、邮件、监控、定时任务
+期待你的参与和反馈！
 
 ---
 
