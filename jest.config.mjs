@@ -1,7 +1,7 @@
 export default {
   testEnvironment: 'node',
   transform: {
-    '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: 'tsconfig.json', useESM: true }],
+    '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: 'tsconfig.test.json', useESM: true }],
   },
   transformIgnorePatterns: [
     'node_modules/(?!sql\\.js|@pawastation)',
