@@ -1,9 +1,9 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import os from 'os';
 import type { Config } from './types/index.ts';
 // 复用 electron 端的凭据加密实现，避免重复代码。
-// .env 中的邮箱密码由 main.js 在 saveConfig 时加密，src 端读取后需解密。
+// .env 中的邮箱密码由 main.js 加密，src 端读取后需解密。
 import { decrypt as decryptCredential } from '../electron/shared/credentials.js';
 
 function getConfigDir(): string {
@@ -309,8 +309,6 @@ function deepMerge(
 }
 
 function loadConfig(): Config {
-  // 缓存短路：避免每次调用都读盘解析。需刷新时调用 reloadConfig()。
-  if (config) return config;
   try {
     const configFile = getConfigFile();
     if (existsSync(configFile)) {
@@ -353,74 +351,9 @@ function loadConfig(): Config {
   return config;
 }
 
-/**
- * 强制刷新配置缓存：清空缓存后重新执行 loadConfig。
- * 供 saveConfig / setup 保存配置后需要立即感知新值时调用。
- */
-function reloadConfig(): Config {
-  config = null;
-  return loadConfig();
-}
-
-function sanitizeConfig(configInput: Config): Config {
-  const sanitized = deepMerge(
-    {},
-    configInput as unknown as Record<string, unknown>,
-  ) as unknown as Config;
-
-  if (sanitized.api && sanitized.api.apiKey) {
-    delete (sanitized.api as { apiKey?: string }).apiKey;
-  }
-
-  if (sanitized.email && sanitized.email.password) {
-    delete (sanitized.email as { password?: string }).password;
-  }
-
-  if (sanitized.models) {
-    for (const provider in sanitized.models) {
-      const p = sanitized.models[provider];
-      if (p && p.apiKey) {
-        delete (p as { apiKey?: string }).apiKey;
-      }
-    }
-  }
-
-  if (sanitized.ocr && sanitized.ocr.apiKey) {
-    delete (sanitized.ocr as { apiKey?: string }).apiKey;
-  }
-
-  if (sanitized.vision && sanitized.vision.apiKey) {
-    delete (sanitized.vision as { apiKey?: string }).apiKey;
-  }
-
-  return sanitized;
-}
-
-function saveConfig(newConfig: Config): boolean {
-  try {
-    const sanitized = sanitizeConfig(newConfig);
-    writeFileSync(getConfigFile(), JSON.stringify(sanitized, null, 2), 'utf-8');
-    config = newConfig;
-    console.log('[配置] 配置已保存（敏感信息已过滤）');
-    return true;
-  } catch (e) {
-    console.error(`[配置] 保存失败: ${(e as Error).message}`);
-    return false;
-  }
-}
-
 function isConfigured(): boolean {
   const cfg = loadConfig();
   return !!(cfg.api.provider && cfg.api.apiKey && cfg.api.baseURL && cfg.api.model);
 }
 
-export {
-  loadConfig,
-  reloadConfig,
-  loadEnvConfig,
-  saveConfig,
-  isConfigured,
-  deepMerge,
-  CONFIG_FILE,
-  DEFAULT_CONFIG,
-};
+export { loadConfig, loadEnvConfig, isConfigured, deepMerge, CONFIG_FILE, DEFAULT_CONFIG };
