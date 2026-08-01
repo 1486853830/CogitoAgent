@@ -1,7 +1,7 @@
 name: ✨ 功能建议 / Feature Request
 description: 为 CogitoAgent 提出一个新想法或功能建议
-title: "[Feature] "
-labels: ["enhancement"]
+title: '[Feature] '
+labels: ['enhancement']
 assignees: []
 body:
   - type: markdown
@@ -32,7 +32,7 @@ body:
     attributes:
       label: 相关痛点 / Related Problem
       description: 这个功能解决了什么问题？请清晰描述
-      placeholder: "当...时，我感到困扰，因为..."
+      placeholder: '当...时，我感到困扰，因为...'
     validations:
       required: true
 
@@ -41,7 +41,7 @@ body:
     attributes:
       label: 期望方案 / Proposed Solution
       description: 你希望如何解决这个问题？描述你期望的行为
-      placeholder: "我希望 CogitoAgent 能够..."
+      placeholder: '我希望 CogitoAgent 能够...'
     validations:
       required: true
 

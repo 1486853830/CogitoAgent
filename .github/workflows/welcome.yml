@@ -1,0 +1,60 @@
+# Welcome New Contributors / 欢迎新贡献者
+#
+# Automatically greets first-time contributors when they open an issue or PR.
+# 当首次贡献者创建 Issue 或 PR 时，自动发送欢迎消息。
+
+name: Welcome New Contributors / 欢迎新贡献者
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    steps:
+      # Greet first-time issue creators / 欢迎首次创建 Issue 的贡献者
+      - name: Greet first-time contributor (issue) / 欢迎首次提交 Issue
+        if: github.event_name == 'issues' && github.event.action == 'opened'
+        uses: actions/first-interaction@v1.3.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            👋 Hey @${{ github.actor }}! Thanks for opening your first issue in CogitoAgent!
+            👋 你好 @${{ github.actor }}！感谢你在 CogitoAgent 提交了第一个 Issue！
+
+            Here are some helpful resources / 以下是一些有用的资源：
+            - 📖 [README](https://github.com/SnowLeopard-io/CogitoAgent#readme)
+            - 🤝 [Contributing Guide / 贡献指南](https://github.com/SnowLeopard-io/CogitoAgent/blob/main/CONTRIBUTING.md)
+            - 📜 [Code of Conduct / 行为准则](https://github.com/SnowLeopard-io/CogitoAgent/blob/main/CODE_OF_CONDUCT.md)
+
+            A maintainer will review your issue soon. In the meantime, feel free to:
+            维护者会尽快审查你的 Issue。同时，你可以：
+            - Check if there are [good first issues](https://github.com/SnowLeopard-io/CogitoAgent/labels/good%20first%20issue) you can help with / 查看是否有可以帮忙的新手任务
+            - Join the discussion in [Discussions](https://github.com/SnowLeopard-io/CogitoAgent/discussions) / 加入讨论区交流
+
+      # Greet first-time PR creators / 欢迎首次提交 PR 的贡献者
+      - name: Greet first-time contributor (PR) / 欢迎首次提交 PR
+        if: github.event_name == 'pull_request_target' && github.event.action == 'opened'
+        uses: actions/first-interaction@v1.3.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-message: |
+            🎉 Hey @${{ github.actor }}! Thanks for your first pull request to CogitoAgent!
+            🎉 你好 @${{ github.actor }}！感谢你对 CogitoAgent 提交的第一个 Pull Request！
+
+            A maintainer will review your changes soon. Please make sure:
+            维护者会尽快审查你的变更。请确保：
+            - ✅ All CI checks pass / 所有 CI 检查通过
+            - ✅ You've followed the [commit message guidelines](https://github.com/SnowLeopard-io/CogitoAgent/blob/main/CONTRIBUTING.md#commit-message-guidelines--提交信息规范) / 遵循了提交信息规范
+            - ✅ You've read the [Code of Conduct](https://github.com/SnowLeopard-io/CogitoAgent/blob/main/CODE_OF_CONDUCT.md) / 已阅读行为准则
+
+            Thank you for helping make CogitoAgent better! 🚀
+            感谢你帮助 CogitoAgent 变得更好！🚀

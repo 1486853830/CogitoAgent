@@ -48,3 +48,65 @@ api:
 dependencies:
   - title: ['dependency', 'Dependency', 'deps', 'Deps']
   - body: ['dependency', 'deps', 'npm', 'package']
+
+# Area labels for specific tool modules
+'area: gis':
+  - title: ['gis', 'GIS', '地理', 'geo', 'Geo']
+  - body: ['gis', '地理', 'coordinate', 'geo']
+
+'area: bio':
+  - title: ['bio', 'Bio', '生物', 'dna', 'DNA', 'protein']
+  - body: ['bio', '生物', 'sequence', 'genome']
+
+'area: med':
+  - title: ['med', 'Med', '医学', 'medical', 'clinical']
+  - body: ['med', 'medical', '临床', 'bmi', 'egfr']
+
+'area: chem':
+  - title: ['chem', 'Chem', '化学', 'chemistry', 'molecule']
+  - body: ['chem', 'chemistry', '化学', 'element']
+
+'area: finance':
+  - title: ['finance', 'Finance', '金融', 'financial']
+  - body: ['finance', 'financial', '金融', 'investment']
+
+'area: math':
+  - title: ['math', 'Math', '数学', 'statistics', '统计']
+  - body: ['math', 'statistics', '数学', 'matrix']
+
+# Difficulty labels
+'difficulty: easy':
+  - title: ['easy', 'Easy', '简单', 'beginner']
+  - body: ['easy', '简单', 'beginner', '入门']
+
+'difficulty: medium':
+  - title: ['medium', 'Medium', '中等']
+  - body: ['medium', '中等']
+
+'difficulty: hard':
+  - title: ['hard', 'Hard', '困难', 'advanced']
+  - body: ['hard', '困难', 'advanced']
+
+# Status labels
+'status: stale':
+  - title: ['stale', 'Stale']
+  - body: ['stale']
+'status: blocked':
+  - title: ['blocked', 'Blocked', '阻塞']
+  - body: ['blocked', 'blocking', '阻塞']
+'status: confirmed':
+  - title: ['confirmed', 'Confirmed', '已确认']
+  - body: ['confirmed', '已确认', '可复现']
+'status: needs info':
+  - title: ['needs info', '需要更多信息']
+  - body: ['needs info', '需要更多信息', 'more info']
+
+# Plugin
+plugin:
+  - title: ['plugin', 'Plugin', '插件']
+  - body: ['plugin', '插件']
+
+# WeChat
+wechat:
+  - title: ['wechat', 'WeChat', '微信', 'weixin']
+  - body: ['wechat', '微信', 'weixin']

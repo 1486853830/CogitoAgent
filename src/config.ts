@@ -309,6 +309,10 @@ function deepMerge(
 }
 
 function loadConfig(): Config {
+  // 缓存命中：config 已加载则直接返回，避免每次调用都重新读盘解析
+  // Cache hit: return cached config if already loaded, avoid disk I/O on every call
+  if (config) return config;
+
   try {
     const configFile = getConfigFile();
     if (existsSync(configFile)) {

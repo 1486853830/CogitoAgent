@@ -11,11 +11,22 @@
 与传统聊天机器人不同，CogitoAgent 具备**持续思考**、**自主探索**和**工具执行**的能力，能够在后台主动发现和整理您的本地文件资产，并通过可扩展的工具集提供更多能力。
 
 <p align="center">
+  <a href="https://github.com/SnowLeopard-io/CogitoAgent"><img src="https://img.shields.io/badge/GitHub-国际镜像-181717?style=flat-square&logo=github" alt="GitHub"></a>
+  <a href="https://gitee.com/cnt-code/cogito-agent"><img src="https://img.shields.io/badge/Gitee-国内镜像-c71d23?style=flat-square&logo=gitee" alt="Gitee"></a>
   <a href="#"><img src="https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square" alt="Version"></a>
   <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript" alt="TypeScript"></a>
   <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js" alt="Node"></a>
   <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=flat-square" alt="Status"></a>
+  <a href="#"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square" alt="PRs Welcome"></a>
+  <a href="https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22"><img src="https://img.shields.io/badge/Good%20First%20Issue-help%20wanted-green?style=flat-square" alt="Good First Issue"></a>
+</p>
+
+<p align="center">
+  <a href="README.md">English</a> · <a href="README.zh.md">中文</a> ·
+  <a href="ROADMAP.md">路线图</a> ·
+  <a href="CONTRIBUTING.md">贡献指南</a> ·
+  <a href="CODE_OF_CONDUCT.md">行为准则</a>
 </p>
 
 ---

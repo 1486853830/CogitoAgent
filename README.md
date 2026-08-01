@@ -13,8 +13,17 @@
 [![Node](https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js)](<>)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](<>)
 [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square)](<>)
+[![Good First Issue](https://img.shields.io/badge/Good%20First%20Issue-help%20wanted-green?style=flat-square)](https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22)
+[![Roadmap](https://img.shields.io/badge/Roadmap-路线图-ff6b6b?style=flat-square)](ROADMAP.md)
 
 </div>
+
+<p align="center">
+  <a href="README.md">English</a> · <a href="README.zh.md">中文</a> ·
+  <a href="ROADMAP.md">Roadmap</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="CODE_OF_CONDUCT.md">Code of Conduct</a>
+</p>
 
 Cogito, ergo sum — **CogitoAgent is not just a tool; it is your autonomous AI agent that lives in your computer.**
 
