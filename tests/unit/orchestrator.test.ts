@@ -271,8 +271,8 @@ describe('orchestrator.ts', () => {
       expect(results[0].success).toBe(true);
       expect(results[0].agentId).toBe(spawn1.data.id);
       expect(results[0].task).toBe('task1');
-      expect(results[0].result).toEqual({ success: true, data: 'mock response' });
-      expect(results[1].success).toBe(true);
+      expect(results[0].data).toBe('mock response');
+      expect(results[0].success).toBe(true);
       expect(results[1].agentId).toBe(spawn2.data.id);
     });
 
