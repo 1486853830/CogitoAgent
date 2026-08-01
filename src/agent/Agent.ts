@@ -820,8 +820,8 @@ async function start(): Promise<void> {
   if (process.env.DISABLE_WS !== 'true') {
     try {
       await startWsServer(9527);
-      onMessage((msg: { type: string; text?: string }) => {
-        if (msg.type === 'user-message' && msg.text) {
+      onMessage((msg: Record<string, unknown>) => {
+        if (msg.type === 'user-message' && typeof msg.text === 'string') {
           recordMessage();
           handleUserInput(msg.text);
         }

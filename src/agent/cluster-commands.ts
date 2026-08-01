@@ -33,26 +33,40 @@ function printClusterStatus(): void {
     println('');
 
     // 每个智能体详情
-    for (const agent of status.agents) {
-      const stateColor = agent.state === 'done' ? 'green'
-        : agent.state === 'error' ? 'red'
-        : agent.state === 'thinking' ? 'yellow'
-        : 'gray';
+    for (const agentRaw of status.agents) {
+      const agent = agentRaw as Record<string, unknown>;
+      const state = agent.state as string;
+      const stateColor =
+        state === 'done'
+          ? 'green'
+          : state === 'error'
+            ? 'red'
+            : state === 'thinking'
+              ? 'yellow'
+              : 'gray';
 
-      const stateIcon = agent.state === 'done' ? '✅'
-        : agent.state === 'error' ? '❌'
-        : agent.state === 'thinking' ? '🧠'
-        : agent.state === 'tool_executing' ? '🛠️'
-        : '💤';
+      const stateIcon =
+        state === 'done'
+          ? '✅'
+          : state === 'error'
+            ? '❌'
+            : state === 'thinking'
+              ? '🧠'
+              : state === 'tool_executing'
+                ? '🛠️'
+                : '💤';
 
-      println(`  ${stateIcon} ${printTag(agent.name, 'bgBlue')}`, 'white');
-      println(`     ID: ${agent.id}`, 'gray');
-      println(`     Persona: ${agent.persona}`, 'gray');
-      println(`     状态: ${printTag(agent.state, stateColor === 'gray' ? 'bgGray' : stateColor === 'green' ? 'bgGreen' : stateColor === 'red' ? 'bgRed' : 'bgYellow')}`, 'gray');
-      println(`     工具调用: ${agent.toolCalls} 次`, 'gray');
-      println(`     迭代次数: ${agent.iterationCount}`, 'gray');
-      if (agent.hasError) {
-        println(`     错误: ${agent.error}`, 'red');
+      println(`  ${stateIcon} ${printTag(agent.name as string, 'bgBlue')}`, 'white');
+      println(`     ID: ${agent.id as string}`, 'gray');
+      println(`     Persona: ${agent.persona as string}`, 'gray');
+      println(
+        `     状态: ${printTag(state, stateColor === 'gray' ? 'bgGray' : stateColor === 'green' ? 'bgGreen' : stateColor === 'red' ? 'bgRed' : 'bgYellow')}`,
+        'gray',
+      );
+      println(`     工具调用: ${agent.toolCalls as number} 次`, 'gray');
+      println(`     迭代次数: ${agent.iterationCount as number}`, 'gray');
+      if (agent.hasError as boolean) {
+        println(`     错误: ${agent.error as string}`, 'red');
       }
       println('');
     }
@@ -109,21 +123,30 @@ function handleSpawnCommand(input: string): void {
 
   println(`[集群] 正在生成智能体 "${name}" (Persona: ${persona})...`, 'yellow');
 
-  orchestrator.spawnAgent(persona, name, instruction).then(result => {
-    if (result.success) {
-      println(`[集群] 智能体已生成:`, 'green');
-      println(`   ID: ${result.data.id}`, 'white');
-      println(`   名称: ${result.data.name}`, 'white');
-      println(`   Persona: ${result.data.persona}`, 'white');
-      println(`   指令: ${result.data.instruction}`, 'white');
-      println('');
-      println(`  使用 /delegate ${result.data.id} "任务描述" 来分配任务`, 'gray');
-    } else {
-      println(`[错误] ${result.error}`, 'red');
-    }
-  }).catch((error: any) => {
-    println(`[错误] 生成失败: ${error.message}`, 'red');
-  });
+  orchestrator
+    .spawnAgent(persona, name, instruction)
+    .then((result) => {
+      if (result.success) {
+        const data = result.data as {
+          id: string;
+          name: string;
+          persona: string;
+          instruction: string;
+        };
+        println(`[集群] 智能体已生成:`, 'green');
+        println(`   ID: ${data.id}`, 'white');
+        println(`   名称: ${data.name}`, 'white');
+        println(`   Persona: ${data.persona}`, 'white');
+        println(`   指令: ${data.instruction}`, 'white');
+        println('');
+        println(`  使用 /delegate ${data.id} "任务描述" 来分配任务`, 'gray');
+      } else {
+        println(`[错误] ${result.error}`, 'red');
+      }
+    })
+    .catch((error: any) => {
+      println(`[错误] 生成失败: ${error.message}`, 'red');
+    });
 }
 
 /**
@@ -154,26 +177,29 @@ function handleDelegateCommand(input: string): void {
   println(`[集群] 任务: ${task}`, 'gray');
   println('[集群] 智能体开始思考，请稍候...', 'yellow');
 
-  orchestrator.delegateTask(agentId, task).then(result => {
-    if (result.success) {
-      println(`[集群] 任务完成!`, 'green');
-      println('');
-      printDivider('─', 'cyan');
-      println('  智能体回复:', 'cyan');
-      printDivider('─', 'cyan');
-      const text = result.data || '(无回复)';
-      const lines = text.split('\n');
-      for (const line of lines) {
-        println(`  ${line}`, 'white');
+  orchestrator
+    .delegateTask(agentId, task)
+    .then((result) => {
+      if (result.success) {
+        println(`[集群] 任务完成!`, 'green');
+        println('');
+        printDivider('─', 'cyan');
+        println('  智能体回复:', 'cyan');
+        printDivider('─', 'cyan');
+        const text = (result.data as string) || '(无回复)';
+        const lines = text.split('\n');
+        for (const line of lines) {
+          println(`  ${line}`, 'white');
+        }
+        printDivider('─', 'cyan');
+        println('');
+      } else {
+        println(`[集群] 任务失败: ${result.error}`, 'red');
       }
-      printDivider('─', 'cyan');
-      println('');
-    } else {
-      println(`[集群] 任务失败: ${result.error}`, 'red');
-    }
-  }).catch((error: any) => {
-    println(`[集群] 执行出错: ${error.message}`, 'red');
-  });
+    })
+    .catch((error: any) => {
+      println(`[集群] 执行出错: ${error.message}`, 'red');
+    });
 }
 
 export { printClusterStatus, handleSpawnCommand, handleDelegateCommand };

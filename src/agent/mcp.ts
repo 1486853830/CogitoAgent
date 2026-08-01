@@ -14,6 +14,7 @@ import {
   hasTool,
   isDangerousOperation,
 } from './registry.ts';
+import type { ToolRegistryEntry } from '../types/index.ts';
 import { executeTool } from './Agent.ts';
 import { parseArgs, parseToolCall, parseAllToolCalls } from './tool-parser.ts';
 import {
@@ -67,25 +68,25 @@ interface ServerInfo {
 interface JsonRpcRequest {
   id?: string | number | null;
   method: string;
-  params?: any;
+  params?: Record<string, unknown>;
 }
 
 interface JsonRpcResponse {
   jsonrpc: string;
   id?: string | number | null;
-  result?: any;
+  result?: Record<string, unknown>;
   error?: { code: number; message: string };
 }
 
 class MCPServer {
   port: number;
-  agent: any;
+  agent: unknown;
   server: Server | null;
   initialized: boolean;
   serverInfo: ServerInfo;
   authToken: string;
 
-  constructor(port = 3001, agent?: any) {
+  constructor(port = 3001, agent?: unknown) {
     this.port = port;
     this.agent = agent;
     this.server = null;
@@ -140,12 +141,13 @@ class MCPServer {
               const response = await this.handleRequest(body, req);
               res.writeHead(200, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify(response));
-            } catch (error: any) {
-              const statusCode = error.statusCode || 500;
+            } catch (error: unknown) {
+              const err = error as Error & { statusCode?: number };
+              const statusCode = err.statusCode || 500;
               res.writeHead(statusCode, { 'Content-Type': 'application/json' });
               res.end(
                 JSON.stringify(
-                  this.errorResponse(null, MCP_ERROR_CODES.INTERNAL_ERROR, error.message),
+                  this.errorResponse(null, MCP_ERROR_CODES.INTERNAL_ERROR, err.message),
                 ),
               );
             }
@@ -200,13 +202,15 @@ class MCPServer {
     if (req) {
       const authHeader = req.headers['authorization'] || '';
       if (authHeader !== `Bearer ${this.authToken}`) {
-        const err = new Error('Unauthorized: invalid or missing Bearer token') as any;
+        const err = new Error('Unauthorized: invalid or missing Bearer token') as Error & {
+          statusCode: number;
+        };
         err.statusCode = 401;
         throw err;
       }
     }
 
-    let request: any;
+    let request: JsonRpcRequest | JsonRpcRequest[];
 
     try {
       request = JSON.parse(body);
@@ -219,7 +223,7 @@ class MCPServer {
       const responses = await Promise.all(
         request.map((req: JsonRpcRequest) => this.handleSingleRequest(req)),
       );
-      return responses as any;
+      return responses as JsonRpcResponse[];
     }
 
     return this.handleSingleRequest(request);
@@ -269,15 +273,18 @@ class MCPServer {
             `Unknown method: ${method}`,
           );
       }
-    } catch (error: any) {
-      return this.errorResponse(id, MCP_ERROR_CODES.INTERNAL_ERROR, error.message);
+    } catch (error: unknown) {
+      return this.errorResponse(id, MCP_ERROR_CODES.INTERNAL_ERROR, (error as Error).message);
     }
   }
 
   /**
    * 初始化处理
    */
-  handleInitialize(id: any, params: any): JsonRpcResponse {
+  handleInitialize(
+    id: string | number | null | undefined,
+    params: Record<string, unknown> | undefined,
+  ): JsonRpcResponse {
     this.initialized = true;
 
     return {
@@ -298,7 +305,7 @@ class MCPServer {
   /**
    * 关闭处理
    */
-  handleShutdown(id: any): JsonRpcResponse {
+  handleShutdown(id: string | number | null | undefined): JsonRpcResponse {
     return {
       jsonrpc: MCP_VERSION,
       id,
@@ -309,13 +316,16 @@ class MCPServer {
   /**
    * 列出所有工具
    */
-  handleToolsList(id: any, params: any): JsonRpcResponse {
+  handleToolsList(
+    id: string | number | null | undefined,
+    params: Record<string, unknown> | undefined,
+  ): JsonRpcResponse {
     const registry = TOOL_REGISTRY;
 
-    const tools = Object.entries(registry).map(([name, info]: [string, any]) => ({
+    const tools = Object.entries(registry).map(([name, info]: [string, unknown]) => ({
       name,
-      description: `${info.category}: ${name}`,
-      inputSchema: this.generateInputSchema(info),
+      description: `${(info as ToolRegistryEntry).category}: ${name}`,
+      inputSchema: this.generateInputSchema(info as ToolRegistryEntry),
     }));
 
     return {
@@ -330,7 +340,7 @@ class MCPServer {
   /**
    * 生成工具输入模式
    */
-  generateInputSchema(toolInfo: any): any {
+  generateInputSchema(toolInfo: ToolRegistryEntry): Record<string, unknown> {
     const args = [];
     for (let i = 0; i < toolInfo.argCount; i++) {
       args.push({
@@ -350,8 +360,11 @@ class MCPServer {
   /**
    * 调用工具
    */
-  async handleToolsCall(id: any, params: any): Promise<JsonRpcResponse> {
-    const { name, arguments: args } = params;
+  async handleToolsCall(
+    id: string | number | null | undefined,
+    params: Record<string, unknown> | undefined,
+  ): Promise<JsonRpcResponse> {
+    const { name, arguments: args } = (params ?? {}) as { name: string; arguments?: string[] };
 
     if (!hasTool(name)) {
       return this.errorResponse(id, MCP_ERROR_CODES.TOOL_NOT_FOUND, `Tool not found: ${name}`);
@@ -397,7 +410,7 @@ class MCPServer {
           isError: result?.success === false,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         jsonrpc: MCP_VERSION,
         id,
@@ -405,7 +418,7 @@ class MCPServer {
           content: [
             {
               type: 'text',
-              text: `Error: ${error.message}`,
+              text: `Error: ${(error as Error).message}`,
             },
           ],
           isError: true,
@@ -417,7 +430,10 @@ class MCPServer {
   /**
    * 列出资源
    */
-  handleResourcesList(id: any, params: any): JsonRpcResponse {
+  handleResourcesList(
+    id: string | number | null | undefined,
+    params: Record<string, unknown> | undefined,
+  ): JsonRpcResponse {
     return {
       jsonrpc: MCP_VERSION,
       id,
@@ -441,8 +457,11 @@ class MCPServer {
   /**
    * 读取资源
    */
-  handleResourcesRead(id: any, params: any): JsonRpcResponse {
-    const { uri } = params;
+  handleResourcesRead(
+    id: string | number | null | undefined,
+    params: Record<string, unknown> | undefined,
+  ): JsonRpcResponse {
+    const { uri } = params as { uri: string };
 
     return {
       jsonrpc: MCP_VERSION,
@@ -462,7 +481,10 @@ class MCPServer {
   /**
    * 列出提示词
    */
-  handlePromptsList(id: any, params: any): JsonRpcResponse {
+  handlePromptsList(
+    id: string | number | null | undefined,
+    params: Record<string, unknown> | undefined,
+  ): JsonRpcResponse {
     return {
       jsonrpc: MCP_VERSION,
       id,
@@ -487,7 +509,11 @@ class MCPServer {
   /**
    * 生成错误响应
    */
-  errorResponse(id: any, code: number, message: string): JsonRpcResponse {
+  errorResponse(
+    id: string | number | null | undefined,
+    code: number,
+    message: string,
+  ): JsonRpcResponse {
     return {
       jsonrpc: MCP_VERSION,
       id,
@@ -502,7 +528,7 @@ let mcpServer: MCPServer | null = null;
 /**
  * 启动 MCP 服务器
  */
-async function startMCPServer(port = 3001, agent?: any): Promise<number> {
+async function startMCPServer(port = 3001, agent?: unknown): Promise<number> {
   if (mcpServer) {
     console.warn('[MCP] Server already running');
     return mcpServer.port;

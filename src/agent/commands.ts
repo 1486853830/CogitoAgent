@@ -229,7 +229,7 @@ function handleCommand(input: string): boolean {
     if (agentId) {
       const result = orchestrator.stopAgent(agentId);
       if (result.success) {
-        println(`[集群] 智能体 "${result.data.name}" 已停止`, 'green');
+        println(`[集群] 智能体 "${(result.data as { name: string }).name}" 已停止`, 'green');
       } else {
         println(`[错误] ${result.error}`, 'red');
       }
@@ -242,7 +242,10 @@ function handleCommand(input: string): boolean {
 
   if (trimmed === '/stop-all-agents') {
     const result = orchestrator.stopAllAgents();
-    println(`[集群] 已停止 ${result.data.stoppedCount} 个智能体`, 'yellow');
+    println(
+      `[集群] 已停止 ${(result.data as { stoppedCount: number }).stoppedCount} 个智能体`,
+      'yellow',
+    );
     return true;
   }
 

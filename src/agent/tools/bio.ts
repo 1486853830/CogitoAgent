@@ -84,7 +84,7 @@ const CODON_TABLE: any = {
 };
 
 // 氨基酸单字母 → 三字母映射
-const AA_THREE_LETTER: any = {
+const AA_THREE_LETTER: Record<string, string> = {
   A: 'Ala',
   R: 'Arg',
   N: 'Asn',
@@ -171,7 +171,9 @@ function validateSeq(seq: string, validChars: Set<string>, name: string): any {
  * @param {string} seq - DNA 序列
  * @returns {Promise<Object>}
  */
-async function dnaComplement(seq: string): Promise<any> {
+async function dnaComplement(
+  seq: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const valid = validateSeq(seq, DNA_CHARS, 'DNA');
     if (!valid.success) return valid;
@@ -179,8 +181,8 @@ async function dnaComplement(seq: string): Promise<any> {
     const upper = cleaned.toUpperCase();
     const result = [...upper].map((ch) => DNA_COMPLEMENT[ch]).join('');
     return { success: true, data: `互补链: ${result}` };
-  } catch (error: any) {
-    return { success: false, error: `计算互补链失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `计算互补链失败: ${(error as Error).message}` };
   }
 }
 
@@ -189,7 +191,9 @@ async function dnaComplement(seq: string): Promise<any> {
  * @param {string} seq - DNA 序列
  * @returns {Promise<Object>}
  */
-async function dnaReverseComplement(seq: string): Promise<any> {
+async function dnaReverseComplement(
+  seq: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const valid = validateSeq(seq, DNA_CHARS, 'DNA');
     if (!valid.success) return valid;
@@ -200,8 +204,8 @@ async function dnaReverseComplement(seq: string): Promise<any> {
       .map((ch) => DNA_COMPLEMENT[ch])
       .join('');
     return { success: true, data: `反向互补: ${result}` };
-  } catch (error: any) {
-    return { success: false, error: `计算反向互补失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `计算反向互补失败: ${(error as Error).message}` };
   }
 }
 
@@ -210,7 +214,9 @@ async function dnaReverseComplement(seq: string): Promise<any> {
  * @param {string} seq - DNA 序列
  * @returns {Promise<Object>}
  */
-async function rnaTranscribe(seq: string): Promise<any> {
+async function rnaTranscribe(
+  seq: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const valid = validateSeq(seq, DNA_CHARS, 'DNA');
     if (!valid.success) return valid;
@@ -224,8 +230,8 @@ async function rnaTranscribe(seq: string): Promise<any> {
       })
       .join('');
     return { success: true, data: `转录 RNA: ${result}` };
-  } catch (error: any) {
-    return { success: false, error: `转录失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `转录失败: ${(error as Error).message}` };
   }
 }
 
@@ -235,19 +241,22 @@ async function rnaTranscribe(seq: string): Promise<any> {
  * @param {number} [readingFrame=0] - 读码框（0, 1, 2）
  * @returns {Promise<Object>}
  */
-async function translate(seq: string, readingFrame: any = 0): Promise<any> {
+async function translate(
+  seq: string,
+  readingFrame: number | string = 0,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const valid = validateSeq(seq, RNA_CHARS, 'RNA');
     if (!valid.success) return valid;
     const cleaned = valid.data;
     const upper = cleaned.toUpperCase();
 
-    const frame = parseInt(readingFrame, 10) || 0;
+    const frame = parseInt(readingFrame as string, 10) || 0;
     if (frame < 0 || frame > 2) {
       return { success: false, error: '读码框必须为 0、1 或 2' };
     }
 
-    const codons: any[] = [];
+    const codons: Array<{ codon: string; aa: string; position: number }> = [];
     for (let i = frame; i + 2 < upper.length; i += 3) {
       const codon = upper.substring(i, i + 3);
       const aa = CODON_TABLE[codon] || '?';
@@ -261,8 +270,8 @@ async function translate(seq: string, readingFrame: any = 0): Promise<any> {
       success: true,
       data: `读码框 ${frame}: ${aaSeq}\n详细: ${codons.map((c) => `${c.codon}(${AA_THREE_LETTER[c.aa] || '?'})`).join(' → ')}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `翻译失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `翻译失败: ${(error as Error).message}` };
   }
 }
 
@@ -271,7 +280,9 @@ async function translate(seq: string, readingFrame: any = 0): Promise<any> {
  * @param {string} seq - DNA/RNA 序列
  * @returns {Promise<Object>}
  */
-async function gcContent(seq: string): Promise<any> {
+async function gcContent(
+  seq: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const valid = validateSeq(seq, new Set([...DNA_CHARS, ...RNA_CHARS]), '核酸');
     if (!valid.success) return valid;
@@ -283,8 +294,8 @@ async function gcContent(seq: string): Promise<any> {
       success: true,
       data: `GC 含量: ${percentage}% (${gcCount}/${upper.length})`,
     };
-  } catch (error: any) {
-    return { success: false, error: `计算 GC 含量失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `计算 GC 含量失败: ${(error as Error).message}` };
   }
 }
 
@@ -293,7 +304,9 @@ async function gcContent(seq: string): Promise<any> {
  * @param {string} seq - 氨基酸序列（单字母）
  * @returns {Promise<Object>}
  */
-async function molecularWeight(seq: string): Promise<any> {
+async function molecularWeight(
+  seq: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const upper = seq.toUpperCase();
 
@@ -314,7 +327,7 @@ async function molecularWeight(seq: string): Promise<any> {
     }
 
     let totalWeight = 0;
-    const details: any[] = [];
+    const details: string[] = [];
 
     if (type === '蛋白质') {
       for (const ch of upper) {
@@ -329,7 +342,13 @@ async function molecularWeight(seq: string): Promise<any> {
         data: `分子量: ${totalWeight.toFixed(2)} Da (${(totalWeight / 1000).toFixed(4)} kDa)\n序列长度: ${upper.length} aa`,
       };
     } else {
-      const BASE_MW: any = { A: 313.21, T: 304.2, C: 289.18, G: 329.21, U: 306.17 };
+      const BASE_MW: Record<string, number> = {
+        A: 313.21,
+        T: 304.2,
+        C: 289.18,
+        G: 329.21,
+        U: 306.17,
+      };
       for (const ch of upper) {
         const mw = BASE_MW[ch];
         if (mw) {
@@ -342,8 +361,8 @@ async function molecularWeight(seq: string): Promise<any> {
         data: `${type}分子量: ${totalWeight.toFixed(2)} Da (${(totalWeight / 1000).toFixed(4)} kDa)\n序列长度: ${upper.length} nt`,
       };
     }
-  } catch (error: any) {
-    return { success: false, error: `计算分子量失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `计算分子量失败: ${(error as Error).message}` };
   }
 }
 
@@ -357,7 +376,10 @@ async function molecularWeight(seq: string): Promise<any> {
  * @param {string} seq2 - 序列2
  * @returns {Promise<Object>}
  */
-async function hammingDistance(seq1: string, seq2: string): Promise<any> {
+async function hammingDistance(
+  seq1: string,
+  seq2: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!seq1 || !seq2) {
       return { success: false, error: '两个序列都不能为空' };
@@ -386,8 +408,8 @@ async function hammingDistance(seq1: string, seq2: string): Promise<any> {
       success: true,
       data: `Hamming 距离: ${diff}\n序列一致性: ${identity}%\n差异位置: ${diffPositions.length > 0 ? diffPositions.join(', ') : '无差异'}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `计算 Hamming 距离失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `计算 Hamming 距离失败: ${(error as Error).message}` };
   }
 }
 
@@ -397,7 +419,10 @@ async function hammingDistance(seq1: string, seq2: string): Promise<any> {
  * @param {string} seq2 - 序列2
  * @returns {Promise<Object>}
  */
-async function levenshteinDistance(seq1: string, seq2: string): Promise<any> {
+async function levenshteinDistance(
+  seq1: string,
+  seq2: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     if (!seq1 || !seq2) {
       return { success: false, error: '两个序列都不能为空' };
@@ -409,8 +434,8 @@ async function levenshteinDistance(seq1: string, seq2: string): Promise<any> {
     const n = s2.length;
 
     // 使用滚动数组优化空间
-    let prev: any[] = new Array(n + 1);
-    let curr: any[] = new Array(n + 1);
+    let prev: number[] = new Array(n + 1);
+    let curr: number[] = new Array(n + 1);
 
     for (let j = 0; j <= n; j++) prev[j] = j;
 
@@ -435,8 +460,8 @@ async function levenshteinDistance(seq1: string, seq2: string): Promise<any> {
       success: true,
       data: `编辑距离: ${distance}\n相似度: ${similarity}%\n序列长度: ${m} vs ${n}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `计算编辑距离失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `计算编辑距离失败: ${(error as Error).message}` };
   }
 }
 
@@ -449,7 +474,9 @@ async function levenshteinDistance(seq1: string, seq2: string): Promise<any> {
  * @param {string} seq - 引物序列
  * @returns {Promise<Object>}
  */
-async function tmEstimate(seq: string): Promise<any> {
+async function tmEstimate(
+  seq: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const valid = validateSeq(seq, DNA_CHARS, 'DNA');
     if (!valid.success) return valid;
@@ -473,8 +500,8 @@ async function tmEstimate(seq: string): Promise<any> {
     }
 
     return { success: true, data: result };
-  } catch (error: any) {
-    return { success: false, error: `估算 Tm 失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `估算 Tm 失败: ${(error as Error).message}` };
   }
 }
 
@@ -483,7 +510,9 @@ async function tmEstimate(seq: string): Promise<any> {
  * @param {string} seq - 引物序列
  * @returns {Promise<Object>}
  */
-async function hairpinCheck(seq: string): Promise<any> {
+async function hairpinCheck(
+  seq: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const valid = validateSeq(seq, DNA_CHARS, 'DNA');
     if (!valid.success) return valid;
@@ -493,7 +522,12 @@ async function hairpinCheck(seq: string): Promise<any> {
     // 查找反向重复序列（可能形成发夹结构）
     const minStem = 3; // 最小茎长
     const minLoop = 3; // 最小环长
-    const hairpins: any[] = [];
+    const hairpins: Array<{
+      position: number;
+      stemLength: number;
+      loopLength: number;
+      sequence: string;
+    }> = [];
 
     for (let i = 0; i < upper.length - minStem * 2 - minLoop; i++) {
       for (
@@ -539,8 +573,8 @@ async function hairpinCheck(seq: string): Promise<any> {
           )
           .join('\n'),
     };
-  } catch (error: any) {
-    return { success: false, error: `发夹结构检测失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `发夹结构检测失败: ${(error as Error).message}` };
   }
 }
 
@@ -553,13 +587,15 @@ async function hairpinCheck(seq: string): Promise<any> {
  * @param {string} filePath - FASTA 文件路径
  * @returns {Promise<Object>}
  */
-async function parseFASTA(filePath: string): Promise<any> {
+async function parseFASTA(
+  filePath: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const basePath = getBasePath();
   const fullPath = path.isAbsolute(filePath) ? filePath : path.join(basePath, filePath);
 
   try {
     const content = await fs.readFile(fullPath, 'utf-8');
-    const entries: any[] = [];
+    const entries: Array<{ header: string; sequence: string; length: number }> = [];
     let currentHeader = '';
     let currentSeq = '';
 
@@ -595,7 +631,7 @@ async function parseFASTA(filePath: string): Promise<any> {
       return 'Unknown';
     });
 
-    const typeCount: any = {};
+    const typeCount: Record<string, number> = {};
     seqTypes.forEach((t) => {
       typeCount[t] = (typeCount[t] || 0) + 1;
     });
@@ -615,8 +651,8 @@ async function parseFASTA(filePath: string): Promise<any> {
           .join('\n') +
         (entries.length > 20 ? `\n  ... 还有 ${entries.length - 20} 个条目` : ''),
     };
-  } catch (error: any) {
-    return { success: false, error: `解析 FASTA 失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `解析 FASTA 失败: ${(error as Error).message}` };
   }
 }
 
@@ -625,14 +661,17 @@ async function parseFASTA(filePath: string): Promise<any> {
  * @param {string} filePath - FASTQ 文件路径
  * @returns {Promise<Object>}
  */
-async function parseFASTQ(filePath: string): Promise<any> {
+async function parseFASTQ(
+  filePath: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const basePath = getBasePath();
   const fullPath = path.isAbsolute(filePath) ? filePath : path.join(basePath, filePath);
 
   try {
     const content = await fs.readFile(fullPath, 'utf-8');
     const lines = content.split('\n').filter((l) => l.trim());
-    const entries: any[] = [];
+    const entries: Array<{ header: string; sequence: string; length: number; quality: string }> =
+      [];
 
     // FASTQ 格式：每 4 行为一组
     for (let i = 0; i + 3 < lines.length; i += 4) {
@@ -676,8 +715,8 @@ async function parseFASTQ(filePath: string): Promise<any> {
           .join('\n') +
         (entries.length > 10 ? `\n  ... 还有 ${entries.length - 10} 个条目` : ''),
     };
-  } catch (error: any) {
-    return { success: false, error: `解析 FASTQ 失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `解析 FASTQ 失败: ${(error as Error).message}` };
   }
 }
 
@@ -687,14 +726,17 @@ async function parseFASTQ(filePath: string): Promise<any> {
  * @param {string} csvPath - CSV 输出路径
  * @returns {Promise<Object>}
  */
-async function fastaToCSV(fastaPath: string, csvPath: string): Promise<any> {
+async function fastaToCSV(
+  fastaPath: string,
+  csvPath: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const basePath = getBasePath();
   const fullFastaPath = path.isAbsolute(fastaPath) ? fastaPath : path.join(basePath, fastaPath);
   const fullCsvPath = path.isAbsolute(csvPath) ? csvPath : path.join(basePath, csvPath);
 
   try {
     const content = await fs.readFile(fullFastaPath, 'utf-8');
-    const entries: any[] = [];
+    const entries: Array<{ header: string; sequence: string; length: number }> = [];
     let currentHeader = '';
     let currentSeq = '';
 
@@ -738,8 +780,8 @@ async function fastaToCSV(fastaPath: string, csvPath: string): Promise<any> {
       success: true,
       data: `已导出 ${entries.length} 个序列条目到 CSV: ${fullCsvPath}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `FASTA 转 CSV 失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `FASTA 转 CSV 失败: ${(error as Error).message}` };
   }
 }
 
@@ -752,7 +794,9 @@ async function fastaToCSV(fastaPath: string, csvPath: string): Promise<any> {
  * @param {string} seq - DNA 编码序列
  * @returns {Promise<Object>}
  */
-async function codonUsage(seq: string): Promise<any> {
+async function codonUsage(
+  seq: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const valid = validateSeq(seq, DNA_CHARS, 'DNA');
     if (!valid.success) return valid;
@@ -762,7 +806,7 @@ async function codonUsage(seq: string): Promise<any> {
     // 先转录为 RNA
     const rna = upper.replace(/T/g, 'U');
 
-    const codonCount: any = {};
+    const codonCount: Record<string, number> = {};
     let total = 0;
 
     for (let i = 0; i + 2 < rna.length; i += 3) {
@@ -776,17 +820,17 @@ async function codonUsage(seq: string): Promise<any> {
     }
 
     // 按氨基酸分组
-    const byAA: any = {};
+    const byAA: Record<string, Array<{ codon: string; count: number; freq: string }>> = {};
     for (const [codon, count] of Object.entries(codonCount)) {
       const aa = CODON_TABLE[codon] || '?';
       if (!byAA[aa]) byAA[aa] = [];
-      byAA[aa].push({ codon, count, freq: (((count as any) / total) * 100).toFixed(1) });
+      byAA[aa].push({ codon, count, freq: ((count / total) * 100).toFixed(1) });
     }
 
     const lines = ['密码子使用频率统计:\n'];
     for (const [aa, codons] of Object.entries(byAA)) {
       const aaName = AA_THREE_LETTER[aa] || 'Unknown';
-      const sorted = (codons as any[]).sort((a, b) => b.count - a.count);
+      const sorted = codons.sort((a, b) => b.count - a.count);
       const totalAA = sorted.reduce((s, c) => s + c.count, 0);
       lines.push(`  ${aa} (${aaName}): 共 ${totalAA} 次`);
       for (const c of sorted) {
@@ -795,8 +839,8 @@ async function codonUsage(seq: string): Promise<any> {
     }
 
     return { success: true, data: lines.join('\n') };
-  } catch (error: any) {
-    return { success: false, error: `密码子统计失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `密码子统计失败: ${(error as Error).message}` };
   }
 }
 
@@ -806,9 +850,12 @@ async function codonUsage(seq: string): Promise<any> {
  * @param {string} [type='dna'] - 序列类型：'dna' | 'rna' | 'protein'
  * @returns {Promise<Object>}
  */
-async function randomSeq(length: any, type: string = 'dna'): Promise<any> {
+async function randomSeq(
+  length: number | string,
+  type: string = 'dna',
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    const len = parseInt(length, 10);
+    const len = parseInt(length as string, 10);
     if (isNaN(len) || len < 1) {
       return { success: false, error: '序列长度必须为正整数' };
     }
@@ -845,8 +892,8 @@ async function randomSeq(length: any, type: string = 'dna'): Promise<any> {
       success: true,
       data: `>Random ${typeName} (${len} ${typeNorm === 'protein' ? 'aa' : 'bp'})\n${result}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `生成随机序列失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `生成随机序列失败: ${(error as Error).message}` };
   }
 }
 

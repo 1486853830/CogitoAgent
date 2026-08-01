@@ -17,21 +17,21 @@ const PLUGINS_DIR = path.resolve(process.cwd(), 'plugins');
 
 interface ToolDef {
   name: string;
-  fn: (...args: any[]) => any;
+  fn: (...args: unknown[]) => unknown;
   description?: string;
   category?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface PluginInfo {
   name: string;
   path: string;
   tools: ToolDef[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 interface CustomToolInfo {
-  fn: (...args: any[]) => any;
+  fn: (...args: unknown[]) => unknown;
   description: string;
   category: string;
   plugin: string;
@@ -46,7 +46,7 @@ interface PluginListInfo {
   name: string;
   path: string;
   toolCount: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 // 插件管理器
@@ -84,12 +84,12 @@ class PluginManager {
         try {
           await this.loadPlugin(entry, pluginPath);
           loaded++;
-        } catch (error: any) {
-          errors.push({ name: entry, error: error.message });
+        } catch (error: unknown) {
+          errors.push({ name: entry, error: (error as Error).message });
         }
       }
-    } catch (error: any) {
-      errors.push({ name: '*', error: error.message });
+    } catch (error: unknown) {
+      errors.push({ name: '*', error: (error as Error).message });
     }
 
     return { loaded, errors };
@@ -106,7 +106,8 @@ class PluginManager {
     }
 
     // 动态导入插件
-    const plugin: any = await import(`file://${indexPath}`);
+    const plugin: { default?: unknown; tools?: unknown; metadata?: Record<string, unknown> } =
+      await import(`file://${indexPath}`);
 
     // 验证插件格式
     if (!plugin.default && !plugin.tools) {
@@ -325,15 +326,15 @@ export const metadata = {
 /**
  * 工具装饰器工厂
  */
-function createTool(options: { name: string; [key: string]: any }) {
+function createTool(options: { name: string; [key: string]: unknown }) {
   return function (
-    target: any,
+    target: unknown,
     propertyKey: string,
     descriptor: PropertyDescriptor,
   ): PropertyDescriptor {
     const originalFn = descriptor.value;
 
-    descriptor.value = async function (this: any, ...args: any[]) {
+    descriptor.value = async function (this: unknown, ...args: unknown[]) {
       const startTime = Date.now();
 
       try {
@@ -343,8 +344,8 @@ function createTool(options: { name: string; [key: string]: any }) {
         console.log(`[Tool:${options.name}] completed in ${duration}ms`);
 
         return result;
-      } catch (error: any) {
-        console.error(`[Tool:${options.name}] failed: ${error.message}`);
+      } catch (error: unknown) {
+        console.error(`[Tool:${options.name}] failed: ${(error as Error).message}`);
         throw error;
       }
     };
@@ -364,7 +365,7 @@ interface RegisterToolOptions {
  */
 function registerTool(
   name: string,
-  fn: (...args: any[]) => any,
+  fn: (...args: unknown[]) => unknown,
   options: RegisterToolOptions = {},
 ): void {
   const pm = getPluginManager();

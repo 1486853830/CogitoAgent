@@ -6,7 +6,7 @@ import { getBasePath } from './path.ts';
 const SUPPORTED_FORMATS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif']);
 
 function getMimeType(ext: string): string {
-  const map: any = {
+  const map: Record<string, string> = {
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
     '.png': 'image/png',
@@ -34,19 +34,21 @@ async function callVLApi(
   mimeType: string,
   userPrompt: string,
 ): Promise<string> {
-  const cfg: any = loadConfig();
-  const ocrCfg = cfg.ocr || {};
+  const cfg: Record<string, unknown> = loadConfig() as unknown as Record<string, unknown>;
+  const ocrCfg = (cfg.ocr || {}) as Record<string, unknown>;
 
   // OCR_API_KEY 回退到主 API Key（COGITO_API_KEY）
-  const apiKey = ocrCfg.apiKey || cfg.api?.apiKey;
+  const apiKey =
+    (ocrCfg.apiKey as string) || ((cfg.api as Record<string, unknown>)?.apiKey as string);
   if (!apiKey) {
     throw new Error(
       'OCR API 密钥未配置。请在 config.json 的 ocr.apiKey 中填入你的密钥，或设置环境变量 COGITO_OCR_API_KEY / OCR_API_KEY，也可设置主 API Key (COGITO_API_KEY) 作为回退',
     );
   }
 
-  const baseURL = ocrCfg.baseURL || cfg.api.baseURL;
-  const model = ocrCfg.model || 'InternVL3-78B';
+  const baseURL =
+    (ocrCfg.baseURL as string) || ((cfg.api as Record<string, unknown>).baseURL as string);
+  const model = (ocrCfg.model as string) || 'InternVL3-78B';
 
   const url = baseURL.endsWith('/') ? `${baseURL}chat/completions` : `${baseURL}/chat/completions`;
 
@@ -87,14 +89,15 @@ async function callVLApi(
     throw new Error(`OCR API 请求失败 (${response.status}): ${errorText}`);
   }
 
-  const data: any = await response.json();
+  const data: Record<string, unknown> = (await response.json()) as Record<string, unknown>;
   if (
     data.choices &&
-    data.choices[0] &&
-    data.choices[0].message &&
-    data.choices[0].message.content
+    (data.choices as Record<string, unknown>[])[0] &&
+    (data.choices as Record<string, unknown>[])[0].message &&
+    ((data.choices as Record<string, unknown>[])[0].message as Record<string, unknown>).content
   ) {
-    return data.choices[0].message.content;
+    return ((data.choices as Record<string, unknown>[])[0].message as Record<string, unknown>)
+      .content as string;
   }
 
   throw new Error('OCR API 返回格式错误：未找到识别结果');
@@ -107,7 +110,10 @@ async function callVLApi(
  * @param {string} [prompt] - 可选的自定义提示词，默认识别所有文字
  * @returns {Promise<Object>} 返回识别结果，包含 success/data/error
  */
-async function ocr(imagePath: string, prompt?: string): Promise<any> {
+async function ocr(
+  imagePath: string,
+  prompt?: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   if (!imagePath || !imagePath.trim()) {
     return { success: false, error: '请提供图片路径' };
   }
@@ -143,8 +149,8 @@ async function ocr(imagePath: string, prompt?: string): Promise<any> {
       success: true,
       data: `[OCR 识别结果] ${fullPath}\n\n${resultText}`,
     };
-  } catch (error: any) {
-    return { success: false, error: `OCR 识别失败: ${error.message}` };
+  } catch (error: unknown) {
+    return { success: false, error: `OCR 识别失败: ${(error as Error).message}` };
   }
 }
 
@@ -153,7 +159,9 @@ async function ocr(imagePath: string, prompt?: string): Promise<any> {
  * @param {string} images - 图片路径列表，用逗号分隔（如 "img1.jpg, img2.png, img3.webp"）
  * @returns {Promise<Object>} 返回批量识别结果
  */
-async function ocrBatch(images: string): Promise<any> {
+async function ocrBatch(
+  images: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   if (!images || !images.trim()) {
     return { success: false, error: '请提供图片路径列表' };
   }
@@ -167,13 +175,13 @@ async function ocrBatch(images: string): Promise<any> {
     return { success: false, error: '未提供有效的图片路径' };
   }
 
-  const results = [];
+  const results: { image: string; success: boolean; content: string }[] = [];
   for (const img of imageList) {
     const result = await ocr(img);
     results.push({
       image: img,
       success: result.success,
-      content: result.success ? result.data : `错误: ${result.error}`,
+      content: result.success ? result.data! : `错误: ${result.error}`,
     });
   }
 

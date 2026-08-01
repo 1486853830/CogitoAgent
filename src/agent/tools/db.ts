@@ -3,7 +3,9 @@ import { loadConfig } from '../../config.ts';
 import fs from 'fs/promises';
 import path from 'path';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let db: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let SQL: any = null;
 
 const DANGEROUS_STATEMENTS = [
@@ -46,7 +48,7 @@ function containsDangerousStatement(sql: string): boolean {
 const COLUMN_TYPE_PATTERN =
   /^(INTEGER|INT|REAL|TEXT|BLOB|NUMERIC|BOOLEAN|DATETIME|DATE|TIME|VARCHAR|CHAR|FLOAT|DOUBLE|DECIMAL)(\(\d+\))?$/i;
 
-function validateColumnType(type: any): boolean {
+function validateColumnType(type: unknown): boolean {
   if (typeof type !== 'string') return false;
   return COLUMN_TYPE_PATTERN.test(type.trim());
 }
@@ -59,7 +61,7 @@ function validateColumnType(type: any): boolean {
  *  - 单引号字符串字面量（内部仅允许 '' 转义引号，禁止 ) ; 等破坏结构）
  * 返回可直接拼接的安全字符串，不合法返回 null。
  */
-function validateColumnDefault(val: any): string | null {
+function validateColumnDefault(val: unknown): string | null {
   if (typeof val === 'number') {
     return isFinite(val) ? String(val) : null;
   }
@@ -84,6 +86,7 @@ function validateColumnDefault(val: any): string | null {
   return null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function initSQL(): Promise<any> {
   if (SQL) return SQL;
   try {
@@ -98,10 +101,11 @@ async function initSQL(): Promise<any> {
   return SQL;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getDB(): Promise<any> {
   if (db) return db;
 
-  const cfg: any = loadConfig();
+  const cfg = loadConfig();
   const dbPath = cfg.database?.path || './data/store/example.db';
 
   try {
@@ -126,9 +130,9 @@ async function getDB(): Promise<any> {
     if (process.env.NODE_ENV !== 'test') {
       console.log('[数据库] 连接成功');
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (process.env.NODE_ENV !== 'test') {
-      console.error(`[数据库] 连接失败: ${err.message}`);
+      console.error(`[数据库] 连接失败: ${(err as Error).message}`);
     }
     throw err;
   }
@@ -139,18 +143,24 @@ async function getDB(): Promise<any> {
 async function saveDB(): Promise<void> {
   if (!db) return;
 
-  const cfg: any = loadConfig();
+  const cfg = loadConfig();
   const dbPath = cfg.database?.path || './data/store/example.db';
 
   try {
     const data = db.export();
     await fs.writeFile(dbPath, Buffer.from(data));
-  } catch (err: any) {
-    console.error(`[数据库] 保存失败: ${err.message}`);
+  } catch (err: unknown) {
+    console.error(`[数据库] 保存失败: ${(err as Error).message}`);
   }
 }
 
-async function executeSQL(sql: string, params: any[] = []): Promise<any> {
+interface QueryResult {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+}
+
+async function executeSQL(sql: string, params: unknown[] = []): Promise<QueryResult> {
   // 与 executeTransaction 保持一致：用 containsDangerousStatement 而非 isDangerousSQL，
   // 防止 'SELECT 1; DROP TABLE users' 这类多语句绕过（sql.js 底层 sqlite3_exec 支持分号多语句）。
   if (containsDangerousStatement(sql)) {
@@ -193,22 +203,26 @@ async function executeSQL(sql: string, params: any[] = []): Promise<any> {
         },
       };
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`,
+      error: `SQL 执行失败: ${(err as Error).message}`,
     };
   }
 }
 
-function validateIdentifier(name: any): boolean {
+function validateIdentifier(name: unknown): boolean {
   if (!name || typeof name !== 'string') {
     return false;
   }
   return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
 }
 
-async function query(table: string, conditions: any = {}, options: any = {}): Promise<any> {
+async function query(
+  table: string,
+  conditions: Record<string, unknown> = {},
+  options: { limit?: number | string; offset?: number | string; orderBy?: string } = {},
+): Promise<QueryResult> {
   if (!validateIdentifier(table)) {
     return {
       success: false,
@@ -217,7 +231,7 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
   }
 
   let sql = `SELECT * FROM \`${table}\``;
-  const params = [];
+  const params: unknown[] = [];
 
   if (Object.keys(conditions).length > 0) {
     const whereClauses = [];
@@ -240,7 +254,7 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
   }
 
   if (options.limit) {
-    const limit = parseInt(options.limit, 10);
+    const limit = parseInt(options.limit as string, 10);
     if (isNaN(limit) || limit < 0) {
       return {
         success: false,
@@ -251,7 +265,7 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
   }
 
   if (options.offset) {
-    const offset = parseInt(options.offset, 10);
+    const offset = parseInt(options.offset as string, 10);
     if (isNaN(offset) || offset < 0) {
       return {
         success: false,
@@ -286,7 +300,7 @@ async function query(table: string, conditions: any = {}, options: any = {}): Pr
   return await executeSQL(sql, params);
 }
 
-async function insert(table: string, data: any): Promise<any> {
+async function insert(table: string, data: Record<string, unknown>): Promise<QueryResult> {
   if (!validateIdentifier(table)) {
     return {
       success: false,
@@ -324,15 +338,19 @@ async function insert(table: string, data: any): Promise<any> {
         lastID: database.lastInsertRowid ? database.lastInsertRowid() : null,
       },
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`,
+      error: `SQL 执行失败: ${(err as Error).message}`,
     };
   }
 }
 
-async function update(table: string, data: any, conditions: any): Promise<any> {
+async function update(
+  table: string,
+  data: Record<string, unknown>,
+  conditions: Record<string, unknown>,
+): Promise<QueryResult> {
   if (!validateIdentifier(table)) {
     return {
       success: false,
@@ -341,7 +359,7 @@ async function update(table: string, data: any, conditions: any): Promise<any> {
   }
 
   const setClauses = [];
-  const values = [];
+  const values: unknown[] = [];
 
   for (const [key, value] of Object.entries(data)) {
     if (!validateIdentifier(key)) {
@@ -382,15 +400,18 @@ async function update(table: string, data: any, conditions: any): Promise<any> {
         changes: changes,
       },
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`,
+      error: `SQL 执行失败: ${(err as Error).message}`,
     };
   }
 }
 
-async function deleteData(table: string, conditions: any): Promise<any> {
+async function deleteData(
+  table: string,
+  conditions: Record<string, unknown>,
+): Promise<QueryResult> {
   if (!validateIdentifier(table)) {
     return {
       success: false,
@@ -399,7 +420,7 @@ async function deleteData(table: string, conditions: any): Promise<any> {
   }
 
   const whereClauses = [];
-  const params = [];
+  const params: unknown[] = [];
 
   for (const [key, value] of Object.entries(conditions)) {
     if (!validateIdentifier(key)) {
@@ -428,15 +449,15 @@ async function deleteData(table: string, conditions: any): Promise<any> {
         changes: changes,
       },
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`,
+      error: `SQL 执行失败: ${(err as Error).message}`,
     };
   }
 }
 
-async function createTable(name: string, columns: any[]): Promise<any> {
+async function createTable(name: string, columns: Record<string, unknown>[]): Promise<QueryResult> {
   if (!validateIdentifier(name)) {
     return {
       success: false,
@@ -477,15 +498,15 @@ async function createTable(name: string, columns: any[]): Promise<any> {
     database.run(sql);
     await saveDB();
     return { success: true, data: `表 ${name} 创建成功` };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`,
+      error: `SQL 执行失败: ${(err as Error).message}`,
     };
   }
 }
 
-async function dropTable(name: string): Promise<any> {
+async function dropTable(name: string): Promise<QueryResult> {
   if (!validateIdentifier(name)) {
     return {
       success: false,
@@ -500,26 +521,28 @@ async function dropTable(name: string): Promise<any> {
     database.run(sql);
     await saveDB();
     return { success: true, data: `表 ${name} 删除成功` };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`,
+      error: `SQL 执行失败: ${(err as Error).message}`,
     };
   }
 }
 
-async function getTables(): Promise<any> {
+async function getTables(): Promise<QueryResult> {
   const sql = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name";
   const result = await executeSQL(sql);
 
   if (result.success) {
-    result.data = result.data.map((row: any) => row.name);
+    result.data = (result.data as Record<string, unknown>[]).map(
+      (row: Record<string, unknown>) => row.name,
+    );
   }
 
   return result;
 }
 
-async function getTableSchema(tableName: string): Promise<any> {
+async function getTableSchema(tableName: string): Promise<QueryResult> {
   if (!validateIdentifier(tableName)) {
     return {
       success: false,
@@ -537,10 +560,10 @@ async function getTableSchema(tableName: string): Promise<any> {
     }
     stmt.free();
     return { success: true, data: results };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
-      error: `SQL 执行失败: ${err.message}`,
+      error: `SQL 执行失败: ${(err as Error).message}`,
     };
   }
 }
@@ -551,16 +574,16 @@ async function getTableSchema(tableName: string): Promise<any> {
  * - { sql, params? }：推荐形式，params 通过 prepare+bind 参数化绑定，
  *   避免将值拼接进 SQL 字符串造成注入（与 executeSQL/insert/update 等保持一致）。
  */
-type TransactionStatement = string | { sql: string; params?: any[] };
+type TransactionStatement = string | { sql: string; params?: unknown[] };
 
-function normalizeStatement(stmt: TransactionStatement): { sql: string; params: any[] } {
+function normalizeStatement(stmt: TransactionStatement): { sql: string; params: unknown[] } {
   if (typeof stmt === 'string') {
     return { sql: stmt, params: [] };
   }
   return { sql: stmt.sql, params: Array.isArray(stmt.params) ? stmt.params : [] };
 }
 
-async function executeTransaction(sqlStatements: TransactionStatement[]): Promise<any> {
+async function executeTransaction(sqlStatements: TransactionStatement[]): Promise<QueryResult> {
   const normalized = sqlStatements.map(normalizeStatement);
 
   for (const { sql } of normalized) {
@@ -603,7 +626,7 @@ async function executeTransaction(sqlStatements: TransactionStatement[]): Promis
       success: true,
       data: '事务执行成功',
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     try {
       if (db) {
         db.run('ROLLBACK');
@@ -611,7 +634,7 @@ async function executeTransaction(sqlStatements: TransactionStatement[]): Promis
     } catch {}
     return {
       success: false,
-      error: `事务失败: ${err.message}`,
+      error: `事务失败: ${(err as Error).message}`,
     };
   }
 }
@@ -624,9 +647,9 @@ async function closeDB(): Promise<void> {
       if (process.env.NODE_ENV !== 'test') {
         console.log('[数据库] 已关闭');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (process.env.NODE_ENV !== 'test') {
-        console.error(`[数据库] 关闭失败: ${err.message}`);
+        console.error(`[数据库] 关闭失败: ${(err as Error).message}`);
       }
     }
     db = null;

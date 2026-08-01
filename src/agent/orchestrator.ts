@@ -19,8 +19,8 @@ class SubAgent {
   name: string;
   instruction: string;
   state: string; // idle | thinking | tool_executing | done | error
-  messages: any[]; // 对话历史
-  result: any; // 最终结果
+  messages: Array<{ role: string; content: string }>; // 对话历史
+  result: unknown; // 最终结果
   createdAt: string;
   lastActiveAt: string;
   toolCalls: number; // 工具调用次数
@@ -46,13 +46,13 @@ class SubAgent {
 interface OperationResult {
   success: boolean;
   error?: string;
-  data?: any;
+  data?: unknown;
 }
 
 interface ClusterStatus {
   totalAgents: number;
   byState: Record<string, number>;
-  agents: any[];
+  agents: Array<Record<string, unknown>>;
 }
 
 interface ParallelTask {
@@ -163,18 +163,18 @@ class AgentOrchestrator {
       this._broadcastClusterState();
 
       return { success: true, data: result };
-    } catch (error: any) {
+    } catch (error: unknown) {
       agent.state = 'error';
-      agent.error = error.message;
+      agent.error = (error as Error).message;
       this._broadcastClusterState();
-      return { success: false, error: error.message };
+      return { success: false, error: (error as Error).message };
     }
   }
 
   /**
    * 并行执行多个任务（使用不同智能体）
    */
-  async parallelExecute(tasks: ParallelTask[]): Promise<any[]> {
+  async parallelExecute(tasks: ParallelTask[]): Promise<OperationResult[]> {
     const results = await Promise.allSettled(
       tasks.map((t) => this.delegateTask(t.agentId, t.task)),
     );
@@ -211,7 +211,13 @@ class AgentOrchestrator {
     }
 
     // 收集每个智能体的观点
-    const opinions: any[] = [];
+    const opinions: Array<{
+      agentId: string;
+      agentName: string;
+      persona: string;
+      success: boolean;
+      response?: unknown;
+    }> = [];
     for (const agentId of agentIds) {
       const agent = this.agents.get(agentId)!;
       this._broadcastClusterState();
@@ -229,13 +235,13 @@ class AgentOrchestrator {
           success: result.success,
           response: result.success ? result.data : result.error,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         opinions.push({
           agentId: agent.id,
           agentName: agent.name,
           persona: agent.persona,
           success: false,
-          response: error.message,
+          response: (error as Error).message,
         });
       }
     }
@@ -267,7 +273,7 @@ class AgentOrchestrator {
       };
     }
 
-    const pipelineResults: any[] = [];
+    const pipelineResults: Array<Record<string, unknown>> = [];
     let context = '';
 
     for (let i = 0; i < steps.length; i++) {
@@ -279,7 +285,7 @@ class AgentOrchestrator {
 
       try {
         const result = await this.delegateTask(step.agentId, taskWithContext);
-        const stepResult: any = {
+        const stepResult: Record<string, unknown> = {
           step: i + 1,
           stepName,
           agentId: step.agentId,
@@ -289,7 +295,7 @@ class AgentOrchestrator {
 
         if (result.success) {
           stepResult.result = result.data;
-          context = result.data; // 传递给下一步
+          context = result.data as string; // 传递给下一步
         } else {
           stepResult.error = result.error;
           pipelineResults.push(stepResult);
@@ -297,16 +303,19 @@ class AgentOrchestrator {
         }
 
         pipelineResults.push(stepResult);
-      } catch (error: any) {
+      } catch (error: unknown) {
         pipelineResults.push({
           step: i + 1,
           stepName,
           agentId: step.agentId,
           agentName: agent.name,
           success: false,
-          error: error.message,
+          error: (error as Error).message,
         });
-        return { success: false, data: { step: i + 1, error: error.message, pipelineResults } };
+        return {
+          success: false,
+          data: { step: i + 1, error: (error as Error).message, pipelineResults },
+        };
       }
     }
 
@@ -345,7 +354,7 @@ class AgentOrchestrator {
         ? `\n\n选项：\n${options.map((o, i) => `${i + 1}. ${o}`).join('\n')}\n\n请从以上选项中选择一个，并说明理由。`
         : '';
 
-    const votes: any[] = [];
+    const votes: Array<Record<string, unknown>> = [];
     for (const agentId of agentIds) {
       const agent = this.agents.get(agentId)!;
       this._broadcastClusterState();
@@ -360,7 +369,7 @@ class AgentOrchestrator {
         let vote = '';
         let reasoning = '';
         if (result.success) {
-          const response = result.data;
+          const response = result.data as string;
           const voteMatch = response.match(/投票[：:]\s*(.+)/);
           if (voteMatch) {
             vote = voteMatch[1].trim();
@@ -379,14 +388,14 @@ class AgentOrchestrator {
           vote: vote || '未明确投票',
           reasoning: reasoning || (result.success ? result.data : result.error),
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         votes.push({
           agentId: agent.id,
           agentName: agent.name,
           persona: agent.persona,
           success: false,
           vote: '错误',
-          reasoning: error.message,
+          reasoning: (error as Error).message,
         });
       }
     }
@@ -394,8 +403,9 @@ class AgentOrchestrator {
     // 统计投票结果
     const tally: Record<string, number> = {};
     for (const v of votes) {
-      if (v.vote && v.vote !== '未明确投票' && v.vote !== '错误') {
-        tally[v.vote] = (tally[v.vote] || 0) + 1;
+      const vote = v.vote as string;
+      if (vote && vote !== '未明确投票' && vote !== '错误') {
+        tally[vote] = (tally[vote] || 0) + 1;
       }
     }
 
@@ -468,7 +478,7 @@ class AgentOrchestrator {
   /**
    * 获取单个智能体详情
    */
-  getAgent(agentId: string): any | null {
+  getAgent(agentId: string): Record<string, unknown> | null {
     const agent = this.agents.get(agentId);
     if (!agent) return null;
 
@@ -490,7 +500,10 @@ class AgentOrchestrator {
   /**
    * 智能体思考-行动循环
    */
-  async _executeAgentLoop(agent: SubAgent, messages: any[]): Promise<string> {
+  async _executeAgentLoop(
+    agent: SubAgent,
+    messages: Array<{ role: string; content: string }>,
+  ): Promise<string> {
     let fullResponse = '';
 
     for (let i = 0; i < this.maxIterations; i++) {
@@ -505,8 +518,8 @@ class AgentOrchestrator {
             response += chunk.content;
           }
         }
-      } catch (error: any) {
-        throw new Error(`LLM 调用失败: ${error.message}`);
+      } catch (error: unknown) {
+        throw new Error(`LLM 调用失败: ${(error as Error).message}`);
       }
 
       fullResponse += response;
@@ -544,18 +557,19 @@ class AgentOrchestrator {
           // 复用 Agent.executeTool 的参数预处理（customArgs/parseJson/jsonParams），
           // 否则依赖 JSON 解析的工具（parallelExecute/pipeline/voting 等）会收到字符串而非对象。
           const processedArgs = preprocessToolArgs(tc.tool, tc.args);
-          const result = await registry.fn(
+          const result: unknown = await registry.fn(
             ...(Array.isArray(processedArgs) ? processedArgs : [processedArgs]),
           );
-          const data = result?.data ?? result ?? '执行完成（无返回值）';
+          const data =
+            (result as Record<string, unknown>)?.data ?? result ?? '执行完成（无返回值）';
           const text = typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data);
           const truncated =
             text.length > this.maxToolOutput
               ? text.slice(0, this.maxToolOutput) + '\n\n... [输出过长，已截断]'
               : text;
           toolResults.push(`[工具结果 - ${agent.name}]: ${truncated}`);
-        } catch (error: any) {
-          toolResults.push(`[工具错误 - ${agent.name}]: ${error.message}`);
+        } catch (error: unknown) {
+          toolResults.push(`[工具错误 - ${agent.name}]: ${(error as Error).message}`);
         }
       }
 
@@ -616,7 +630,7 @@ ${toolNames.map((t) => `  - \`${t}\``).join('\n')}
   _broadcastClusterState(): void {
     try {
       const status = this.getClusterStatus();
-      broadcast('cluster-state', status as any);
+      broadcast('cluster-state', status as unknown as Record<string, unknown>);
     } catch {
       // WebSocket 可能未启用，忽略
     }

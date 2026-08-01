@@ -1,10 +1,68 @@
 import os from 'os';
 import { execFile } from 'child_process';
 
+interface DriveInfo {
+  deviceId: string;
+  volumeName: string;
+  total: string;
+  used: string;
+  free: string;
+  usage: string;
+  usagePercent: number;
+}
+
+interface CPUInfo {
+  model: string;
+  cores: number;
+  usage: string;
+  usagePercent: number;
+}
+
+interface MemoryInfo {
+  total: string;
+  used: string;
+  free: string;
+  usage: string;
+  usagePercent: string;
+}
+
+interface NetworkAddressInfo {
+  family: string;
+  address: string;
+  netmask: string;
+  mac: string;
+}
+
+interface NetworkInterfaceInfo {
+  name: string;
+  addresses: NetworkAddressInfo[];
+}
+
+interface ProcessInfo {
+  name: string;
+  pid: string;
+  sessionName?: string;
+  sessionNumber?: string;
+  memUsage?: string;
+  user?: string;
+  cpu?: string;
+  mem?: string;
+  command?: string;
+}
+
+interface SystemInfo {
+  platform: string;
+  arch: string;
+  hostname: string;
+  release: string;
+  type: string;
+  uptime: string;
+}
+
 /**
  * 获取 CPU 信息
  */
-function getCPUInfo(): any {
+function getCPUInfo(): CPUInfo {
   const cpus = os.cpus();
   const totalCores = cpus.length;
   const model = cpus[0]?.model || 'Unknown';
@@ -32,7 +90,7 @@ function getCPUInfo(): any {
 /**
  * 获取内存信息
  */
-function getMemoryInfo(): any {
+function getMemoryInfo(): MemoryInfo {
   const total = os.totalmem();
   const free = os.freemem();
   const used = total - free;
@@ -49,12 +107,16 @@ function getMemoryInfo(): any {
 /**
  * 获取磁盘信息（Windows）
  */
-async function getDiskInfoWindows(): Promise<any> {
+async function getDiskInfoWindows(): Promise<{
+  success: boolean;
+  data?: DriveInfo[];
+  error?: string;
+}> {
   return new Promise((resolve) => {
     execFile(
       'wmic',
       ['logicaldisk', 'get', 'Size,FreeSpace,DeviceID,VolumeName'],
-      (error: any, stdout: string) => {
+      (error: Error | null, stdout: string) => {
         if (error) {
           resolve({
             success: false,
@@ -64,7 +126,7 @@ async function getDiskInfoWindows(): Promise<any> {
         }
 
         const lines = stdout.split('\n').filter((line) => line.trim());
-        const drives = [];
+        const drives: DriveInfo[] = [];
 
         for (let i = 1; i < lines.length; i++) {
           const parts = lines[i].trim().split(/\s+/);
@@ -83,7 +145,7 @@ async function getDiskInfoWindows(): Promise<any> {
                 used: formatBytes(used),
                 free: formatBytes(freeSpace),
                 usage: `${((used / size) * 100).toFixed(2)}%`,
-                usagePercent: ((used / size) * 100).toFixed(2),
+                usagePercent: parseFloat(((used / size) * 100).toFixed(2)),
               });
             }
           }
@@ -101,9 +163,13 @@ async function getDiskInfoWindows(): Promise<any> {
 /**
  * 获取磁盘信息（Linux/macOS）
  */
-async function getDiskInfoUnix(): Promise<any> {
+async function getDiskInfoUnix(): Promise<{
+  success: boolean;
+  data?: DriveInfo[];
+  error?: string;
+}> {
   return new Promise((resolve) => {
-    execFile('df', ['-h'], (error: any, stdout: string) => {
+    execFile('df', ['-h'], (error: Error | null, stdout: string) => {
       if (error) {
         resolve({
           success: false,
@@ -113,7 +179,7 @@ async function getDiskInfoUnix(): Promise<any> {
       }
 
       const lines = stdout.split('\n').filter((line) => line.trim());
-      const drives = [];
+      const drives: DriveInfo[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         const parts = lines[i].trim().split(/\s+/);
@@ -151,7 +217,7 @@ async function getDiskInfoUnix(): Promise<any> {
  * 解析人类可读的大小字符串
  */
 function parseHumanReadableSize(sizeStr: string): number {
-  const units: any = { B: 1, K: 1024, M: 1024 ** 2, G: 1024 ** 3, T: 1024 ** 4 };
+  const units: Record<string, number> = { B: 1, K: 1024, M: 1024 ** 2, G: 1024 ** 3, T: 1024 ** 4 };
   const match = sizeStr.match(/^([\d.]+)([BKMGTP]?)$/i);
 
   if (!match) return 0;
@@ -165,7 +231,7 @@ function parseHumanReadableSize(sizeStr: string): number {
 /**
  * 获取磁盘信息（跨平台）
  */
-async function getDiskInfo(): Promise<any> {
+async function getDiskInfo(): Promise<{ success: boolean; data?: DriveInfo[]; error?: string }> {
   if (os.platform() === 'win32') {
     return await getDiskInfoWindows();
   } else {
@@ -176,12 +242,12 @@ async function getDiskInfo(): Promise<any> {
 /**
  * 获取网络接口信息
  */
-function getNetworkInfo(): any[] {
+function getNetworkInfo(): NetworkInterfaceInfo[] {
   const interfaces = os.networkInterfaces();
-  const result = [];
+  const result: NetworkInterfaceInfo[] = [];
 
   for (const [name, ifaces] of Object.entries(interfaces)) {
-    const info: any = {
+    const info: NetworkInterfaceInfo = {
       name,
       addresses: [],
     };
@@ -204,13 +270,17 @@ function getNetworkInfo(): any[] {
 /**
  * 获取系统进程列表（Windows）
  */
-async function getProcessesWindows(): Promise<any> {
+async function getProcessesWindows(): Promise<{
+  success: boolean;
+  data?: ProcessInfo[];
+  error?: string;
+}> {
   return new Promise((resolve) => {
     execFile(
       'tasklist',
       ['/fo', 'csv', '/nh'],
       { encoding: 'utf8' },
-      (error: any, stdout: string) => {
+      (error: Error | null, stdout: string) => {
         if (error) {
           resolve({
             success: false,
@@ -220,7 +290,7 @@ async function getProcessesWindows(): Promise<any> {
         }
 
         const lines = stdout.split('\n').filter((line) => line.trim());
-        const processes = [];
+        const processes: ProcessInfo[] = [];
 
         for (const line of lines) {
           const parts = parseCSVLine(line);
@@ -247,46 +317,55 @@ async function getProcessesWindows(): Promise<any> {
 /**
  * 获取系统进程列表（Linux/macOS）
  */
-async function getProcessesUnix(): Promise<any> {
+async function getProcessesUnix(): Promise<{
+  success: boolean;
+  data?: ProcessInfo[];
+  error?: string;
+}> {
   return new Promise((resolve) => {
-    execFile('ps', ['aux', '--no-headers'], { encoding: 'utf8' }, (error: any, stdout: string) => {
-      if (error) {
-        resolve({
-          success: false,
-          error: `获取进程列表失败: ${error.message}`,
-        });
-        return;
-      }
-
-      const lines = stdout.split('\n').filter((line) => line.trim());
-      const processes = [];
-
-      for (const line of lines.slice(0, 20)) {
-        const parts = line.trim().split(/\s+/);
-        if (parts.length >= 11) {
-          processes.push({
-            name: parts[10] || '',
-            pid: parts[1] || '',
-            user: parts[0] || '',
-            cpu: parts[2] || '',
-            mem: parts[3] || '',
-            command: parts.slice(10).join(' '),
+    execFile(
+      'ps',
+      ['aux', '--no-headers'],
+      { encoding: 'utf8' },
+      (error: Error | null, stdout: string) => {
+        if (error) {
+          resolve({
+            success: false,
+            error: `获取进程列表失败: ${error.message}`,
           });
+          return;
         }
-      }
 
-      resolve({
-        success: true,
-        data: processes,
-      });
-    });
+        const lines = stdout.split('\n').filter((line) => line.trim());
+        const processes: ProcessInfo[] = [];
+
+        for (const line of lines.slice(0, 20)) {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length >= 11) {
+            processes.push({
+              name: parts[10] || '',
+              pid: parts[1] || '',
+              user: parts[0] || '',
+              cpu: parts[2] || '',
+              mem: parts[3] || '',
+              command: parts.slice(10).join(' '),
+            });
+          }
+        }
+
+        resolve({
+          success: true,
+          data: processes,
+        });
+      },
+    );
   });
 }
 
 /**
  * 获取系统进程列表（跨平台）
  */
-async function getProcesses(): Promise<any> {
+async function getProcesses(): Promise<{ success: boolean; data?: ProcessInfo[]; error?: string }> {
   if (os.platform() === 'win32') {
     return await getProcessesWindows();
   } else {
@@ -297,7 +376,7 @@ async function getProcesses(): Promise<any> {
 /**
  * 获取系统信息
  */
-function getSystemInfo(): any {
+function getSystemInfo(): SystemInfo {
   return {
     platform: os.platform(),
     arch: os.arch(),
@@ -311,7 +390,14 @@ function getSystemInfo(): any {
 /**
  * 获取当前进程信息
  */
-function getCurrentProcess(): any {
+function getCurrentProcess(): {
+  pid: number;
+  memoryUsage: Record<string, string>;
+  cpuUsage: NodeJS.CpuUsage | null;
+  argv: string[];
+  execPath: string;
+  cwd: string;
+} {
   const procInfo = {
     pid: process.pid,
     memoryUsage: {
@@ -332,7 +418,11 @@ function getCurrentProcess(): any {
 /**
  * 获取系统负载
  */
-async function getSystemLoad(): Promise<any> {
+async function getSystemLoad(): Promise<{
+  success: boolean;
+  data?: { cpu: CPUInfo; memory: MemoryInfo; disk: DriveInfo[] };
+  error?: string;
+}> {
   const cpu = getCPUInfo();
   const memory = getMemoryInfo();
   const disk = await getDiskInfo();
@@ -342,7 +432,7 @@ async function getSystemLoad(): Promise<any> {
     data: {
       cpu,
       memory,
-      disk: disk.success ? disk.data : [],
+      disk: disk.success ? disk.data! : [],
     },
   };
 }
@@ -405,8 +495,27 @@ function parseCSVLine(line: string): string[] {
 /**
  * 监控系统资源
  */
-async function monitorSystem(): Promise<any> {
-  const info: any = {
+async function monitorSystem(): Promise<{
+  success: boolean;
+  data?: {
+    timestamp: string;
+    system: SystemInfo;
+    cpu: CPUInfo;
+    memory: MemoryInfo;
+    network: NetworkInterfaceInfo[];
+    process: {
+      pid: number;
+      memoryUsage: Record<string, string>;
+      cpuUsage: NodeJS.CpuUsage | null;
+      argv: string[];
+      execPath: string;
+      cwd: string;
+    };
+    disk: DriveInfo[];
+  };
+  error?: string;
+}> {
+  const info = {
     timestamp: new Date().toISOString(),
     system: getSystemInfo(),
     cpu: getCPUInfo(),
@@ -416,11 +525,13 @@ async function monitorSystem(): Promise<any> {
   };
 
   const diskResult = await getDiskInfo();
-  info.disk = diskResult.success ? diskResult.data : [];
+  const disk = diskResult.success
+    ? { ...info, disk: diskResult.data! }
+    : { ...info, disk: [] as DriveInfo[] };
 
   return {
     success: true,
-    data: info,
+    data: disk,
   };
 }
 

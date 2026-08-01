@@ -1,4 +1,13 @@
-import pptxgen from 'pptxgenjs';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _PptxGen: any = null;
+async function getPptxGen() {
+  if (!_PptxGen) {
+    const mod = await import('pptxgenjs');
+    _PptxGen = (mod as any).default || mod;
+  }
+  return new _PptxGen();
+}
+
 import {
   Document,
   Packer,
@@ -10,6 +19,7 @@ import {
   TableCell,
   WidthType,
   ImageRun,
+  type FileChild,
 } from 'docx';
 import XLSX from 'xlsx';
 import fs from 'fs/promises';
@@ -18,22 +28,32 @@ import { resolveInWorkspace } from './path.ts';
 
 // ==================== PPT ====================
 
-async function createPpt(options: any, ...rest: any[]): Promise<any> {
+interface SlideData {
+  title?: string;
+  content?: string;
+  image?: string;
+  bullets?: string[];
+}
+
+async function createPpt(
+  options: Record<string, unknown> | string,
+  ...rest: unknown[]
+): Promise<{ success: boolean; path?: string; slideCount?: number; error?: string }> {
   try {
-    let outputPath,
-      slides: any[] = [],
+    let outputPath: string | undefined,
+      slides: SlideData[] = [],
       title = 'Untitled',
       author = 'CogitoAgent';
 
     if (typeof options === 'object' && options !== null && !Array.isArray(options)) {
-      outputPath = options.outputPath;
-      slides = options.slides || [];
-      title = options.title || 'Untitled';
-      author = options.author || 'CogitoAgent';
+      outputPath = options.outputPath as string;
+      slides = (options.slides as SlideData[]) || [];
+      title = (options.title as string) || 'Untitled';
+      author = (options.author as string) || 'CogitoAgent';
     } else if (typeof options === 'string') {
       outputPath = options;
-      const slideTitle = rest[0] || 'Slide 1';
-      const slideContent = rest[1] || '';
+      const slideTitle = (rest[0] as string) || 'Slide 1';
+      const slideContent = (rest[1] as string) || '';
       slides = [{ title: slideTitle, content: slideContent }];
       title = slideTitle;
     }
@@ -49,7 +69,7 @@ async function createPpt(options: any, ...rest: any[]): Promise<any> {
     }
     outputPath = resolvedPath;
 
-    const ppt = new pptxgen();
+    const ppt = await getPptxGen();
     ppt.author = author;
     ppt.title = title;
 
@@ -102,9 +122,9 @@ async function createPpt(options: any, ...rest: any[]): Promise<any> {
 
       if (slideData.bullets && Array.isArray(slideData.bullets)) {
         slide.addText(
-          slideData.bullets.map((b: any, i: number) => ({
+          slideData.bullets.map((b: string, i: number) => ({
             text: b,
-            options: { bullet: true, breakLine: i < slideData.bullets.length - 1 },
+            options: { bullet: true, breakLine: i < (slideData.bullets as string[]).length - 1 },
           })),
           {
             x: 0.5,
@@ -124,29 +144,48 @@ async function createPpt(options: any, ...rest: any[]): Promise<any> {
     await ppt.writeFile({ fileName: outputPath });
 
     return { success: true, path: outputPath, slideCount: slides.length };
-  } catch (e: any) {
-    return { success: false, error: `创建PPT失败: ${e.message}` };
+  } catch (e: unknown) {
+    return { success: false, error: `创建PPT失败: ${(e as Error).message}` };
   }
 }
 
 // ==================== Word ====================
 
-async function createWord(options: any, ...rest: any[]): Promise<any> {
+interface ParagraphData {
+  type: string;
+  text?: string;
+  level?: number;
+  items?: string[];
+  rows?: string[][];
+  src?: string;
+  width?: number;
+  height?: number;
+}
+
+interface HeadingMap {
+  [key: number]:
+    'Heading1' | 'Heading2' | 'Heading3' | 'Heading4' | 'Heading5' | 'Heading6' | 'Title';
+}
+
+async function createWord(
+  options: Record<string, unknown> | string,
+  ...rest: unknown[]
+): Promise<{ success: boolean; path?: string; paragraphCount?: number; error?: string }> {
   try {
-    let outputPath,
-      paragraphs: any[] = [],
+    let outputPath: string | undefined,
+      paragraphs: ParagraphData[] = [],
       title = 'Untitled',
       author = 'CogitoAgent';
 
     if (typeof options === 'object' && options !== null && !Array.isArray(options)) {
-      outputPath = options.outputPath;
-      paragraphs = options.paragraphs || [];
-      title = options.title || 'Untitled';
-      author = options.author || 'CogitoAgent';
+      outputPath = options.outputPath as string;
+      paragraphs = (options.paragraphs as ParagraphData[]) || [];
+      title = (options.title as string) || 'Untitled';
+      author = (options.author as string) || 'CogitoAgent';
     } else if (typeof options === 'string') {
       outputPath = options;
-      const docTitle = rest[0] || 'Document';
-      const docContent = rest[1] || '';
+      const docTitle = (rest[0] as string) || 'Document';
+      const docContent = (rest[1] as string) || '';
       paragraphs = [
         { type: 'heading', text: docTitle, level: 1 },
         { type: 'text', text: docContent },
@@ -165,12 +204,12 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
     }
     outputPath = resolvedPath;
 
-    const children: any[] = [];
+    const children: unknown[] = [];
 
     for (const para of paragraphs) {
       if (para.type === 'heading') {
         const level = para.level || 1;
-        const headingMap: any = {
+        const headingMap: HeadingMap = {
           1: HeadingLevel.HEADING_1,
           2: HeadingLevel.HEADING_2,
           3: HeadingLevel.HEADING_3,
@@ -207,10 +246,10 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
         const rows = para.rows || [];
         if (rows.length > 0) {
           const tableRows = rows.map(
-            (row: any) =>
+            (row: string[]) =>
               new TableRow({
                 children: row.map(
-                  (cell: any) =>
+                  (cell: string) =>
                     new TableCell({
                       children: [new Paragraph({ children: [new TextRun(cell || '')] })],
                       width: { size: 100 / (row.length || 1), type: WidthType.PERCENTAGE },
@@ -226,15 +265,17 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
         }
       } else if (para.type === 'image') {
         try {
-          await fs.access(para.src);
-          const imageBuffer = await fs.readFile(para.src);
+          await fs.access(para.src!);
+          const imageBuffer = await fs.readFile(para.src!);
           children.push(
             new Paragraph({
               children: [
                 new ImageRun({
-                  data: imageBuffer,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  data: new Uint8Array(imageBuffer) as any,
+                  type: 'png',
                   transformation: { width: para.width || 600, height: para.height || 400 },
-                } as any),
+                }),
               ],
               spacing: { before: 200, after: 200 },
             }),
@@ -250,7 +291,7 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
     const doc = new Document({
       creator: author,
       title: title,
-      sections: [{ properties: {}, children }],
+      sections: [{ properties: {}, children: children as unknown as readonly FileChild[] }],
     });
 
     const dir = path.dirname(outputPath);
@@ -260,28 +301,36 @@ async function createWord(options: any, ...rest: any[]): Promise<any> {
     await fs.writeFile(outputPath, buffer);
 
     return { success: true, path: outputPath, paragraphCount: paragraphs.length };
-  } catch (e: any) {
-    return { success: false, error: `创建Word文档失败: ${e.message}` };
+  } catch (e: unknown) {
+    return { success: false, error: `创建Word文档失败: ${(e as Error).message}` };
   }
 }
 
 // ==================== Excel ====================
 
-async function createExcel(options: any, ...rest: any[]): Promise<any> {
+interface SheetData {
+  name?: string;
+  data?: unknown[][];
+}
+
+async function createExcel(
+  options: Record<string, unknown> | string,
+  ...rest: unknown[]
+): Promise<{ success: boolean; path?: string; sheetCount?: number; error?: string }> {
   try {
-    let outputPath,
-      sheets: any[] = [];
+    let outputPath: string | undefined,
+      sheets: SheetData[] = [];
 
     if (typeof options === 'object' && options !== null && !Array.isArray(options)) {
-      outputPath = options.outputPath;
-      sheets = options.sheets || [];
+      outputPath = options.outputPath as string;
+      sheets = (options.sheets as SheetData[]) || [];
     } else if (typeof options === 'string') {
       outputPath = options;
-      const sheetName = rest[0] || 'Sheet1';
-      const data = rest[1]
+      const sheetName = (rest[0] as string) || 'Sheet1';
+      const data: unknown[][] = rest[1]
         ? Array.isArray(rest[1])
-          ? rest[1]
-          : [rest[1]]
+          ? (rest[1] as unknown[][])
+          : [[rest[1]]]
         : [['No content provided']];
       sheets = [{ name: sheetName, data }];
     }
@@ -316,12 +365,19 @@ async function createExcel(options: any, ...rest: any[]): Promise<any> {
     XLSX.writeFile(wb, outputPath);
 
     return { success: true, path: outputPath, sheetCount: sheets.length };
-  } catch (e: any) {
-    return { success: false, error: `创建Excel失败: ${e.message}` };
+  } catch (e: unknown) {
+    return { success: false, error: `创建Excel失败: ${(e as Error).message}` };
   }
 }
 
-async function readExcel(filePath: string): Promise<any> {
+async function readExcel(
+  filePath: string,
+): Promise<{
+  success: boolean;
+  data?: Record<string, unknown[][]>;
+  sheetNames?: string[];
+  error?: string;
+}> {
   try {
     if (!filePath || typeof filePath !== 'string') {
       return { success: false, error: '缺少 filePath 参数' };
@@ -337,15 +393,15 @@ async function readExcel(filePath: string): Promise<any> {
     await fs.access(filePath);
     const wb = XLSX.readFile(filePath);
 
-    const result: any = {};
+    const result: Record<string, unknown[][]> = {};
     for (const sheetName of wb.SheetNames) {
       const ws = wb.Sheets[sheetName];
-      result[sheetName] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      result[sheetName] = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
     }
 
     return { success: true, data: result, sheetNames: wb.SheetNames };
-  } catch (e: any) {
-    return { success: false, error: `读取Excel失败: ${e.message}` };
+  } catch (e: unknown) {
+    return { success: false, error: `读取Excel失败: ${(e as Error).message}` };
   }
 }
 

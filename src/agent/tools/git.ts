@@ -100,7 +100,7 @@ const ALLOWED_GIT_OPTIONS = new Set([
  * 验证 Git 参数是否安全
  * 使用白名单方式验证，防止命令注入攻击
  */
-function validateGitArgs(args: any[]): boolean {
+function validateGitArgs(args: string[]): boolean {
   if (!Array.isArray(args) || args.length === 0) {
     return false;
   }
@@ -176,7 +176,7 @@ function validateCwd(
   let absolutePath: string;
   try {
     absolutePath = path.isAbsolute(cwd) ? path.normalize(cwd) : path.resolve(PROJECT_ROOT, cwd);
-  } catch (e) {
+  } catch {
     return {
       valid: false,
       error: `无效的路径: ${cwd}`,
@@ -214,7 +214,10 @@ function validateCwd(
  * 执行 Git 命令
  * 使用 --no-pager 防止命令注入
  */
-function gitCommand(args: string[], cwd: string = process.cwd()): Promise<any> {
+function gitCommand(
+  args: string[],
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return new Promise((resolve) => {
     // 验证参数
     if (!validateGitArgs(args)) {
@@ -244,9 +247,9 @@ function gitCommand(args: string[], cwd: string = process.cwd()): Promise<any> {
       {
         cwd: cwdValidation.resolvedPath,
         timeout: 30000,
-        encoding: 'utf8',
+        encoding: 'utf8' as BufferEncoding,
       },
-      (error, stdout, stderr) => {
+      (error: Error | null, stdout: string, stderr: string) => {
         if (error) {
           resolve({
             success: false,
@@ -266,7 +269,9 @@ function gitCommand(args: string[], cwd: string = process.cwd()): Promise<any> {
 /**
  * 初始化 Git 仓库
  */
-async function gitInit(cwd: string = process.cwd()): Promise<any> {
+async function gitInit(
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['init'], cwd);
 }
 
@@ -277,21 +282,27 @@ async function gitClone(
   url: string,
   dest: string = '.',
   cwd: string = process.cwd(),
-): Promise<any> {
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['clone', url, dest], cwd);
 }
 
 /**
  * 添加文件
  */
-async function gitAdd(files: string = '.', cwd: string = process.cwd()): Promise<any> {
+async function gitAdd(
+  files: string = '.',
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['add', files], cwd);
 }
 
 /**
  * 提交变更
  */
-async function gitCommit(message: string, cwd: string = process.cwd()): Promise<any> {
+async function gitCommit(
+  message: string,
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['commit', '-m', message], cwd);
 }
 
@@ -302,7 +313,7 @@ async function gitPush(
   remote: string = 'origin',
   branch: string = 'main',
   cwd: string = process.cwd(),
-): Promise<any> {
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['push', remote, branch], cwd);
 }
 
@@ -313,21 +324,26 @@ async function gitPull(
   remote: string = 'origin',
   branch: string = 'main',
   cwd: string = process.cwd(),
-): Promise<any> {
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['pull', remote, branch], cwd);
 }
 
 /**
  * 查看状态
  */
-async function gitStatus(cwd: string = process.cwd()): Promise<any> {
+async function gitStatus(
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['status'], cwd);
 }
 
 /**
  * 查看日志
  */
-async function gitLog(options: string = '', cwd: string = process.cwd()): Promise<any> {
+async function gitLog(
+  options: string = '',
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const args = ['log'];
   if (options) {
     args.push(...options.split(' '));
@@ -338,49 +354,69 @@ async function gitLog(options: string = '', cwd: string = process.cwd()): Promis
 /**
  * 创建分支
  */
-async function gitBranchCreate(name: string, cwd: string = process.cwd()): Promise<any> {
+async function gitBranchCreate(
+  name: string,
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['branch', name], cwd);
 }
 
 /**
  * 切换分支
  */
-async function gitCheckout(name: string, cwd: string = process.cwd()): Promise<any> {
+async function gitCheckout(
+  name: string,
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['checkout', name], cwd);
 }
 
 /**
  * 创建并切换分支
  */
-async function gitCheckoutNew(name: string, cwd: string = process.cwd()): Promise<any> {
+async function gitCheckoutNew(
+  name: string,
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['checkout', '-b', name], cwd);
 }
 
 /**
  * 删除分支
  */
-async function gitBranchDelete(name: string, cwd: string = process.cwd()): Promise<any> {
+async function gitBranchDelete(
+  name: string,
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['branch', '-D', name], cwd);
 }
 
 /**
  * 查看分支列表
  */
-async function gitBranchList(cwd: string = process.cwd()): Promise<any> {
+async function gitBranchList(
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['branch', '-a'], cwd);
 }
 
 /**
  * 合并分支
  */
-async function gitMerge(branch: string, cwd: string = process.cwd()): Promise<any> {
+async function gitMerge(
+  branch: string,
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['merge', branch], cwd);
 }
 
 /**
  * 查看差异
  */
-async function gitDiff(options: string = '', cwd: string = process.cwd()): Promise<any> {
+async function gitDiff(
+  options: string = '',
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   const args = ['diff'];
   if (options) {
     args.push(...options.split(' '));
@@ -391,14 +427,20 @@ async function gitDiff(options: string = '', cwd: string = process.cwd()): Promi
 /**
  * 添加远程仓库
  */
-async function gitRemoteAdd(name: string, url: string, cwd: string = process.cwd()): Promise<any> {
+async function gitRemoteAdd(
+  name: string,
+  url: string,
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['remote', 'add', name, url], cwd);
 }
 
 /**
  * 查看远程仓库
  */
-async function gitRemoteList(cwd: string = process.cwd()): Promise<any> {
+async function gitRemoteList(
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['remote', '-v'], cwd);
 }
 
@@ -409,7 +451,7 @@ async function gitConfigUser(
   name: string,
   email: string,
   cwd: string = process.cwd(),
-): Promise<any> {
+): Promise<{ success: boolean; data?: string; error?: string }> {
   await gitCommand(['config', 'user.name', name], cwd);
   return await gitCommand(['config', 'user.email', email], cwd);
 }
@@ -417,7 +459,10 @@ async function gitConfigUser(
 /**
  * 撤销未提交的更改
  */
-async function gitReset(options: string = '--hard', cwd: string = process.cwd()): Promise<any> {
+async function gitReset(
+  options: string = '--hard',
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   // 白名单验证：只允许安全的 reset 选项
   const ALLOWED_RESET_OPTIONS = ['--hard', '--soft', '--mixed', '--keep', '--merge'];
   const safeOptions = options.split(' ').filter((opt) => ALLOWED_RESET_OPTIONS.includes(opt));
@@ -436,14 +481,18 @@ async function gitReset(options: string = '--hard', cwd: string = process.cwd())
 /**
  * 暂存文件
  */
-async function gitStash(cwd: string = process.cwd()): Promise<any> {
+async function gitStash(
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['stash'], cwd);
 }
 
 /**
  * 恢复暂存
  */
-async function gitStashPop(cwd: string = process.cwd()): Promise<any> {
+async function gitStashPop(
+  cwd: string = process.cwd(),
+): Promise<{ success: boolean; data?: string; error?: string }> {
   return await gitCommand(['stash', 'pop'], cwd);
 }
 
