@@ -105,7 +105,7 @@ async function handleWechatMessage(message: WechatMessage): Promise<void> {
   sessionData.messages.push({ role: 'user', content: text });
   sessionData.lastActive = Date.now();
 
-  setReplyCallback(async (replyText: string) => {
+  setReplyCallback(from, async (replyText: string) => {
     const result = await sendWechatMessage(from, replyText);
     if (result.success) {
       const replyTimestamp = new Date().toISOString();
@@ -120,7 +120,7 @@ async function handleWechatMessage(message: WechatMessage): Promise<void> {
   });
 
   const prompt = `[微信消息 来自 ${from}] ${text}`;
-  handleUserInput(prompt);
+  handleUserInput(prompt, from);
 }
 
 async function initWechatChannel(): Promise<void> {

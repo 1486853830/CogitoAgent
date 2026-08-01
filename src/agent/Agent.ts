@@ -94,14 +94,30 @@ import { loadPlugins } from './plugin.ts';
 let thinkingTimer: ReturnType<typeof setTimeout> | null = null;
 let shouldStop = false;
 let isProcessing = false;
+// 当前工具执行的 AbortController：/stop 时 abort，让 executeTool 通过 Promise.race
+// 立即返回中断结果，而不必等待单个工具（如 executeCode 跑 30s）执行完毕。
+let toolAbortController: AbortController | null = null;
 let consecutiveCycleCount = 0;
 let thoughtInterval = 3000;
-let _replyCallback: ((reply: string) => void) | null = null;
+// 按来源（如微信发送方）隔离的回复回调，避免多消息互相覆盖：
+// 之前 _replyCallback 是全局单例，A 来消息设了回调、B 来消息覆盖之，A 的回复就丢了。
+const _replyCallbacks = new Map<string, (reply: string) => void>();
+let _currentReplyKey: string | null = null;
 
 const MAX_CONSECUTIVE_CYCLES = 8;
 
-function setReplyCallback(cb: (reply: string) => void): void {
-  _replyCallback = cb;
+function setReplyCallback(key: string, cb: (reply: string) => void): void {
+  _replyCallbacks.set(key, cb);
+}
+
+/** 投递回复到当前回复目标（若有），投递后清除该目标的回调 */
+function deliverReply(reply: string): void {
+  if (!_currentReplyKey) return;
+  const cb = _replyCallbacks.get(_currentReplyKey);
+  if (cb) {
+    cb(reply);
+    _replyCallbacks.delete(_currentReplyKey);
+  }
 }
 
 function extractCleanReply(text: string): string {
@@ -164,7 +180,11 @@ interface ToolExecutionResult {
   errorType?: string;
 }
 
-async function executeTool(toolName: string, args: unknown): Promise<ToolExecutionResult> {
+async function executeTool(
+  toolName: string,
+  args: unknown,
+  signal?: AbortSignal,
+): Promise<ToolExecutionResult> {
   const registry = TOOL_REGISTRY[toolName];
   const startTime = Date.now();
 
@@ -226,7 +246,24 @@ async function executeTool(toolName: string, args: unknown): Promise<ToolExecuti
   }
 
   try {
-    const result = await fn(...(processedArgs as unknown[]));
+    const toolPromise = fn(...(processedArgs as unknown[]));
+    // /stop 触发 signal.abort 时立即返回中断结果，不再等待单个工具执行完毕。
+    // 注意：race 不会取消底层工具进程，但会解除 thinkCycle 的阻塞；长时工具
+    // 自身仍有 maxExecutionTime 超时兜底。
+    const result = signal
+      ? await Promise.race([
+          toolPromise,
+          new Promise<never>((_, reject) => {
+            if (signal.aborted) {
+              reject(new Error('工具执行被用户中断'));
+            } else {
+              signal.addEventListener('abort', () => reject(new Error('工具执行被用户中断')), {
+                once: true,
+              });
+            }
+          }),
+        ])
+      : await toolPromise;
     const duration = (Date.now() - startTime) / 1000;
 
     if (result === undefined || result === null) {
@@ -268,11 +305,15 @@ async function executeTool(toolName: string, args: unknown): Promise<ToolExecuti
   }
 }
 
-function handleUserInput(input: string): void {
+function handleUserInput(input: string, replyKey?: string): void {
   consecutiveCycleCount = 0;
 
-  if (_replyCallback && !input.startsWith('[微信消息')) {
-    _replyCallback = null;
+  // 记录本轮回复目标：微信消息附带发送方作为 key，按来源隔离回调；
+  // 非微信输入（桌面/CLI）清空回复目标，回复走终端而非微信通道。
+  if (replyKey !== undefined) {
+    _currentReplyKey = replyKey;
+  } else if (!input.startsWith('[微信消息')) {
+    _currentReplyKey = null;
   }
 
   if (input.toLowerCase() === 'exit') {
@@ -284,6 +325,11 @@ function handleUserInput(input: string): void {
     if (input === '/stop') {
       shouldStop = true;
       if (thinkingTimer) clearTimeout(thinkingTimer);
+      // 中断正在执行的单个工具：abort 后 executeTool 的 Promise.race 立即返回
+      if (toolAbortController) {
+        toolAbortController.abort();
+        toolAbortController = null;
+      }
       // 若正在等待危险操作确认，必须 resolve 挂起的 Promise：否则 thinkCycle
       // 会卡在 await requestConfirmation 直到 5 分钟超时，期间 isProcessing 被置
       // false 后新的 thinkCycle 可能被调起，导致两个循环并发、状态机破裂。
@@ -526,7 +572,10 @@ async function thinkCycle(): Promise<void> {
           'running',
         );
 
-        const result = await executeTool(toolCall.tool, toolCall.args);
+        // 为本次工具执行建立独立 AbortController，/stop 可通过 abort 中断
+        toolAbortController = new AbortController();
+        const result = await executeTool(toolCall.tool, toolCall.args, toolAbortController.signal);
+        toolAbortController = null;
 
         if (result.success) {
           const isEmpty =
@@ -615,10 +664,9 @@ async function thinkCycle(): Promise<void> {
     if (wantsToWait || state.current !== STATE.THINKING) {
       state.current = STATE.AWAITING_INPUT;
       const nextAction = wantsToWait ? 'wait' : 'continue';
-      if (_replyCallback) {
+      if (_currentReplyKey) {
         const cleanReply = extractCleanReply(finalResponse);
-        if (cleanReply) _replyCallback(cleanReply);
-        _replyCallback = null;
+        if (cleanReply) deliverReply(cleanReply);
       }
       broadcast('agent-reply', { type: 'end', nextAction });
       broadcast('agent-state', { state: 'idle' });
@@ -634,9 +682,8 @@ async function thinkCycle(): Promise<void> {
       if (cleanReply && cleanReply.length > 0) {
         consecutiveCycleCount = 0;
         state.current = STATE.AWAITING_INPUT;
-        if (_replyCallback) {
-          _replyCallback(cleanReply);
-          _replyCallback = null;
+        if (_currentReplyKey) {
+          deliverReply(cleanReply);
         }
         broadcast('agent-reply', { type: 'end', nextAction: 'wait' });
         broadcast('agent-state', { state: 'idle' });
@@ -645,10 +692,9 @@ async function thinkCycle(): Promise<void> {
         if (consecutiveCycleCount >= MAX_CONSECUTIVE_CYCLES) {
           consecutiveCycleCount = 0;
           state.current = STATE.AWAITING_INPUT;
-          if (_replyCallback) {
+          if (_currentReplyKey) {
             const reply = extractCleanReply(finalResponse);
-            if (reply) _replyCallback(reply);
-            _replyCallback = null;
+            if (reply) deliverReply(reply);
           }
           broadcast('agent-reply', { type: 'end', nextAction: 'wait' });
           broadcast('agent-state', { state: 'idle' });
@@ -663,9 +709,8 @@ async function thinkCycle(): Promise<void> {
       status: 'failed',
       details: { error: (error as Error).message },
     });
-    if (_replyCallback) {
-      _replyCallback('抱歉，处理您的消息时出错：' + (error as Error).message);
-      _replyCallback = null;
+    if (_currentReplyKey) {
+      deliverReply('抱歉，处理您的消息时出错：' + (error as Error).message);
     }
     if (shouldStop) {
       shouldStop = false;
