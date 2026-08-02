@@ -1,0 +1,442 @@
+/* ============================================================
+ *  Widgets 共享样式
+ *  6 个可观测组件的统一容器、网格、卡片设计
+ *  依赖 tokens.css 的设计变量
+ * ============================================================ */
+
+/* ---- Widget 容器外壳 ----
+ * 所有 widget 都包在 .widget-card 内，统一面板外观
+ */
+.widget-card {
+  position: relative;
+  background: var(--panel-gradient);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  overflow: hidden;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.widget-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line-phosphor) 50%, transparent);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.widget-card:hover {
+  border-color: var(--line-phosphor);
+  box-shadow: var(--shadow-panel-ambient);
+}
+
+.widget-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--type-faint);
+}
+
+.widget-head-mark {
+  color: var(--phosphor);
+  font-size: var(--text-sm);
+}
+
+.widget-head-label {
+  flex: 1;
+}
+
+.widget-head-meta {
+  color: var(--type-dim);
+  font-size: var(--text-xs);
+}
+
+/* ---- Widget 网格布局 ----
+ * 用于 OVERVIEW 视图的整体排布
+ */
+.widget-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--space-3);
+}
+
+/* 12 列网格的常用占位 */
+.widget-col-12 { grid-column: span 12; }
+.widget-col-8  { grid-column: span 8; }
+.widget-col-6  { grid-column: span 6; }
+.widget-col-4  { grid-column: span 4; }
+.widget-col-3  { grid-column: span 3; }
+
+@media (max-width: 900px) {
+  .widget-col-12,
+  .widget-col-8,
+  .widget-col-6,
+  .widget-col-4,
+  .widget-col-3 {
+    grid-column: span 12;
+  }
+}
+
+/* ---- Widget 状态 ---- */
+.widget-empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--type-faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+}
+
+/* ============================================================
+ *  1. Stat Cards — 今日卡片墙
+ * ============================================================ */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+
+.stat-card {
+  position: relative;
+  background: var(--panel-recessed);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  overflow: hidden;
+  transition: transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease);
+}
+
+.stat-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-phosphor);
+}
+
+.stat-card-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--type-faint);
+  margin-bottom: var(--space-1);
+}
+
+.stat-card-value {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--type-bright);
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.stat-card-unit {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--type-dim);
+  margin-left: var(--space-1);
+}
+
+.stat-card-trend {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--phosphor);
+}
+
+/* ============================================================
+ *  2. Token Rate — 速率圆环
+ * ============================================================ */
+.token-rate-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.token-rate-ring {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+}
+
+.token-rate-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.token-rate-ring .ring-bg {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 6;
+}
+
+.token-rate-ring .ring-fg {
+  fill: none;
+  stroke: var(--phosphor);
+  stroke-width: 6;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px var(--phosphor-glow));
+  transition: stroke-dashoffset var(--dur) var(--ease-out);
+}
+
+.token-rate-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.token-rate-value {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--phosphor);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.token-rate-unit {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--type-dim);
+  margin-top: 2px;
+}
+
+.token-rate-stats {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.token-rate-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.token-rate-key {
+  color: var(--type-dim);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.token-rate-val {
+  color: var(--type-bright);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+ *  3. ECG — 思考流心电图
+ * ============================================================ */
+.ecg-wrap {
+  position: relative;
+  height: 80px;
+  background: var(--panel-recessed);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ecg-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ecg-legend {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--type-dim);
+  letter-spacing: var(--tracking-wide);
+}
+
+.ecg-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.ecg-legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--phosphor);
+  box-shadow: 0 0 4px var(--phosphor-glow);
+}
+
+.ecg-legend-dot.amber { background: var(--amber); box-shadow: 0 0 4px rgba(251,191,36,0.4); }
+.ecg-legend-dot.crimson { background: var(--crimson); box-shadow: 0 0 4px rgba(248,113,113,0.4); }
+
+/* ============================================================
+ *  4. Heatmap — GitHub 风格热力图
+ * ============================================================ */
+.heatmap-wrap {
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 3px;
+  width: max-content;
+}
+
+.heatmap-cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--panel-3);
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.4);
+  z-index: 2;
+  outline: 1px solid var(--line-phosphor);
+}
+
+.heatmap-cell.l1 { background: rgba(94, 234, 212, 0.25); }
+.heatmap-cell.l2 { background: rgba(94, 234, 212, 0.45); }
+.heatmap-cell.l3 { background: rgba(94, 234, 212, 0.7); }
+.heatmap-cell.l4 { background: var(--phosphor); box-shadow: 0 0 4px var(--phosphor-glow); }
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--type-dim);
+}
+
+.heatmap-legend-cells {
+  display: flex;
+  gap: 3px;
+}
+
+/* ============================================================
+ *  5. Tool Rank — 工具 Top 排行榜
+ * ============================================================ */
+.tool-rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tool-rank-item {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) 0;
+}
+
+.tool-rank-no {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--type-faint);
+  text-align: right;
+}
+
+.tool-rank-name {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--type-bright);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-rank-bar-wrap {
+  grid-column: 1 / -1;
+  height: 4px;
+  background: var(--panel-recessed);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.tool-rank-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--phosphor-dim), var(--phosphor));
+  border-radius: 2px;
+  transition: width var(--dur) var(--ease-out);
+  box-shadow: 0 0 6px var(--phosphor-glow);
+}
+
+.tool-rank-bar.warn { background: linear-gradient(90deg, var(--amber-dim), var(--amber)); box-shadow: 0 0 6px rgba(251,191,36,0.4); }
+.tool-rank-bar.danger { background: linear-gradient(90deg, var(--crimson-dim), var(--crimson)); box-shadow: 0 0 6px rgba(248,113,113,0.4); }
+
+.tool-rank-count {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--phosphor);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+ *  6. Tab Bar — OVERVIEW/DETAIL 切换
+ * ============================================================ */
+.widget-tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-4);
+}
+
+.widget-tab {
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--type-faint);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.widget-tab:hover { color: var(--type-dim); }
+
+.widget-tab.active {
+  color: var(--phosphor);
+  border-bottom-color: var(--phosphor);
+}
+
+.widget-tab-pane {
+  display: none;
+}
+
+.widget-tab-pane.active {
+  display: block;
+}
