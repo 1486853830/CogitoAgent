@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CogitoAgent Monitor</title>
   <link rel="stylesheet" href="../shared/tokens.css">
-  <link rel="stylesheet" href="../shared/common.css">
-  <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../shared/common.css">
+    <link rel="stylesheet" href="../shared/widgets/widgets.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-container">
@@ -31,7 +32,26 @@
       </div>
     </div>
 
+    <!-- 顶部 Tab 切换栏 -->
+    <div class="widget-tabs" style="padding: 8px 16px 0;">
+      <button class="widget-tab active" data-pane="overviewPane">OVERVIEW</button>
+      <button class="widget-tab" data-pane="detailPane">DETAIL</button>
+    </div>
+
     <div class="content">
+      <!-- 左列：OVERVIEW(可观测 widget) -->
+      <div class="content-left overview-pane active" id="overviewPane">
+        <div class="widget-grid">
+          <div class="widget-col-12" id="widgetStatCards"></div>
+          <div class="widget-col-6" id="widgetTokenRate"></div>
+          <div class="widget-col-6" id="widgetEcg"></div>
+          <div class="widget-col-8" id="widgetHeatmap"></div>
+          <div class="widget-col-4" id="widgetToolRank"></div>
+        </div>
+      </div>
+
+      <!-- 右列：DETAIL(原思维链/工具统计/集群) -->
+      <div class="content-left detail-pane" id="detailPane" style="display:none;">
       <!-- 左列：思维链 + 工具统计 -->
       <div class="content-left">
         <!-- 思维链面板 -->
@@ -100,12 +120,19 @@
           </div>
         </div>
       </div>
+      </div><!-- end detail-pane -->
     </div>
   </div>
 
   <script src="../shared/utils.js"></script>
   <script src="../shared/window-controls.js"></script>
   <script src="../shared/panel-toggle.js"></script>
+  <script src="../shared/widgets/widget-registry.js"></script>
+  <script src="../shared/widgets/widget-stat-cards.js"></script>
+  <script src="../shared/widgets/widget-token-rate.js"></script>
+  <script src="../shared/widgets/widget-ecg.js"></script>
+  <script src="../shared/widgets/widget-heatmap.js"></script>
+  <script src="../shared/widgets/widget-tool-rank.js"></script>
   <script src="../../node_modules/echarts/dist/echarts.min.js"></script>
   <script src="renderer.js"></script>
 </body>

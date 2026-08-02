@@ -386,10 +386,47 @@ const ClusterManager = {
 };
 
 // ============================================================
+// Widget 挂载 - OVERVIEW tab 的 5 个可观测组件
+// ============================================================
+function initOverviewWidgets() {
+  const W = window.WidgetRegistry;
+  if (!W) {
+    console.warn('[Monitor] WidgetRegistry 未加载');
+    return;
+  }
+  W.mount('statCards', document.getElementById('widgetStatCards'));
+  W.mount('tokenRate', document.getElementById('widgetTokenRate'));
+  W.mount('ecg', document.getElementById('widgetEcg'));
+  W.mount('heatmap', document.getElementById('widgetHeatmap'));
+  W.mount('toolRank', document.getElementById('widgetToolRank'));
+}
+
+// ============================================================
+// Tab 切换 - OVERVIEW / DETAIL
+// ============================================================
+function initTabSwitch() {
+  const tabs = document.querySelectorAll('.widget-tab[data-pane]');
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const targetId = tab.dataset.pane;
+      tabs.forEach((t) => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.overview-pane, .detail-pane').forEach((pane) => {
+        pane.style.display = 'none';
+      });
+      const target = document.getElementById(targetId);
+      if (target) target.style.display = '';
+    });
+  });
+}
+
+// ============================================================
 // 应用入口
 // ============================================================
 function init() {
   console.log('[Monitor] 初始化...');
+  initTabSwitch();
+  initOverviewWidgets();
   ThoughtManager.init();
   StatsManager.init();
   ClusterManager.init();
