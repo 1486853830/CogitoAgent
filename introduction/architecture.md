@@ -6,20 +6,20 @@
 
 ## 1. 核心组件表
 
-| 组件 | 文件 | 职责描述 |
-|------|------|---------|
-| **Agent 引擎** | `Agent.ts` | 思考循环主控制器，负责任务编排、状态转换、LLM 交互调度 |
-| **状态管理** | `state.ts` | 集中式状态管理，维护 Agent 生命周期状态（THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION） |
-| **工具注册中心** | `registry.ts` | 工具注册与发现，管理所有可用工具的元数据、参数 schema 和执行句柄 |
-| **会话管理** | `session.ts` | 多会话隔离，管理对话上下文、历史记录和配置持久化，支持自动压缩 |
-| **命令执行器** | `commands.ts` | 将 Agent 决策转化为具体操作，执行工具调用并处理结果 |
-| **安全沙箱** | `sandbox.ts` | 命令执行沙箱，提供安全的代码/命令执行环境，使用 `isolated-vm` 进程级隔离 |
-| **统计模块** | `stats.ts` | 工具使用追踪和性能指标，记录调用次数、耗时等统计数据 |
-| **追踪模块** | `tracing.ts` | 轻量级可观测性，记录工具执行和 LLM 调用的详细追踪信息 |
-| **集群命令** | `cluster-commands.ts` | 子智能体管理，支持创建、委派、停止子智能体 |
-| **MCP Server** | `mcp.ts` | 将工具暴露为 MCP 协议，支持与其他 AI 客户端集成 |
-| **插件系统** | `plugin.ts` | 动态加载自定义工具插件，扩展 Agent 能力 |
-| **WebSocket 服务器** | `ws-server.ts` | 实时双向通信层，为 Electron 客户端和其他 WS 客户端提供消息通道（端口 9527） |
+| 组件                 | 文件                  | 职责描述                                                                                     |
+| -------------------- | --------------------- | -------------------------------------------------------------------------------------------- |
+| **Agent 引擎**       | `Agent.ts`            | 思考循环主控制器，负责任务编排、状态转换、LLM 交互调度                                       |
+| **状态管理**         | `state.ts`            | 集中式状态管理，维护 Agent 生命周期状态（THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION） |
+| **工具注册中心**     | `registry.ts`         | 工具注册与发现，管理所有可用工具的元数据、参数 schema 和执行句柄                             |
+| **会话管理**         | `session.ts`          | 多会话隔离，管理对话上下文、历史记录和配置持久化，支持自动压缩                               |
+| **命令执行器**       | `commands.ts`         | 将 Agent 决策转化为具体操作，执行工具调用并处理结果                                          |
+| **安全沙箱**         | `sandbox.ts`          | 命令执行沙箱，提供安全的代码/命令执行环境，使用 `isolated-vm` 进程级隔离                     |
+| **统计模块**         | `stats.ts`            | 工具使用追踪和性能指标，记录调用次数、耗时等统计数据                                         |
+| **追踪模块**         | `tracing.ts`          | 轻量级可观测性，记录工具执行和 LLM 调用的详细追踪信息                                        |
+| **集群命令**         | `cluster-commands.ts` | 子智能体管理，支持创建、委派、停止子智能体                                                   |
+| **MCP Server**       | `mcp.ts`              | 将工具暴露为 MCP 协议，支持与其他 AI 客户端集成                                              |
+| **插件系统**         | `plugin.ts`           | 动态加载自定义工具插件，扩展 Agent 能力                                                      |
+| **WebSocket 服务器** | `ws-server.ts`        | 实时双向通信层，为 Electron 客户端和其他 WS 客户端提供消息通道（端口 9527）                  |
 
 ---
 
@@ -123,14 +123,14 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     participant User as 用户
-    participant Agent as Agent.js
-    participant State as state.js
+    participant Agent as Agent.ts
+    participant State as state.ts
     participant LLM as LLM API
-    participant Registry as registry.js
-    participant Cmd as commands.js
-    participant Sandbox as sandbox.js
-    participant Stats as stats.js
-    participant Tracing as tracing.js
+    participant Registry as registry.ts
+    participant Cmd as commands.ts
+    participant Sandbox as sandbox.ts
+    participant Stats as stats.ts
+    participant Tracing as tracing.ts
     participant Tool as 外部工具
 
     User->>Agent: 发送消息
@@ -230,12 +230,12 @@ stateDiagram-v2
 
 ### 状态说明
 
-| 状态 | 说明 |
-|------|------|
-| `IDLE` | 初始空闲状态，等待输入 |
-| `AWAITING_INPUT` | 等待用户输入消息或系统事件触发 |
-| `THINKING` | Agent 正在思考循环中——构建提示、调用 LLM、执行工具 |
-| `AWAITING_CONFIRMATION` | 等待用户确认高风险操作（如文件删除、命令执行等） |
+| 状态                    | 说明                                               |
+| ----------------------- | -------------------------------------------------- |
+| `IDLE`                  | 初始空闲状态，等待输入                             |
+| `AWAITING_INPUT`        | 等待用户输入消息或系统事件触发                     |
+| `THINKING`              | Agent 正在思考循环中——构建提示、调用 LLM、执行工具 |
+| `AWAITING_CONFIRMATION` | 等待用户确认高风险操作（如文件删除、命令执行等）   |
 
 ---
 
@@ -273,21 +273,23 @@ flowchart TB
 
 ### 7.2 窗口
 
-| 窗口 | 文件 | 用途 |
-|------|------|------|
-| **Desktop Window** | `desktop.html` | 主交互界面——用户输入、对话展示、实时流式输出 |
-| **Dashboard Window** | `dashboard.html` | 仪表盘——会话概览、工具调用统计、运行状态监控 |
-| **Setup Window** | `setup.html` | 配置向导——首次配置 API Key、模型、工作目录、角色 |
+| 窗口                 | 文件             | 用途                                             |
+| -------------------- | ---------------- | ------------------------------------------------ |
+| **Desktop Window**   | `desktop.html`   | 主交互界面——用户输入、对话展示、实时流式输出     |
+| **Dashboard Window** | `dashboard.html` | 仪表盘——会话概览、工具调用统计、运行状态监控     |
+| **Setup Window**     | `setup.html`     | 配置向导——首次配置 API Key、模型、工作目录、角色 |
 
 ### 7.3 主要进程
 
 #### `main.js` — 窗口管理器
+
 - 创建和管理 Desktop、Dashboard、Setup 窗口实例
 - 注册 IPC 通道（`ipcMain.handle` / `ipcMain.on`）
 - 管理系统托盘、菜单栏和全局快捷键
 - 控制窗口生命周期（创建、隐藏、显示、销毁）
 
 #### `preload.cjs` — IPC 桥接
+
 - 通过 `contextBridge.exposeInMainWorld` 安全暴露 API
 - 定义白名单通道，限制渲染进程可调用的主进程方法
 - 实现请求-响应模式的异步调用
@@ -296,29 +298,29 @@ flowchart TB
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  sendMessage: (payload) =>
-    ipcRenderer.invoke('agent:message', payload),
-  onResponse: (callback) =>
-    ipcRenderer.on('agent:response', (_event, data) => callback(data)),
+  sendMessage: (payload) => ipcRenderer.invoke('agent:message', payload),
+  onResponse: (callback) => ipcRenderer.on('agent:response', (_event, data) => callback(data)),
 });
 ```
 
 #### `agent-bridge.js` — Agent 通信桥
+
 - 作为主进程与 Agent 子进程之间的中间层
 - 负责消息的序列化/反序列化、协议转换
 - 请求超时管理、错误重试策略
 - 统一消息路由：将渲染进程请求转发至 WebSocket，并将响应回传
 
 #### `ws-server.ts` — WebSocket 服务
+
 详见第 8 节。
 
 ### 7.4 窗口特性
 
-| 特性 | 说明 |
-|------|------|
-| **Frameless（无边框）** | `frame: false`，自定义标题栏和拖拽区域，实现沉浸式 UI |
-| **Transparent（透明）** | `transparent: true`，配合 CSS `background: transparent`，实现圆角、阴影等视觉效果 |
-| **AlwaysOnTop（置顶）** | `alwaysOnTop: true`，窗口始终保持在最上层，方便快捷访问 |
+| 特性                          | 说明                                                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Frameless（无边框）**       | `frame: false`，自定义标题栏和拖拽区域，实现沉浸式 UI                                                   |
+| **Transparent（透明）**       | `transparent: true`，配合 CSS `background: transparent`，实现圆角、阴影等视觉效果                       |
+| **AlwaysOnTop（置顶）**       | `alwaysOnTop: true`，窗口始终保持在最上层，方便快捷访问                                                 |
 | **Click-Through（点击穿透）** | 通过 `win.setIgnoreMouseEvents(true, { forward: true })` 实现，在特定模式下鼠标事件可穿透窗口到下层应用 |
 
 ---
@@ -331,13 +333,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 #### 核心功能
 
-| 功能 | 说明 |
-|------|------|
-| **连接管理** | 维护活跃客户端列表，处理连接/断开事件 |
-| **消息路由** | 基于 `action` 字段分发消息到对应处理器 |
-| **心跳检测** | 定时 ping/pong 检测客户端存活状态 |
+| 功能         | 说明                                     |
+| ------------ | ---------------------------------------- |
+| **连接管理** | 维护活跃客户端列表，处理连接/断开事件    |
+| **消息路由** | 基于 `action` 字段分发消息到对应处理器   |
+| **心跳检测** | 定时 ping/pong 检测客户端存活状态        |
 | **重连支持** | 客户端断线后自动重连，服务端保持会话状态 |
-| **广播** | 支持向所有或指定客户端广播消息 |
+| **广播**     | 支持向所有或指定客户端广播消息           |
 
 #### 消息格式
 
@@ -354,30 +356,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `action` | string | 消息动作类型 |
-| `id` | string | 请求唯一标识，用于响应关联 |
-| `timestamp` | string | ISO 8601 时间戳 |
-| `payload` | object | 消息体，存放具体数据 |
+| 字段        | 类型   | 说明                       |
+| ----------- | ------ | -------------------------- |
+| `action`    | string | 消息动作类型               |
+| `id`        | string | 请求唯一标识，用于响应关联 |
+| `timestamp` | string | ISO 8601 时间戳            |
+| `payload`   | object | 消息体，存放具体数据       |
 
 #### 消息类型
 
-| 方向 | action | 说明 |
-|------|--------|------|
-| Client → Server | `user:message` | 用户发送消息 |
-| Client → Server | `session:create` | 创建新会话 |
-| Client → Server | `session:switch` | 切换会话 |
-| Client → Server | `session:delete` | 删除会话 |
-| Client → Server | `session:rename` | 重命名会话 |
-| Client → Server | `tool:confirm` | 确认工具执行 |
-| Client → Server | `tool:reject` | 拒绝工具执行 |
-| Server → Client | `agent:thinking` | Agent 开始思考 |
-| Server → Client | `agent:response` | Agent 输出响应 |
+| 方向            | action            | 说明                   |
+| --------------- | ----------------- | ---------------------- |
+| Client → Server | `user:message`    | 用户发送消息           |
+| Client → Server | `session:create`  | 创建新会话             |
+| Client → Server | `session:switch`  | 切换会话               |
+| Client → Server | `session:delete`  | 删除会话               |
+| Client → Server | `session:rename`  | 重命名会话             |
+| Client → Server | `tool:confirm`    | 确认工具执行           |
+| Client → Server | `tool:reject`     | 拒绝工具执行           |
+| Server → Client | `agent:thinking`  | Agent 开始思考         |
+| Server → Client | `agent:response`  | Agent 输出响应         |
 | Server → Client | `agent:tool_call` | Agent 请求工具调用确认 |
-| Server → Client | `agent:error` | Agent 发生错误 |
-| Server → Client | `session:list` | 返回会话列表 |
-| System | `ping` / `pong` | 心跳检测 |
+| Server → Client | `agent:error`     | Agent 发生错误         |
+| Server → Client | `session:list`    | 返回会话列表           |
+| System          | `ping` / `pong`   | 心跳检测               |
 
 ### 8.2 Electron 客户端连接流程
 
@@ -385,8 +387,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 sequenceDiagram
     participant Main as main.js
     participant Bridge as agent-bridge.js
-    participant WS as ws-server.js
-    participant Agent as Agent.js
+    participant WS as ws-server.ts
+    participant Agent as Agent.ts
 
     Main->>Bridge: 初始化 AgentBridge
     Bridge->>WS: new WebSocket("ws://localhost:9527")
@@ -422,13 +424,13 @@ Electron 渲染进程不能直接访问 WebSocket，而是通过以下链路通�
 Renderer (contextBridge)
     → ipcRenderer.invoke → ipcMain.handle
         → agent-bridge.js → ws.send
-            → ws-server.js → Agent
+            → ws-server.ts → Agent
 ```
 
 ### 8.3 自定义 WebSocket 客户端示例
 
 ```javascript
-const WebSocket = require('ws');
+import WebSocket from 'ws';
 
 class AgentClient {
   constructor(url = 'ws://localhost:9527') {
@@ -528,14 +530,14 @@ client.connect();
 
 ### 8.4 WebSocket 配置
 
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| `port` | `9527` | WebSocket 服务监听端口 |
-| `reconnectInterval` | `3000` ms | 客户端断线重连间隔 |
-| `heartbeatInterval` | `25000` ms | 心跳检测间隔（服务端 ping 客户端） |
-| `heartbeatTimeout` | `10000` ms | 心跳超时时间，超时则判定连接断开 |
-| `maxPayload` | `10 * 1024 * 1024` | 最大消息负载（字节），默认 10 MB |
-| `maxClients` | `100` | 最大并发客户端连接数 |
+| 配置项              | 默认值             | 说明                               |
+| ------------------- | ------------------ | ---------------------------------- |
+| `port`              | `9527`             | WebSocket 服务监听端口             |
+| `reconnectInterval` | `3000` ms          | 客户端断线重连间隔                 |
+| `heartbeatInterval` | `25000` ms         | 心跳检测间隔（服务端 ping 客户端） |
+| `heartbeatTimeout`  | `10000` ms         | 心跳超时时间，超时则判定连接断开   |
+| `maxPayload`        | `10 * 1024 * 1024` | 最大消息负载（字节），默认 10 MB   |
+| `maxClients`        | `100`              | 最大并发客户端连接数               |
 
 ---
 
@@ -560,6 +562,7 @@ client.connect();
 ### 9.2 上下文压缩
 
 当会话历史超过配置的最大长度时，自动触发压缩：
+
 - 使用 LLM 总结早期对话
 - 保留最近 N 条消息
 - 将总结作为上下文前缀

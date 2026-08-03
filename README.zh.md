@@ -382,7 +382,7 @@ cogito-agent/
 │   │   ├── commands.ts / session.ts / stats.ts
 │   │   ├── mcp.ts / plugin.ts / thought-trace.ts / retry.ts
 │   │   ├── wechat-manager.ts         # 微信通道管理
-│   │   └── tools/                    # 16+ 工具模块
+│   │   └── tools/                    # 28+ 工具模块
 │   ├── api/                          # API 层（client, models, webSearch）
 │   ├── io/                           # Terminal, Logger, WebSocket
 │   ├── config.ts                     # 配置管理
@@ -393,7 +393,7 @@ cogito-agent/
 │   ├── desktop/ / dashboard/ / monitor/ / setup/
 │   ├── shared/                       # 共享工具
 │   └── assets/
-├── personas/                         # 22 个预设角色（13 现代 + 9 古代）
+├── personas/                         # 28 个预设角色（18 现代 + 10 古代）
 ├── tests/                            # 测试文件
 ├── data/                             # 运行时数据（自动创建）
 ├── tsconfig.json                     # TypeScript 配置
@@ -425,7 +425,7 @@ flowchart TD
 
     subgraph COGNITION["认知层"]
         MEMORY["memory.ts<br/>SQLite 存储 + 语义搜索"]
-        PERSONA["system-prompt.ts<br/>22 角色 + 自定义"]
+        PERSONA["system-prompt.ts<br/>28 角色 + 自定义"]
         THOUGHT["thought-trace.ts<br/>实时思维链可视化"]
     end
 
@@ -488,7 +488,7 @@ flowchart TD
 - **记忆系统** —— 基于 JSON 的长期存储和标签语义检索
 - **任务管理** —— 任务创建、分解和状态追踪
 - **代码沙箱** —— `isolated-vm` 进程级隔离，支持 JS 和 Python
-- **角色系统** —— 25 个预设角色（14 现代 + 11 古风/地域），支持自定义和热切换
+- **角色系统** —— 28 个预设角色（18 现代 + 10 古风/地域），支持自定义和热切换
 - **会话管理** —— 独立上下文，自动压缩
 - **统计模块** —— 工具使用追踪和性能指标
 - **思维链可视化** —— 实时思考过程展示

@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.3.2 (2025-07)
+## v2.3.2 (2026-07)
 
 - feat: 新增化学、金融、数学统计工具模块，优化坐标转换参数校验
 - feat(agent): add medical tool suite with clinical calculation functions
@@ -10,7 +10,7 @@
 - refactor: 提取公共组件并重构页面逻辑
 - feat: add token usage tracking and display feature
 
-## v2.3.1 (2025-06)
+## v2.3.1 (2026-06)
 
 - **微信通道集成**:
   - feat: 新增微信通道集成功能
@@ -84,7 +84,7 @@
   - 5d878dd GitHub pages
   - chore: 更新依赖配置与文档要求
 
-## v2.3.0 (2025-05)
+## v2.3.0 (2026-05)
 
 - feat: Initialize CogitoAgent project with core functionalities
 - 初始版本发布，包含核心 Agent 功能和基础工具链
