@@ -165,7 +165,7 @@ describe('io/terminal.ts', () => {
       expect(writeSpy).toHaveBeenCalled();
       // writeSpy 接收的是 join 后的完整字符串，检查是否包含 Cogito 的 ASCII logo
       const out = writeSpy.mock.calls.map((c) => String(c[0])).join('');
-      expect(out).toContain('TOGETHER');
+      expect(out).toContain('████');
       expect(out).toContain('VERSION');
     });
   });
