@@ -38,6 +38,7 @@ import {
   getSessionStats,
   getToolUsageByCategory,
   getTopUsedTools,
+  getMergedDailyHistory,
 } from './stats.ts';
 import {
   STATE,
@@ -846,6 +847,8 @@ async function start(): Promise<void> {
           return { data: getThoughtTrace() };
         } else if (payload?.type === 'cluster') {
           return { data: orchestrator.getClusterStatus() };
+        } else if (payload?.type === 'dailyHistory') {
+          return { data: getMergedDailyHistory(payload?.limit || 365) };
         } else if (payload?.type === 'tokens') {
           const s = getSessionStats();
           return {
@@ -865,6 +868,7 @@ async function start(): Promise<void> {
           session: getSessionStats(),
           thoughtTrace: getThoughtTrace(),
           cluster: orchestrator.getClusterStatus(),
+          dailyHistory: getMergedDailyHistory(365),
         };
       });
     } catch (e) {
@@ -874,7 +878,13 @@ async function start(): Promise<void> {
     console.log('[WS] WebSocket 服务已禁用（CLI 模式）');
   }
 
-  printBanner();
+  printBanner({
+    version: '2.3.2',
+    persona: cfg.persona || 'Assistant',
+    workspace: tools.getBasePath(),
+    sessions: 1,
+    mode: process.env.CLI_MODE ? 'CLI' : process.env.ELECTRON_MODE ? 'Electron' : 'CLI',
+  });
   printDivider('─', 'cyan');
   println(
     '  活动范围: ' +

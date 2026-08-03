@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { buildSystemPrompt } from './system-prompt.ts';
 import type { Message, SessionMeta, SessionInfo } from '../types/index.ts';
 import { broadcast } from '../io/ws-server.ts';
+import { recordSession } from './stats.ts';
 
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const SESSIONS_DIR = path.resolve(DATA_DIR, 'data', 'sessions');
@@ -182,6 +183,7 @@ function createNewSession(name?: string | null, persona?: string | null) {
   conversationHistory = [{ role: 'system', content: buildSystemPrompt() }];
   turnCount = 0;
   saveSession(id, conversationHistory);
+  recordSession();
 
   console.log(`[会话] 已创建新会话: ${session.name}`);
   return session;

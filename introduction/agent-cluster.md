@@ -18,33 +18,33 @@ CogitoAgent 支持**子智能体**（Sub-Agent）的创建和管理，实现多�
 
 通过 `/spawn` 命令可以创建子智能体，当前支持以下创建方式：
 
-| 命令 | 说明 |
-|------|------|
+| 命令                                    | 说明                               |
+| --------------------------------------- | ---------------------------------- |
 | `/spawn <persona> <name> <instruction>` | 创建子智能体，指定角色、名称和指令 |
-| `/agents` | 列出所有子智能体 |
+| `/agents`                               | 列出所有子智能体                   |
 
 子智能体创建后，主智能体可以对子智能体进行任务委派：
 
-| 命令 | 说明 |
-|------|------|
+| 命令                         | 说明                   |
+| ---------------------------- | ---------------------- |
 | `/delegate <agentId> <task>` | 向指定子智能体委派任务 |
-| `/stop-agent <agentId>` | 停止指定子智能体 |
-| `/stop-all-agents` | 停止所有子智能体 |
+| `/stop-agent <agentId>`      | 停止指定子智能体       |
+| `/stop-all-agents`           | 停止所有子智能体       |
 
 ### 2.2 集群状态
 
 每个子智能体包含以下状态信息：
 
-| 字段 | 说明 |
-|------|------|
-| `id` | 智能体唯一标识 |
-| `name` | 智能体名称 |
-| `persona` | 智能体人设 |
-| `state` | 当前状态（idle / thinking / tool_executing / done / error） |
-| `toolCalls` | 工具调用次数 |
-| `iterationCount` | 思考迭代次数 |
-| `lastActiveAt` | 最后活跃时间 |
-| `hasError` / `error` | 错误信息 |
+| 字段                 | 说明                                                        |
+| -------------------- | ----------------------------------------------------------- |
+| `id`                 | 智能体唯一标识                                              |
+| `name`               | 智能体名称                                                  |
+| `persona`            | 智能体人设                                                  |
+| `state`              | 当前状态（idle / thinking / tool_executing / done / error） |
+| `toolCalls`          | 工具调用次数                                                |
+| `iterationCount`     | 思考迭代次数                                                |
+| `lastActiveAt`       | 最后活跃时间                                                |
+| `hasError` / `error` | 错误信息                                                    |
 
 ### 2.3 状态流转
 
@@ -65,6 +65,8 @@ idle → thinking → tool_executing → thinking → ... → done
 ## 3. 监控面板
 
 监控面板是一个独立的 Electron 窗口，提供三块实时可视化面板：
+
+![Monitor Panel](monitor.png)
 
 ### 3.1 思维链（Thought Chain）
 

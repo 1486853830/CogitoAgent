@@ -4,6 +4,7 @@
 
 import readline from 'readline';
 import process from 'process';
+import { printBanner as printNeofetchBanner } from './banner.ts';
 
 let rl: readline.Interface | null = null;
 let userInputCallback: ((input: string) => void) | null = null;
@@ -243,24 +244,18 @@ function onCleanup(callback: () => void | Promise<void>): void {
 }
 
 /**
- * 打印启动 banner
+ * 打印启动 banner — Neofetch 风格
+ * 接收可选 info 参数;无参数时从 process 自动推断
  */
-function printBanner(): void {
-  const banner = `
-${COLORS.cyan}${COLORS.bold}
-██████╗  ██████╗  ██████╗ ██╗████████╗ ██████╗      █████╗  ██████╗ ███████╗███╗   ██╗████████╗
-██╔═══╝  ██╔═══██╗██╔═══╝  ██║╚══██╔═╝ ██╔═══██╗    ██╔══██╗██╔═══╝  ██╔═══╝ ████╗  ██║╚══██╔═╝
-██║      ██║   ██║██║  ███╗██║   ██║   ██║   ██║    ███████║██║  ███╗█████╗  ██╔██╗ ██║   ██║   
-██║      ██║   ██║██║   ██║██║   ██║   ██║   ██║    ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║   
-╚██████╗ ╚██████╔╝╚██████╔╝██║   ██║   ╚██████╔╝    ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║   
- ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝   ╚═╝    ╚═════╝     ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   
-${COLORS.reset}
-${COLORS.cyan}${COLORS.bold}            CogitoAgent${COLORS.reset}
-${COLORS.bold}╔══════════════════════════════════════════════════════════════╗
-║  持续思考的智能体 - 探索文件 · 联网搜索 · 自主学习           ║
-╚══════════════════════════════════════════════════════════════╝${COLORS.reset}
-`;
-  console.log(banner);
+function printBanner(info?: {
+  version?: string;
+  persona?: string;
+  workspace?: string;
+  sessions?: number;
+  tools?: number;
+  mode?: string;
+}): void {
+  printNeofetchBanner(info || {});
 }
 
 function showPrompt(): void {
