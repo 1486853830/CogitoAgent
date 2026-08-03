@@ -15,6 +15,16 @@ interface ToolCategoryStats {
   >;
 }
 
+interface DailyStats {
+  date: string;
+  sessions: number;
+  messages: number;
+  toolCalls: number;
+  tokens: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
 interface SessionStats {
   totalSessions: number;
   totalMessages: number;
@@ -30,7 +40,9 @@ interface SessionStats {
   todayOutputTokens: number;
   todayTokens: number;
   lastDate?: string;
-  [key: string]: number | string | undefined;
+  // 按天历史(用于热力图),key 为 YYYY-MM-DD
+  dailyHistory?: Record<string, DailyStats>;
+  [key: string]: number | string | undefined | Record<string, DailyStats>;
 }
 
 let toolStats: Record<string, ToolCategoryStats> = {};
@@ -131,10 +143,24 @@ function saveStats(): void {
 
 /**
  * 检查日期是否变更，若跨日则统一重置所有 today 计数器
+ * 跨日时把昨天的累计归档到 dailyHistory(供热力图使用)
  */
 function checkAndResetDay(): void {
   const today = new Date().toISOString().split('T')[0];
   if (sessionStats.lastDate !== today) {
+    // 把上一个 lastDate 对应的"今天累计"归档到历史
+    if (sessionStats.lastDate) {
+      if (!sessionStats.dailyHistory) sessionStats.dailyHistory = {};
+      sessionStats.dailyHistory[sessionStats.lastDate] = {
+        date: sessionStats.lastDate,
+        sessions: sessionStats.todaySessions,
+        messages: sessionStats.todayMessages,
+        toolCalls: sessionStats.todayToolCalls,
+        tokens: sessionStats.todayTokens,
+        inputTokens: sessionStats.todayInputTokens,
+        outputTokens: sessionStats.todayOutputTokens,
+      };
+    }
     sessionStats.lastDate = today;
     sessionStats.todaySessions = 0;
     sessionStats.todayMessages = 0;
@@ -143,6 +169,35 @@ function checkAndResetDay(): void {
     sessionStats.todayOutputTokens = 0;
     sessionStats.todayTokens = 0;
   }
+}
+
+/**
+ * 实时累计当天历史——记录当前进行中的当天数据
+ * 热力图读取时需要把今日"实时"数据合并进 dailyHistory
+ */
+function getMergedDailyHistory(days = 365): DailyStats[] {
+  const history: Record<string, DailyStats> = {};
+  // 先复制历史
+  if (sessionStats.dailyHistory) {
+    for (const [k, v] of Object.entries(sessionStats.dailyHistory)) {
+      history[k] = { ...v };
+    }
+  }
+  // 合并今日实时数据
+  const today = sessionStats.lastDate || new Date().toISOString().split('T')[0];
+  history[today] = {
+    date: today,
+    sessions: sessionStats.todaySessions,
+    messages: sessionStats.todayMessages,
+    toolCalls: sessionStats.todayToolCalls,
+    tokens: sessionStats.todayTokens,
+    inputTokens: sessionStats.todayInputTokens,
+    outputTokens: sessionStats.todayOutputTokens,
+  };
+  // 排序并截取最近 days 天
+  return Object.values(history)
+    .sort((a, b) => (a.date < b.date ? -1 : 1))
+    .slice(-days);
 }
 
 function recordToolCall(
@@ -315,6 +370,7 @@ function resetStats(): void {
     todayOutputTokens: 0,
     todayTokens: 0,
     lastDate: new Date().toISOString().split('T')[0],
+    dailyHistory: {},
   };
   saveStats();
 }
@@ -334,5 +390,6 @@ export {
   getSessionStats,
   getToolUsageByCategory,
   getTopUsedTools,
+  getMergedDailyHistory,
   resetStats,
 };
