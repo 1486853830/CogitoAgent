@@ -108,8 +108,12 @@ const StatsManager = {
     if (data.toolUsage) this.updateChart(data.toolUsage);
     if (data.session) this.updateStats(data.session);
     if (data.data) {
+      // data.data 可能是 toolUsage 数组(有 callCount) 或 dailyHistory 数组(有 date)
       if (Array.isArray(data.data) && data.data.length > 0) {
-        this.updateChart(data.data);
+        // 只当是工具统计数据时才更新 chart
+        if (data.data[0].callCount !== undefined) {
+          this.updateChart(data.data);
+        }
       } else if (data.data.totalToolCalls !== undefined) {
         this.updateStats(data.data);
       }
