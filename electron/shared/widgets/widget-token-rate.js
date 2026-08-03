@@ -6,11 +6,11 @@
 
 window.WidgetRegistry?.register('tokenRate', (container, opts = {}) => {
   const state = {
-    samples: [],          // {t: ms, count: n}
+    samples: [], // {t: ms, count: n}
     totalToday: 0,
     totalAll: 0,
     lastTotal: 0,
-    maxRate: 100,         // 自适应上限
+    maxRate: 100, // 自适应上限
     intervalId: null,
   };
 
@@ -28,16 +28,43 @@ window.WidgetRegistry?.register('tokenRate', (container, opts = {}) => {
     const last = state.samples[state.samples.length - 1];
     const dt = (last.t - first.t) / 1000;
     if (dt <= 0) return 0;
-    return Math.round(last.count / dt);
+    const total = state.samples.reduce((sum, s) => sum + s.count, 0);
+    return Math.round(total / dt);
   }
 
   function render() {
+    if (!container) return;
     const rate = computeRate();
+    const hasData = state.samples.length >= 2;
     // 自适应上限
     if (rate > state.maxRate) state.maxRate = Math.ceil(rate / 100) * 100;
-    const pct = Math.min(rate / state.maxRate, 1);
+    const pct = hasData ? Math.min(rate / state.maxRate, 1) : 0;
     const circumference = 2 * Math.PI * 42;
     const offset = circumference * (1 - pct);
+
+    const ringContent = hasData
+      ? `
+      <div class="token-rate-ring">
+        <svg viewBox="0 0 96 96">
+          <circle class="ring-bg" cx="48" cy="48" r="42"/>
+          <circle class="ring-fg" cx="48" cy="48" r="42"
+            stroke-dasharray="${circumference}"
+            stroke-dashoffset="${offset}"/>
+        </svg>
+        <div class="token-rate-center">
+          <div class="token-rate-value">${rate}</div>
+          <div class="token-rate-unit">tok/s</div>
+        </div>
+      </div>
+    `
+      : `
+      <div class="token-rate-ring" style="display:flex;align-items:center;justify-content:center;">
+        <div class="token-rate-center">
+          <div class="token-rate-value" style="font-size:12px;">--</div>
+          <div class="token-rate-unit">tok/s</div>
+        </div>
+      </div>
+    `;
 
     container.innerHTML = `
       <div class="widget-card">
@@ -47,18 +74,7 @@ window.WidgetRegistry?.register('tokenRate', (container, opts = {}) => {
           <span class="widget-head-meta">5s 窗口</span>
         </div>
         <div class="token-rate-wrap">
-          <div class="token-rate-ring">
-            <svg viewBox="0 0 96 96">
-              <circle class="ring-bg" cx="48" cy="48" r="42"/>
-              <circle class="ring-fg" cx="48" cy="48" r="42"
-                stroke-dasharray="${circumference}"
-                stroke-dashoffset="${offset}"/>
-            </svg>
-            <div class="token-rate-center">
-              <div class="token-rate-value">${rate}</div>
-              <div class="token-rate-unit">tok/s</div>
-            </div>
-          </div>
+          ${ringContent}
           <div class="token-rate-stats">
             <div class="token-rate-row">
               <span class="token-rate-key">TODAY</span>
@@ -85,29 +101,40 @@ window.WidgetRegistry?.register('tokenRate', (container, opts = {}) => {
     return num.toString();
   }
 
+  function applyStatsResponse(s) {
+    if (!s) return;
+    // 使用 !== undefined 检查,避免 0 值被 || 吞掉
+    if (s.todayTokens !== undefined) state.totalToday = Number(s.todayTokens) || 0;
+    if (s.totalTokens !== undefined) state.totalAll = Number(s.totalTokens) || 0;
+    render();
+  }
+
   return {
     init() {
       render();
+      // 发送初始请求获取累计数据
+      if (window.electronAPI?.sendStatsRequest) {
+        window.electronAPI.sendStatsRequest({ type: 'tokens' });
+      }
       // 监听 token-usage 推送
       if (window.electronAPI?.onTokenUsage) {
         window.electronAPI.onTokenUsage((data) => {
           const total = Number(data?.total) || 0;
           if (total > 0) {
             pushSample(total);
-            state.totalToday = Number(data?.session?.todayTokens) || state.totalToday + total;
-            state.totalAll = Number(data?.session?.totalTokens) || state.totalAll + total;
-            render();
+            // 从 session 中取累计值,避免用累加导致重复
+            if (data?.session) {
+              applyStatsResponse(data.session);
+            } else {
+              render();
+            }
           }
         });
       }
       if (window.electronAPI?.on) {
         window.electronAPI.on('stats-response', (data) => {
           const s = data?.data || data?.session || data;
-          if (s && (s.todayTokens !== undefined || s.totalTokens !== undefined)) {
-            state.totalToday = Number(s.todayTokens) || state.totalToday;
-            state.totalAll = Number(s.totalTokens) || state.totalAll;
-            render();
-          }
+          applyStatsResponse(s);
         });
       }
       // 每 500ms 重新计算速率(让圆环持续衰减)
@@ -118,12 +145,7 @@ window.WidgetRegistry?.register('tokenRate', (container, opts = {}) => {
     update(data) {
       const total = Number(data?.total) || 0;
       if (total > 0) pushSample(total);
-      const s = data?.session || data;
-      if (s) {
-        state.totalToday = Number(s.todayTokens) || state.totalToday;
-        state.totalAll = Number(s.totalTokens) || state.totalAll;
-      }
-      render();
+      applyStatsResponse(data?.session || data);
     },
     destroy() {
       if (state.intervalId) clearInterval(state.intervalId);

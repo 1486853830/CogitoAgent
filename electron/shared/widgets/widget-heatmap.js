@@ -61,15 +61,37 @@ window.WidgetRegistry?.register('heatmap', (container, opts = {}) => {
     state.thresholds = computeThresholds(values);
     const cells = buildGrid(state.data);
     const total = values.reduce((a, b) => a + b, 0);
+    const hasData = values.some((v) => v > 0);
 
-    const cellHtml = cells.map((c) => {
-      const cls = c.level === 0 ? '' : `l${c.level}`;
-      return `<div class="heatmap-cell ${cls}" title="${c.date}: ${c.val}"></div>`;
-    }).join('');
-
-    const metricButtons = METRICS.map((m) => `
+    const metricButtons = METRICS.map(
+      (m) => `
       <button class="widget-tab ${state.metric === m.key ? 'active' : ''}" data-metric="${m.key}">${m.label}</button>
-    `).join('');
+    `,
+    ).join('');
+
+    const gridHtml = hasData
+      ? `
+      <div class="heatmap-grid">${cells
+        .map((c) => {
+          const cls = c.level === 0 ? '' : `l${c.level}`;
+          return `<div class="heatmap-cell ${cls}" title="${c.date}: ${c.val}"></div>`;
+        })
+        .join('')}</div>
+      <div class="heatmap-legend">
+        <span>LESS</span>
+        <div class="heatmap-legend-cells">
+          <div class="heatmap-cell"></div>
+          <div class="heatmap-cell l1"></div>
+          <div class="heatmap-cell l2"></div>
+          <div class="heatmap-cell l3"></div>
+          <div class="heatmap-cell l4"></div>
+        </div>
+        <span>MORE</span>
+      </div>
+    `
+      : `
+      <div class="widget-empty">等待数据中...</div>
+    `;
 
     container.innerHTML = `
       <div class="widget-card">
@@ -79,20 +101,7 @@ window.WidgetRegistry?.register('heatmap', (container, opts = {}) => {
           <span class="widget-head-meta">53 weeks · ${formatNum(total)} ${state.metric}</span>
         </div>
         <div class="widget-tabs">${metricButtons}</div>
-        <div class="heatmap-wrap">
-          <div class="heatmap-grid">${cellHtml}</div>
-        </div>
-        <div class="heatmap-legend">
-          <span>LESS</span>
-          <div class="heatmap-legend-cells">
-            <div class="heatmap-cell"></div>
-            <div class="heatmap-cell l1"></div>
-            <div class="heatmap-cell l2"></div>
-            <div class="heatmap-cell l3"></div>
-            <div class="heatmap-cell l4"></div>
-          </div>
-          <span>MORE</span>
-        </div>
+        <div class="heatmap-wrap">${gridHtml}</div>
       </div>
     `;
 
@@ -125,18 +134,37 @@ window.WidgetRegistry?.register('heatmap', (container, opts = {}) => {
           if (Array.isArray(hist)) {
             state.data = hist;
             render();
+            console.log(`[Heatmap] 已更新 ${hist.length} 天数据`);
+          } else {
+            // 兜底: 尝试从 session 对象中提取 dailyHistory
+            const session = data?.session;
+            if (session?.dailyHistory) {
+              const arr = Object.values(session.dailyHistory);
+              if (Array.isArray(arr) && arr.length > 0) {
+                state.data = arr;
+                render();
+                console.log(`[Heatmap] 已从 session 更新 ${arr.length} 天数据`);
+              }
+            }
           }
         });
       }
+      // 定期刷新: 每 30 秒重新拉取一次
+      state.intervalId = setInterval(() => {
+        if (window.electronAPI?.sendStatsRequest) {
+          window.electronAPI.sendStatsRequest({ type: 'dailyHistory', limit: 365 });
+        }
+      }, 30000);
     },
     update(data) {
-      const hist = Array.isArray(data) ? data : (data?.dailyHistory || data?.data);
+      const hist = Array.isArray(data) ? data : data?.dailyHistory || data?.data;
       if (Array.isArray(hist)) {
         state.data = hist;
         render();
       }
     },
     destroy() {
+      if (state.intervalId) clearInterval(state.intervalId);
       state.data = [];
     },
   };

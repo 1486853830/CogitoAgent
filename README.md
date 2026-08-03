@@ -434,6 +434,7 @@ cogito-agent/
     ├── configuration.md              # Configuration guide
     ├── systems.md                    # Core systems details
     ├── extensions.md                 # Extensions details
+    ├── agent-cluster.md              # Agent Cluster & Monitor Panel
     └── deployment.md                 # Deployment & development
 ```
 
@@ -528,6 +529,12 @@ flowchart TD
   <img src="introduction/AgentCluster.png" width="600" alt="Agent Cluster">
   <br>
   <em>Agent Cluster Monitoring Panel</em>
+</p>
+
+<p align="center">
+  <img src="introduction/monitor.png" width="600" alt="Monitor Panel">
+  <br>
+  <em>Monitor Panel — Thought Chain, Tool Statistics & Agent Cluster</em>
 </p>
 
 ## Extensions
