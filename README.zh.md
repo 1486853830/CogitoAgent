@@ -403,6 +403,7 @@ cogito-agent/
     ├── configuration.md              # 配置指南
     ├── systems.md                    # 核心系统详情
     ├── extensions.md                 # 扩展详情
+    ├── agent-cluster.md              # 智能体集群与监控面板
     └── deployment.md                 # 部署与开发
 ```
 
@@ -497,6 +498,12 @@ flowchart TD
   <img src="introduction/AgentCluster.png" width="600" alt="智能体集群">
   <br>
   <em>智能体集群监控面板</em>
+</p>
+
+<p align="center">
+  <img src="introduction/monitor.png" width="600" alt="监控面板">
+  <br>
+  <em>监控面板 — 思维链、工具统计与智能体集群</em>
 </p>
 
 ## 扩展
