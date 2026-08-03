@@ -25,19 +25,19 @@ docker compose ps
 
 ### 环境变量配置
 
-| 变量名 | 说明 | 默认值 | 是否必填 |
-|--------|------|--------|----------|
-| `NODE_ENV` | 运行环境 | `production` | 否 |
-| `COGITO_API_BASE_URL` | LLM API 基础地址 | — | 是 |
-| `COGITO_API_KEY` | LLM API 密钥 | — | 是 |
-| `COGITO_MODEL` | 默认模型名称 | `gpt-4o` | 否 |
-| `COGITO_WORKSPACE` | 工作目录路径 | `./workspace` | 否 |
-| `COGITO_LOG_LEVEL` | 日志级别 | `info` | 否 |
+| 变量名                | 说明             | 默认值        | 是否必填 |
+| --------------------- | ---------------- | ------------- | -------- |
+| `NODE_ENV`            | 运行环境         | `production`  | 否       |
+| `COGITO_API_BASE_URL` | LLM API 基础地址 | —             | 是       |
+| `COGITO_API_KEY`      | LLM API 密钥     | —             | 是       |
+| `COGITO_MODEL`        | 默认模型名称     | `gpt-4o`      | 否       |
+| `COGITO_WORKSPACE`    | 工作目录路径     | `./workspace` | 否       |
+| `COGITO_LOG_LEVEL`    | 日志级别         | `info`        | 否       |
 
 ### Docker Compose 配置
 
 ```yaml
-version: "3.8"
+version: '3.8'
 
 services:
   agent:
@@ -109,7 +109,7 @@ cogito-agent/
 │   │   ├── registry.ts     # 工具注册
 │   │   ├── session.ts      # 会话管理
 │   │   ├── commands.ts     # 命令处理
-│   │   ├── tools/          # 工具模块
+│   │   ├── tools/          # 28+ tool modules
 │   │   └── ...
 │   ├── api/                # API 层
 │   │   ├── client.ts       # LLM 客户端
@@ -139,9 +139,11 @@ cogito-agent/
     "apiKey": "",
     "model": "gpt-4o"
   },
+  "chat": {
+    "thinkingInterval": 3000,
+    "maxHistoryLength": 100
+  },
   "workspace": "./workspace",
-  "thinkingInterval": 3000,
-  "maxHistoryLength": 100,
   "tracing": {
     "enabled": true,
     "level": "info"
@@ -161,13 +163,13 @@ npm test
 
 ### 测试覆盖
 
-| 模块 | 测试文件 | 说明 |
-|------|----------|------|
-| Agent 引擎 | `agent.test.js` | 思考循环、状态转换、工具调用 |
-| 工具注册 | `registry.test.js` | 工具注册、参数校验、分类加载 |
-| 会话管理 | `session.test.js` | 多会话、上下文压缩、持久化 |
-| 命令处理 | `commands.test.js` | 命令解析、执行、结果处理 |
-| WebSocket | `ws-server.test.js` | 连接管理、消息路由、心跳检测 |
+| 模块       | 测试文件               | 说明                         |
+| ---------- | ---------------------- | ---------------------------- |
+| Agent 引擎 | `Agent.test.js`        | 思考循环、状态转换、工具调用 |
+| 工具注册   | `registry.test.ts`     | 工具注册、参数校验、分类加载 |
+| 会话管理   | `session.test.ts`      | 多会话、上下文压缩、持久化   |
+| 命令处理   | `commands.test.ts`     | 命令解析、执行、结果处理     |
+| WebSocket  | `io-ws-server.test.ts` | 连接管理、消息路由、心跳检测 |
 
 ### 测试规范
 

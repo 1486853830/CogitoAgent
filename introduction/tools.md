@@ -779,7 +779,7 @@ GIS 工具提供坐标转换、空间计算、GeoJSON 处理等地理信息功�
 
 ```javascript
 [TOOL] ls("./src") [/TOOL]
-[TOOL] read("./src/agent/Agent.js") [/TOOL]
+[TOOL] read("./src/agent/Agent.ts") [/TOOL]
 ```
 
 ### 代码执行

@@ -413,7 +413,7 @@ cogito-agent/
 │   │   ├── commands.ts / session.ts / stats.ts
 │   │   ├── mcp.ts / plugin.ts / thought-trace.ts / retry.ts
 │   │   ├── wechat-manager.ts         # WeChat channel management
-│   │   └── tools/                    # 16+ tool modules
+│   │   └── tools/                    # 28+ tool modules
 │   ├── api/                          # API layer (client, models, webSearch)
 │   ├── io/                           # Terminal, Logger, WebSocket
 │   ├── config.ts                     # Configuration management
@@ -424,7 +424,7 @@ cogito-agent/
 │   ├── desktop/ / dashboard/ / monitor/ / setup/
 │   ├── shared/                       # Shared utilities
 │   └── assets/
-├── personas/                         # 22 preset personas (13 modern + 9 ancient)
+├── personas/                         # 28 preset personas (18 modern + 10 ancient)
 ├── tests/                            # Test files
 ├── data/                             # Runtime data (auto-created)
 ├── tsconfig.json                     # TypeScript config
@@ -456,7 +456,7 @@ flowchart TD
 
     subgraph COGNITION["Cognition"]
         MEMORY["memory.ts<br/>SQLite Storage + Semantic Search"]
-        PERSONA["system-prompt.ts<br/>22 Personas + Custom"]
+        PERSONA["system-prompt.ts<br/>28 Personas + Custom"]
         THOUGHT["thought-trace.ts<br/>Real-Time Chain Visualization"]
     end
 
@@ -519,7 +519,7 @@ flowchart TD
 - **Memory System** — JSON-based long-term storage with tag-based semantic retrieval
 - **Task Management** — Task creation, decomposition, and status tracking
 - **Code Sandbox** — `isolated-vm` process-level isolation for JS and Python
-- **Personas** — 25 preset roles (14 modern + 11 ancient/regional) with custom and hot-switch support
+- **Personas** — 28 preset roles (18 modern + 10 ancient/regional) with custom and hot-switch support
 - **Session Management** — Independent contexts with auto-compression
 - **Statistics** — Tool usage tracking and performance metrics
 - **Thought Chain Visualization** — Real-time thinking process display
