@@ -198,8 +198,9 @@ function addMessage(type, content, extra, isHtml) {
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   if (isHtml) {
-    // 仅用于受信的内置富文本模板（assistantReplies），调用方必须保证其中不含未转义的用户输入
-    bubble.insertAdjacentHTML('beforeend', content);
+    const template = document.createElement('template');
+    template.innerHTML = content;
+    bubble.append(template.content);
   } else {
     bubble.textContent = content == null ? '' : String(content);
   }
