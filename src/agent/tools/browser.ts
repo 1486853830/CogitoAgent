@@ -1,440 +1,40 @@
 /**
- * 浏览器自动化工具 - 延迟加载 playwright
+ * 浏览器自动化工具入口 - 延迟加载 playwright
+ * 由 browser-state.ts（共享状态+生命周期）、browser-actions.ts（交互动作）组合而成。
  */
-import { resolveInWorkspace } from './path.ts';
+
+import {
+  checkPlaywright,
+  capturePageState,
+  comparePageState,
+  initBrowser,
+  closeBrowser,
+  setPageStateSnapshot,
+  page,
+  pageStateSnapshot,
+} from './browser-state.ts';
+import {
+  clickElement,
+  fillField,
+  selectOption,
+  downloadFile,
+  searchOnPage,
+  findElements,
+} from './browser-actions.ts';
 
 // 以下声明仅用于 page.evaluate() 回调中的类型检查，不产生运行时代码。
-// 实际运行时在 Playwright 浏览器环境中执行，类型仅用于编译通过。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const document: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const window: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-declare const NodeFilter: any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const XPathResult: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const KeyboardEvent: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const Event: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type _Element = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type _HTMLTableElement = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type _HTMLTableRowElement = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type _HTMLTableCellElement = any;
-
-let browser: any = null; // playwright Browser, lazily loaded
-let page: any = null; // playwright Page, lazily loaded
-let pageStateSnapshot: Record<string, unknown> | null = null;
-let chromium: any = null; // playwright chromium module, lazily loaded
-
-/**
- * 检查 playwright 是否可用
- */
-async function checkPlaywright(): Promise<boolean> {
-  if (chromium) return true;
-
-  try {
-    const { chromium: chromiumModule } = await import('playwright');
-    chromium = chromiumModule;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 捕获页面当前状态（用于后续对比变化）
- */
-async function capturePageState(): Promise<Record<string, unknown> | null> {
-  if (!page) return null;
-
-  try {
-    const state = await page.evaluate(() => {
-      // getXPath 必须在浏览器上下文内定义：page.evaluate 回调在页面 V8 上下文序列化执行，
-      // 无法访问 Node 模块作用域的函数，外部定义会导致 ReferenceError。
-      function getXPath(element: _Element | null): string | null {
-        if (!element) return null;
-        if (element.id !== '') return `id("${element.id}")`;
-        if (element === document.body) return '/html/body';
-
-        let ix = 0;
-        const siblings = element.parentNode ? element.parentNode.childNodes : [];
-        for (let i = 0; i < siblings.length; i++) {
-          const sibling = siblings[i];
-          if (sibling === element) {
-            const parentPath = getXPath(element.parentNode);
-            const tagName = element.tagName.toLowerCase();
-            return parentPath ? `${parentPath}/${tagName}[${ix + 1}]` : `/${tagName}[${ix + 1}]`;
-          }
-          if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
-            ix++;
-          }
-        }
-        return null;
-      }
-
-      const forms: Record<string, unknown>[] = [];
-      document
-        .querySelectorAll('form, input, select, textarea, button, table')
-        .forEach((el: _Element, idx: number) => {
-          forms.push({
-            tag: el.tagName.toLowerCase(),
-            id: el.id || null,
-            class: el.className || null,
-            name: el.name || null,
-            type: el.type || null,
-            value: el.value || null,
-            text: el.innerText?.slice(0, 100) || null,
-            placeholder: el.placeholder || null,
-            href: el.href || null,
-            xpath: getXPath(el),
-          });
-        });
-
-      return {
-        url: window.location.href,
-        title: document.title,
-        forms: forms.slice(0, 50),
-        bodyText: document.body.innerText.slice(0, 2000),
-      };
-    });
-
-    return state;
-  } catch (error: unknown) {
-    return { error: (error as Error).message };
-  }
-}
-
-/**
- * 比较页面状态变化
- */
-function comparePageState(
-  oldState: Record<string, unknown> | null,
-  newState: Record<string, unknown> | null,
-): string {
-  if (!oldState || !newState) return '';
-
-  const changes: string[] = [];
-
-  if (oldState.url !== newState.url) {
-    changes.push(`URL 变化：${oldState.url} → ${newState.url}`);
-  }
-
-  if (oldState.title !== newState.title) {
-    changes.push(`标题变化：${oldState.title} → ${newState.title}`);
-  }
-
-  if (oldState.forms && newState.forms) {
-    const oldValues = new Map(
-      (oldState.forms as Record<string, unknown>[]).map((f) => [f.xpath, f.value]),
-    );
-    const newValues = new Map(
-      (newState.forms as Record<string, unknown>[]).map((f) => [f.xpath, f.value]),
-    );
-
-    for (const [xpath, newValue] of newValues.entries()) {
-      const oldValue = oldValues.get(xpath);
-      if (oldValue !== newValue) {
-        const form = (newState.forms as Record<string, unknown>[]).find(
-          (f) => f.xpath === xpath,
-        ) as Record<string, unknown> | undefined;
-        changes.push(
-          `表单变化：${form?.tag || '元素'}${form?.name ? `[name="${form.name}"]` : ''}${form?.id ? `[id="${form.id}"]` : ''} 值从 "${oldValue || '空'}" 变为 "${newValue || '空'}"`,
-        );
-      }
-    }
-  }
-
-  if (oldState.bodyText !== newState.bodyText) {
-    changes.push('页面文本内容发生变化');
-  }
-
-  return changes.length > 0 ? changes.join('\n') : '无明显变化';
-}
-
-/**
- * 初始化浏览器并打开网页
- */
-async function initBrowser(
-  url: string,
-): Promise<{ success: boolean; data?: string; error?: string }> {
-  if (!(await checkPlaywright())) {
-    return {
-      success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
-    };
-  }
-
-  try {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch {
-        // 忽略关闭错误
-      }
-      browser = null;
-      page = null;
-    }
-
-    browser = await chromium.launch({
-      headless: false,
-      args: ['--start-maximized'],
-    });
-
-    const context = await browser.newContext({
-      viewport: { width: 1920, height: 1080 },
-      acceptDownloads: true,
-      downloadsPath: './downloads',
-    });
-    page = await context.newPage();
-
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
-    pageStateSnapshot = await capturePageState();
-
-    return {
-      success: true,
-      data: `已成功打开网页：${url}`,
-    };
-  } catch (error: unknown) {
-    browser = null;
-    page = null;
-    return {
-      success: false,
-      error: `打开网页失败：${(error as Error).message}`,
-    };
-  }
-}
-
-/**
- * 点击网页元素
- */
-async function clickElement(
-  selector: string,
-  description: string = '',
-): Promise<{ success: boolean; data?: string; error?: string }> {
-  if (!(await checkPlaywright())) {
-    return {
-      success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
-    };
-  }
-
-  if (!page) {
-    return { success: false, error: '请先使用 initBrowser 打开网页' };
-  }
-
-  try {
-    await page.evaluate('1');
-  } catch {
-    return { success: false, error: '浏览器页面已关闭，请重新使用 initBrowser 打开网页' };
-  }
-
-  try {
-    let element = null;
-
-    try {
-      element = await page.$(selector);
-    } catch {
-      // 不是有效的 CSS 选择器
-    }
-
-    if (!element && (selector.startsWith('//') || selector.startsWith('id('))) {
-      element = await page.$(`xpath=${selector}`);
-    }
-
-    if (!element) {
-      const textSelector = selector.trim();
-      element = await page.locator(`text=${textSelector}`).first();
-      if (!(await element.count())) {
-        element = null;
-      }
-    }
-
-    if (!element) {
-      const selectors = [
-        `[id="${selector}"]`,
-        `[name="${selector}"]`,
-        `[placeholder="${selector}"]`,
-        `button:has-text("${selector}")`,
-        `a:has-text("${selector}")`,
-        `[data-testid="${selector}"]`,
-      ];
-
-      for (const sel of selectors) {
-        try {
-          element = await page.$(sel);
-          if (element) break;
-        } catch {
-          continue;
-        }
-      }
-    }
-
-    if (!element) {
-      return {
-        success: false,
-        error: `未找到元素：${selector}${description ? ` (${description})` : ''}`,
-      };
-    }
-
-    try {
-      await element.click();
-    } catch {
-      try {
-        await element.click({ force: true });
-      } catch {
-        try {
-          await page.evaluate((el: _Element) => {
-            el.click();
-          }, element);
-        } catch {
-          return {
-            success: false,
-            error: `点击元素失败：元素不可见或被遮挡，尝试了普通点击、强制点击和JS点击均失败`,
-          };
-        }
-      }
-    }
-    await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
-
-    const newState = await capturePageState();
-    const changes = comparePageState(pageStateSnapshot, newState);
-    pageStateSnapshot = newState;
-
-    return {
-      success: true,
-      data: `成功点击元素：${selector}${description ? ` (${description})` : ''}\n${changes}`,
-    };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      error: `点击元素失败：${(error as Error).message}`,
-    };
-  }
-}
-
-/**
- * 填写表格字段
- */
-async function fillField(
-  selector: string,
-  value: string,
-  description: string = '',
-): Promise<{ success: boolean; data?: string; error?: string }> {
-  if (!(await checkPlaywright())) {
-    return {
-      success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
-    };
-  }
-
-  if (!page) {
-    return { success: false, error: '请先使用 initBrowser 打开网页' };
-  }
-
-  try {
-    await page.evaluate('1');
-  } catch {
-    return { success: false, error: '浏览器页面已关闭，请重新使用 initBrowser 打开网页' };
-  }
-
-  try {
-    let element = null;
-
-    try {
-      element = await page.$(selector);
-    } catch {
-      // 不是有效的 CSS 选择器
-    }
-
-    if (!element && (selector.startsWith('//') || selector.startsWith('id('))) {
-      element = await page.$(`xpath=${selector}`);
-    }
-
-    if (!element) {
-      const selectors = [
-        `[id="${selector}"]`,
-        `[name="${selector}"]`,
-        `[placeholder="${selector}"]`,
-        `input[aria-label="${selector}"]`,
-        `textarea[aria-label="${selector}"]`,
-        `label:has-text("${selector}") + input`,
-        `label:has-text("${selector}") + textarea`,
-      ];
-
-      for (const sel of selectors) {
-        try {
-          element = await page.$(sel);
-          if (element) break;
-        } catch {
-          continue;
-        }
-      }
-    }
-
-    if (!element) {
-      return {
-        success: false,
-        error: `未找到输入框：${selector}${description ? ` (${description})` : ''}`,
-      };
-    }
-
-    await element.fill(value);
-
-    const newState = await capturePageState();
-    const changes = comparePageState(pageStateSnapshot, newState);
-    pageStateSnapshot = newState;
-
-    return {
-      success: true,
-      data: `成功填写字段：${selector}${description ? ` (${description})` : ''} = "${value}"\n${changes}`,
-    };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      error: `填写字段失败：${(error as Error).message}`,
-    };
-  }
-}
-
-/**
- * 选择下拉框选项
- */
-async function selectOption(
-  selector: string,
-  value: string,
-): Promise<{ success: boolean; data?: string; error?: string }> {
-  if (!(await checkPlaywright())) {
-    return {
-      success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
-    };
-  }
-
-  if (!page) {
-    return { success: false, error: '请先使用 initBrowser 打开网页' };
-  }
-
-  try {
-    await page.selectOption(selector, value);
-
-    const newState = await capturePageState();
-    const changes = comparePageState(pageStateSnapshot, newState);
-    pageStateSnapshot = newState;
-
-    return {
-      success: true,
-      data: `成功选择选项：${selector} = "${value}"\n${changes}`,
-    };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      error: `选择选项失败：${(error as Error).message}`,
-    };
-  }
-}
 
 /**
  * 查看页面变化（对比当前状态和上次快照）
@@ -454,7 +54,7 @@ async function viewChanges(): Promise<{ success: boolean; data?: string; error?:
   try {
     const currentState = await capturePageState();
     const changes = comparePageState(pageStateSnapshot, currentState);
-    pageStateSnapshot = currentState;
+    setPageStateSnapshot(currentState);
 
     return {
       success: true,
@@ -471,7 +71,11 @@ async function viewChanges(): Promise<{ success: boolean; data?: string; error?:
 /**
  * 获取页面内容
  */
-async function getPageContent(): Promise<{ success: boolean; data?: unknown; error?: string }> {
+async function getPageContent(): Promise<{
+  success: boolean;
+  data?: unknown;
+  error?: string;
+}> {
   if (!(await checkPlaywright())) {
     return {
       success: false,
@@ -500,11 +104,11 @@ async function getPageContent(): Promise<{ success: boolean; data?: unknown; err
           }))
           .slice(0, 30),
         tables: Array.from(document.querySelectorAll('table'))
-          .map((table: _HTMLTableElement, idx: number) => {
+          .map((table: _Element, idx: number) => {
             const rows: string[][] = [];
-            table.querySelectorAll('tr').forEach((row: _HTMLTableRowElement) => {
+            table.querySelectorAll('tr').forEach((row: _Element) => {
               const cells: string[] = [];
-              row.querySelectorAll('td, th').forEach((cell: _HTMLTableCellElement) => {
+              row.querySelectorAll('td, th').forEach((cell: _Element) => {
                 cells.push(cell.innerText.trim());
               });
               if (cells.length > 0) rows.push(cells);
@@ -549,441 +153,6 @@ async function takeScreenshot(
     };
   } catch (error: unknown) {
     return { success: false, error: `截图失败：${(error as Error).message}` };
-  }
-}
-
-/**
- * 关闭浏览器
- */
-async function closeBrowser(): Promise<{ success: boolean; data?: string; error?: string }> {
-  try {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch {
-        // 忽略已经关闭的错误
-      }
-      browser = null;
-      page = null;
-      pageStateSnapshot = null;
-    }
-    return { success: true, data: '浏览器已关闭' };
-  } catch {
-    browser = null;
-    page = null;
-    pageStateSnapshot = null;
-    return { success: true, data: '浏览器状态已清理' };
-  }
-}
-
-/**
- * 下载文件
- */
-async function downloadFile(
-  urlOrSelector: string,
-  description: string = '',
-  options: {
-    savePath?: string;
-    fullPath?: string;
-    timeout?: number;
-    acceptDownloads?: boolean;
-  } = {},
-): Promise<{ success: boolean; data?: string; error?: string }> {
-  if (!(await checkPlaywright())) {
-    return {
-      success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
-    };
-  }
-
-  try {
-    let { savePath = './downloads', fullPath } = options;
-    const { timeout = 60000 } = options;
-
-    // 校验下载路径必须在工作区内，防止路径穿越写到工作区外
-    if (fullPath) {
-      const resolved = resolveInWorkspace(fullPath);
-      if (!resolved) {
-        return { success: false, error: 'fullPath 越界：必须位于工作区内' };
-      }
-      fullPath = resolved;
-    }
-    const resolvedSavePath = resolveInWorkspace(savePath);
-    if (!resolvedSavePath) {
-      return { success: false, error: 'savePath 越界：必须位于工作区内' };
-    }
-    savePath = resolvedSavePath;
-
-    const fs = await import('fs');
-    const path = await import('path');
-
-    const downloadDir = fullPath ? path.dirname(fullPath) : savePath;
-    if (!fs.existsSync(downloadDir)) {
-      fs.mkdirSync(downloadDir, { recursive: true });
-    }
-
-    const needInit = !page;
-
-    if (needInit) {
-      if (urlOrSelector.startsWith('http')) {
-        const initResult = await initBrowser(urlOrSelector);
-        if (!initResult.success) {
-          return initResult;
-        }
-      } else {
-        return {
-          success: false,
-          error: '请先使用 initBrowser 打开网页，或提供完整的下载页面 URL',
-        };
-      }
-    } else {
-      if (urlOrSelector.startsWith('http')) {
-        await page.goto(urlOrSelector, { waitUntil: 'networkidle', timeout: 30000 });
-      }
-    }
-
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-    await page.waitForTimeout(1000);
-
-    let downloadElement = null;
-    let usedSelector = '';
-
-    if (!urlOrSelector.startsWith('http')) {
-      try {
-        downloadElement = await page.$(urlOrSelector);
-        usedSelector = urlOrSelector;
-      } catch {
-        // 不是有效的选择器
-      }
-    }
-
-    if (!downloadElement) {
-      const downloadSelectors = [
-        'a[download]',
-        'a[href*=".exe"]',
-        'a[href*=".zip"]',
-        'a[href*=".msi"]',
-        'a[href*=".dmg"]',
-        'a[href*=".pkg"]',
-        'a[href*=".deb"]',
-        'a[href*=".rpm"]',
-        'a[href*=".tar"]',
-        'a[href*=".gz"]',
-        'button:has-text("下载")',
-        'button:has-text("Download")',
-        'a:has-text("下载")',
-        'a:has-text("Download")',
-        'a:has-text("安装")',
-        'a:has-text("Installer")',
-        '.download-btn',
-        '.download-button',
-        '#download-btn',
-        '#download-button',
-        '[class*="download"]',
-        '[id*="download"]',
-      ];
-
-      for (const selector of downloadSelectors) {
-        try {
-          downloadElement = await page.$(selector);
-          if (downloadElement && (await downloadElement.isVisible())) {
-            usedSelector = selector;
-            break;
-          }
-        } catch {
-          continue;
-        }
-      }
-    }
-
-    if (!downloadElement && description) {
-      try {
-        downloadElement = await page.locator(`text=${description}`).first();
-        if (await downloadElement.count()) {
-          usedSelector = `text=${description}`;
-        } else {
-          downloadElement = null;
-        }
-      } catch {
-        // 忽略错误
-      }
-    }
-
-    if (!downloadElement) {
-      const pageInfo = await page.evaluate(() => {
-        const links = Array.from(document.querySelectorAll('a[href]'));
-        const downloadLinks = links
-          .filter((a: any) => {
-            const href = a.href || '';
-            const text = (a.innerText || a.textContent || '').toLowerCase();
-            return (
-              href.match(/\.(exe|zip|msi|dmg|pkg|deb|rpm|tar|gz|7z|rar)$/i) ||
-              text.includes('下载') ||
-              text.includes('download') ||
-              text.includes('安装') ||
-              text.includes('installer')
-            );
-          })
-          .map((a: any) => ({
-            href: a.href,
-            text: (a.innerText || a.textContent || '').trim(),
-            id: a.id,
-            class: a.className,
-          }));
-
-        return {
-          url: window.location.href,
-          title: document.title,
-          downloadLinks: downloadLinks.slice(0, 10),
-        };
-      });
-
-      return {
-        success: false,
-        error: `未找到下载链接。页面信息：${pageInfo.title} (${pageInfo.url}), 可能的下载链接：${JSON.stringify(pageInfo.downloadLinks)}`,
-      };
-    }
-
-    const href = await downloadElement.getAttribute('href');
-    const text = await downloadElement.innerText();
-
-    const [download] = await Promise.all([
-      page.waitForEvent('download', { timeout }),
-      downloadElement.click(),
-    ]);
-
-    const suggestedFilename = download.suggestedFilename();
-    const finalPath = fullPath ? fullPath : path.join(savePath, suggestedFilename);
-
-    await download.saveAs(finalPath);
-    await download.finished();
-
-    return {
-      success: true,
-      data: `文件下载成功！\n文件名：${suggestedFilename}\n保存路径：${finalPath}\n来源：${text || href}\n使用选择器：${usedSelector || '自动检测'}`,
-    };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      error: `下载失败：${(error as Error).message}`,
-    };
-  }
-}
-
-/**
- * 在页面内搜索文本内容
- */
-async function searchOnPage(
-  text: string,
-): Promise<{ success: boolean; data?: string; error?: string }> {
-  if (!(await checkPlaywright())) {
-    return {
-      success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
-    };
-  }
-
-  if (!page) {
-    return { success: false, error: '请先使用 initBrowser 打开网页' };
-  }
-
-  try {
-    const results = await page.evaluate((searchText: string) => {
-      function getXPathInternal(element: _Element | null): string | null {
-        if (!element) return null;
-        if (element.id !== '') return `id("${element.id}")`;
-        if (element === document.body) return '/html/body';
-
-        let ix = 0;
-        const siblings = element.parentNode ? element.parentNode.childNodes : [];
-        for (let i = 0; i < siblings.length; i++) {
-          const sibling = siblings[i];
-          if (sibling === element) {
-            const parentPath = getXPathInternal(element.parentNode);
-            const tagName = element.tagName.toLowerCase();
-            return parentPath ? `${parentPath}/${tagName}[${ix + 1}]` : `/${tagName}[${ix + 1}]`;
-          }
-          if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
-            ix++;
-          }
-        }
-        return null;
-      }
-
-      const matches: Record<string, unknown>[] = [];
-
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-
-      let node;
-      while ((node = walker.nextNode())) {
-        const textContent = node.textContent;
-        if (textContent && textContent.toLowerCase().includes(searchText.toLowerCase())) {
-          const parent = (node as _Element).parentElement;
-          matches.push({
-            type: 'text',
-            text: textContent.trim().slice(0, 200),
-            parentTag: parent?.tagName?.toLowerCase() || null,
-            parentClass: parent?.className || null,
-            parentXPath: getXPathInternal(parent),
-          });
-        }
-      }
-
-      document.querySelectorAll('input, textarea').forEach((el: _Element) => {
-        const value = el.value || '';
-        const placeholder = el.placeholder || '';
-        if (
-          value.toLowerCase().includes(searchText.toLowerCase()) ||
-          placeholder.toLowerCase().includes(searchText.toLowerCase())
-        ) {
-          matches.push({
-            type: 'input',
-            tag: el.tagName.toLowerCase(),
-            id: el.id || null,
-            name: el.name || null,
-            value: value,
-            placeholder: placeholder,
-            xpath: getXPathInternal(el),
-          });
-        }
-      });
-
-      document.querySelectorAll('button, a').forEach((el: _Element) => {
-        const text = el.innerText || el.textContent || '';
-        if (text.toLowerCase().includes(searchText.toLowerCase())) {
-          matches.push({
-            type: 'interactive',
-            tag: el.tagName.toLowerCase(),
-            text: text.trim(),
-            href: el.href || null,
-            id: el.id || null,
-            xpath: getXPathInternal(el),
-          });
-        }
-      });
-
-      return matches.slice(0, 20);
-    }, text);
-
-    if (results.length === 0) {
-      return {
-        success: true,
-        data: `未在页面中找到 "${text}"`,
-      };
-    }
-
-    let output = `在页面中找到 ${results.length} 处匹配 "${text}"：\n\n`;
-    results.forEach((result: Record<string, unknown>, idx: number) => {
-      output += `[${idx + 1}] ${(result.type as string).toUpperCase()}\n`;
-      if (result.text) output += `   内容：${result.text}\n`;
-      if (result.value) output += `   值：${result.value}\n`;
-      if (result.placeholder) output += `   占位符：${result.placeholder}\n`;
-      if (result.href) output += `   链接：${result.href}\n`;
-      if (result.parentTag)
-        output += `   位置：${result.parentTag}${result.parentClass ? `(${result.parentClass})` : ''}\n`;
-      if (result.xpath) output += `   XPath: ${result.xpath}\n`;
-      output += '\n';
-    });
-
-    return { success: true, data: output };
-  } catch (error: unknown) {
-    return { success: false, error: `搜索失败：${(error as Error).message}` };
-  }
-}
-
-/**
- * 查找页面元素并返回详细信息
- */
-async function findElements(
-  selector: string,
-  description: string = '',
-): Promise<{ success: boolean; data?: string; error?: string }> {
-  if (!(await checkPlaywright())) {
-    return {
-      success: false,
-      error: 'playwright 未安装，请先安装：npm install playwright && npx playwright install',
-    };
-  }
-
-  if (!page) {
-    return { success: false, error: '请先使用 initBrowser 打开网页' };
-  }
-
-  try {
-    const elements = await page.evaluate((searchSelector: string) => {
-      function getXPathInternal(element: any): string | null {
-        if (!element) return null;
-        if (element.id !== '') return `id("${element.id}")`;
-        if (element === document.body) return '/html/body';
-
-        let ix = 0;
-        const siblings = element.parentNode ? element.parentNode.childNodes : [];
-        for (let i = 0; i < siblings.length; i++) {
-          const sibling = siblings[i];
-          if (sibling === element) {
-            const parentPath = getXPathInternal(element.parentNode);
-            const tagName = element.tagName.toLowerCase();
-            return parentPath ? `${parentPath}/${tagName}[${ix + 1}]` : `/${tagName}[${ix + 1}]`;
-          }
-          if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
-            ix++;
-          }
-        }
-        return null;
-      }
-
-      const results: any[] = [];
-      const found = document.querySelectorAll(searchSelector);
-
-      if (found.length === 0) {
-        document.querySelectorAll('*').forEach((el: any) => {
-          const text = el.innerText || el.textContent || '';
-          if (text.includes(searchSelector)) {
-            results.push({
-              tag: el.tagName.toLowerCase(),
-              id: el.id || null,
-              class: el.className || null,
-              text: text.trim().slice(0, 100),
-              xpath: getXPathInternal(el),
-            });
-          }
-        });
-      } else {
-        found.forEach((el: any) => {
-          results.push({
-            tag: el.tagName.toLowerCase(),
-            id: el.id || null,
-            class: el.className || null,
-            text: (el.innerText || el.textContent || '').trim().slice(0, 100),
-            xpath: getXPathInternal(el),
-          });
-        });
-      }
-
-      return results.slice(0, 15);
-    }, selector);
-
-    if (elements.length === 0) {
-      return {
-        success: true,
-        data: `未找到匹配 "${selector}" 的元素${description ? ` (${description})` : ''}`,
-      };
-    }
-
-    let output = `找到 ${elements.length} 个匹配元素：\n\n`;
-    elements.forEach((el: any, idx: number) => {
-      output += `[${idx + 1}] <${el.tag}>`;
-      if (el.id) output += `#${el.id}`;
-      if (el.class) output += `.${el.class.split(' ')[0]}`;
-      output += `\n`;
-      if (el.text) output += `   文本：${el.text}\n`;
-      if (el.xpath) output += `   XPath: ${el.xpath}\n`;
-      output += '\n';
-    });
-
-    return { success: true, data: output };
-  } catch (error: any) {
-    return { success: false, error: `查找元素失败：${error.message}` };
   }
 }
 
@@ -1121,7 +290,9 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
           title: document.title,
           inputCount: inputs.length,
           visibleInputs: inputs
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .filter((i: any) => i.offsetParent !== null)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .map((i: any) => ({
               tag: i.tagName,
               id: i.id,
@@ -1291,23 +462,23 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
       output += `未提取到搜索结果，可能需要手动查看页面。\n`;
     }
 
-    pageStateSnapshot = await capturePageState();
+    setPageStateSnapshot(await capturePageState());
 
     return { success: true, data: output };
-  } catch (error: any) {
-    return { success: false, error: `搜索引擎搜索失败：${error.message}` };
+  } catch (error) {
+    return { success: false, error: `搜索引擎搜索失败：${(error as Error).message}` };
   }
 }
 
 export {
   initBrowser,
+  closeBrowser,
   clickElement,
   fillField,
   selectOption,
   viewChanges,
   getPageContent,
   takeScreenshot,
-  closeBrowser,
   searchOnPage,
   findElements,
   searchOnEngine,
