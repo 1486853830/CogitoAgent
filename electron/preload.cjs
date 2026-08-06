@@ -9,6 +9,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 发送用户消息给 agent
   sendMessage: (text) => ipcRenderer.send('user-message', text),
 
+  // 响应危险操作确认（true=允许, false=拒绝）
+  respondConfirmation: (confirmed) => ipcRenderer.send('confirmation-response', confirmed),
+
+  // 监听危险操作确认请求（后端要求用户确认危险操作）
+  onConfirmationRequest: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('confirmation-requested', listener);
+    return () => ipcRenderer.removeListener('confirmation-requested', listener);
+  },
+
+  // 监听危险操作确认结束（允许/拒绝/超时）
+  onConfirmationResolved: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('confirmation-resolved', listener);
+    return () => ipcRenderer.removeListener('confirmation-resolved', listener);
+  },
+
   // 发送统计数据请求
   sendStatsRequest: (data) => ipcRenderer.send('stats-request', data),
 

@@ -150,6 +150,10 @@ function connect() {
             win.webContents.send('wechat-login-status', msg.data);
           } else if (msg.type === 'token-usage') {
             win.webContents.send('token-usage', msg.data || msg);
+          } else if (msg.type === 'confirmation-requested') {
+            win.webContents.send('confirmation-requested', msg);
+          } else if (msg.type === 'confirmation-resolved') {
+            win.webContents.send('confirmation-resolved', msg);
           } else {
             win.webContents.send('agent-reply', msg);
           }
@@ -222,6 +226,14 @@ function ensureUserMessageHandler() {
   ipcMain.on('user-message', (_event, text) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'user-message', text }));
+    }
+  });
+
+  // 危险操作确认：将前端的允许/拒绝转译为 Agent 可识别的 y/n 文本输入。
+  // Agent 的 handleUserInput 在 AWAITING_CONFIRMATION 状态下按文本 y/n 处理。
+  ipcMain.on('confirmation-response', (_event, confirmed) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'user-message', text: confirmed ? 'y' : 'n' }));
     }
   });
 
