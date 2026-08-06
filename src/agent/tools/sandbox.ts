@@ -445,6 +445,8 @@ async function runPythonSandbox(code: string): Promise<any> {
         HOME: process.env.HOME || process.env.USERPROFILE || '',
         TMPDIR: os.tmpdir(),
         TEMP: os.tmpdir(),
+        PYTHONUTF8: '1',
+        PYTHONIOENCODING: 'utf-8',
         PYTHONUNBUFFERED: '1',
         PYTHONDONTWRITEBYTECODE: '1',
         PYTHONHASHSEED: '0',
@@ -498,6 +500,12 @@ async function runPythonSandbox(code: string): Promise<any> {
               error: `执行失败: ${error.message}\n${stderr || ''}`,
             });
             return;
+          }
+
+          // Windows 下 Python 文本模式输出为 CRLF，统一归一化为 \n，避免前端换行识别异常
+          stdout = stdout.replace(/\r\n/g, '\n');
+          if (stderr) {
+            stderr = stderr.replace(/\r\n/g, '\n');
           }
 
           let result = stdout || '执行完成，无输出';
