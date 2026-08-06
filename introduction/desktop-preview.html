@@ -179,14 +179,32 @@ function setStatus(state) {
   statusEl.className = 'status-indicator status-' + state;
 }
 
-function addMessage(type, content, extra) {
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+function addMessage(type, content, extra, isHtml) {
   const el = document.createElement('div');
   el.className = 'message ' + type;
-  let html = '<div class="bubble">' + content + '</div>';
-  if (extra && extra.time) {
-    html += '<div class="time">' + extra.time + '</div>';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  if (isHtml) {
+    // 仅用于受信的内置富文本模板（assistantReplies），调用方必须保证其中不含未转义的用户输入
+    bubble.innerHTML = content;
+  } else {
+    bubble.textContent = content == null ? '' : String(content);
   }
-  el.innerHTML = html;
+  el.appendChild(bubble);
+
+  if (extra && extra.time) {
+    const time = document.createElement('div');
+    time.className = 'time';
+    time.textContent = extra.time;
+    el.appendChild(time);
+  }
   messagesEl.appendChild(el);
   messagesEl.scrollTop = messagesEl.scrollHeight;
   if (messagesEl.querySelector('.empty-hint')) {
@@ -197,7 +215,7 @@ function addMessage(type, content, extra) {
 function addToolCall(toolName, args) {
   const el = document.createElement('div');
   el.className = 'message assistant';
-  el.innerHTML = `<div class="bubble"><div class="tool-call-card"><div class="tool-call-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.toggle-icon').classList.toggle('expanded')"><span class="prefix">»</span> ${toolName}(${Object.keys(args||{}).slice(0,2).join(', ')})<span class="toggle-icon">▸</span></div><div class="tool-call-body">${JSON.stringify(args||{},null,2)}</div></div></div>`;
+  el.innerHTML = `<div class="bubble"><div class="tool-call-card"><div class="tool-call-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.toggle-icon').classList.toggle('expanded')"><span class="prefix">»</span> ${escapeHtml(toolName)}(${escapeHtml(Object.keys(args||{}).slice(0,2).join(', '))})<span class="toggle-icon">▸</span></div><div class="tool-call-body">${escapeHtml(JSON.stringify(args||{},null,2))}</div></div></div>`;
   messagesEl.appendChild(el);
   messagesEl.scrollTop = messagesEl.scrollHeight;
   if (messagesEl.querySelector('.empty-hint')) messagesEl.querySelector('.empty-hint').remove();
@@ -206,7 +224,7 @@ function addToolCall(toolName, args) {
 function addToolResult(name, success) {
   const el = document.createElement('div');
   el.className = 'message assistant';
-  el.innerHTML = `<div class="bubble"><div class="tool-result ${success?'ok':'err'}"><span class="result-prefix">${success?'OK':'ERR'}</span> ${name}</div></div>`;
+  el.innerHTML = `<div class="bubble"><div class="tool-result ${success?'ok':'err'}"><span class="result-prefix">${success?'OK':'ERR'}</span> ${escapeHtml(name)}</div></div>`;
   messagesEl.appendChild(el);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
@@ -293,7 +311,7 @@ function simulateConversation() {
   // Simulate response
   setTimeout(() => {
     removeTyping();
-    addMessage('assistant', assistantReplies[idx], { time: timeStr() });
+    addMessage('assistant', assistantReplies[idx], { time: timeStr() }, true);
     setStatus('idle');
     simIndex++;
     setTimeout(simulateConversation, 4000);
@@ -318,7 +336,7 @@ function sendMessage() {
   addTyping();
   setTimeout(() => {
     removeTyping();
-    addMessage('assistant', '收到您的消息：<code>' + text + '</code><br><br>这是一个模拟回复。在真实环境中，CogitoAgent 会调用工具来分析并回复您的问题。', { time: timeStr() });
+    addMessage('assistant', '收到您的消息：<code>' + escapeHtml(text) + '</code><br><br>这是一个模拟回复。在真实环境中，CogitoAgent 会调用工具来分析并回复您的问题。', { time: timeStr() }, true);
     setStatus('idle');
   }, 1500);
 }
