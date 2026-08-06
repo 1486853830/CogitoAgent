@@ -155,8 +155,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 打开外部链接
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
-  // 打开 Setup 配置向导（重新配置）
-  openSetup: () => ipcRenderer.send('open-setup'),
+  // 更新当前语言配置
+  updateLanguage: (lang) => ipcRenderer.send('update-language', lang),
 
   // ===== 微信相关 IPC =====
   // 登录微信

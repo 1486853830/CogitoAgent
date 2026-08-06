@@ -4,6 +4,9 @@
  * 使用共享组件：WindowControls / PanelToggle / SharedUtils
  */
 
+const T = (k, vars) =>
+  window.I18n && typeof window.I18n.t === 'function' ? window.I18n.t(k, vars) : k;
+
 // ============================================================
 // 窗口控制 - 使用公共 WindowControls
 // ============================================================
@@ -47,7 +50,7 @@ const ThoughtManager = {
     if (!el) return;
 
     if (this.trace.length === 0) {
-      el.innerHTML = '<div class="thought-empty">等待思考开始...</div>';
+      el.innerHTML = `<div class="thought-empty">${T('monitor.thoughtEmpty')}</div>`;
       return;
     }
 
@@ -59,6 +62,12 @@ const ThoughtManager = {
           .map(([k, v]) => `${k}: ${typeof v === 'number' ? v : JSON.stringify(v).slice(0, 30)}`)
           .join(', ');
         const argsText = details.args ? JSON.stringify(details.args).slice(0, 50) : '';
+        const statusText =
+          step.status === 'running'
+            ? T('monitor.statusRunning')
+            : step.status === 'completed'
+              ? T('monitor.statusCompleted')
+              : T('monitor.statusFailed');
 
         return `
         <div class="thought-step ${step.status}">
@@ -67,7 +76,7 @@ const ThoughtManager = {
             ${detailsText || argsText ? `<div class="thought-step-details">${SharedUtils.escapeHtml(detailsText || argsText)}</div>` : ''}
             <div class="thought-step-meta">
               ${step.duration > 0 ? `<span class="thought-step-duration">${step.duration}s</span>` : ''}
-              <span class="thought-step-status ${step.status}">${step.status === 'running' ? '运行中' : step.status === 'completed' ? '完成' : '失败'}</span>
+              <span class="thought-step-status ${step.status}">${statusText}</span>
             </div>
           </div>
         </div>
@@ -133,27 +142,32 @@ const StatsManager = {
     if (!this.chart) return;
 
     const categoryMap = {
-      file: '文件',
-      web: '网络',
-      system: '系统',
-      browser: '浏览器',
-      code: '代码',
+      file: 'monitor.cat.file',
+      web: 'monitor.cat.web',
+      system: 'monitor.cat.system',
+      browser: 'monitor.cat.browser',
+      code: 'monitor.cat.code',
       git: 'Git',
-      task: '任务',
-      memory: '记忆',
-      data: '数据',
-      db: '数据库',
-      email: '邮件',
-      monitor: '监控',
-      scheduler: '定时',
+      task: 'monitor.cat.task',
+      memory: 'monitor.cat.memory',
+      data: 'monitor.cat.data',
+      db: 'monitor.cat.db',
+      email: 'monitor.cat.email',
+      monitor: 'monitor.cat.monitor',
+      scheduler: 'monitor.cat.scheduler',
       ocr: 'OCR',
-      vision: '视觉',
+      vision: 'monitor.cat.vision',
       office: 'Office',
     };
 
     if (!Array.isArray(data)) return;
+    this._lastChartData = data;
     const filtered = data.filter((d) => d.callCount > 0);
-    const names = filtered.map((d) => categoryMap[d.category] || d.category);
+    const names = filtered.map((d) => {
+      const key = categoryMap[d.category];
+      if (key && key.indexOf('.') !== -1) return T(key);
+      return key || d.category;
+    });
     const values = filtered.map((d) => d.callCount);
     const rates = filtered.map((d) => d.successRate);
 
@@ -163,7 +177,7 @@ const StatsManager = {
         axisPointer: { type: 'shadow' },
         formatter: (params) => {
           const idx = params[0].dataIndex;
-          return `${names[idx]}<br/>调用次数: ${values[idx]}<br/>成功率: ${rates[idx]}%`;
+          return `${names[idx]}<br/>${T('monitor.calls')}: ${values[idx]}<br/>${T('monitor.successRate')}: ${rates[idx]}%`;
         },
       },
       grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
@@ -225,6 +239,7 @@ const ClusterManager = {
     if (!clusterList) return;
 
     const status = data.totalAgents !== undefined ? data : data.data || data;
+    this._lastData = data;
 
     if (!status || !status.agents || status.agents.length === 0) {
       clusterList.innerHTML = '';
@@ -252,7 +267,10 @@ const ClusterManager = {
         const timeAgo = agent.lastActiveAt
           ? Math.round((Date.now() - new Date(agent.lastActiveAt).getTime()) / 1000)
           : 0;
-        const timeStr = timeAgo < 60 ? `${timeAgo}秒前` : `${Math.round(timeAgo / 60)}分钟前`;
+        const timeStr =
+          timeAgo < 60
+            ? T('monitor.secondsAgo', { n: timeAgo })
+            : T('monitor.minutesAgo', { n: Math.round(timeAgo / 60) });
 
         return `
         <div class="cluster-agent-card">
@@ -266,11 +284,11 @@ const ClusterManager = {
               <span class="cluster-agent-detail-value">${SharedUtils.escapeHtml(agent.persona)}</span>
             </span>
             <span class="cluster-agent-detail">
-              <span class="cluster-agent-detail-label">工具:</span>
+              <span class="cluster-agent-detail-label">${T('monitor.tools')}</span>
               <span class="cluster-agent-detail-value">${agent.toolCalls}</span>
             </span>
             <span class="cluster-agent-detail">
-              <span class="cluster-agent-detail-label">迭代:</span>
+              <span class="cluster-agent-detail-label">${T('monitor.iterations')}</span>
               <span class="cluster-agent-detail-value">${agent.iterationCount}</span>
             </span>
           </div>
@@ -278,7 +296,7 @@ const ClusterManager = {
             <span>ID: ${SharedUtils.escapeHtml(agent.id)}</span>
             <span>${timeStr}</span>
           </div>
-          ${agent.hasError ? `<div style="font-size:10px;color:#f87171;margin-top:2px;">错误: ${SharedUtils.escapeHtml(agent.error)}</div>` : ''}
+          ${agent.hasError ? `<div style="font-size:10px;color:#f87171;margin-top:2px;">${T('monitor.errorLabel')} ${SharedUtils.escapeHtml(agent.error)}</div>` : ''}
         </div>
       `;
       })
@@ -332,7 +350,7 @@ const ClusterManager = {
       ctx.stroke();
     }
 
-    this._drawNode(ctx, cx, cy, '主智能体', 'center', 28);
+    this._drawNode(ctx, cx, cy, T('monitor.mainAgent'), 'center', 28);
     for (const node of nodes) {
       this._drawNode(ctx, node.x, node.y, node.label, node.state, 20);
     }
@@ -434,6 +452,18 @@ function init() {
   ThoughtManager.init();
   StatsManager.init();
   ClusterManager.init();
+
+  // 语言切换：重绘思维链 / 统计图 / 集群（各管理器缓存最新数据）
+  document.addEventListener('cogito:langchange', () => {
+    try {
+      ThoughtManager.render();
+      StatsManager.updateChart(StatsManager._lastChartData || []);
+      if (ClusterManager._lastData) ClusterManager.render(ClusterManager._lastData);
+    } catch (e) {
+      console.error('[Monitor] 语言切换刷新失败:', e);
+    }
+  });
+
   console.log('[Monitor] 初始化完成');
 }
 

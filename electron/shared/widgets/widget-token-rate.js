@@ -71,7 +71,7 @@ window.WidgetRegistry?.register('tokenRate', (container, opts = {}) => {
         <div class="widget-head">
           <span class="widget-head-mark">▸</span>
           <span class="widget-head-label">TOKEN RATE</span>
-          <span class="widget-head-meta">5s 窗口</span>
+          <span class="widget-head-meta">${window.I18n ? window.I18n.t('widget.window5s') : '5s 窗口'}</span>
         </div>
         <div class="token-rate-wrap">
           ${ringContent}
@@ -112,6 +112,7 @@ window.WidgetRegistry?.register('tokenRate', (container, opts = {}) => {
   return {
     init() {
       render();
+      document.addEventListener('cogito:langchange', render);
       // 发送初始请求获取累计数据
       if (window.electronAPI?.sendStatsRequest) {
         window.electronAPI.sendStatsRequest({ type: 'tokens' });

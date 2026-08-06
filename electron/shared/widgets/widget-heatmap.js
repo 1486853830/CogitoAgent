@@ -90,7 +90,7 @@ window.WidgetRegistry?.register('heatmap', (container, opts = {}) => {
       </div>
     `
       : `
-      <div class="widget-empty">等待数据中...</div>
+      <div class="widget-empty">${window.I18n ? window.I18n.t('widget.waitingData') : '等待数据中...'}</div>
     `;
 
     container.innerHTML = `
@@ -124,6 +124,7 @@ window.WidgetRegistry?.register('heatmap', (container, opts = {}) => {
   return {
     init() {
       render();
+      document.addEventListener('cogito:langchange', render);
       // 主动拉取
       if (window.electronAPI?.sendStatsRequest) {
         window.electronAPI.sendStatsRequest({ type: 'dailyHistory', limit: 365 });

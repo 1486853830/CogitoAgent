@@ -12,6 +12,7 @@ export interface ChatConfig {
   topK: number;
   frequencyPenalty: number;
   thinkingInterval: number;
+  language?: string;
 }
 
 export interface SearchConfig {

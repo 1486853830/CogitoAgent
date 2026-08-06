@@ -1,8 +1,14 @@
 import { jest } from '@jest/globals';
+import { mkdirSync, writeFileSync, rmSync } from 'fs';
+import path from 'path';
+import os from 'os';
 
 const mockGetEnabledCategories = jest.fn();
 const mockGetToolsByCategory = jest.fn();
 const mockGetAllCategories = jest.fn();
+let mockLanguage = 'zh';
+
+const testConfigDir = path.join(os.tmpdir(), 'cogito-prompt-test-' + Date.now());
 
 jest.unstable_mockModule('../../src/agent/registry.ts', () => ({
   getEnabledCategories: mockGetEnabledCategories,
@@ -17,7 +23,7 @@ jest.unstable_mockModule('../../src/agent/registry.ts', () => ({
   TOOL_REGISTRY: {},
   getToolRegistry: () => ({}),
   hasTool: () => false,
-  getToolNames: () => [],
+  getNames: () => [],
   isDangerousOperation: () => false,
   isConfirmEnabled: () => false,
   getToolsForPrompt: () => '',
@@ -27,6 +33,47 @@ jest.unstable_mockModule('../../src/agent/registry.ts', () => ({
 }));
 
 const { buildToolList, buildSystemPrompt } = await import('../../src/agent/system-prompt');
+
+function setTestLanguage(lang: string) {
+  mockLanguage = lang;
+  const configData = {
+    api: { provider: '', baseURL: '', apiKey: '', model: '' },
+    chat: {
+      maxTokens: 131072,
+      temperature: 0.7,
+      topP: 0.7,
+      topK: 50,
+      frequencyPenalty: 1,
+      thinkingInterval: 3000,
+      language: lang,
+    },
+    search: { enabled: true, baseURL: '', recencyFilter: '', siteFilter: '' },
+    ocr: { provider: '', baseURL: '', apiKey: '', model: 'InternVL3-78B' },
+    vision: { baseURL: '', apiKey: '', model: 'InternVL3-78B' },
+    workspace: os.homedir(),
+    database: { path: './data/example.db' },
+    email: { smtpHost: '', smtpPort: 587, user: '', password: '', from: '' },
+    models: {
+      openai: { apiKey: '', baseURL: 'https://api.openai.com/v1' },
+      moark: { apiKey: '', baseURL: 'https://api.moark.com/v1' },
+      anthropic: { apiKey: '', baseURL: 'https://api.anthropic.com/v1' },
+      google: { apiKey: '', baseURL: 'https://generativelanguage.googleapis.com/v1beta' },
+    },
+    code: {
+      maxExecutionTime: 30000,
+      maxOutputSize: 100000,
+      scientificMode: false,
+      scientificLibraries: [],
+    },
+    scheduler: { enabled: true },
+  };
+  writeFileSync(
+    path.join(testConfigDir, 'config.json'),
+    JSON.stringify(configData, null, 2),
+    'utf-8',
+  );
+  writeFileSync(path.join(testConfigDir, '.env'), '', 'utf-8');
+}
 
 describe('system-prompt.ts', () => {
   beforeEach(() => {
@@ -167,6 +214,81 @@ describe('system-prompt.ts', () => {
       expect(result).toContain('输出格式');
       expect(result).toContain('调用工具');
       expect(result).toContain('普通对话');
+    });
+  });
+
+  describe('language switching', () => {
+    beforeEach(() => {
+      mkdirSync(testConfigDir, { recursive: true });
+    });
+
+    afterEach(() => {
+      rmSync(testConfigDir, { recursive: true, force: true });
+    });
+
+    it('should include Chinese language instruction by default', () => {
+      process.env.COGITO_USER_DATA_DIR = testConfigDir;
+      setTestLanguage('zh');
+      mockGetEnabledCategories.mockReturnValue(['file']);
+      const result = buildSystemPrompt();
+      expect(result).toContain('语言强制执行');
+      expect(result).toContain('只用中文回复');
+    });
+
+    it('should include English language instruction when language is en', () => {
+      process.env.COGITO_USER_DATA_DIR = testConfigDir;
+      setTestLanguage('en');
+      mockGetEnabledCategories.mockReturnValue(['file']);
+      const result = buildSystemPrompt();
+      expect(result).toContain('LANGUAGE ENFORCEMENT');
+      expect(result).toContain('MUST respond in ENGLISH only');
+      expect(result).toContain(
+        'DO NOT use Chinese, Spanish, Hungarian, Russian, or any other language',
+      );
+    });
+
+    it('should include Spanish language instruction when language is es', () => {
+      process.env.COGITO_USER_DATA_DIR = testConfigDir;
+      setTestLanguage('es');
+      mockGetEnabledCategories.mockReturnValue(['file']);
+      const result = buildSystemPrompt();
+      expect(result).toContain('APLICACIÓN DEL IDIOMA');
+      expect(result).toContain('DEBE responder en ESPAÑOL exclusivamente');
+    });
+
+    it('should include Hungarian language instruction when language is hu', () => {
+      process.env.COGITO_USER_DATA_DIR = testConfigDir;
+      setTestLanguage('hu');
+      mockGetEnabledCategories.mockReturnValue(['file']);
+      const result = buildSystemPrompt();
+      expect(result).toContain('NYELV KÖTELEZŐ');
+      expect(result).toContain('KÖTELEZŐEN MAGYARUL');
+    });
+
+    it('should include Russian language instruction when language is ru', () => {
+      process.env.COGITO_USER_DATA_DIR = testConfigDir;
+      setTestLanguage('ru');
+      mockGetEnabledCategories.mockReturnValue(['file']);
+      const result = buildSystemPrompt();
+      expect(result).toContain('ЯЗЫК — ОБЯЗАТЕЛЬНО');
+      expect(result).toContain('отвечать ТОЛЬКО НА РУССКОМ ЯЗЫКЕ');
+    });
+
+    it('should fall back to Chinese when language is unknown', () => {
+      process.env.COGITO_USER_DATA_DIR = testConfigDir;
+      setTestLanguage('xyz');
+      mockGetEnabledCategories.mockReturnValue(['file']);
+      const result = buildSystemPrompt();
+      expect(result).toContain('语言强制执行');
+      expect(result).toContain('只用中文回复');
+    });
+
+    it('should fall back to Chinese when no config file exists', () => {
+      process.env.COGITO_USER_DATA_DIR = '/nonexistent-path-' + Date.now();
+      mockGetEnabledCategories.mockReturnValue(['file']);
+      const result = buildSystemPrompt();
+      expect(result).toContain('语言强制执行');
+      expect(result).toContain('只用中文回复');
     });
   });
 });

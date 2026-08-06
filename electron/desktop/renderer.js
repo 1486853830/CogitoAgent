@@ -20,6 +20,8 @@ const DRAG_THRESHOLD = 5;
 // 流式回复处理器（使用公共 StreamReplyHandler）
 let replyHandler = null;
 
+const T = (k) => (window.I18n && typeof window.I18n.t === 'function' ? window.I18n.t(k) : k);
+
 function initApp() {
   MessageRenderer.init({
     messagesEl,
@@ -145,14 +147,14 @@ function setButtonState(state) {
     btnSend.style.background = 'rgba(248, 113, 113, 0.18)';
     btnSend.style.color = '#f87171';
     btnSend.style.borderColor = '#f87171';
-    btnSend.title = '点击终止';
+    btnSend.title = T('dashboard.stopClick');
     svg.innerHTML = '<rect x="4" y="4" width="16" height="16" rx="2"/>';
   } else {
     btnSend.style.opacity = '1';
     btnSend.style.background = 'rgba(94, 234, 212, 0.12)';
     btnSend.style.color = '#5eead4';
     btnSend.style.borderColor = '#5eead4';
-    btnSend.title = '等待发送';
+    btnSend.title = T('desktop.waitSend');
     svg.innerHTML = '<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
   }
 }

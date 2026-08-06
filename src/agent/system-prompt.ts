@@ -458,6 +458,9 @@ function buildSystemPrompt(): string {
   const enabledCount = enabledCategories.length;
   const totalCount = Object.keys(getAllCategories()).length;
 
+  const languageInstruction =
+    '\n\n## 语言规则\n- 请使用用户输入所使用的语言来回复。\n- 如果用户用中文提问，就用中文回复；如果用英文提问，就用英文回复；以此类推。\n- 保持回复语言与用户消息语言一致。\n';
+
   // 读取 persona（支持热切换）
   let personaHeader = '';
   try {
@@ -470,7 +473,7 @@ function buildSystemPrompt(): string {
     // 未配置 persona 文件时使用默认提示词
   }
 
-  const basePrompt = `${personaHeader}## ⚠️ 两项黄金规则
+  const basePrompt = `${languageInstruction}${personaHeader}## ⚠️ 两项黄金规则
 
 ### 规则一：用 [TOOL] 调用工具
 当你需要使用工具时，用以下格式：
@@ -501,9 +504,9 @@ function buildSystemPrompt(): string {
 ---
 
 ## 活动范围
-你在 ${workspace} 目录下活动，可以自由探索。
+  你在 ${workspace} 目录下活动，可以自由探索.
 
-## 可用工具（共 ${enabledCount}/${totalCount} 个分类已启用）
+  ## 可用工具（共 ${enabledCount}/${totalCount} 个分类已启用）
 
 ${buildToolList()}
 ## 行为规则

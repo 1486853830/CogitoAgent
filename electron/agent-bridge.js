@@ -306,4 +306,16 @@ function sendToAgent(text) {
   return false;
 }
 
-export { initAgentBridge, sendToAgent, setUserDataDir };
+/**
+ * 发送原始消息给 Agent（用于非 user-message 类型）
+ * @param {object} msg
+ */
+function sendToAgentRaw(msg) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+    return true;
+  }
+  return false;
+}
+
+export { initAgentBridge, sendToAgent, setUserDataDir, sendToAgentRaw };

@@ -32,6 +32,18 @@
 // ============================================================
 const Utils = SharedUtils;
 
+// 多语言助手：T('key') 优先走 window.I18n，缺失时原样返回 key（随后端 UI 兜底）。
+const T = (k, vars) =>
+  window.I18n && typeof window.I18n.t === 'function' ? window.I18n.t(k, vars) : k;
+const LANG = () => (window.I18n ? window.I18n.get() : 'zh');
+
+// 工具分类名按 id 客户端翻译（后端返回中文 name，展示时本地化）。
+function locCategoryName(cat) {
+  const key = 'cat.' + cat.id;
+  const localized = T(key);
+  return localized && localized !== key ? localized : cat.name;
+}
+
 // ============================================================
 // 工具分类数据（初始回退清单；SkillsManager 启动后会从后端注册表动态拉取覆盖）
 // ============================================================
@@ -391,7 +403,7 @@ const PersonaSelectModal = {
       const personas = await window.electronAPI.getPersonas();
 
       // 默认选项
-      const defaultCard = this._createCard('', '默认', '无特定性格');
+      const defaultCard = this._createCard('', T('common.default'), T('dashboard.noPersonality'));
       grid.appendChild(defaultCard);
 
       for (const p of personas) {
@@ -572,7 +584,7 @@ const NavManager = {
             <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
               <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
             </svg>
-            <span>暂无会话</span>
+            <span>${T('dashboard.noSession')}</span>
           </div>
         `;
         // 同步更新欢迎页状态条
@@ -620,7 +632,7 @@ const NavManager = {
       console.error('[NavManager] 加载会话列表失败:', e);
       sessionListEl.innerHTML = `
         <div class="session-empty">
-          <span>加载失败</span>
+          <span>${T('dashboard.loadFailed')}</span>
         </div>
       `;
     }
@@ -633,7 +645,7 @@ const NavManager = {
 
   async switchToSession(sessionId) {
     if (AppState.isProcessing) {
-      ToastManager.warning('AI 正在思考中，请等待回复完成后再切换会话');
+      ToastManager.warning(T('dashboard.busySwitch'));
       return;
     }
 
@@ -663,13 +675,20 @@ const NavManager = {
         if (wechatHistory && wechatHistory.length > 0) {
           for (const msg of wechatHistory) {
             if (msg.direction === 'received') {
-              ChatManager.addToolCall('微信收到', { from: msg.from, text: msg.text });
+              ChatManager.addToolCall(T('dashboard.wechatReceived'), {
+                from: msg.from,
+                text: msg.text,
+              });
             } else if (msg.direction === 'sent') {
-              ChatManager.addToolResult('微信回复', { to: msg.to, text: msg.text }, true);
+              ChatManager.addToolResult(
+                T('dashboard.wechatReplied'),
+                { to: msg.to, text: msg.text },
+                true,
+              );
             }
           }
         } else {
-          ChatManager.addMessage('system', '等待微信消息...');
+          ChatManager.addMessage('system', T('dashboard.wechatWaiting'));
         }
       } catch (e) {
         console.error('[NavManager] 加载微信历史消息失败:', e);
@@ -696,7 +715,7 @@ const NavManager = {
             }
           }
         } else {
-          ChatManager.addMessage('system', '新会话开始...');
+          ChatManager.addMessage('system', T('dashboard.newSessionStart'));
         }
       } catch (e) {
         console.error('[NavManager] 加载历史消息失败:', e);
@@ -723,7 +742,7 @@ const NavManager = {
    */
   createNewSession() {
     if (AppState.isProcessing) {
-      ToastManager.warning('AI 正在思考中，请等待回复完成后再创建新会话');
+      ToastManager.warning(T('dashboard.busyNew'));
       return;
     }
 
@@ -762,15 +781,18 @@ const NavManager = {
 
     // 一天内显示时间
     if (diff < 86400000) {
-      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString(LANG(), { hour: '2-digit', minute: '2-digit' });
     }
     // 一周内显示星期
     if (diff < 604800000) {
-      const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      const days =
+        LANG() === 'zh'
+          ? ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+          : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       return days[date.getDay()];
     }
     // 更早显示日期
-    return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+    return date.toLocaleDateString(LANG(), { month: '2-digit', day: '2-digit' });
   },
 
   /**
@@ -792,7 +814,7 @@ const NavManager = {
 
   newTask() {
     if (AppState.isProcessing) {
-      ToastManager.warning('AI 正在思考中，请等待回复完成后再创建新会话');
+      ToastManager.warning(T('dashboard.busyNew'));
       return;
     }
 
@@ -823,7 +845,7 @@ const NavManager = {
   handleQuickAction(label) {
     console.log('[NavManager] 快速操作:', label);
     // 技能按钮 → 打开技能视图
-    if (label === '技能') {
+    if (label === T('dashboard.skills')) {
       AppState.view = 'welcome';
       document.getElementById('welcomeView').style.display = 'none';
       document.getElementById('chatView').style.display = 'none';
@@ -832,10 +854,7 @@ const NavManager = {
     }
     // 进入对话视图，预置提示词
     ChatManager.enterChatView();
-    const prompts = {
-      自动化: '请帮我创建一个自动化任务，我需要...',
-    };
-    const prompt = prompts[label] || `请帮我处理${label}相关的任务。`;
+    const prompt = T('dashboard.promptGeneric', { label });
     const inputBottom = document.getElementById('chatInputBottom');
     if (inputBottom) {
       inputBottom.value = prompt;
@@ -847,13 +866,22 @@ const NavManager = {
   handleQuickFunction(funcName) {
     console.log('[NavManager] 快捷功能:', funcName);
     ChatManager.enterChatView();
+    // 模块名/描述均来自本地 i18n，按功能类型映射提示语（以 data-func 原值为准）
     const prompts = {
-      网页读取: '请帮我读取并分析以下网页内容：',
-      调研分析: '请帮我做一个调研分析，主题是：',
-      数据挖掘: '请帮我进行数据挖掘，分析以下数据：',
-      文件管理: '请帮我管理文件，我需要：',
+      网页读取: 'dashboard.promptWeb',
+      调研分析: 'dashboard.promptResearch',
+      数据挖掘: 'dashboard.promptData',
+      文件管理: 'dashboard.promptFile',
+      WEB: 'dashboard.promptWeb',
+      RCH: 'dashboard.promptResearch',
+      DAT: 'dashboard.promptData',
+      FS: 'dashboard.promptFile',
     };
-    const prompt = prompts[funcName] || `请帮我进行${funcName}。`;
+    const promptKey = prompts[funcName] || 'dashboard.promptGeneric';
+    const prompt =
+      promptKey === 'dashboard.promptGeneric'
+        ? T('dashboard.promptGeneric', { label: funcName })
+        : T(promptKey);
     const inputBottom = document.getElementById('chatInputBottom');
     if (inputBottom) {
       inputBottom.value = prompt;
@@ -882,9 +910,9 @@ const NavManager = {
       if (state.sessionId) {
         AppState.wechatSessionId = state.sessionId;
       }
-      label.textContent = '微信通道';
+      label.textContent = T('dashboard.wechatChannel');
       btn.classList.add('wechat-connected');
-      btn.title = '点击进入微信会话';
+      btn.title = T('dashboard.enterWechatSession');
       const modal = document.getElementById('wechatQrModal');
       if (modal) modal.style.display = 'none';
 
@@ -892,18 +920,18 @@ const NavManager = {
         this.switchToSession(state.sessionId);
       }
     } else {
-      label.textContent = '连接微信';
+      label.textContent = T('dashboard.connectWechat');
       btn.classList.remove('wechat-connected');
-      btn.title = '连接微信';
+      btn.title = T('dashboard.connectWechat');
     }
   },
 
   handleWechatMessage(msg) {
     const { direction, from, text } = msg;
     if (direction === 'received') {
-      ChatManager.addToolCall('微信收到', { from, text });
+      ChatManager.addToolCall(T('dashboard.wechatReceived'), { from, text });
     } else if (direction === 'sent') {
-      ChatManager.addToolResult('微信回复', { to: from, text }, true);
+      ChatManager.addToolResult(T('dashboard.wechatReplied'), { to: from, text }, true);
     }
   },
 
@@ -915,7 +943,7 @@ const NavManager = {
 
     if (data.qrCode) {
       img.src = data.qrCode;
-      if (status) status.textContent = '请使用微信扫描二维码';
+      if (status) status.textContent = T('dashboard.scanHint');
     }
     modal.style.display = 'flex';
 
@@ -980,6 +1008,11 @@ const SkillsManager = {
     api.sendToolsRequest();
   },
 
+  // 语言切换后重绘技能面板（分类名按 id 本地化）
+  rerenderI18n() {
+    this.render();
+  },
+
   // 主动销毁：供窗口卸载/重建时调用，释放 tools-response 监听器
   destroy() {
     if (typeof this._toolsCleanup === 'function') {
@@ -1029,7 +1062,7 @@ const SkillsManager = {
           <div class="skill-category-header">
             <div class="skill-category-code">${cat.code || cat.id.toUpperCase()}</div>
             <div class="skill-category-info">
-              <div class="skill-category-name">${cat.name}</div>
+              <div class="skill-category-name">${locCategoryName(cat)}</div>
               <div class="skill-category-meta">${catTools.length} TOOLS${catDangerCount ? ` · ${catDangerCount} CRITICAL` : ''}</div>
             </div>
             <div class="skill-category-expand ${isExpanded ? 'expanded' : ''}">
@@ -1108,10 +1141,10 @@ const ChatManager = {
       messagesEl: this.messagesEl,
       layout: 'dashboard',
       showAvatar: true,
-      userAvatarText: '我',
-      assistantAvatarText: 'AI',
+      userAvatarText: T('dashboard.avatarMe'),
+      assistantAvatarText: T('dashboard.avatarAI'),
       emptyHintIcon: 'Cogito Agent',
-      emptyHintText: '有什么可以帮你的？',
+      emptyHintText: T('dashboard.chatEmptyHint'),
     });
 
     // 顶部发送按钮
@@ -1305,7 +1338,7 @@ const ChatManager = {
 
     const avatar = document.createElement('div');
     avatar.className = 'message-avatar';
-    avatar.textContent = type === 'user' ? '我' : 'AI';
+    avatar.textContent = type === 'user' ? T('dashboard.avatarMe') : T('dashboard.avatarAI');
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
@@ -1320,7 +1353,7 @@ const ChatManager = {
 
     const time = document.createElement('div');
     time.className = 'time';
-    time.textContent = new Date().toLocaleTimeString('zh-CN', {
+    time.textContent = new Date().toLocaleTimeString(LANG(), {
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -1350,7 +1383,7 @@ const ChatManager = {
         btn.style.borderColor = '#f87171';
         btn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.1)';
         btn.style.color = '#fff';
-        btn.title = '点击终止';
+        btn.title = T('dashboard.stopClick');
         const svg = btn.querySelector('svg path');
         if (svg) {
           svg.setAttribute('d', 'M6 6h12v12H6z');
@@ -1360,7 +1393,7 @@ const ChatManager = {
         btn.style.borderColor = '';
         btn.style.boxShadow = '';
         btn.style.color = '';
-        btn.title = '发送';
+        btn.title = T('common.send');
         const svg = btn.querySelector('svg path');
         if (svg) {
           svg.setAttribute('d', 'M2.01 21L23 12 2.01 3 2 10l15 2-15 2z');
@@ -1617,6 +1650,19 @@ function initApp() {
   // 初始化输入框高度
   Utils.autoResizeTextarea(document.getElementById('chatInput'));
   Utils.autoResizeTextarea(document.getElementById('chatInputBottom'));
+
+  // 语言切换：DOM data-i18n 由 i18n.js 自动重绑，此处重绘动态生成内容
+  document.addEventListener('cogito:langchange', () => {
+    try {
+      SkillsManager.rerenderI18n();
+      NavManager.loadSessions();
+      if (window.MessageRenderer && typeof window.MessageRenderer.rerenderI18n === 'function') {
+        window.MessageRenderer.rerenderI18n();
+      }
+    } catch (e) {
+      console.error('[App] 语言切换刷新失败:', e);
+    }
+  });
 
   console.log('[App] Dashboard 初始化完成');
 }

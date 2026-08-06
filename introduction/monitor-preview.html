@@ -261,7 +261,7 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background-image:linear
           </div>
           <div class="panel-body" id="thoughtPanelBody">
             <div class="thought-timeline" id="thoughtTimeline">
-              <div class="thought-empty">等待思考开始...</div>
+              <div class="thought-empty" data-i18n="monitor.thoughtEmpty">等待思考开始...</div>
             </div>
           </div>
         </div>
@@ -275,8 +275,8 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background-image:linear
           </div>
           <div class="panel-body" id="statsPanelBody">
             <div class="stats-overview">
-              <div class="stat-item"><span class="stat-value" id="statTotalCalls">0</span><span class="stat-label">总调用</span></div>
-              <div class="stat-item"><span class="stat-value" id="statSuccessRate">0%</span><span class="stat-label">成功率</span></div>
+              <div class="stat-item"><span class="stat-value" id="statTotalCalls">0</span><span class="stat-label" data-i18n="monitor.calls">调用次数</span></div>
+              <div class="stat-item"><span class="stat-value" id="statSuccessRate">0%</span><span class="stat-label" data-i18n="monitor.successRate">成功率</span></div>
             </div>
             <div class="chart-container" id="toolUsageChart"></div>
           </div>
@@ -303,10 +303,14 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background-image:linear
   </div>
 </div>
 
+<script src="../electron/shared/i18n.js"></script>
 <script>
 // ============================================================
 // Mock Data System
 // ============================================================
+function mt(key, fallback, params) {
+  return window.I18n ? (window.I18n.t(key, params) || fallback) : fallback;
+}
 const MockData = {
   startedAt: Date.now(),
   statCards: {
@@ -400,10 +404,11 @@ const MockData = {
   renderThoughtTimeline() {
     const el = document.getElementById('thoughtTimeline');
     if (!el) return;
-    if (this.thoughtSteps.length === 0) { el.innerHTML = '<div class="thought-empty">等待思考开始...</div>'; return; }
+    if (this.thoughtSteps.length === 0) { el.innerHTML = '<div class="thought-empty">' + mt('monitor.thoughtEmpty', '等待思考开始...') + '</div>'; return; }
     el.innerHTML = this.thoughtSteps.map(s => {
       const details = s.details || '';
-      return `<div class="thought-step ${s.status}"><div class="thought-step-content"><div class="thought-step-name">${s.name}</div>${details ? '<div class="thought-step-details">'+details+'</div>' : ''}<div class="thought-step-meta">${s.duration > 0 ? '<span class="thought-step-duration">'+s.duration+'s</span>' : ''}<span class="thought-step-status '+s.status+'">'+(s.status==='running'?'运行中':s.status==='completed'?'完成':'失败')+'</span></div></div></div>`;
+      const statusText = s.status === 'running' ? mt('monitor.statusRunning', '运行中') : s.status === 'completed' ? mt('monitor.statusCompleted', '完成') : mt('monitor.statusFailed', '失败');
+      return `<div class="thought-step ${s.status}"><div class="thought-step-content"><div class="thought-step-name">${s.name}</div>${details ? '<div class="thought-step-details">'+details+'</div>' : ''}<div class="thought-step-meta">${s.duration > 0 ? '<span class="thought-step-duration">'+s.duration+'s</span>' : ''}<span class="thought-step-status '+s.status+'">'+statusText+'</span></div></div></div>`;
     }).join('');
     el.scrollTop = el.scrollHeight;
   },
@@ -429,20 +434,20 @@ function formatTime(s) {
 function renderStatCards() {
   const d = MockData.statCards;
   const fields = [
-    { key: 'todaySessions', label: '今日会话', unit: '' },
-    { key: 'todayMessages', label: '今日消息', unit: '' },
-    { key: 'todayToolCalls', label: '今日调用', unit: '' },
-    { key: 'todayTokens', label: '今日 Token', unit: '' },
-    { key: 'totalTokens', label: '累计 Token', unit: '' },
-    { key: 'totalThinkingTime', label: '思考时长', unit: 's', fmt: 'time' },
+    { key: 'todaySessions', labelKey: 'widget.todaySessions', unit: '' },
+    { key: 'todayMessages', labelKey: 'widget.todayMessages', unit: '' },
+    { key: 'todayToolCalls', labelKey: 'widget.todayToolCalls', unit: '' },
+    { key: 'todayTokens', labelKey: 'widget.todayTokens', unit: '' },
+    { key: 'totalTokens', labelKey: 'widget.totalTokens', unit: '' },
+    { key: 'totalThinkingTime', labelKey: 'widget.thinkingTime', unit: 's', fmt: 'time' },
   ];
   const cards = fields.map(f => {
     const raw = d[f.key] || 0;
     const val = f.fmt === 'time' ? formatTime(raw) : formatNum(raw);
-    return `<div class="stat-card"><div class="stat-card-label">${f.label}</div><div class="stat-card-value">${val}<span class="stat-card-unit">${f.unit}</span></div></div>`;
+    return `<div class="stat-card"><div class="stat-card-label">${mt(f.labelKey, f.labelKey)}</div><div class="stat-card-value">${val}<span class="stat-card-unit">${f.unit}</span></div></div>`;
   }).join('');
   document.getElementById('widgetStatCards').innerHTML =
-    `<div class="widget-card"><div class="widget-head"><span class="widget-head-mark">▸</span><span class="widget-head-label">TODAY METRICS</span><span class="widget-head-meta">实时</span></div><div class="stat-cards">${cards}</div></div>`;
+    `<div class="widget-card"><div class="widget-head"><span class="widget-head-mark">▸</span><span class="widget-head-label">TODAY METRICS</span><span class="widget-head-meta">${mt('widget.realtime', '实时')}</span></div><div class="stat-cards">${cards}</div></div>`;
 }
 
 // Token Rate
@@ -560,7 +565,7 @@ function renderHeatmap() {
   }
   const total = values.reduce((a,b) => a+b, 0);
   const hasData = values.some(v => v > 0);
-  const grid = hasData ? `<div class="heatmap-grid">${cells.map(c => `<div class="heatmap-cell${c.level > 0 ? ' l'+c.level : ''}" title="${c.date}: ${c.val}"></div>`).join('')}</div><div class="heatmap-legend"><span>LESS</span><div class="heatmap-legend-cells"><div class="heatmap-cell"></div><div class="heatmap-cell l1"></div><div class="heatmap-cell l2"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l4"></div></div><span>MORE</span></div>` : '<div class="widget-empty">等待数据中...</div>';
+  const grid = hasData ? `<div class="heatmap-grid">${cells.map(c => `<div class="heatmap-cell${c.level > 0 ? ' l'+c.level : ''}" title="${c.date}: ${c.val}"></div>`).join('')}</div><div class="heatmap-legend"><span>LESS</span><div class="heatmap-legend-cells"><div class="heatmap-cell"></div><div class="heatmap-cell l1"></div><div class="heatmap-cell l2"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l4"></div></div><span>MORE</span></div>` : '<div class="widget-empty">' + mt('widget.waitingData', '等待数据中...') + '</div>';
   document.getElementById('widgetHeatmap').innerHTML =
     `<div class="widget-card"><div class="widget-head"><span class="widget-head-mark">▸</span><span class="widget-head-label">ACTIVITY HEATMAP</span><span class="widget-head-meta">53 weeks · ${formatNum(total)}</span></div><div class="heatmap-wrap">${grid}</div></div>`;
 }
@@ -640,7 +645,7 @@ function renderCluster() {
         ctx.textBaseline = 'top';
         ctx.fillText(label, x, y + size/2 + 4);
       };
-      drawNode(cx, cy, '主智能体', 'center', 28);
+      drawNode(cx, cy, mt('monitor.mainAgent', '主智能体'), 'center', 28);
       for (const node of nodes) drawNode(node.x, node.y, node.label, node.state, 20);
       // Pulse animation
       const now = Date.now();
@@ -660,8 +665,8 @@ function renderCluster() {
   list.innerHTML = agents.map(a => {
     const icon = stateIcons[a.state] || '🤖';
     const timeAgo = Math.round((Date.now() - a.lastActiveAt) / 1000);
-    const timeStr = timeAgo < 60 ? timeAgo+'秒前' : Math.round(timeAgo/60)+'分钟前';
-    return `<div class="cluster-agent-card"><div class="cluster-agent-header"><span class="cluster-agent-name">${icon} ${a.name}</span><span class="cluster-agent-state ${a.state}">${a.state}</span></div><div class="cluster-agent-details"><span class="cluster-agent-detail"><span class="cluster-agent-detail-label">Persona:</span><span class="cluster-agent-detail-value">${a.persona}</span></span><span class="cluster-agent-detail"><span class="cluster-agent-detail-label">工具:</span><span class="cluster-agent-detail-value">${a.toolCalls}</span></span><span class="cluster-agent-detail"><span class="cluster-agent-detail-label">迭代:</span><span class="cluster-agent-detail-value">${a.iterationCount}</span></span></div><div style="font-size:10px;color:var(--type-faint);display:flex;justify-content:space-between;"><span>ID: ${a.id}</span><span>${timeStr}</span></div></div>`;
+    const timeStr = timeAgo < 60 ? mt('monitor.secondsAgo', timeAgo + '秒前', { n: timeAgo }) : mt('monitor.minutesAgo', Math.round(timeAgo/60) + '分钟前', { n: Math.round(timeAgo/60) });
+    return `<div class="cluster-agent-card"><div class="cluster-agent-header"><span class="cluster-agent-name">${icon} ${a.name}</span><span class="cluster-agent-state ${a.state}">${a.state}</span></div><div class="cluster-agent-details"><span class="cluster-agent-detail"><span class="cluster-agent-detail-label">Persona:</span><span class="cluster-agent-detail-value">${a.persona}</span></span><span class="cluster-agent-detail"><span class="cluster-agent-detail-label">${mt('monitor.tools', '工具')}:</span><span class="cluster-agent-detail-value">${a.toolCalls}</span></span><span class="cluster-agent-detail"><span class="cluster-agent-detail-label">${mt('monitor.iterations', '迭代')}:</span><span class="cluster-agent-detail-value">${a.iterationCount}</span></span></div><div style="font-size:10px;color:var(--type-faint);display:flex;justify-content:space-between;"><span>ID: ${a.id}</span><span>${timeStr}</span></div></div>`;
   }).join('');
 }
 
@@ -789,6 +794,16 @@ document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   initPanelToggle();
   initMockData();
+});
+
+document.addEventListener('cogito:langchange', () => {
+  if (window.I18n) window.I18n.apply();
+  if (window.MockData) {
+    renderStatCards();
+    renderToolStats();
+    renderCluster();
+    if (typeof MockData.renderThoughtTimeline === 'function') MockData.renderThoughtTimeline();
+  }
 });
 </script>
 </body>

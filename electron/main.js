@@ -8,7 +8,7 @@ import { app, BrowserWindow, ipcMain, screen, dialog, shell } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn, execSync, execFileSync } from 'child_process';
-import { initAgentBridge, sendToAgent, setUserDataDir } from './agent-bridge.js';
+import { initAgentBridge, sendToAgent, setUserDataDir, sendToAgentRaw } from './agent-bridge.js';
 import fs from 'fs';
 import os from 'os';
 import { decrypt as decryptCredential } from './shared/credentials.js';
@@ -96,6 +96,7 @@ function saveConfig(config) {
         topK: 50,
         frequencyPenalty: 1,
         thinkingInterval: config.thinkingInterval || 3000,
+        language: config.chat?.language || 'zh',
       },
       search: {
         enabled: true,
@@ -795,6 +796,7 @@ app.whenReady().then(async () => {
       workspace: env['COGITO_WORKSPACE'] || configJson.workspace || '',
       thinkingInterval:
         env['COGITO_THINKING_INTERVAL'] || configJson.chat?.thinkingInterval || '3000',
+      language: configJson.chat?.language || 'zh',
       mode: env['COGITO_MODE'] || 'dashboard',
       email: {
         host: env['COGITO_EMAIL_HOST'] || '',
@@ -825,6 +827,23 @@ app.whenReady().then(async () => {
         sandboxMode: env['COGITO_SANDBOX_MODE'] !== 'false',
       },
     };
+  });
+
+  // 更新语言配置（仅更新 config.json 中的 chat.language）
+  ipcMain.on('update-language', (_event, lang) => {
+    try {
+      if (fs.existsSync(CONFIG_FILE)) {
+        const configJson = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+        configJson.chat = configJson.chat || {};
+        configJson.chat.language = lang || 'zh';
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(configJson, null, 2), 'utf-8');
+        console.log('[主进程] 语言配置已更新:', lang);
+      }
+      // 通过 WebSocket 通知 Agent 进程刷新 system prompt
+      sendToAgentRaw({ type: 'update-language' });
+    } catch (e) {
+      console.error('[主进程] 更新语言配置失败:', e.message);
+    }
   });
 
   // 选择目录对话框

@@ -34,6 +34,7 @@ const DEFAULT_CONFIG: Config = {
     topK: 50,
     frequencyPenalty: 1,
     thinkingInterval: 3000,
+    language: 'zh',
   },
   search: {
     enabled: true,
@@ -365,6 +366,30 @@ function reloadConfig(): Config {
   return loadConfig();
 }
 
+/** 直接读取配置文件，不使用缓存（用于每轮回复前获取最新语言） */
+function readConfigFresh(): Config {
+  try {
+    const configFile = getConfigFile();
+    if (existsSync(configFile)) {
+      const data = readFileSync(configFile, 'utf-8');
+      const loaded = JSON.parse(data);
+      let fresh = deepMerge(
+        DEFAULT_CONFIG as unknown as Record<string, unknown>,
+        loaded,
+      ) as unknown as Config;
+      const envConfig = loadEnvConfig();
+      fresh = deepMerge(
+        fresh as unknown as Record<string, unknown>,
+        envConfig,
+      ) as unknown as Config;
+      return fresh;
+    }
+  } catch {
+    /* ignore */
+  }
+  return { ...DEFAULT_CONFIG };
+}
+
 function saveConfig(cfg: Config): boolean {
   try {
     const sanitized = JSON.parse(JSON.stringify(cfg)) as Record<string, unknown>;
@@ -399,6 +424,7 @@ function saveConfig(cfg: Config): boolean {
 export {
   loadConfig,
   reloadConfig,
+  readConfigFresh,
   saveConfig,
   loadEnvConfig,
   isConfigured,

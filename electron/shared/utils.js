@@ -47,7 +47,8 @@ const SharedUtils = {
   },
 
   formatTime() {
-    return new Date().toLocaleTimeString('zh-CN', {
+    const lng = window.I18n ? window.I18n.get() : 'zh-CN';
+    return new Date().toLocaleTimeString(lng === 'zh' ? 'zh-CN' : lng, {
       hour: '2-digit',
       minute: '2-digit',
     });

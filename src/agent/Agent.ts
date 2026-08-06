@@ -10,7 +10,9 @@ import {
   initializeSession,
   estimateTokens,
   resetConversation,
+  updateSystemPrompt,
 } from './session.ts';
+import { reloadConfig } from '../config.ts';
 import {
   init,
   showPrompt,
@@ -762,6 +764,12 @@ async function start(): Promise<void> {
     try {
       await startWsServer(9527);
       onMessage((msg: Record<string, unknown>) => {
+        if (msg.type === 'update-language') {
+          reloadConfig();
+          updateSystemPrompt();
+          console.log('[Agent] System prompt 语言已刷新');
+          return;
+        }
         if (msg.type === 'user-message' && typeof msg.text === 'string') {
           recordMessage();
           handleUserInput(msg.text);
