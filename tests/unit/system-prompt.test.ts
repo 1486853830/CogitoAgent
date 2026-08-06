@@ -217,7 +217,7 @@ describe('system-prompt.ts', () => {
     });
   });
 
-  describe('language switching', () => {
+  describe('language rule', () => {
     beforeEach(() => {
       mkdirSync(testConfigDir, { recursive: true });
     });
@@ -226,69 +226,31 @@ describe('system-prompt.ts', () => {
       rmSync(testConfigDir, { recursive: true, force: true });
     });
 
-    it('should include Chinese language instruction by default', () => {
+    it('should include language follow instruction', () => {
       process.env.COGITO_USER_DATA_DIR = testConfigDir;
       setTestLanguage('zh');
       mockGetEnabledCategories.mockReturnValue(['file']);
       const result = buildSystemPrompt();
-      expect(result).toContain('语言强制执行');
-      expect(result).toContain('只用中文回复');
+      expect(result).toContain('语言规则');
+      expect(result).toContain('使用用户输入所使用的语言来回复');
     });
 
-    it('should include English language instruction when language is en', () => {
+    it('language instruction is independent of config language setting', () => {
       process.env.COGITO_USER_DATA_DIR = testConfigDir;
       setTestLanguage('en');
       mockGetEnabledCategories.mockReturnValue(['file']);
       const result = buildSystemPrompt();
-      expect(result).toContain('LANGUAGE ENFORCEMENT');
-      expect(result).toContain('MUST respond in ENGLISH only');
-      expect(result).toContain(
-        'DO NOT use Chinese, Spanish, Hungarian, Russian, or any other language',
-      );
+      // 语言指令不再随语言配置变化，始终是跟随用户语言
+      expect(result).toContain('语言规则');
+      expect(result).toContain('使用用户输入所使用的语言来回复');
     });
 
-    it('should include Spanish language instruction when language is es', () => {
-      process.env.COGITO_USER_DATA_DIR = testConfigDir;
-      setTestLanguage('es');
-      mockGetEnabledCategories.mockReturnValue(['file']);
-      const result = buildSystemPrompt();
-      expect(result).toContain('APLICACIÓN DEL IDIOMA');
-      expect(result).toContain('DEBE responder en ESPAÑOL exclusivamente');
-    });
-
-    it('should include Hungarian language instruction when language is hu', () => {
-      process.env.COGITO_USER_DATA_DIR = testConfigDir;
-      setTestLanguage('hu');
-      mockGetEnabledCategories.mockReturnValue(['file']);
-      const result = buildSystemPrompt();
-      expect(result).toContain('NYELV KÖTELEZŐ');
-      expect(result).toContain('KÖTELEZŐEN MAGYARUL');
-    });
-
-    it('should include Russian language instruction when language is ru', () => {
-      process.env.COGITO_USER_DATA_DIR = testConfigDir;
-      setTestLanguage('ru');
-      mockGetEnabledCategories.mockReturnValue(['file']);
-      const result = buildSystemPrompt();
-      expect(result).toContain('ЯЗЫК — ОБЯЗАТЕЛЬНО');
-      expect(result).toContain('отвечать ТОЛЬКО НА РУССКОМ ЯЗЫКЕ');
-    });
-
-    it('should fall back to Chinese when language is unknown', () => {
-      process.env.COGITO_USER_DATA_DIR = testConfigDir;
-      setTestLanguage('xyz');
-      mockGetEnabledCategories.mockReturnValue(['file']);
-      const result = buildSystemPrompt();
-      expect(result).toContain('语言强制执行');
-      expect(result).toContain('只用中文回复');
-    });
-
-    it('should fall back to Chinese when no config file exists', () => {
+    it('should work when no config file exists', () => {
       process.env.COGITO_USER_DATA_DIR = '/nonexistent-path-' + Date.now();
       mockGetEnabledCategories.mockReturnValue(['file']);
       const result = buildSystemPrompt();
-      expect(result).toContain('语言强制执行');
-      expect(result).toContain('只用中文回复');
+      expect(result).toContain('语言规则');
+      expect(result).toContain('使用用户输入所使用的语言来回复');
     });
   });
 });
