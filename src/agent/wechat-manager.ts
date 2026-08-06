@@ -18,11 +18,11 @@ import {
   setConversationHistory,
 } from './session.ts';
 import { broadcast } from '../io/ws-server.ts';
+import type { Message } from '../types/index.ts';
 
 interface WechatMessage {
   from: string;
   text: string;
-  [key: string]: any;
 }
 
 interface SessionData {
@@ -51,7 +51,7 @@ function syncWechatHistoryToSession(): void {
       });
     }
   }
-  setConversationHistory(history as any);
+  setConversationHistory(history as Message[]);
 }
 
 function ensureWechatSession(): string {
@@ -162,7 +162,7 @@ async function initWechatChannel(): Promise<void> {
   }
 }
 
-async function manualLoginWechat(): Promise<any> {
+async function manualLoginWechat(): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const result = await loginWechat();
 
@@ -190,8 +190,8 @@ async function manualLoginWechat(): Promise<any> {
               },
             });
           }
-        } catch (e: any) {
-          console.error('[微信通道] 启动轮询异常:', e.message);
+        } catch (e) {
+          console.error('[微信通道] 启动轮询异常:', (e as Error).message);
         }
       }, 1000);
     } else {
@@ -205,8 +205,9 @@ async function manualLoginWechat(): Promise<any> {
     }
 
     return result;
-  } catch (e: any) {
-    console.error('[微信通道] 登录异常:', e.message);
+  } catch (e) {
+    const msg = (e as Error).message;
+    console.error('[微信通道] 登录异常:', msg);
     broadcast('wechat-state', {
       data: {
         connected: false,
@@ -214,11 +215,11 @@ async function manualLoginWechat(): Promise<any> {
         polling: false,
       },
     });
-    return { success: false, error: e.message };
+    return { success: false, error: msg };
   }
 }
 
-async function manualLogoutWechat(): Promise<any> {
+async function manualLogoutWechat(): Promise<{ success: boolean; data?: string; error?: string }> {
   await stopWechatPolling();
   const result = await logoutWechat();
 

@@ -1,5 +1,7 @@
 import { execFile } from 'child_process';
 
+type SystemResult = { success: boolean; data?: string; error?: string };
+
 function sanitizeAppName(appName: string): string {
   const sanitized = appName.trim();
 
@@ -15,7 +17,7 @@ function sanitizeAppName(appName: string): string {
   return sanitized;
 }
 
-async function listApps(): Promise<any> {
+async function listApps(): Promise<SystemResult> {
   return new Promise((resolve) => {
     execFile(
       'powershell',
@@ -43,7 +45,7 @@ async function listApps(): Promise<any> {
   });
 }
 
-async function openApp(appName: string): Promise<any> {
+async function openApp(appName: string): Promise<SystemResult> {
   return new Promise((resolve) => {
     try {
       const sanitizedName = sanitizeAppName(appName);
@@ -54,13 +56,13 @@ async function openApp(appName: string): Promise<any> {
           resolve({ success: true, data: `已启动: ${sanitizedName}` });
         }
       });
-    } catch (err: any) {
-      resolve({ success: false, error: err.message });
+    } catch (err) {
+      resolve({ success: false, error: (err as Error).message });
     }
   });
 }
 
-async function closeApp(appName: string): Promise<any> {
+async function closeApp(appName: string): Promise<SystemResult> {
   return new Promise((resolve) => {
     try {
       const sanitizedName = sanitizeAppName(appName);
@@ -72,8 +74,8 @@ async function closeApp(appName: string): Promise<any> {
           resolve({ success: true, data: `已关闭: ${sanitizedName}` });
         }
       });
-    } catch (err: any) {
-      resolve({ success: false, error: err.message });
+    } catch (err) {
+      resolve({ success: false, error: (err as Error).message });
     }
   });
 }

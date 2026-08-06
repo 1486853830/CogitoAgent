@@ -144,8 +144,8 @@ function handleSpawnCommand(input: string): void {
         println(`[错误] ${result.error}`, 'red');
       }
     })
-    .catch((error: any) => {
-      println(`[错误] 生成失败: ${error.message}`, 'red');
+    .catch((error) => {
+      println(`[错误] 生成失败: ${(error as Error).message}`, 'red');
     });
 }
 
@@ -197,8 +197,8 @@ function handleDelegateCommand(input: string): void {
         println(`[集群] 任务失败: ${result.error}`, 'red');
       }
     })
-    .catch((error: any) => {
-      println(`[集群] 执行出错: ${error.message}`, 'red');
+    .catch((error) => {
+      println(`[集群] 执行出错: ${(error as Error).message}`, 'red');
     });
 }
 

@@ -23,21 +23,29 @@ function sleep(ms: number): Promise<void> {
 /**
  * 判断是否为网络错误
  */
-function isNetworkError(error: any): boolean {
+function isNetworkError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const e = error as {
+    code?: string;
+    message?: string;
+    name?: string;
+    cause?: unknown;
+  };
   // undici 把具体错误放在 cause 中（'fetch failed' 时 error.code 为 undefined）
-  if (error?.cause && isNetworkError(error.cause)) return true;
+  if (e.cause && isNetworkError(e.cause)) return true;
   // undici 的 'fetch failed' 通常抛 TypeError
-  if (error?.name === 'TypeError' && /fetch/i.test(error?.message || '')) return true;
+  if (e.name === 'TypeError' && /fetch/i.test(e.message || '')) return true;
+  const msg = e.message || '';
   return (
-    error.code === 'ECONNREFUSED' ||
-    error.code === 'ENOTFOUND' ||
-    error.code === 'ETIMEDOUT' ||
-    error.code === 'ECONNRESET' ||
-    error.message?.includes('network') ||
-    error.message?.includes('timeout') ||
-    error.message?.includes('ECONNREFUSED') ||
-    error.message?.includes('Premature close') ||
-    error.message?.includes('premature_close')
+    e.code === 'ECONNREFUSED' ||
+    e.code === 'ENOTFOUND' ||
+    e.code === 'ETIMEDOUT' ||
+    e.code === 'ECONNRESET' ||
+    msg.includes('network') ||
+    msg.includes('timeout') ||
+    msg.includes('ECONNREFUSED') ||
+    msg.includes('Premature close') ||
+    msg.includes('premature_close')
   );
 }
 
@@ -182,22 +190,27 @@ async function* streamChat(
         };
       }
       return capturedUsage;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 已开始输出后不再重试（避免重复 yield 已输出内容），直接抛错交调用方处理
       if (streamStarted) throw error;
       retryCount++;
 
-      const status = error?.status as number | undefined;
-      const isAbort = error?.name === 'AbortError';
+      const e = error as {
+        status?: number;
+        name?: string;
+        retryAfter?: unknown;
+      };
+      const status = e.status;
+      const isAbort = e.name === 'AbortError';
       // 429（限流）和 5xx（服务端错误）应当重试；网络错误和超时也重试。
       const isHTTPRetryable =
         status === 429 || (typeof status === 'number' && status >= 500 && status < 600);
 
       if ((isNetworkError(error) || isHTTPRetryable || isAbort) && retryCount < MAX_RETRIES) {
         let delay: number;
-        if (status === 429 && error?.retryAfter) {
+        if (status === 429 && e.retryAfter != null) {
           // 429 优先使用 Retry-After 头（秒）
-          const retryAfterSec = parseInt(error.retryAfter, 10);
+          const retryAfterSec = parseInt(String(e.retryAfter), 10);
           delay = (isNaN(retryAfterSec) ? 1 : Math.max(retryAfterSec, 1)) * 1000;
         } else {
           delay = Math.pow(2, retryCount - 1) * RETRY_DELAY_BASE;

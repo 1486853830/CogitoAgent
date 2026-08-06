@@ -17,8 +17,10 @@ function isValidUrl(url: string): boolean {
  * 联网搜索
  * 将搜索结果格式化为可读性强的文本
  */
-async function search(query: string): Promise<any> {
-  const result: any = await webSearch(query);
+async function search(
+  query: string,
+): Promise<{ success: boolean; data?: unknown; error?: string }> {
+  const result = await webSearch(query);
   if (!result.success) {
     return result;
   }
@@ -26,21 +28,23 @@ async function search(query: string): Promise<any> {
   let summary = `搜索关键词: ${query}\n\n`;
   try {
     if (raw && typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>;
       const snippets: string[] = [];
-      if (raw.snippets || raw.results || raw.organic_results || raw.web) {
-        const list = raw.snippets || raw.results || raw.organic_results || raw.web;
+      if (obj.snippets || obj.results || obj.organic_results || obj.web) {
+        const list = obj.snippets || obj.results || obj.organic_results || obj.web;
         if (Array.isArray(list)) {
-          list.forEach((item: any, idx: number) => {
-            const title = item.title || item.name || '无标题';
-            const url = item.url || item.link || '';
-            const content = item.snippet || item.content || item.description || item.text || '';
+          list.forEach((item, idx) => {
+            const it = item as Record<string, unknown>;
+            const title = it.title ?? it.name ?? '无标题';
+            const url = it.url ?? it.link ?? '';
+            const content = it.snippet ?? it.content ?? it.description ?? it.text ?? '';
             snippets.push(`[${idx + 1}] ${title}${url ? ` (${url})` : ''}\n${content}`);
           });
         }
-      } else if (raw.answer_text || raw.answer || raw.content) {
-        summary += `摘要: ${raw.answer_text || raw.answer || raw.content}`;
-      } else if (raw.summary) {
-        summary += raw.summary;
+      } else if (obj.answer_text || obj.answer || obj.content) {
+        summary += `摘要: ${obj.answer_text || obj.answer || obj.content}`;
+      } else if (obj.summary) {
+        summary += obj.summary;
       } else {
         summary += JSON.stringify(raw, null, 2).slice(0, 3000);
       }
@@ -57,7 +61,7 @@ async function search(query: string): Promise<any> {
 /**
  * 在浏览器中打开 URL
  */
-async function browse(url: string): Promise<any> {
+async function browse(url: string): Promise<{ success: boolean; data?: string; error?: string }> {
   return new Promise((resolve) => {
     const cleanedUrl = url.trim().replace(/`/g, '');
     if (!isValidUrl(cleanedUrl)) {
@@ -92,7 +96,9 @@ async function browse(url: string): Promise<any> {
 /**
  * 抓取网页内容并提取正文
  */
-async function fetchPage(url: string): Promise<any> {
+async function fetchPage(
+  url: string,
+): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     const response = await fetch(url, {
       headers: {
@@ -135,7 +141,7 @@ async function fetchPage(url: string): Promise<any> {
     }
 
     // 提取链接
-    const links: any[] = [];
+    const links: { text: string; url: string }[] = [];
     $('a[href]').each((_, el) => {
       const href = $(el).attr('href');
       const text = $(el).text().trim();
@@ -154,13 +160,13 @@ async function fetchPage(url: string): Promise<any> {
         '\n\n相关链接:\n' +
         links
           .slice(0, 10)
-          .map((l: any) => `- ${l.text}: ${l.url}`)
+          .map((l) => `- ${l.text}: ${l.url}`)
           .join('\n');
     }
 
     return { success: true, data: output };
-  } catch (error: any) {
-    return { success: false, error: `抓取失败: ${error.message}` };
+  } catch (error) {
+    return { success: false, error: `抓取失败: ${(error as Error).message}` };
   }
 }
 
