@@ -31,8 +31,9 @@ const COLORS: Record<string, string> = {
 };
 
 // 去除 ANSI 码
+const ESC = '\u001b';
 function stripAnsi(str: string): string {
-  return str.replace(/\x1b\[[0-9;]*m/g, '');
+  return str.replace(new RegExp(`${ESC}\\[[0-9;]*m`, 'g'), '');
 }
 
 // 打印彩虹渐变文字（用于 ASCII art）

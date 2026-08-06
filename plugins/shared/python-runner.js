@@ -87,7 +87,7 @@ export async function runPython(script, inputData, timeout = 30000) {
           } else {
             execFile('kill', ['-9', String(child.pid)]);
           }
-        } catch (_) {
+        } catch {
           // 进程可能已结束
         }
       }, 1000);

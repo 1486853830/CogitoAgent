@@ -29,7 +29,7 @@ async function loadTasks(): Promise<void> {
       const data = await fs.readFile(TASKS_FILE, 'utf-8');
       tasks = JSON.parse(data);
     }
-  } catch (e) {
+  } catch {
     tasks = [];
   }
 }
@@ -444,7 +444,7 @@ function parseCronToMs(cronExpr: string): number {
 /**
  * 执行任务动作
  */
-async function executeAction(action: string, params: any): Promise<void> {
+async function executeAction(action: string, _params: any): Promise<void> {
   // 内置 action 均为无参函数，params 当前不生效（保留接口以便扩展自定义 action）。
   // 此前 fn()(params) 把 params 传给无参函数被静默丢弃，这里改为显式不传，避免误用。
   const actions: Record<string, () => Promise<void>> = {

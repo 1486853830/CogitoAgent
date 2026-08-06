@@ -48,7 +48,7 @@ async function search(query: string): Promise<any> {
         summary += snippets.join('\n\n');
       }
     }
-  } catch (e: any) {
+  } catch {
     summary += `原始响应:\n` + JSON.stringify(raw, null, 2).slice(0, 3000);
   }
   return { success: true, data: summary };

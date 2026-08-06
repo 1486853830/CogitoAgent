@@ -576,24 +576,6 @@ async function siConvert(
     const baseValue = (value as number) * fromParsed.factor;
     const result = baseValue / toParsed.factor;
 
-    const prefixNames: Record<string, string> = {
-      G: '吉',
-      M: '兆',
-      k: '千',
-      m: '毫',
-      μ: '微',
-      u: '微',
-      n: '纳',
-      p: '皮',
-      c: '厘',
-      d: '分',
-      da: '十',
-      h: '百',
-    };
-
-    const fromName = prefixNames[from[0]] || '';
-    const toName = prefixNames[to[0]] || '';
-
     return {
       success: true,
       data: `${value} ${from} = ${result.toExponential(6)} ${to}\n${from} = ${fromParsed.factor} ${fromParsed.base}，${to} = ${toParsed.factor} ${toParsed.base}`,

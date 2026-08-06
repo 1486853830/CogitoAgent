@@ -332,6 +332,7 @@ async function insert(table: string, data: Record<string, unknown>): Promise<Que
     const database = await getDB();
     const stmt = database.prepare(sql);
     stmt.bind(values);
+    // 空循环：遍历驱动 SQL 执行
     while (stmt.step()) {}
     stmt.free();
     const changes = database.getRowsModified();
@@ -395,6 +396,7 @@ async function update(
     const database = await getDB();
     const stmt = database.prepare(sql);
     stmt.bind(values);
+    // 空循环：遍历驱动 SQL 执行
     while (stmt.step()) {}
     stmt.free();
     const changes = database.getRowsModified();
@@ -444,6 +446,7 @@ async function deleteData(
     const database = await getDB();
     const stmt = database.prepare(sql);
     stmt.bind(params);
+    // 空循环：遍历驱动 SQL 执行
     while (stmt.step()) {}
     stmt.free();
     const changes = database.getRowsModified();
@@ -620,6 +623,7 @@ async function executeTransaction(sqlStatements: TransactionStatement[]): Promis
         const prepared = database.prepare(sql);
         try {
           prepared.bind(params);
+          // 空循环：遍历驱动 SQL 执行
           while (prepared.step()) {}
         } finally {
           prepared.free();
@@ -641,7 +645,9 @@ async function executeTransaction(sqlStatements: TransactionStatement[]): Promis
       if (db) {
         db.run('ROLLBACK');
       }
-    } catch {}
+    } catch {
+      // 回滚失败忽略，交由上层报告事务错误
+    }
     return {
       success: false,
       error: `事务失败: ${(err as Error).message}`,

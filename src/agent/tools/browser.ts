@@ -39,7 +39,7 @@ async function checkPlaywright(): Promise<boolean> {
     const { chromium: chromiumModule } = await import('playwright');
     chromium = chromiumModule;
     return true;
-  } catch (err) {
+  } catch {
     return false;
   }
 }
@@ -171,7 +171,7 @@ async function initBrowser(
     if (browser) {
       try {
         await browser.close();
-      } catch (e) {
+      } catch {
         // 忽略关闭错误
       }
       browser = null;
@@ -227,7 +227,7 @@ async function clickElement(
 
   try {
     await page.evaluate('1');
-  } catch (e) {
+  } catch {
     return { success: false, error: '浏览器页面已关闭，请重新使用 initBrowser 打开网页' };
   }
 
@@ -236,7 +236,7 @@ async function clickElement(
 
     try {
       element = await page.$(selector);
-    } catch (e) {
+    } catch {
       // 不是有效的 CSS 选择器
     }
 
@@ -266,7 +266,7 @@ async function clickElement(
         try {
           element = await page.$(sel);
           if (element) break;
-        } catch (e) {
+        } catch {
           continue;
         }
       }
@@ -281,15 +281,15 @@ async function clickElement(
 
     try {
       await element.click();
-    } catch (clickError) {
+    } catch {
       try {
         await element.click({ force: true });
-      } catch (forceClickError) {
+      } catch {
         try {
           await page.evaluate((el: _Element) => {
             el.click();
           }, element);
-        } catch (jsClickError) {
+        } catch {
           return {
             success: false,
             error: `点击元素失败：元素不可见或被遮挡，尝试了普通点击、强制点击和JS点击均失败`,
@@ -336,7 +336,7 @@ async function fillField(
 
   try {
     await page.evaluate('1');
-  } catch (e) {
+  } catch {
     return { success: false, error: '浏览器页面已关闭，请重新使用 initBrowser 打开网页' };
   }
 
@@ -345,7 +345,7 @@ async function fillField(
 
     try {
       element = await page.$(selector);
-    } catch (e) {
+    } catch {
       // 不是有效的 CSS 选择器
     }
 
@@ -368,7 +368,7 @@ async function fillField(
         try {
           element = await page.$(sel);
           if (element) break;
-        } catch (e) {
+        } catch {
           continue;
         }
       }
@@ -540,7 +540,7 @@ async function takeScreenshot(
 
   try {
     // 安全验证：防止路径注入
-    const safeName = name.replace(/[\/\\:*?"<>|]/g, '_').replace(/\.\./g, '');
+    const safeName = name.replace(/[\\:*?"<>|]/g, '_').replace(/\.\./g, '');
     const screenshotPath = `${safeName}-${Date.now()}.png`;
     await page.screenshot({ path: screenshotPath, fullPage: true });
     return {
@@ -560,7 +560,7 @@ async function closeBrowser(): Promise<{ success: boolean; data?: string; error?
     if (browser) {
       try {
         await browser.close();
-      } catch (e) {
+      } catch {
         // 忽略已经关闭的错误
       }
       browser = null;
@@ -568,7 +568,7 @@ async function closeBrowser(): Promise<{ success: boolean; data?: string; error?
       pageStateSnapshot = null;
     }
     return { success: true, data: '浏览器已关闭' };
-  } catch (error: unknown) {
+  } catch {
     browser = null;
     page = null;
     pageStateSnapshot = null;
@@ -652,7 +652,7 @@ async function downloadFile(
       try {
         downloadElement = await page.$(urlOrSelector);
         usedSelector = urlOrSelector;
-      } catch (e) {
+      } catch {
         // 不是有效的选择器
       }
     }
@@ -690,7 +690,7 @@ async function downloadFile(
             usedSelector = selector;
             break;
           }
-        } catch (e) {
+        } catch {
           continue;
         }
       }
@@ -704,7 +704,7 @@ async function downloadFile(
         } else {
           downloadElement = null;
         }
-      } catch (e) {
+      } catch {
         // 忽略错误
       }
     }
@@ -1056,7 +1056,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
           usedSelector = selector;
           break;
         }
-      } catch (e) {
+      } catch {
         continue;
       }
     }
@@ -1090,7 +1090,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
             }
           }
         }
-      } catch (e) {
+      } catch {
         // 忽略错误
       }
     }
@@ -1108,7 +1108,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
             }
           }
         }
-      } catch (e) {
+      } catch {
         // 忽略错误
       }
     }
@@ -1147,7 +1147,9 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
 
           try {
             element = document.querySelector(selector);
-          } catch (e) {}
+          } catch {
+            // 无效选择器时 element 保持 null，回退到 XPath
+          }
 
           if (!element && (selector.startsWith('//') || selector.startsWith('id('))) {
             const result = document.evaluate(
@@ -1190,7 +1192,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
           el.dispatchEvent(new Event('input', { bubbles: true }));
           el.dispatchEvent(new Event('change', { bubbles: true }));
         }, query);
-      } catch (e) {
+      } catch {
         return {
           success: false,
           error: `填写搜索框失败：${fillError.message}`,
@@ -1221,7 +1223,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
         if (submitButton && (await submitButton.isVisible())) {
           break;
         }
-      } catch (e) {
+      } catch {
         continue;
       }
     }

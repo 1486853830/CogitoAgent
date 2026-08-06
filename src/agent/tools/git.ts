@@ -164,7 +164,7 @@ function validateCwd(
   }
 
   // 检查是否包含危险字符
-  const dangerousPattern = /[;&|`$<>!(){}[\]\\*\?\n\r'""]/;
+  const dangerousPattern = /[;&|`$<>!(){}[\]\\*?\n\r'""]/;
   if (dangerousPattern.test(cwd)) {
     return {
       valid: false,

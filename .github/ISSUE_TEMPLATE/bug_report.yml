@@ -16,7 +16,7 @@ body:
       label: 运行环境 / Environment
       description: 你在什么环境下运行？
       options:
-        - Dashboard 模式 (npm run electron:dashboard)
+        - Dashboard 模式 (npm start)
         - Desktop 桌宠模式 (npm run electron:desktop)
         - CLI 终端模式 (npm run cli)
         - 其他

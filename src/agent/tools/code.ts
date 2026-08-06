@@ -1,6 +1,5 @@
-import { execFile, execFileSync, exec } from 'child_process';
+import { execFile, execFileSync } from 'child_process';
 import fs from 'fs/promises';
-import fsSync from 'fs';
 import path from 'path';
 import os from 'os';
 import { loadConfig } from '../../config.ts';
@@ -84,6 +83,7 @@ ${code}
 }
 
 async function runPython(code: string): Promise<any> {
+  // eslint-disable-next-line no-async-promise-executor -- executor 内已用 try/catch 完整兜底，且需统一管理超时与 resolve 时机
   return new Promise(async (resolve) => {
     let tmpPath: string | null = null;
     let timedOut = false;

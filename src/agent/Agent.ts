@@ -31,7 +31,6 @@ import { loadConfig } from '../config.ts';
 import { startWsServer, broadcast, onMessage, onStatsRequest } from '../io/ws-server.ts';
 import {
   recordToolCall,
-  recordSession,
   recordMessage,
   recordTokenUsage,
   getToolStats,
@@ -42,10 +41,6 @@ import {
 } from './stats.ts';
 import {
   STATE,
-  getState,
-  setState,
-  isThinking,
-  isAwaitingInput,
   isAwaitingConfirmation,
   getPendingConfirmation,
   setPendingConfirmation,
@@ -56,13 +51,8 @@ import {
 } from './state.ts';
 import {
   TOOL_REGISTRY,
-  DANGEROUS_OPERATIONS,
-  getToolNames,
-  getToolRegistry,
-  hasTool,
   isDangerousOperation,
   isConfirmEnabled,
-  getToolsByCategory,
   preprocessToolArgs,
 } from './registry.ts';
 import {
@@ -75,7 +65,6 @@ import {
   listTools,
   printConfig,
   toggleDebug,
-  printClusterStatus,
 } from './commands.ts';
 import { orchestrator } from './orchestrator.ts';
 import { initWechatChannel } from './wechat-manager.ts';
@@ -83,7 +72,6 @@ import { parseArgs, parseToolCall, parseAllToolCalls } from './tool-parser.ts';
 import {
   TOOL_OUTPUT_LIMITS,
   formatToolResult,
-  formatLsResult,
   classifyToolError,
   formatToolError,
 } from './tool-utils.ts';
@@ -871,7 +859,7 @@ async function start(): Promise<void> {
           dailyHistory: getMergedDailyHistory(365),
         };
       });
-    } catch (e) {
+    } catch {
       console.log('[WS] WebSocket 启动失败，跳过（桌面端不可用）');
     }
   } else {
