@@ -22,11 +22,18 @@ import {
   printReasoning,
   resetReasoningTag,
   closeReasoning,
-  printContent,
   resetContentTag,
   printToolBlock,
   exit,
 } from '../io/terminal.ts';
+import {
+  setReplyCallback,
+  deliverReply,
+  extractCleanReply,
+  parseAndPrintResponse,
+  setCurrentReplyKey,
+  getCurrentReplyKey,
+} from './reply.ts';
 import { loadConfig } from '../config.ts';
 import { startWsServer, broadcast, onMessage, onStatsRequest } from '../io/ws-server.ts';
 import {
@@ -89,84 +96,8 @@ let isProcessing = false;
 let toolAbortController: AbortController | null = null;
 let consecutiveCycleCount = 0;
 let thoughtInterval = 3000;
-// 按来源（如微信发送方）隔离的回复回调，避免多消息互相覆盖：
-// 之前 _replyCallback 是全局单例，A 来消息设了回调、B 来消息覆盖之，A 的回复就丢了。
-const _replyCallbacks = new Map<string, (reply: string) => void>();
-let _currentReplyKey: string | null = null;
 
 const MAX_CONSECUTIVE_CYCLES = 8;
-const MAX_REPLY_CALLBACKS = 100;
-
-function setReplyCallback(key: string, cb: (reply: string) => void): void {
-  if (_replyCallbacks.size >= MAX_REPLY_CALLBACKS) {
-    // 超过上限时删除最早设置的条目，防止内存泄漏
-    const firstKey = _replyCallbacks.keys().next().value;
-    if (firstKey !== undefined) _replyCallbacks.delete(firstKey);
-  }
-  _replyCallbacks.set(key, cb);
-}
-
-/** 投递回复到当前回复目标（若有），投递后清除该目标的回调 */
-function deliverReply(reply: string): void {
-  if (!_currentReplyKey) return;
-  const cb = _replyCallbacks.get(_currentReplyKey);
-  if (cb) {
-    cb(reply);
-    _replyCallbacks.delete(_currentReplyKey);
-  }
-}
-
-function extractCleanReply(text: string): string {
-  return text
-    .replace(/\[TOOL\][\s\S]*?\[\/TOOL\]/g, '')
-    .replace(/\[WAIT\]/g, '')
-    .split('\n')
-    .filter(
-      (line) => !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
-    )
-    .join('\n')
-    .trim();
-}
-
-function parseAndPrintResponse(text: string): void {
-  const regex = /\[TOOL\]([\s\S]*?)\[\/TOOL\]/g;
-  let lastIndex = 0;
-  let match;
-
-  while ((match = regex.exec(text)) !== null) {
-    const before = text.slice(lastIndex, match.index);
-    if (before.trim()) {
-      const cleaned = before
-        .split('\n')
-        .filter(
-          (line) =>
-            !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
-        )
-        .join('\n');
-      if (cleaned.trim()) {
-        printContent(cleaned);
-      }
-    }
-
-    const toolContent = match[1].trim();
-    printToolBlock(`[TOOL] ${toolContent} [/TOOL]`);
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  const remaining = text.slice(lastIndex);
-  if (remaining.trim()) {
-    const cleaned = remaining
-      .split('\n')
-      .filter(
-        (line) => !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
-      )
-      .join('\n');
-    if (cleaned.trim()) {
-      printContent(cleaned);
-    }
-  }
-}
 
 interface ToolExecutionResult {
   success: boolean;
@@ -259,7 +190,9 @@ async function executeTool(
     recordToolCall(toolName, category, true, duration);
     return {
       success: true,
-      data: String(result),
+      // 裸对象返回值（如 getSystemInfo 返回 SystemInfo）直接 String() 会变成
+      // "[object Object]"，需与 formatToolResult 一致地序列化为可读 JSON。
+      data: typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result),
       toolName,
       timestamp: new Date().toISOString(),
     };
@@ -283,9 +216,9 @@ function handleUserInput(input: string, replyKey?: string): void {
   // 未传入时一律清空，回复走终端而非微信通道——不依赖输入格式判断，
   // 避免微信格式消息漏传 replyKey 时 _currentReplyKey 保留旧值导致回复错发。
   if (replyKey !== undefined) {
-    _currentReplyKey = replyKey;
+    setCurrentReplyKey(replyKey);
   } else {
-    _currentReplyKey = null;
+    setCurrentReplyKey(null);
   }
 
   if (input.toLowerCase() === 'exit') {
@@ -628,7 +561,7 @@ function transitionAfterCycle(
   if (wantsToWait || state.current !== STATE.THINKING) {
     state.current = STATE.AWAITING_INPUT;
     const nextAction = wantsToWait ? 'wait' : 'continue';
-    if (_currentReplyKey) {
+    if (getCurrentReplyKey()) {
       const cleanReply = extractCleanReply(finalResponse);
       if (cleanReply) deliverReply(cleanReply);
     }
@@ -646,7 +579,7 @@ function transitionAfterCycle(
     if (cleanReply && cleanReply.length > 0) {
       consecutiveCycleCount = 0;
       state.current = STATE.AWAITING_INPUT;
-      if (_currentReplyKey) {
+      if (getCurrentReplyKey()) {
         deliverReply(cleanReply);
       }
       broadcast('agent-reply', { type: 'end', nextAction: 'wait' });
@@ -656,7 +589,7 @@ function transitionAfterCycle(
       if (consecutiveCycleCount >= MAX_CONSECUTIVE_CYCLES) {
         consecutiveCycleCount = 0;
         state.current = STATE.AWAITING_INPUT;
-        if (_currentReplyKey) {
+        if (getCurrentReplyKey()) {
           const reply = extractCleanReply(finalResponse);
           if (reply) deliverReply(reply);
         }
@@ -750,7 +683,7 @@ async function thinkCycle(): Promise<void> {
       status: 'failed',
       details: { error: (error as Error).message },
     });
-    if (_currentReplyKey) {
+    if (getCurrentReplyKey()) {
       deliverReply('抱歉，处理您的消息时出错：' + (error as Error).message);
     }
     if (shouldStop) {
