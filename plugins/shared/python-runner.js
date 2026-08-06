@@ -65,14 +65,22 @@ export async function runPython(script, inputData, timeout = 30000) {
     const child = execFile(
       cmd,
       ['-c', script],
-      { timeout, maxBuffer: 1024 * 1024 * 10, encoding: 'utf8' },
+      {
+        timeout,
+        maxBuffer: 1024 * 1024 * 10,
+        encoding: 'utf8',
+        // 强制 UTF-8 模式：Windows 下 Python 默认使用 cp1252 输出，打印中文会抛
+        // UnicodeEncodeError；同时保证换行/中文与 Node 侧的 utf8 解码一致。
+        env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
+      },
       (error, stdout, stderr) => {
         if (error) {
           // 错误信息保留 stderr，便于排查（C5）
-          const detail = stderr ? stderr.trim() : error.message;
+          const detail = stderr ? stderr.trim().replace(/\r\n/g, '\n') : error.message;
           reject(new Error(`Failed to run Python: ${detail}`));
         } else {
-          resolve(stdout);
+          // Windows 下 Python 文本模式输出为 CRLF，统一归一化为 \n
+          resolve(stdout.replace(/\r\n/g, '\n'));
         }
       },
     );
