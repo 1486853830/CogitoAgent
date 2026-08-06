@@ -88,23 +88,17 @@ async function executePipeline(workflow: Workflow): Promise<any> {
     return { success: false, error: '工作流没有定义步骤' };
   }
 
-  const results: any[] = [];
-  const context = '';
+  const results: { step: number; agentId: string; task: string; status: string }[] = [];
 
   for (let i = 0; i < workflow.steps.length; i++) {
     const step = workflow.steps[i];
-    const taskWithContext = context ? `${step.task}\n\n上一步结果:\n${context}` : step.task;
 
     results.push({
       step: i + 1,
       agentId: step.agentId,
       task: step.task,
-      status: 'pending',
+      status: 'planned',
     });
-
-    // 实际执行会通过 cluster.pipeline 或 spawnAgent + delegateTask 完成
-    // 这里返回执行计划
-    results[i].status = 'planned';
   }
 
   return {

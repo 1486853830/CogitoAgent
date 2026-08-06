@@ -98,8 +98,8 @@ function formatToolError(
 ): string {
   const errorType = classifyToolError(error);
 
-  let message = '';
-  let suggestion = '';
+  let message: string;
+  let suggestion: string;
 
   switch (errorType) {
     case 'network':

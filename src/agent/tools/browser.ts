@@ -598,7 +598,7 @@ async function downloadFile(
 
   try {
     let { savePath = './downloads', fullPath } = options;
-    const { timeout = 60000, acceptDownloads = true } = options;
+    const { timeout = 60000 } = options;
 
     // 校验下载路径必须在工作区内，防止路径穿越写到工作区外
     if (fullPath) {
@@ -775,7 +775,6 @@ async function downloadFile(
  */
 async function searchOnPage(
   text: string,
-  description: string = '',
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   if (!(await checkPlaywright())) {
     return {

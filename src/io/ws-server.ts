@@ -168,12 +168,18 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
           if ((ws as any).__isAlive === false) {
             console.log('[WS] 心跳超时，断开连接');
             clearInterval(heartbeatInterval);
-            ws.terminate();
+            if (typeof (ws as any).terminate === 'function') {
+              (ws as any).terminate();
+            }
             return;
           }
           (ws as any).__isAlive = false;
           ws.ping();
         }, 30000);
+        // 心跳定时器不应阻止进程退出（服务停止后残留的连接不应挂住进程）
+        if (typeof (heartbeatInterval as any).unref === 'function') {
+          (heartbeatInterval as any).unref();
+        }
 
         ws.on('message', (raw) => {
           try {

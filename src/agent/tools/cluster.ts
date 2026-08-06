@@ -152,7 +152,7 @@ export async function voting(
   options: string[] | string = '[]',
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
   let ids: string[];
-  let opts: unknown[] = [];
+  let opts: unknown[];
   try {
     ids = typeof agentIds === 'string' ? JSON.parse(agentIds) : agentIds;
     opts = typeof options === 'string' ? JSON.parse(options) : options;
