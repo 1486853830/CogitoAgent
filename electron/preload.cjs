@@ -29,6 +29,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 发送统计数据请求
   sendStatsRequest: (data) => ipcRenderer.send('stats-request', data),
 
+  // 请求技能与工具面板数据
+  sendToolsRequest: () => ipcRenderer.send('tools-request'),
+
+  // 监听技能与工具面板数据响应
+  onToolsResponse: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('tools-response', listener);
+    return () => ipcRenderer.removeListener('tools-response', listener);
+  },
+
   // 窗口操作
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
   maximizeWindow: () => ipcRenderer.send('window-maximize'),

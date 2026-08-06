@@ -35,7 +35,13 @@ import {
   getCurrentReplyKey,
 } from './reply.ts';
 import { loadConfig } from '../config.ts';
-import { startWsServer, broadcast, onMessage, onStatsRequest } from '../io/ws-server.ts';
+import {
+  startWsServer,
+  broadcast,
+  onMessage,
+  onStatsRequest,
+  onToolsRequest,
+} from '../io/ws-server.ts';
 import {
   recordToolCall,
   recordMessage,
@@ -61,6 +67,7 @@ import {
   isDangerousOperation,
   isConfirmEnabled,
   getDangerousOperationHint,
+  getToolsOverview,
   preprocessToolArgs,
 } from './registry.ts';
 import {
@@ -760,6 +767,7 @@ async function start(): Promise<void> {
           handleUserInput(msg.text);
         }
       });
+      onToolsRequest(() => getToolsOverview());
       onStatsRequest((payload: { type?: string; limit?: number } | null) => {
         if (payload?.type === 'toolUsage') {
           return { data: getToolUsageByCategory() };

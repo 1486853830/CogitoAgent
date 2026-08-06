@@ -14,6 +14,8 @@ let statsHandler:
     ) => Record<string, unknown> | Promise<Record<string, unknown>>)
   | null = null;
 
+let toolsHandler: (() => Record<string, unknown> | Promise<Record<string, unknown>>) | null = null;
+
 // 每次启动生成随机 token，非浏览器客户端（如 agent-bridge）连接时必须携带。
 // 浏览器客户端仍靠 Origin 白名单校验（前端无法安全存储 token）。
 // 此前仅校验回环地址，本机任意进程都能连 9527 端口伪装 Agent 推送恶意 session-meta-update。
@@ -189,47 +191,9 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
           try {
             const msg = JSON.parse(raw.toString());
             if (msg.type === 'stats-request' && statsHandler) {
-              const result = statsHandler(msg.payload);
-              if (result && typeof result.then === 'function') {
-                // Promise 结果必须带 .catch，否则 rejection 成为 unhandledRejection；
-                // ws.send 失败也需吞错避免抛出。
-                result
-                  .then((data: Record<string, unknown>) => {
-                    try {
-                      ws.send(
-                        JSON.stringify({
-                          type: 'stats-response',
-                          requestId: msg.requestId,
-                          ...data,
-                        }),
-                      );
-                    } catch (e: unknown) {
-                      console.error('[WS] stats-response 发送失败:', (e as Error).message);
-                    }
-                  })
-                  .catch((err: unknown) => {
-                    console.error('[WS] stats 处理失败:', (err as Error)?.message || String(err));
-                    try {
-                      ws.send(
-                        JSON.stringify({
-                          type: 'stats-response',
-                          requestId: msg.requestId,
-                          error: 'stats 处理失败',
-                        }),
-                      );
-                    } catch {
-                      /* 忽略 */
-                    }
-                  });
-              } else if (result) {
-                try {
-                  ws.send(
-                    JSON.stringify({ type: 'stats-response', requestId: msg.requestId, ...result }),
-                  );
-                } catch (e: unknown) {
-                  console.error('[WS] stats-response 发送失败:', (e as Error).message);
-                }
-              }
+              handlePayloadRequest(ws, msg, 'stats-response', statsHandler(msg.payload));
+            } else if (msg.type === 'tools-request' && toolsHandler) {
+              handlePayloadRequest(ws, msg, 'tools-response', toolsHandler());
             } else if (messageHandler) {
               // messageHandler 可能是 async，其返回的 Promise rejection 不会被
               // 上面的 try-catch 捕获，需显式接住，否则成为 unhandledRejection。
@@ -270,6 +234,42 @@ function onStatsRequest(
   statsHandler = handler;
 }
 
+function onToolsRequest(
+  handler: () => Record<string, unknown> | Promise<Record<string, unknown>>,
+): void {
+  toolsHandler = handler;
+}
+
+/**
+ * 统一处理「请求/响应」类消息（stats-request、tools-request 等）：
+ * 等待 handler 结果（可能为 Promise），带 requestId 回包，并吞掉 reject 与发送异常。
+ */
+function handlePayloadRequest(
+  ws: WebSocket,
+  msg: { type?: string; requestId?: unknown },
+  responseType: string,
+  result: Record<string, unknown> | Promise<Record<string, unknown>> | undefined,
+): void {
+  const reply = (data: Record<string, unknown>, failedLabel: string) => {
+    try {
+      ws.send(JSON.stringify({ type: responseType, requestId: msg.requestId, ...data }));
+    } catch (e: unknown) {
+      console.error(`[WS] ${failedLabel} 发送失败:`, (e as Error).message);
+    }
+  };
+  if (result && typeof (result as Promise<unknown>).then === 'function') {
+    (result as Promise<Record<string, unknown>>)
+      .then((data) => reply(data, responseType))
+      .catch((err: unknown) => {
+        console.error(`[WS] ${responseType} 处理失败:`, (err as Error)?.message || String(err));
+        reply({ error: '请求处理失败' }, responseType);
+      });
+  } else if (result) {
+    // 前面基于 result.then 判定过非 Promise，此处窄化不失真，直接断言同步结果
+    reply(result as Record<string, unknown>, responseType);
+  }
+}
+
 function broadcast(type: string, data: Record<string, unknown>): void {
   if (!wss) return;
   const msg = JSON.stringify({ type, ...data });
@@ -289,4 +289,12 @@ async function stopWsServer(): Promise<void> {
   }
 }
 
-export { startWsServer, broadcast, onMessage, onStatsRequest, stopWsServer, getWsToken };
+export {
+  startWsServer,
+  broadcast,
+  onMessage,
+  onStatsRequest,
+  onToolsRequest,
+  stopWsServer,
+  getWsToken,
+};
