@@ -942,12 +942,15 @@ const SkillsManager = {
   skillsEl: null,
   gridEl: null,
   _expandedCategories: new Set(),
+  _toolsCleanup: null,
 
   init() {
     this.skillsEl = document.getElementById('skillsView');
     this.gridEl = document.getElementById('skillsGrid');
     this.render();
     this.loadFromBackend();
+    // 窗口卸载/重建时移除 tools-response 监听器，避免累积泄漏
+    window.addEventListener('pagehide', () => this.destroy());
     console.log('[SkillsManager] 初始化完成');
   },
 
@@ -956,7 +959,13 @@ const SkillsManager = {
     const api = window.electronAPI;
     if (!api || typeof api.sendToolsRequest !== 'function' || !api.onToolsResponse) return;
 
-    api.onToolsResponse((data) => {
+    // 先移除上一次注册的监听器，避免重复初始化时监听器不断累积造成内存泄漏
+    if (typeof this._toolsCleanup === 'function') {
+      this._toolsCleanup();
+      this._toolsCleanup = null;
+    }
+
+    this._toolsCleanup = api.onToolsResponse((data) => {
       if (data && Array.isArray(data.categories) && data.categories.length > 0) {
         TOOL_CATEGORIES = data.categories.map((c) => ({
           id: c.id,
@@ -969,6 +978,14 @@ const SkillsManager = {
       }
     });
     api.sendToolsRequest();
+  },
+
+  // 主动销毁：供窗口卸载/重建时调用，释放 tools-response 监听器
+  destroy() {
+    if (typeof this._toolsCleanup === 'function') {
+      this._toolsCleanup();
+      this._toolsCleanup = null;
+    }
   },
 
   render() {
