@@ -476,7 +476,9 @@ function buildSystemPrompt(): string {
     if (personaContent.trim()) {
       personaHeader = personaContent + '\n\n---\n\n';
     }
-  } catch {}
+  } catch {
+    // 未配置 persona 文件时使用默认提示词
+  }
 
   const basePrompt = `${personaHeader}## ⚠️ 两项黄金规则
 

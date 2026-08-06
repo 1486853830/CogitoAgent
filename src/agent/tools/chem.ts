@@ -92,15 +92,22 @@ function parseFormula(formula: string): Record<string, number> {
           (stack[stack.length - 1][el] || 0) + (cnt as number) * multiplier;
       }
     } else if (ch === '.' && i + 1 < clean.length) {
-      // 处理水合物分隔符，如 CuSO4·5H2O，跳过
-      i++;
-      // 检查后面是否跟数字
+      // 处理水合物分隔符，如 CuSO4·5H2O：点号后的数字是该水合单元系数，
+      // 需把整段水合组分（如 5H2O）乘入总组成，否则分子量会算错。
+      i++; // 跳过 '.'
       let num = '';
       while (i < clean.length && /\d/.test(clean[i])) {
         num += clean[i];
         i++;
       }
-      // 数字后面应该是 H2O 之类的，继续正常解析
+      const coeff = num ? parseInt(num, 10) : 1;
+      // 剩余部分直到下一个点（或结束）即为水合组分，如 H2O
+      const hydratePart = clean.slice(i).split('.')[0];
+      i += hydratePart.length;
+      const hydrateComposition = parseFormula(hydratePart);
+      for (const [el, cnt] of Object.entries(hydrateComposition)) {
+        stack[stack.length - 1][el] = (stack[stack.length - 1][el] || 0) + cnt * coeff;
+      }
     } else if (/[A-Z]/.test(ch)) {
       let sym = ch;
       i++;
@@ -361,20 +368,16 @@ async function idealGasLaw(
 
     if (missing.length === 1) {
       const [Pv, Vv, nv, Tv] = [P, V, n, T].map((v) => (v === undefined || v === null ? null : v));
-      let result, unit;
+      let result;
 
       if (Pv === null) {
         result = (nv! * R * Tv!) / Vv!;
-        unit = 'atm';
       } else if (Vv === null) {
         result = (nv! * R * Tv!) / Pv;
-        unit = 'L';
       } else if (nv === null) {
         result = (Pv * Vv!) / (R * Tv!);
-        unit = 'mol';
       } else {
         result = (Pv * Vv!) / (nv! * R);
-        unit = 'K';
       }
 
       return {

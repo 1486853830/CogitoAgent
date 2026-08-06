@@ -519,7 +519,7 @@ class AgentOrchestrator {
           }
         }
       } catch (error: unknown) {
-        throw new Error(`LLM 调用失败: ${(error as Error).message}`);
+        throw new Error(`LLM 调用失败: ${(error as Error).message}`, { cause: error });
       }
 
       fullResponse += response;
@@ -588,7 +588,7 @@ class AgentOrchestrator {
    */
   async _buildSystemPrompt(agent: SubAgent): Promise<string> {
     // 读取 persona 文件
-    let personaContent = '';
+    let personaContent: string;
     const personaPath = path.resolve(process.cwd(), 'personas', agent.persona, 'persona.md');
     try {
       personaContent = readFileSync(personaPath, 'utf-8');

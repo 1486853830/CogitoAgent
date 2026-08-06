@@ -154,7 +154,9 @@ function handleCommand(input: string): boolean {
         // 通知前端刷新人设媒体
         try {
           broadcast('persona-switched', { persona: result.session?.persona || '' });
-        } catch {}
+        } catch {
+          // 广播失败不影响会话切换结果
+        }
       } else {
         println(`[错误] ${result.error}`, 'red');
       }
@@ -513,7 +515,6 @@ function toggleDebug(): void {
  */
 function printSessions(): void {
   const sessions = listSessions();
-  const current = getCurrentSession();
 
   println('');
   printDivider('=', 'cyan');

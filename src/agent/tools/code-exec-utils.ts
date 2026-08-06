@@ -71,7 +71,9 @@ async function cleanupTmpFile(tmpPath: string | null): Promise<void> {
   if (tmpPath) {
     try {
       await fs.unlink(tmpPath);
-    } catch {}
+    } catch {
+      // 文件可能已被删除，忽略清理失败
+    }
   }
 }
 
