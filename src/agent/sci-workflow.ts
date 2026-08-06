@@ -79,11 +79,17 @@ function getWorkflow(id: string): Workflow | null {
   return collection.workflows.find((w) => w.id === id) || null;
 }
 
+interface WorkflowResult {
+  success: boolean;
+  error?: string;
+  data?: Record<string, unknown>;
+}
+
 /**
  * 执行 Pipeline 模式工作流
  * 按顺序执行步骤，每个步骤的输出可作为下一步的输入
  */
-async function executePipeline(workflow: Workflow): Promise<any> {
+async function executePipeline(workflow: Workflow): Promise<WorkflowResult> {
   if (!workflow.steps || workflow.steps.length === 0) {
     return { success: false, error: '工作流没有定义步骤' };
   }
@@ -120,7 +126,7 @@ async function executePipeline(workflow: Workflow): Promise<any> {
  * 执行 Parallel 模式工作流
  * 并行执行多个独立任务
  */
-async function executeParallel(workflow: Workflow): Promise<any> {
+async function executeParallel(workflow: Workflow): Promise<WorkflowResult> {
   if (!workflow.steps || workflow.steps.length === 0) {
     return { success: false, error: '工作流没有定义步骤' };
   }
@@ -144,7 +150,7 @@ async function executeParallel(workflow: Workflow): Promise<any> {
  * 执行 Panel 模式工作流
  * 多智能体讨论
  */
-async function executePanel(workflow: Workflow): Promise<any> {
+async function executePanel(workflow: Workflow): Promise<WorkflowResult> {
   if (!workflow.agents || workflow.agents.length === 0) {
     return { success: false, error: '工作流没有定义参与者' };
   }
@@ -169,7 +175,7 @@ async function executePanel(workflow: Workflow): Promise<any> {
 /**
  * 执行科学工作流
  */
-async function executeWorkflow(id: string): Promise<any> {
+async function executeWorkflow(id: string): Promise<WorkflowResult> {
   const workflow = getWorkflow(id);
   if (!workflow) {
     return {

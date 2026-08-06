@@ -1,7 +1,8 @@
-// 注意：此文件已废弃，作为历史参考保留
+// 注意：此文件已废弃，作为历史参考保留（仍被 tests/api-models.test.ts 引用）
 // 当前使用 src/api/client.ts 中的原生 fetch 实现
 // 如需恢复，请先 npm install openai
 // import OpenAI from 'openai';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { loadConfig } from '../config.ts';
 
 // 文件已废弃：OpenAI SDK 未安装。此前用 `declare const OpenAI: any;` 让 TS 编译通过，

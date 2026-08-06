@@ -262,8 +262,8 @@ function handleCommand(input: string): boolean {
   }
 
   if (trimmed === '/wechat/status') {
-    getWechatStatus().then((status: any) => {
-      if (status.success && status.data.loggedIn) {
+    getWechatStatus().then((status) => {
+      if (status.success && status.data?.loggedIn) {
         println(`[微信] 已登录账号: ${status.data.accountId}`, 'green');
       } else {
         println('[微信] 未登录', 'gray');
@@ -313,7 +313,7 @@ function printHelp(): void {
  * 打印当前状态
  */
 function printStatus(): void {
-  const cfg: any = loadConfig();
+  const cfg = loadConfig();
   const toolNames = getToolNames();
 
   println('');
@@ -390,16 +390,16 @@ function switchPersona(personaName: string): void {
   let content: string;
   try {
     content = readFileSync(personaPath, 'utf-8');
-  } catch (err: any) {
-    println(`[错误] 无法读取 Persona 文件: ${err.message}`, 'red');
+  } catch (err) {
+    println(`[错误] 无法读取 Persona 文件: ${(err as Error).message}`, 'red');
     return;
   }
 
   // 写入 persona 文件
   try {
     writeFileSync(targetPath, content, 'utf-8');
-  } catch (err: any) {
-    println(`[错误] 无法写入 persona.md: ${err.message}`, 'red');
+  } catch (err) {
+    println(`[错误] 无法写入 persona.md: ${(err as Error).message}`, 'red');
     return;
   }
 
@@ -475,7 +475,7 @@ function listTools(): void {
  * 打印当前配置
  */
 function printConfig(): void {
-  const cfg: any = loadConfig();
+  const cfg = loadConfig();
 
   println('');
   printDivider('=', 'cyan');

@@ -6,6 +6,8 @@ import path from 'path';
 
 let wss: WebSocketServer | null = null;
 let messageHandler: ((msg: Record<string, unknown>, ws: WebSocket) => void) | null = null;
+
+type AliveSocket = WebSocket & { __isAlive?: boolean };
 let statsHandler:
   | ((
       payload: Record<string, unknown>,
@@ -160,25 +162,27 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
         });
 
         // 心跳检测：每 30 秒 ping 一次，若 10 秒内未收到 pong 则断开
-        (ws as any).__isAlive = true;
+        const alive = ws as AliveSocket;
+        alive.__isAlive = true;
         ws.on('pong', () => {
-          (ws as any).__isAlive = true;
+          alive.__isAlive = true;
         });
         const heartbeatInterval = setInterval(() => {
-          if ((ws as any).__isAlive === false) {
+          if (alive.__isAlive === false) {
             console.log('[WS] 心跳超时，断开连接');
             clearInterval(heartbeatInterval);
-            if (typeof (ws as any).terminate === 'function') {
-              (ws as any).terminate();
+            if (typeof alive.terminate === 'function') {
+              alive.terminate();
             }
             return;
           }
-          (ws as any).__isAlive = false;
+          alive.__isAlive = false;
           ws.ping();
         }, 30000);
         // 心跳定时器不应阻止进程退出（服务停止后残留的连接不应挂住进程）
-        if (typeof (heartbeatInterval as any).unref === 'function') {
-          (heartbeatInterval as any).unref();
+        const looseInterval = heartbeatInterval as unknown as { unref?: () => void };
+        if (typeof looseInterval.unref === 'function') {
+          looseInterval.unref();
         }
 
         ws.on('message', (raw) => {

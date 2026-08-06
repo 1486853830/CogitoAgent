@@ -8,7 +8,9 @@ import { loadConfig } from '../config.ts';
  * 调用联网搜索
  * @param content - 搜索关键词
  */
-async function search(content: string): Promise<{ success: boolean; data?: any; error?: string }> {
+async function search(
+  content: string,
+): Promise<{ success: boolean; data?: unknown; error?: string }> {
   const cfg = loadConfig();
 
   // 如果搜索未启用，直接返回
@@ -23,7 +25,7 @@ async function search(content: string): Promise<{ success: boolean; data?: any; 
     searchURL = 'https://api.moark.com/v1/web-search-v2';
   }
 
-  const body: Record<string, any> = {
+  const body: Record<string, unknown> = {
     content,
     model: 'search',
   };
