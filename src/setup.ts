@@ -282,7 +282,7 @@ function getAvailablePersonas(): PersonaInfo[] {
         personas.push({ name: dir, firstLine, filename: `${dir}/persona.md` });
       }
     }
-  } catch (e) {
+  } catch {
     // 目录不存在，使用默认
   }
 
@@ -567,7 +567,7 @@ function applyPersona(persona: PersonaInfo | null): boolean {
   try {
     fs.copyFileSync(srcPath, destPath);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }

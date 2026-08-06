@@ -16,7 +16,6 @@ import {
   switchSession,
   deleteSession,
   renameSession,
-  resetConversation,
   updateSystemPrompt,
 } from './session.ts';
 import { orchestrator } from './orchestrator.ts';

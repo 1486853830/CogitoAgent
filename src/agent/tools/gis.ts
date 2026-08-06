@@ -12,7 +12,7 @@ import { getBasePath } from './path.ts';
 // ============================================
 const PI = Math.PI;
 const A = 6378245.0; // 地球半长轴（GCJ02 使用）
-const EE = 0.00669342162296594323; // 偏心率平方
+const EE = 0.00669342162296594; // 偏心率平方
 
 const EARTH_RADIUS_KM = 6371.0; // 地球平均半径（km）
 const EARTH_RADIUS_M = 6371000; // 地球平均半径（m）

@@ -9,49 +9,6 @@ import path from 'path';
 import { getBasePath } from './path.ts';
 
 // ============================================
-// 医学单位换算系数表
-// ============================================
-const UNIT_CONVERSIONS: Record<string, unknown> = {
-  glucose: {
-    'mg/dL': 1,
-    'mmol/L': 0.0555,
-    label: '葡萄糖',
-  },
-  creatinine: {
-    'mg/dL': 1,
-    'μmol/L': 88.4,
-    'umol/L': 88.4,
-    label: '肌酐',
-  },
-  bun: {
-    'mg/dL': 1,
-    'mmol/L': 0.357,
-    label: '尿素氮',
-  },
-  bilirubin: {
-    'mg/dL': 1,
-    'μmol/L': 17.1,
-    'umol/L': 17.1,
-    label: '胆红素',
-  },
-  calcium: {
-    'mg/dL': 1,
-    'mmol/L': 0.2495,
-    label: '钙',
-  },
-  cholesterol: {
-    'mg/dL': 1,
-    'mmol/L': 0.0259,
-    label: '胆固醇',
-  },
-  triglycerides: {
-    'mg/dL': 1,
-    'mmol/L': 0.0113,
-    label: '甘油三酯',
-  },
-};
-
-// ============================================
 // 临床评分计算
 // ============================================
 

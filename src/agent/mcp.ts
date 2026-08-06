@@ -7,23 +7,9 @@
 
 import { createServer, Server, IncomingMessage, ServerResponse } from 'http';
 import crypto from 'crypto';
-import {
-  TOOL_REGISTRY,
-  getToolRegistry,
-  getToolsByCategory,
-  hasTool,
-  isDangerousOperation,
-} from './registry.ts';
+import { TOOL_REGISTRY, hasTool, isDangerousOperation } from './registry.ts';
 import type { ToolRegistryEntry } from '../types/index.ts';
 import { executeTool } from './Agent.ts';
-import { parseArgs, parseToolCall, parseAllToolCalls } from './tool-parser.ts';
-import {
-  formatToolResult,
-  classifyToolError,
-  formatToolError,
-  TOOL_OUTPUT_LIMITS,
-} from './tool-utils.ts';
-import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from './thought-trace.ts';
 
 // MCP JSON-RPC 2.0 实现
 const MCP_VERSION = '2.0';
@@ -283,7 +269,7 @@ class MCPServer {
    */
   handleInitialize(
     id: string | number | null | undefined,
-    params: Record<string, unknown> | undefined,
+    _params: Record<string, unknown> | undefined,
   ): JsonRpcResponse {
     this.initialized = true;
 
@@ -318,7 +304,7 @@ class MCPServer {
    */
   handleToolsList(
     id: string | number | null | undefined,
-    params: Record<string, unknown> | undefined,
+    _params: Record<string, unknown> | undefined,
   ): JsonRpcResponse {
     const registry = TOOL_REGISTRY;
 
@@ -432,7 +418,7 @@ class MCPServer {
    */
   handleResourcesList(
     id: string | number | null | undefined,
-    params: Record<string, unknown> | undefined,
+    _params: Record<string, unknown> | undefined,
   ): JsonRpcResponse {
     return {
       jsonrpc: MCP_VERSION,
@@ -483,7 +469,7 @@ class MCPServer {
    */
   handlePromptsList(
     id: string | number | null | undefined,
-    params: Record<string, unknown> | undefined,
+    _params: Record<string, unknown> | undefined,
   ): JsonRpcResponse {
     return {
       jsonrpc: MCP_VERSION,

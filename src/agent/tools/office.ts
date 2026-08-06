@@ -117,7 +117,9 @@ async function createPpt(
             h: '50%',
             path: slideData.image,
           });
-        } catch {}
+        } catch {
+          // 图片添加失败不影响幻灯片整体生成
+        }
       }
 
       if (slideData.bullets && Array.isArray(slideData.bullets)) {
@@ -280,7 +282,9 @@ async function createWord(
               spacing: { before: 200, after: 200 },
             }),
           );
-        } catch {}
+        } catch {
+          // 图片添加失败不影响文档整体生成
+        }
       }
     }
 
@@ -370,9 +374,7 @@ async function createExcel(
   }
 }
 
-async function readExcel(
-  filePath: string,
-): Promise<{
+async function readExcel(filePath: string): Promise<{
   success: boolean;
   data?: Record<string, unknown[][]>;
   sheetNames?: string[];

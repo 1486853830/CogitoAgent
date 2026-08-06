@@ -89,13 +89,13 @@ npm run cli
 ### 开发模式
 
 ```bash
-npm run dev
+npm start
 ```
 
 ### 构建桌面应用
 
 ```bash
-npm run electron:build
+npm run build:win
 ```
 
 ### 代码结构

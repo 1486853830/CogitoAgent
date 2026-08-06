@@ -177,7 +177,9 @@ async function runJavaScriptIsolated(code: string, timeout: number = 10000): Pro
     if (isolate) {
       try {
         isolate.dispose();
-      } catch {}
+      } catch {
+        // dispose 失败时忽略，isolate 最终由 GC 回收
+      }
     }
   }
 }
@@ -411,6 +413,7 @@ async function runJavaScriptDirect(code: string): Promise<any> {
  * 执行 Python 代码（使用沙箱隔离的临时文件）
  */
 async function runPythonSandbox(code: string): Promise<any> {
+  // eslint-disable-next-line no-async-promise-executor -- executor 内已用 try/catch 完整兜底，且需统一管理超时与 resolve 时机
   return new Promise(async (resolve) => {
     let tmpPath: any = null;
     let timedOut = false;

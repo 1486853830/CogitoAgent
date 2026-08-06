@@ -6,27 +6,17 @@
 import { readFileSync } from 'fs';
 import path from 'path';
 import { getBasePath } from './tools/index.ts';
-import {
-  getEnabledCategories,
-  getAllCategories,
-  getToolsByCategory,
-  TOOL_CATEGORIES,
-} from './registry.ts';
+import { getEnabledCategories, getAllCategories } from './registry.ts';
 
 /**
  * 动态生成工具列表
  */
 function buildToolList(): string {
   const enabledCategories = getEnabledCategories();
-  const categories = getToolsByCategory();
-  const categoryNames = getAllCategories();
 
   let toolList = '';
 
   for (const cat of enabledCategories) {
-    const catName = categoryNames[cat] || cat;
-    const tools = categories[cat] || [];
-
     // 根据分类生成工具列表
     switch (cat) {
       case 'file':

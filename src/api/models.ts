@@ -159,7 +159,7 @@ async function* chat(
   try {
     client = getClient(provider);
   } catch (e) {
-    throw new Error(`获取客户端失败: ${(e as Error).message}`);
+    throw new Error(`获取客户端失败: ${(e as Error).message}`, { cause: e });
   }
 
   const chatOptions: Record<string, any> = {
