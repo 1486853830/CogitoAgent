@@ -6,15 +6,18 @@
 
 window.WidgetRegistry?.register('statCards', (container, opts = {}) => {
   const fields = opts.fields || [
-    { key: 'todaySessions', label: '今日会话', unit: '' },
-    { key: 'todayMessages', label: '今日消息', unit: '' },
-    { key: 'todayToolCalls', label: '今日调用', unit: '' },
-    { key: 'todayTokens', label: '今日 Token', unit: '' },
-    { key: 'totalTokens', label: '累计 Token', unit: '' },
-    { key: 'totalThinkingTime', label: '思考时长', unit: 's', format: 'time' },
+    { key: 'todaySessions', labelKey: 'widget.todaySessions', unit: '' },
+    { key: 'todayMessages', labelKey: 'widget.todayMessages', unit: '' },
+    { key: 'todayToolCalls', labelKey: 'widget.todayToolCalls', unit: '' },
+    { key: 'todayTokens', labelKey: 'widget.todayTokens', unit: '' },
+    { key: 'totalTokens', labelKey: 'widget.totalTokens', unit: '' },
+    { key: 'totalThinkingTime', labelKey: 'widget.thinkingTime', unit: 's', format: 'time' },
   ];
 
   const state = { data: {}, startedAt: Date.now() };
+
+  const tr = (key, fb) =>
+    window.I18n && typeof window.I18n.t === 'function' ? window.I18n.t(key) : fb;
 
   function formatNum(n) {
     const num = Number(n) || 0;
@@ -31,22 +34,25 @@ window.WidgetRegistry?.register('statCards', (container, opts = {}) => {
   }
 
   function render() {
-    const cards = fields.map((f) => {
-      const raw = state.data[f.key] || 0;
-      const val = f.format === 'time' ? formatTime(raw) : formatNum(raw);
-      return `
+    const cards = fields
+      .map((f) => {
+        const raw = state.data[f.key] || 0;
+        const val = f.format === 'time' ? formatTime(raw) : formatNum(raw);
+        const label = f.labelKey ? tr(f.labelKey, f.label || f.key) : f.label;
+        return `
         <div class="stat-card" data-key="${f.key}">
-          <div class="stat-card-label">${f.label}</div>
+          <div class="stat-card-label">${label}</div>
           <div class="stat-card-value">${val}<span class="stat-card-unit">${f.unit || ''}</span></div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
     container.innerHTML = `
       <div class="widget-card">
         <div class="widget-head">
           <span class="widget-head-mark">▸</span>
           <span class="widget-head-label">TODAY METRICS</span>
-          <span class="widget-head-meta">实时</span>
+          <span class="widget-head-meta">${tr('widget.realtime', '实时')}</span>
         </div>
         <div class="stat-cards">${cards}</div>
       </div>
@@ -57,6 +63,7 @@ window.WidgetRegistry?.register('statCards', (container, opts = {}) => {
     init() {
       state.startedAt = Date.now();
       render();
+      document.addEventListener('cogito:langchange', render);
       // 启动时拉取一次
       if (window.electronAPI?.sendStatsRequest) {
         window.electronAPI.sendStatsRequest({ type: 'session' });
@@ -69,7 +76,8 @@ window.WidgetRegistry?.register('statCards', (container, opts = {}) => {
             state.data = { ...state.data, ...s };
             // 思考时长实时计算:totalThinkingTime + (now - startedAt)
             if (state.data.totalThinkingTime !== undefined) {
-              const liveTime = Number(state.data.totalThinkingTime) +
+              const liveTime =
+                Number(state.data.totalThinkingTime) +
                 Math.floor((Date.now() - state.startedAt) / 1000);
               state.data.totalThinkingTime = liveTime;
             }

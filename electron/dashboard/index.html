@@ -25,7 +25,7 @@
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
           </svg>
-          <span>新建任务</span>
+          <span data-i18n="dashboard.newTask">新建任务</span>
           <span class="kbd">N</span>
         </button>
 
@@ -33,28 +33,28 @@
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
           </svg>
-          <span>技能</span>
+          <span data-i18n="dashboard.skills">技能</span>
         </button>
 
         <button class="action-btn" id="desktopModeBtn">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/>
           </svg>
-          <span>桌宠模式</span>
+          <span data-i18n="dashboard.desktopMode">桌宠模式</span>
         </button>
 
         <button class="action-btn" id="monitorBtn">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M15 3H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12H5V5h10v10zM3 19h18v2H3v-2z"/>
           </svg>
-          <span>监控面板</span>
+          <span data-i18n="dashboard.monitor">监控面板</span>
         </button>
 
-        <button class="action-btn" id="wechatBtn" title="连接微信">
+        <button class="action-btn" id="wechatBtn" data-i18n-title="dashboard.connectWechat">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.04-.177l-.322-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.269-.03-.407-.032zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/>
           </svg>
-          <span id="wechatBtnLabel">连接微信</span>
+          <span id="wechatBtnLabel" data-i18n="dashboard.connectWechat">连接微信</span>
         </button>
       </div>
 
@@ -70,7 +70,7 @@
       <!-- 任务列表 -->
       <div class="section-header">
         <span class="section-title">SESSIONS</span>
-        <button class="icon-btn" id="newSessionBtn" title="新建会话">
+        <button class="icon-btn" id="newSessionBtn" data-i18n-title="dashboard.newSession">
           <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
           </svg>
@@ -91,11 +91,11 @@
         </div>
         <div class="token-panel-body">
           <div class="token-row">
-            <span class="token-label">今日</span>
+            <span class="token-label" data-i18n="dashboard.tokenToday">今日</span>
             <span class="token-value" id="tokenToday">0</span>
           </div>
           <div class="token-row">
-            <span class="token-label">累计</span>
+            <span class="token-label" data-i18n="dashboard.tokenTotal">累计</span>
             <span class="token-value" id="tokenTotal">0</span>
           </div>
           <div class="token-detail" id="tokenDetail">IN 0 / OUT 0</div>
@@ -104,17 +104,17 @@
 
       <!-- 底部关于我们 -->
       <div class="user-profile">
-        <div class="about-link" id="aboutLink" title="关于 CogitoAgent">
+        <div class="about-link" id="aboutLink" data-i18n-title="dashboard.aboutTitle">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
           </svg>
-          <span>关于</span>
+          <span data-i18n="common.about">关于</span>
         </div>
-        <div class="about-link" id="reconfigLink" title="重新配置">
+        <div class="about-link" id="reconfigLink" data-i18n-title="dashboard.reconfigure">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94 0 .31.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
           </svg>
-          <span>配置</span>
+          <span data-i18n="dashboard.reconfigure">配置</span>
         </div>
       </div>
     </aside>
@@ -129,17 +129,17 @@
         </div>
         <div class="drag-region"></div>
         <div class="window-controls">
-          <button class="win-btn minimize" id="btnMinimize" title="最小化">
+          <button class="win-btn minimize" id="btnMinimize" data-i18n-title="common.minimize">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
               <path d="M19 13H5v-2h14v2z"/>
             </svg>
           </button>
-          <button class="win-btn maximize" id="btnMaximize" title="最大化">
+          <button class="win-btn maximize" id="btnMaximize" data-i18n-title="common.maximize">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
               <path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
             </svg>
           </button>
-          <button class="win-btn close" id="btnClose" title="关闭">
+          <button class="win-btn close" id="btnClose" data-i18n-title="common.close">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
               <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
             </svg>
@@ -170,7 +170,7 @@
                 <span class="status-val">DASHBOARD</span>
                 <span class="status-spacer"></span>
                 <span class="status-key">BUILD</span>
-                <span class="status-val" id="welcomeBuild">2.0.0</span>
+                <span class="status-val" id="welcomeBuild">2.3.2</span>
               </div>
 
               <!-- 仪器面板顶部标识条 -->
@@ -209,18 +209,18 @@
 
               <h1 class="welcome-title display">CogitoAgent</h1>
               <p class="welcome-tagline">CLOUD-DRIVEN · LOCAL-EXECUTING · AUTONOMOUS</p>
-              <p class="welcome-desc">持续思考的自主 AI 智能体。集成文件管理、代码执行、网页搜索、数据库等实工具，云端推理、本地执行，安全高效。</p>
+              <p class="welcome-desc" data-i18n="dashboard.welcomeDesc">持续思考的自主 AI 智能体。集成文件管理、代码执行、网页搜索、数据库等实工具，云端推理、本地执行，安全高效。</p>
 
               <!-- 仓库源标识条 -->
               <div class="repo-bar">
                 <span class="repo-label">SOURCE</span>
                 <span class="repo-divider"></span>
-                <a class="repo-link" data-url="https://github.com/SnowLeopard-io/CogitoAgent" title="在浏览器中打开 GitHub 仓库">
+                <a class="repo-link" data-url="https://github.com/SnowLeopard-io/CogitoAgent" data-i18n-title="common.openBrowser">
                   <span class="repo-mark">▸</span>
                   <span class="repo-host">github</span>
                   <span class="repo-path">/SnowLeopard-io/CogitoAgent</span>
                 </a>
-                <a class="repo-link" data-url="https://gitee.com/cnt-code/cogito-agent" title="在浏览器中打开 Gitee 仓库">
+                <a class="repo-link" data-url="https://gitee.com/cnt-code/cogito-agent" data-i18n-title="common.openBrowser">
                   <span class="repo-mark">▸</span>
                   <span class="repo-host">gitee</span>
                   <span class="repo-path">/cnt-code/cogito-agent</span>
@@ -234,6 +234,7 @@
                   <textarea
                     id="chatInput"
                     class="chat-input"
+                    data-i18n-placeholder="desktop.placeholder"
                     placeholder="输入指令..."
                     rows="1"
                   ></textarea>
@@ -251,16 +252,16 @@
                 <span class="hint-label">KEYS</span>
                 <span class="hint-sep">›</span>
                 <span class="hint-key">N</span>
-                <span class="hint-desc">新建会话</span>
+                <span class="hint-desc" data-i18n="dashboard.newSessionHint">新建会话</span>
                 <span class="hint-sep">·</span>
                 <span class="hint-key">/help</span>
-                <span class="hint-desc">命令列表</span>
+                <span class="hint-desc" data-i18n="dashboard.helpHint">命令列表</span>
                 <span class="hint-sep">·</span>
                 <span class="hint-key">/sessions</span>
-                <span class="hint-desc">多会话</span>
+                <span class="hint-desc" data-i18n="dashboard.sessionsHint">多会话</span>
                 <span class="hint-sep">·</span>
                 <span class="hint-key">↵</span>
-                <span class="hint-desc">发送</span>
+                <span class="hint-desc" data-i18n="dashboard.sendHint">发送</span>
               </div>
             </section>
 
@@ -280,8 +281,8 @@
                     <span class="module-no">01</span>
                     <span class="module-code">WEB</span>
                     <div class="module-info">
-                      <span class="module-name">网页读取</span>
-                      <span class="module-desc">抓取页面内容并解析</span>
+                      <span class="module-name" data-i18n="dashboard.moduleWeb">网页读取</span>
+                      <span class="module-desc" data-i18n="dashboard.moduleWebDesc">抓取页面内容并解析</span>
                     </div>
                     <span class="module-arrow">›</span>
                   </button>
@@ -290,8 +291,8 @@
                     <span class="module-no">02</span>
                     <span class="module-code">RCH</span>
                     <div class="module-info">
-                      <span class="module-name">调研分析</span>
-                      <span class="module-desc">深度主题研究分析</span>
+                      <span class="module-name" data-i18n="dashboard.moduleResearch">调研分析</span>
+                      <span class="module-desc" data-i18n="dashboard.moduleResearchDesc">深度主题研究分析</span>
                     </div>
                     <span class="module-arrow">›</span>
                   </button>
@@ -300,8 +301,8 @@
                     <span class="module-no">03</span>
                     <span class="module-code">DAT</span>
                     <div class="module-info">
-                      <span class="module-name">数据挖掘</span>
-                      <span class="module-desc">数据清洗与模式发现</span>
+                      <span class="module-name" data-i18n="dashboard.moduleData">数据挖掘</span>
+                      <span class="module-desc" data-i18n="dashboard.moduleDataDesc">数据清洗与模式发现</span>
                     </div>
                     <span class="module-arrow">›</span>
                   </button>
@@ -310,8 +311,8 @@
                     <span class="module-no">04</span>
                     <span class="module-code">FS</span>
                     <div class="module-info">
-                      <span class="module-name">文件管理</span>
-                      <span class="module-desc">文件操作与目录组织</span>
+                      <span class="module-name" data-i18n="dashboard.moduleFile">文件管理</span>
+                      <span class="module-desc" data-i18n="dashboard.moduleFileDesc">文件操作与目录组织</span>
                     </div>
                     <span class="module-arrow">›</span>
                   </button>
@@ -328,7 +329,7 @@
                 <div class="telemetry-body">
                   <div class="telemetry-row">
                     <span class="telemetry-key">VERSION</span>
-                    <span class="telemetry-val" id="welcomeVersion">2.0.0</span>
+                    <span class="telemetry-val" id="welcomeVersion">2.3.2</span>
                   </div>
                   <div class="telemetry-row">
                     <span class="telemetry-key">STATUS</span>
@@ -355,8 +356,8 @@
           <div class="skills-content">
             <div class="skills-header">
               <span class="skills-eyebrow">CAPABILITIES</span>
-              <h2 class="skills-title">技能与工具</h2>
-              <p class="skills-desc">CogitoAgent 支持以下分类的所有工具能力，可供组合使用</p>
+              <h2 class="skills-title" data-i18n="skills.title">技能与工具</h2>
+              <p class="skills-desc" data-i18n="skills.desc">CogitoAgent 支持以下分类的所有工具能力，可供组合使用</p>
               <div class="skills-stats" id="skillsStats"></div>
             </div>
             <div class="skills-grid" id="skillsGrid"></div>
@@ -369,7 +370,7 @@
             <div class="chat-messages" id="chatMessages">
               <div class="empty-hint">
                 <div class="hint-icon">COGITO/AGENT</div>
-                <div class="hint-text">待命中 · 输入指令开始对话</div>
+                <div class="hint-text" data-i18n="desktop.emptyHint">待命中 · 输入指令开始对话</div>
               </div>
             </div>
 
@@ -386,6 +387,7 @@
                 <textarea
                   id="chatInputBottom"
                   class="chat-input"
+                  data-i18n-placeholder="desktop.placeholder"
                   placeholder="输入指令..."
                   rows="1"
                 ></textarea>
@@ -406,12 +408,12 @@
   <div class="wechat-qr-modal" id="wechatQrModal" style="display: none;">
     <div class="wechat-qr-box">
       <div class="wechat-qr-header">
-        <span>微信扫码登录</span>
-        <button class="wechat-qr-close" id="wechatQrClose" title="关闭">×</button>
+        <span data-i18n="dashboard.wechatLogin">微信扫码登录</span>
+        <button class="wechat-qr-close" id="wechatQrClose" data-i18n-title="common.close">×</button>
       </div>
       <div class="wechat-qr-body">
-        <img id="wechatQrImage" src="" alt="二维码加载中..." class="wechat-qr-image" />
-        <p class="wechat-qr-status" id="wechatQrStatus">请使用微信扫描二维码</p>
+        <img id="wechatQrImage" src="" data-i18n-alt="dashboard.wechatLoading" alt="二维码加载中..." class="wechat-qr-image" />
+        <p class="wechat-qr-status" id="wechatQrStatus" data-i18n="dashboard.wechatScan">请使用微信扫描二维码</p>
       </div>
     </div>
   </div>
@@ -420,20 +422,21 @@
   <div class="persona-modal-overlay" id="personaModal" style="display: none;">
     <div class="persona-modal-box">
       <div class="persona-modal-header">
-        <span class="persona-modal-title">选择人设</span>
-        <span class="persona-modal-subtitle">为新会话选择一个角色</span>
-        <button class="persona-modal-close" id="personaModalClose" title="关闭">×</button>
+        <span class="persona-modal-title" data-i18n="dashboard.personaTitle">选择人设</span>
+        <span class="persona-modal-subtitle" data-i18n="dashboard.personaSubtitle">为新会话选择一个角色</span>
+        <button class="persona-modal-close" id="personaModalClose" data-i18n-title="common.close">×</button>
       </div>
       <div class="persona-modal-body">
         <div class="persona-grid" id="personaModalGrid"></div>
       </div>
       <div class="persona-modal-footer">
-        <button class="persona-modal-btn secondary" id="personaModalCancel">取消</button>
-        <button class="persona-modal-btn primary" id="personaModalConfirm" disabled>创建会话</button>
+        <button class="persona-modal-btn secondary" id="personaModalCancel" data-i18n="common.cancel">取消</button>
+        <button class="persona-modal-btn primary" id="personaModalConfirm" data-i18n="dashboard.createSession" disabled>创建会话</button>
       </div>
     </div>
   </div>
 
+  <script src="../shared/i18n.js"></script>
   <script src="../shared/utils.js"></script>
   <script src="../shared/persona-manager.js"></script>
   <script src="../shared/message-renderer.js"></script>

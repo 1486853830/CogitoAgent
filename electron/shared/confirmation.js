@@ -16,6 +16,14 @@
 
   const TAG = `[ConfirmationManager]`;
 
+  // 多语言助手：confirmation.js 优先使用 window.I18n，缺失时回退到中文字面量。
+  function t(key, zhFallback) {
+    if (window.I18n && typeof window.I18n.t === 'function') {
+      return window.I18n.t(key);
+    }
+    return zhFallback;
+  }
+
   function injectStyles() {
     if (document.getElementById('confirmation-styles')) return;
     const style = document.createElement('style');
@@ -156,22 +164,23 @@
   }
 
   function buildHtml(data) {
-    const hint = (data && data.hint) || (data && data.toolName) || '危险操作';
-    const args = (data && data.args) || '(无参数)';
+    const hint =
+      (data && data.hint) || (data && data.toolName) || t('confirm.defaultHint', '危险操作');
+    const args = (data && data.args) || t('confirm.noArgs', '(无参数)');
     return `
       <div class="confirm-box" role="dialog" aria-modal="true">
-        <div class="confirm-eyebrow">Dangerous Operation</div>
+        <div class="confirm-eyebrow">${t('confirm.eyebrow', '危险操作')}</div>
         <div class="confirm-title">
           <svg class="confirm-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2L1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V9h2v4z"/>
           </svg>
-          <span>确认执行危险操作？</span>
+          <span>${t('confirm.title', '确认执行危险操作？')}</span>
         </div>
         <p class="confirm-hint">${escapeHtml(hint)}</p>
         <div class="confirm-args">${escapeHtml(args)}</div>
         <div class="confirm-actions">
-          <button class="confirm-btn confirm-btn-cancel" data-action="cancel">取消</button>
-          <button class="confirm-btn confirm-btn-confirm" data-action="confirm">允许执行</button>
+          <button class="confirm-btn confirm-btn-cancel" data-action="cancel">${t('common.cancel', '取消')}</button>
+          <button class="confirm-btn confirm-btn-confirm" data-action="confirm">${t('confirm.allow', '允许执行')}</button>
         </div>
       </div>
     `;
@@ -223,6 +232,26 @@
     document.body.appendChild(el);
     active = true;
     requestAnimationFrame(() => el.classList.add('confirm-visible'));
+    // 切换语言时重绘确认框文案
+    if (!window.__cogitoConfirmationLangListener) {
+      window.__cogitoConfirmationLangListener = true;
+      document.addEventListener('cogito:langchange', () => {
+        if (active && el) {
+          const next = document.createElement('div');
+          next.className = 'confirm-overlay confirm-visible';
+          next.innerHTML = buildHtml(window.__cogitoConfirmationData || null);
+          next.addEventListener('click', (ev) => {
+            const action =
+              ev.target && ev.target.getAttribute && ev.target.getAttribute('data-action');
+            if (action === 'confirm') respond(true);
+            else if (action === 'cancel') respond(false);
+          });
+          if (el.parentNode) el.parentNode.replaceChild(next, el);
+          el = next;
+        }
+      });
+    }
+    window.__cogitoConfirmationData = data || null;
   }
 
   window.ConfirmationManager = { show, dismiss, respond };

@@ -8,14 +8,16 @@ const MessageRenderer = {
   options: {},
 
   init(options = {}) {
+    const tr = (key, fb) =>
+      window.I18n && typeof window.I18n.t === 'function' ? window.I18n.t(key) : fb;
     this.messagesEl = options.messagesEl || document.getElementById('messages');
     this.options = {
       layout: 'desktop',
       showAvatar: false,
-      userAvatarText: '我',
-      assistantAvatarText: 'AI',
+      userAvatarText: tr('dashboard.avatarMe', '我'),
+      assistantAvatarText: tr('dashboard.avatarAI', 'AI'),
       emptyHintIcon: 'Cogito Agent',
-      emptyHintText: '有什么可以帮你的？',
+      emptyHintText: tr('dashboard.chatEmptyHint', '有什么可以帮你的？'),
       ...options,
     };
 
@@ -26,6 +28,15 @@ const MessageRenderer = {
 
     console.log('[MessageRenderer] 初始化完成，布局模式:', this.options.layout);
     return true;
+  },
+
+  // 语言切换后刷新空态提示（气泡历史保持原样）
+  rerenderI18n() {
+    const hint = this.messagesEl?.querySelector('.empty-hint');
+    if (hint) {
+      const text = hint.querySelector('.hint-text');
+      if (text && window.I18n) text.textContent = window.I18n.t('dashboard.chatEmptyHint');
+    }
   },
 
   clearEmptyHint() {
@@ -65,9 +76,8 @@ const MessageRenderer = {
     if (this.options.layout === 'dashboard' && this.options.showAvatar) {
       const avatar = document.createElement('div');
       avatar.className = 'message-avatar';
-      avatar.textContent = type === 'user'
-        ? this.options.userAvatarText
-        : this.options.assistantAvatarText;
+      avatar.textContent =
+        type === 'user' ? this.options.userAvatarText : this.options.assistantAvatarText;
 
       const contentDiv = document.createElement('div');
       contentDiv.className = 'message-content';
@@ -115,7 +125,8 @@ const MessageRenderer = {
 
     const arrow = document.createElement('div');
     arrow.className = 'tool-call-arrow';
-    arrow.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
+    arrow.innerHTML =
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
 
     header.appendChild(icon);
     header.appendChild(name);
@@ -201,9 +212,7 @@ const MessageRenderer = {
     resultContent.className = 'tool-result-content';
 
     const pre = document.createElement('pre');
-    pre.textContent = typeof data === 'string'
-      ? data
-      : JSON.stringify(data, null, 2);
+    pre.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
     resultContent.appendChild(pre);
 
     card.appendChild(header);
@@ -250,7 +259,7 @@ const MessageRenderer = {
   loadHistory(history) {
     if (!history || history.length === 0) return;
     this.clearEmptyHint();
-    history.forEach(msg => {
+    history.forEach((msg) => {
       this.addMessage(msg.role, msg.content);
     });
   },

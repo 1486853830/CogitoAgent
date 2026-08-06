@@ -4,6 +4,10 @@
  */
 
 // 内联脚本外迁：节折叠交互（原 setup.html 内联 <script>，为 CSP 安全移出）
+function t(key) {
+  return window.I18n ? window.I18n.t(key) : undefined;
+}
+
 function toggleSection(id) {
   const section = document.getElementById(id);
   if (!section) return;
@@ -125,6 +129,10 @@ async function init() {
   setupEventListeners();
   updateUI();
 }
+
+document.addEventListener('cogito:langchange', () => {
+  updateUI();
+});
 
 /**
  * 回填表单配置
@@ -259,7 +267,8 @@ function updateUI() {
 
   // 更新按钮
   btnBack.style.display = currentStep > 1 ? 'block' : 'none';
-  btnNext.textContent = currentStep === totalSteps ? '完成配置' : '下一步';
+  btnNext.textContent =
+    currentStep === totalSteps ? t('setup.finish') || '完成配置' : t('setup.next') || '下一步';
 
   // 设置当前步骤的输入焦点
   setTimeout(() => {
@@ -309,7 +318,7 @@ function validateCurrentStep() {
     case 1:
       value = baseURLInput.value.trim();
       if (!value) {
-        showError('请输入 API Base URL');
+        showError(t('setup.errApiRequired') || '请输入 API Base URL');
         baseURLInput.focus();
         return false;
       }
@@ -317,7 +326,7 @@ function validateCurrentStep() {
     case 2:
       value = apiKeyInput.value.trim();
       if (!value) {
-        showError('请输入 API 密钥');
+        showError(t('setup.errKeyRequired') || '请输入 API 密钥');
         apiKeyInput.focus();
         return false;
       }
@@ -325,7 +334,7 @@ function validateCurrentStep() {
     case 3:
       value = modelInput.value.trim();
       if (!value) {
-        showError('请输入模型名称');
+        showError(t('setup.errModelRequired') || '请输入模型名称');
         modelInput.focus();
         return false;
       }
@@ -394,7 +403,7 @@ function submitConfig() {
 
   // 禁用按钮，防止重复提交
   btnNext.disabled = true;
-  btnNext.textContent = '提交中...';
+  btnNext.textContent = t('setup.submitting') || '提交中...';
 
   // 发送配置到主进程
   window.electronAPI.submitConfig(config);
@@ -404,8 +413,8 @@ function submitConfig() {
   configSubmitTimer = setTimeout(() => {
     configSubmitTimer = null;
     btnNext.disabled = false;
-    btnNext.textContent = '完成配置';
-    showError('配置保存超时，请重试');
+    btnNext.textContent = t('setup.finish') || '完成配置';
+    showError(t('setup.errTimeout') || '配置保存超时，请重试');
   }, 10000);
 }
 
@@ -422,8 +431,8 @@ function handleConfigResult(data) {
       // 重新配置模式：保存后自动关闭窗口，刷新现有界面
       const completeTitle = setupComplete.querySelector('h2');
       const completeDesc = setupComplete.querySelector('p');
-      if (completeTitle) completeTitle.textContent = '配置已更新';
-      if (completeDesc) completeDesc.textContent = '正在刷新界面...';
+      if (completeTitle) completeTitle.textContent = t('setup.updated') || '配置已更新';
+      if (completeDesc) completeDesc.textContent = t('setup.refreshing') || '正在刷新界面...';
       // 主进程会自动关闭 setup 窗口并刷新 Dashboard
     } else {
       // 首次配置模式：2秒后启动主界面
@@ -433,8 +442,8 @@ function handleConfigResult(data) {
     }
   } else {
     btnNext.disabled = false;
-    btnNext.textContent = '完成配置';
-    showError(data.error || '配置保存失败');
+    btnNext.textContent = t('setup.finish') || '完成配置';
+    showError(data.error || t('setup.saveError') || '配置保存失败');
   }
 }
 

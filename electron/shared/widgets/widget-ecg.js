@@ -9,8 +9,8 @@ window.WidgetRegistry?.register('ecg', (container, opts = {}) => {
   const state = {
     canvas: null,
     ctx: null,
-    data: [],         // 采样点 {t: ms, v: number}
-    maxPoints: 240,   // 大约 60 秒(250ms 一个点)
+    data: [], // 采样点 {t: ms, v: number}
+    maxPoints: 240, // 大约 60 秒(250ms 一个点)
     intervalId: null,
     lastBeat: 0,
     width: 0,
@@ -118,8 +118,8 @@ window.WidgetRegistry?.register('ecg', (container, opts = {}) => {
     if (kind === 'fail') {
       // 失败:红色尖刺
       pushSample(0.5);
-      pushSample(0.05);   // 大下冲
-      pushSample(0.95);   // 大上冲(红色)
+      pushSample(0.05); // 大下冲
+      pushSample(0.95); // 大上冲(红色)
       pushSample(0.5);
     } else if (kind === 'tool') {
       // 工具调用:中波
@@ -156,7 +156,7 @@ window.WidgetRegistry?.register('ecg', (container, opts = {}) => {
         <div class="widget-head">
           <span class="widget-head-mark">▸</span>
           <span class="widget-head-label">THINK ECG</span>
-          <span class="widget-head-meta">3s 心跳</span>
+          <span class="widget-head-meta">${window.I18n ? window.I18n.t('widget.heartbeat3s') : '3s 心跳'}</span>
         </div>
         <div class="ecg-wrap">
           <canvas class="ecg-canvas"></canvas>
@@ -174,6 +174,7 @@ window.WidgetRegistry?.register('ecg', (container, opts = {}) => {
   return {
     init() {
       render();
+      document.addEventListener('cogito:langchange', render);
       window.addEventListener('resize', resize);
       // 监听 thought-trace 事件
       if (window.electronAPI?.on) {

@@ -22,13 +22,13 @@
     <div class="drag-bar has-trace">
       <span class="title">COGITO/AGENT</span>
       <div class="controls">
-        <button class="btn-icon" id="btnDashboard" title="工作台模式">
+        <button class="btn-icon" id="btnDashboard" data-i18n-title="desktop.dashboard.title">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/>
           </svg>
         </button>
-        <button class="btn-icon" id="btnMinimize" title="最小化">−</button>
-        <button class="btn-icon" id="btnClose" title="关闭">×</button>
+        <button class="btn-icon" id="btnMinimize" data-i18n-title="common.minimize">−</button>
+        <button class="btn-icon" id="btnClose" data-i18n-title="common.close">×</button>
       </div>
     </div>
 
@@ -36,7 +36,7 @@
     <div class="messages" id="messages">
       <div class="empty-hint">
         <div class="hint-icon">COGITO/AGENT</div>
-        <div class="hint-text">待命中 · 输入指令开始对话</div>
+        <div class="hint-text" data-i18n="desktop.emptyHint">待命中 · 输入指令开始对话</div>
       </div>
     </div>
 
@@ -47,10 +47,11 @@
         <input
           type="text"
           id="userInput"
+          data-i18n-placeholder="desktop.placeholder"
           placeholder="输入指令..."
           autocomplete="off"
         />
-        <button class="btn-send" id="btnSend" title="发送">
+        <button class="btn-send" id="btnSend" data-i18n-title="common.send">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
           </svg>
@@ -59,6 +60,7 @@
     </div>
   </div>
 
+  <script src="../shared/i18n.js"></script>
   <script src="../shared/utils.js"></script>
   <script src="../shared/persona-manager.js"></script>
   <script src="../shared/message-renderer.js"></script>
