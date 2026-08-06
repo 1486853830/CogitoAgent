@@ -338,6 +338,29 @@ const DANGEROUS_OPERATIONS = new Set([
   'removeScheduleTask',
 ]);
 
+/**
+ * 危险操作的中文描述，用于前端确认框展示，帮助用户判断是否放行。
+ * 若工具未在此登记则回退到工具名。
+ */
+const DANGEROUS_OPERATION_HINTS: Record<string, string> = {
+  gitPush: '执行 git push 推送代码到远程仓库',
+  gitReset: '执行 git reset 重置本地分支（可能丢弃提交）',
+  gitBranchDelete: '删除 git 分支',
+  executeCode: '在本地沙箱中执行代码',
+  executeFile: '执行本地文件',
+  runJavaScript: '在本地运行 JavaScript 代码',
+  runPython: '在本地运行 Python 代码',
+  deleteData: '删除数据库表数据',
+  dropTable: '删除数据库表结构',
+  clearTasks: '清空全部定时任务',
+  clearMemory: '清空智能体记忆',
+  removeScheduleTask: '删除定时任务',
+};
+
+function getDangerousOperationHint(toolName: string): string {
+  return DANGEROUS_OPERATION_HINTS[toolName] || toolName;
+}
+
 function getToolNames(): string[] {
   return Object.keys(TOOL_REGISTRY);
 }
@@ -470,6 +493,7 @@ export {
   getToolRegistry,
   hasTool,
   isDangerousOperation,
+  getDangerousOperationHint,
   isConfirmEnabled,
   getToolsByCategory,
   getEnabledCategories,

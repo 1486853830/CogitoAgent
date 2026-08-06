@@ -60,6 +60,7 @@ import {
   TOOL_REGISTRY,
   isDangerousOperation,
   isConfirmEnabled,
+  getDangerousOperationHint,
   preprocessToolArgs,
 } from './registry.ts';
 import {
@@ -128,7 +129,11 @@ async function executeTool(
   }
 
   if (isConfirmEnabled() && isDangerousOperation(toolName)) {
-    const confirmed = await requestConfirmation(toolName, args as unknown[]);
+    const confirmed = await requestConfirmation(
+      toolName,
+      args as unknown[],
+      getDangerousOperationHint(toolName),
+    );
     if (!confirmed) {
       const duration = (Date.now() - startTime) / 1000;
       recordToolCall(toolName, registry.category, false, duration);

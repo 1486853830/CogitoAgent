@@ -1090,6 +1090,14 @@ const ChatManager = {
       window.electronAPI.onStateChange((state) => this.handleStateChange(state));
     }
 
+    // 危险操作确认
+    if (window.electronAPI?.onConfirmationRequest) {
+      window.electronAPI.onConfirmationRequest((data) => ConfirmationManager.show(data));
+    }
+    if (window.electronAPI?.onConfirmationResolved) {
+      window.electronAPI.onConfirmationResolved((data) => ConfirmationManager.dismiss(data));
+    }
+
     // 监听历史
     if (window.electronAPI?.onHistory) {
       window.electronAPI.onHistory((history) => this.loadHistory(history));

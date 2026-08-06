@@ -1,3 +1,5 @@
+import { broadcast } from '../io/ws-server.ts';
+
 const STATE = {
   THINKING: 'THINKING',
   AWAITING_INPUT: 'AWAITING_INPUT',
@@ -41,9 +43,21 @@ function setPendingConfirmation(
   pendingConfirmation = confirmation;
 }
 
-async function requestConfirmation(toolName: string, args: unknown[]): Promise<boolean> {
+async function requestConfirmation(
+  toolName: string,
+  args: unknown[],
+  hint?: string,
+): Promise<boolean> {
   setState(STATE.AWAITING_CONFIRMATION);
   pendingConfirmation = { toolName, args };
+
+  // 通知前端（Web 界面）弹出危险操作确认框；CLI 终端仍通过 handleUserInput 的
+  // AWAITING_CONFIRMATION 分支用 y/n 确认。
+  broadcast('confirmation-requested', {
+    toolName,
+    hint: hint || toolName,
+    args: formatArgsForConfirmation(args),
+  });
 
   const CONFIRM_TIMEOUT = 5 * 60 * 1000;
 
@@ -56,11 +70,22 @@ async function requestConfirmation(toolName: string, args: unknown[]): Promise<b
         pendingConfirmation = null;
         confirmationTimer = null;
         setState(STATE.THINKING);
+        broadcast('confirmation-resolved', { resolved: false, timedOut: true });
         resolve(false);
       }
     }, CONFIRM_TIMEOUT);
     confirmationTimer.unref();
   });
+}
+
+/** 将工具参数截断成前端可读的文本，避免把超长内容灌给确认框 */
+function formatArgsForConfirmation(args: unknown[]): string {
+  try {
+    const text = JSON.stringify(args);
+    return text && text.length > 200 ? text.slice(0, 200) + '…' : text || '(无参数)';
+  } catch {
+    return '(无法序列化参数)';
+  }
 }
 
 function resolveConfirmation(confirmed: boolean): void {
@@ -72,6 +97,7 @@ function resolveConfirmation(confirmed: boolean): void {
     confirmationResolve(confirmed);
     confirmationResolve = null;
     pendingConfirmation = null;
+    broadcast('confirmation-resolved', { resolved: confirmed });
   }
 }
 
@@ -84,6 +110,7 @@ function cancelConfirmation(): void {
     confirmationResolve(false);
     confirmationResolve = null;
     pendingConfirmation = null;
+    broadcast('confirmation-resolved', { resolved: false, cancelled: true });
   }
 }
 

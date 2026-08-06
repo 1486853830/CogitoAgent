@@ -82,6 +82,14 @@ function initApp() {
   window.electronAPI.onHistory(handleHistory);
   window.electronAPI.requestHistory();
 
+  // 危险操作确认
+  if (window.electronAPI.onConfirmationRequest) {
+    window.electronAPI.onConfirmationRequest((data) => ConfirmationManager.show(data));
+  }
+  if (window.electronAPI.onConfirmationResolved) {
+    window.electronAPI.onConfirmationResolved((data) => ConfirmationManager.dismiss(data));
+  }
+
   inputEl.focus();
 
   console.log('[Desktop] 初始化完成');
