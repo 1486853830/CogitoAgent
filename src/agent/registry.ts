@@ -411,6 +411,25 @@ function getEnabledCategories(): ToolCategory[] {
   return enabled.filter((cat): cat is ToolCategory => cat in TOOL_CATEGORIES);
 }
 
+/**
+ * 供前端「技能与工具」面板渲染的工具总览：分类 + 工具 + 危险操作清单。
+ * 从注册表动态派生，避免前端硬编码清单与注册表分叉（曾因此漏展示大量工具）。
+ */
+function getToolsOverview(): {
+  categories: Array<{ id: string; name: string; tools: string[] }>;
+  dangerous: string[];
+} {
+  const byCategory = getToolsByCategory();
+  const categories = (Object.keys(byCategory) as ToolCategory[])
+    .filter((cat) => (byCategory[cat] || []).length > 0)
+    .map((cat) => ({
+      id: cat,
+      name: TOOL_CATEGORIES[cat] || cat,
+      tools: byCategory[cat],
+    }));
+  return { categories, dangerous: Array.from(DANGEROUS_OPERATIONS) };
+}
+
 function getAllCategories(): Record<ToolCategory, string> {
   return { ...TOOL_CATEGORIES };
 }
@@ -497,6 +516,7 @@ export {
   isConfirmEnabled,
   getToolsByCategory,
   getEnabledCategories,
+  getToolsOverview,
   getAllCategories,
   getToolsForPrompt,
   getEnabledToolNames,

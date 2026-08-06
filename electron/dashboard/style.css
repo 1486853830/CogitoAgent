@@ -2160,6 +2160,11 @@ body::after {
   font-weight: 600;
   color: var(--phosphor);
   letter-spacing: var(--tracking-wide);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  padding: 0 4px;
   flex-shrink: 0;
   box-shadow:
     inset 0 1px 0 var(--line-top),

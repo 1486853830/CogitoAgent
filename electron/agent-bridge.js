@@ -267,6 +267,29 @@ function ensureUserMessageHandler() {
       event.reply('stats-response', { error: 'Agent 未连接' });
     }
   });
+  // 技能与工具面板数据请求
+  ipcMain.on('tools-request', (event) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      const requestId = Date.now();
+      const handler = (raw) => {
+        try {
+          const msg = JSON.parse(raw.toString());
+          if (msg.type === 'tools-response' && msg.requestId === requestId) {
+            event.reply('tools-response', msg);
+            ws.removeListener('message', handler);
+          }
+        } catch {}
+      };
+      ws.on('message', handler);
+      ws.send(JSON.stringify({ type: 'tools-request', requestId }));
+
+      setTimeout(() => {
+        ws.removeListener('message', handler);
+      }, 30000);
+    } else {
+      event.reply('tools-response', { error: 'Agent 未连接' });
+    }
+  });
 }
 
 ensureUserMessageHandler();

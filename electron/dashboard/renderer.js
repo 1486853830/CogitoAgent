@@ -33,9 +33,9 @@
 const Utils = SharedUtils;
 
 // ============================================================
-// 工具分类数据（与后端 registry.js 保持一致）
+// 工具分类数据（初始回退清单；SkillsManager 启动后会从后端注册表动态拉取覆盖）
 // ============================================================
-const TOOL_CATEGORIES = [
+let TOOL_CATEGORIES = [
   {
     id: 'file',
     name: '文件操作',
@@ -250,8 +250,8 @@ const TOOL_CATEGORIES = [
   },
 ];
 
-// 危险操作列表（来自 registry.js）
-const DANGEROUS_TOOLS = new Set([
+// 危险操作列表（初始回退清单；随后由后端动态覆盖）
+let DANGEROUS_TOOLS = new Set([
   'gitPush',
   'gitReset',
   'gitBranchDelete',
@@ -265,6 +265,45 @@ const DANGEROUS_TOOLS = new Set([
   'clearMemory',
   'removeScheduleTask',
 ]);
+
+// ============================================================
+// 工具分类代号：44px 正方形徽标放不下长 id 的全大写文本，
+// 这里给主要分类维护精简代号，未知 id 兜底取前 5 个字符。
+// ============================================================
+const CATEGORY_CODES = {
+  browser: 'BROW',
+  code: 'CODE',
+  data: 'DATA',
+  db: 'DB',
+  email: 'MAIL',
+  file: 'FILE',
+  git: 'GIT',
+  memory: 'MEM',
+  monitor: 'MON',
+  ocr: 'OCR',
+  office: 'DOC',
+  scheduler: 'CRON',
+  system: 'SYS',
+  task: 'TASK',
+  vision: 'VIS',
+  web: 'WEB',
+  cluster: 'NODE',
+  wechat: 'WX',
+  gis: 'GIS',
+  bio: 'BIO',
+  med: 'MED',
+  chem: 'CHEM',
+  chemistry: 'CHM',
+  finance: 'FIN',
+  math: 'MATH',
+  bioinformatics: 'BIF',
+  literature: 'LIT',
+};
+
+function toCategoryCode(id) {
+  if (!id) return 'TOOL';
+  return CATEGORY_CODES[id] || id.toUpperCase().slice(0, 5);
+}
 
 // ============================================================
 // 应用状态模块
@@ -908,7 +947,28 @@ const SkillsManager = {
     this.skillsEl = document.getElementById('skillsView');
     this.gridEl = document.getElementById('skillsGrid');
     this.render();
+    this.loadFromBackend();
     console.log('[SkillsManager] 初始化完成');
+  },
+
+  // 从后端注册表拉取最新工具分类与危险清单，覆盖硬编码回退值，避免漏展示新增工具。
+  loadFromBackend() {
+    const api = window.electronAPI;
+    if (!api || typeof api.sendToolsRequest !== 'function' || !api.onToolsResponse) return;
+
+    api.onToolsResponse((data) => {
+      if (data && Array.isArray(data.categories) && data.categories.length > 0) {
+        TOOL_CATEGORIES = data.categories.map((c) => ({
+          id: c.id,
+          name: c.name,
+          tools: Array.isArray(c.tools) ? c.tools : [],
+          code: toCategoryCode(c.id),
+        }));
+        DANGEROUS_TOOLS = new Set(Array.isArray(data.dangerous) ? data.dangerous : []);
+        this.render();
+      }
+    });
+    api.sendToolsRequest();
   },
 
   render() {
