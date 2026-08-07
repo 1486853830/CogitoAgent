@@ -909,10 +909,11 @@ app.whenReady().then(async () => {
   ipcMain.handle('get-persona-media', () => {
     // 从 persona.md 文件实时读取，保证与 Agent 侧同步
     let persona = '';
+    let personaContent = '';
     try {
       if (fs.existsSync(PERSONA_FILE)) {
-        const content = fs.readFileSync(PERSONA_FILE, 'utf-8');
-        const firstLine = content
+        personaContent = fs.readFileSync(PERSONA_FILE, 'utf-8');
+        const firstLine = personaContent
           .split('\n')[0]
           .replace(/^#+\s*/, '')
           .trim();
@@ -939,6 +940,37 @@ app.whenReady().then(async () => {
     // 回退到内存缓存
     if (!persona) {
       persona = currentPersona;
+    }
+
+    // 无人设时，自动调用人设文件夹根目录的默认 persona.md（如 personas/persona.md），
+    // 其"## 形象"声明决定默认形象（默认为 electron/shared/video.mp4）。
+    if (!persona) {
+      const defaultPersonaFile = path.join(PROJECT_ROOT, 'personas', 'persona.md');
+      try {
+        if (fs.existsSync(defaultPersonaFile)) {
+          personaContent = fs.readFileSync(defaultPersonaFile, 'utf-8');
+        }
+      } catch (e) {
+        console.error('[主进程] 读取默认 persona.md 失败:', e.message);
+      }
+    }
+
+    // 解析 persona.md 中"## 形象"声明的媒体文件（如 video.mp4 / image.jpg）
+    if (personaContent) {
+      const mediaDecl = parsePersonaMedia(personaContent);
+      if (mediaDecl) {
+        if (mediaDecl.name === 'video.mp4') {
+          // 默认形象统一指向 electron/shared/video.mp4
+          return { type: 'video', path: '../shared/video.mp4' };
+        }
+        if (persona) {
+          const personaDir = path.join(PROJECT_ROOT, 'personas', persona);
+          const mediaPath = path.join(personaDir, mediaDecl.name);
+          if (fs.existsSync(mediaPath)) {
+            return { type: mediaDecl.type, path: `../../personas/${persona}/${mediaDecl.name}` };
+          }
+        }
+      }
     }
 
     if (!persona) {
@@ -1220,6 +1252,36 @@ function parsePersonaName(content) {
     console.error('[主进程] 解析 persona 名称失败:', e.message);
   }
   return '';
+}
+
+/**
+ * 从 persona.md 内容解析"## 形象"声明的媒体文件。
+ * 约定：`## 形象` 段落下第一行为媒体文件名，如 `video.mp4` / `image.jpg`。
+ * @returns {{ type: 'video'|'image', name: string } | null}
+ */
+function parsePersonaMedia(content) {
+  try {
+    if (!content) return null;
+    const lines = content.split('\n');
+    const section = lines.findIndex((l) => /^##\s*形象/.test(l.trim()));
+    if (section < 0) return null;
+    for (let i = section + 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      if (line.startsWith('#')) break;
+      const lower = line.toLowerCase();
+      if (/\.(mp4|webm|mov|ogg)$/i.test(lower)) {
+        return { type: 'video', name: line };
+      }
+      if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(lower)) {
+        return { type: 'image', name: line };
+      }
+      break;
+    }
+  } catch (e) {
+    console.error('[主进程] 解析 persona 形象失败:', e.message);
+  }
+  return null;
 }
 
 /**
