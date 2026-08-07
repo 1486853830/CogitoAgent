@@ -38,13 +38,13 @@ function findPythonExecutable(): string {
   return 'python';
 }
 
-async function runJavaScript(code: string): Promise<any> {
+async function runJavaScript(code: string, signal?: AbortSignal): Promise<any> {
   // 安全决策：JavaScript 执行统一走 isolated-vm 沙箱（见 sandbox.ts）。
   // 此前基于 Node 原生 vm 模块的实现并非安全沙箱——攻击者可通过原型链
   // （如 [].constructor.constructor）拿到宿主 Function 构造器，逃逸出沙箱
   // 执行任意代码（RCE）。isolated-vm 使用独立 V8 堆，从机制上阻断逃逸。
   const { maxExecutionTime } = getCodeLimits();
-  return runJavaScriptSandbox(code, maxExecutionTime);
+  return runJavaScriptSandbox(code, maxExecutionTime, signal);
 }
 
 function hasGuiBlockingCall(code: string): boolean {
@@ -82,7 +82,7 @@ ${code}
   return guiWrapper;
 }
 
-async function runPython(code: string): Promise<any> {
+async function runPython(code: string, signal?: AbortSignal): Promise<any> {
   // eslint-disable-next-line no-async-promise-executor -- executor 内已用 try/catch 完整兜底，且需统一管理超时与 resolve 时机
   return new Promise(async (resolve) => {
     let tmpPath: string | null = null;
@@ -152,6 +152,8 @@ async function runPython(code: string): Promise<any> {
 
       const pythonExec = findPythonExecutable();
 
+      // signal 传递到 execFile：/stop 中断时由 Node 直接 kill 子进程，
+      // 避免"工具看似被中断、Python 进程仍在后台运行"的资源泄漏。
       execFile(
         pythonExec,
         [tmpPath],
@@ -159,6 +161,7 @@ async function runPython(code: string): Promise<any> {
           timeout: maxExecutionTime,
           encoding: 'utf8',
           env: secureEnv as any,
+          signal,
           // 注意：Python 执行当前无真正的沙盒隔离（不同于 runJavaScript 的 isolated-vm）。
           // 此前传入的 gid/uid 取自当前进程自身，等于零隔离，反而误导维护者以为有权限降级。
           // 真正的隔离需要容器/cgroups/seccomp 或独立低权限用户，待架构层面解决。
@@ -220,13 +223,17 @@ async function runPython(code: string): Promise<any> {
   });
 }
 
-async function executeCode(code: string, language: string = 'javascript'): Promise<any> {
+async function executeCode(
+  code: string,
+  language: string = 'javascript',
+  signal?: AbortSignal,
+): Promise<any> {
   const lang = language.toLowerCase();
 
   if (lang === 'python' || lang === 'py') {
-    return await runPython(code);
+    return await runPython(code, signal);
   } else if (lang === 'javascript' || lang === 'js') {
-    return await runJavaScript(code);
+    return await runJavaScript(code, signal);
   } else {
     return {
       success: false,
@@ -235,7 +242,11 @@ async function executeCode(code: string, language: string = 'javascript'): Promi
   }
 }
 
-async function executeFile(filePath: string, language: string | null = null): Promise<any> {
+async function executeFile(
+  filePath: string,
+  language: string | null = null,
+  signal?: AbortSignal,
+): Promise<any> {
   const resolvedPath = resolveInWorkspace(filePath);
   if (!resolvedPath) {
     return {
@@ -259,7 +270,7 @@ async function executeFile(filePath: string, language: string | null = null): Pr
       }
     }
 
-    return await executeCode(content, language);
+    return await executeCode(content, language, signal);
   } catch (e: any) {
     return {
       success: false,

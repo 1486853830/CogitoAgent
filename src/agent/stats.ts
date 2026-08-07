@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import { writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
 
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
@@ -125,12 +126,14 @@ async function loadStats(): Promise<void> {
 }
 
 let saveStatsTimer: ReturnType<typeof setTimeout> | null = null;
+let saveQueue: Promise<void> = Promise.resolve();
 
-/** 同步调度延迟保存——注意：此函数不等待写入完成，调用方不应依赖写入结果。 */
-function saveStats(): void {
-  if (saveStatsTimer) return;
-  saveStatsTimer = setTimeout(async () => {
-    saveStatsTimer = null;
+/**
+ * 串行化写入，避免并发 writeFile 交错导致文件损坏。
+ * 返回的 Promise 可被调用方 await（例如进程退出前 flush）。
+ */
+function enqueueSave(): Promise<void> {
+  const run = async () => {
     try {
       const dir = path.dirname(STATS_FILE);
       await fs.mkdir(dir, { recursive: true });
@@ -138,8 +141,57 @@ function saveStats(): void {
     } catch (e) {
       console.error('[Stats] 保存统计数据失败:', (e as Error).message);
     }
+  };
+  const next = saveQueue.then(run);
+  // 防止队列无限增长；失败也已在上层吞掉
+  saveQueue = next.catch(() => undefined);
+  return next;
+}
+
+/** 同步调度延迟保存——注意：此函数不等待写入完成，调用方不应依赖写入结果。 */
+function saveStats(): void {
+  if (saveStatsTimer) return;
+  saveStatsTimer = setTimeout(() => {
+    saveStatsTimer = null;
+    void enqueueSave();
   }, 100);
 }
+
+/**
+ * 立即写入并等待完成（供进程退出前 flush 使用）。
+ * 与延迟保存共用串行队列，保证不会丢掉最后一批数据。
+ */
+async function flushStats(): Promise<void> {
+  if (saveStatsTimer) {
+    clearTimeout(saveStatsTimer);
+    saveStatsTimer = null;
+  }
+  await enqueueSave();
+}
+
+/**
+ * 进程退出时同步刷盘。异步 flush 在退出事件里不可靠，
+ * 这里用 writeFileSync 直接落盘，保证统计数据不丢失。
+ */
+function flushStatsSync(): void {
+  if (saveStatsTimer) {
+    clearTimeout(saveStatsTimer);
+    saveStatsTimer = null;
+  }
+  try {
+    const dir = path.dirname(STATS_FILE);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(STATS_FILE, JSON.stringify({ toolStats, sessionStats }, null, 2));
+  } catch (e) {
+    console.error('[Stats] 同步保存统计数据失败:', (e as Error).message);
+  }
+}
+
+process.on('exit', flushStatsSync);
+process.on('SIGINT', () => {
+  flushStatsSync();
+  process.exit(0);
+});
 
 /**
  * 检查日期是否变更，若跨日则统一重置所有 today 计数器
@@ -376,9 +428,12 @@ function resetStats(): void {
 }
 
 initStats();
-(async () => {
-  await loadStats();
-})();
+// 启动时异步加载历史统计。因为历史数据只在记录时被增量叠加，
+// 即便加载还没完成就开始记录，也只会少加一段历史，不会产生错误计数。
+// 使用 .catch 兜底，避免未处理的 rejection 影响进程退出。
+loadStats().catch(() => {
+  console.error('[Stats] 加载历史统计数据失败');
+});
 
 export {
   recordToolCall,
@@ -392,4 +447,5 @@ export {
   getTopUsedTools,
   getMergedDailyHistory,
   resetStats,
+  flushStats,
 };

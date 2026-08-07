@@ -23,23 +23,23 @@ interface BannerInfo {
 const C = {
   reset: '\x1b[0m',
   dim: '\x1b[2m',
-  phosphor: '\x1b[38;2;94;234;212m',  // #5eead4
-  amber: '\x1b[38;2;251;191;36m',     // #fbbf24
-  silver: '\x1b[38;2;196;205;217m',   // #c4cdd9
+  phosphor: '\x1b[38;2;94;234;212m', // #5eead4
+  amber: '\x1b[38;2;251;191;36m', // #fbbf24
+  silver: '\x1b[38;2;196;205;217m', // #c4cdd9
   silverDim: '\x1b[38;2;139;149;165m', // #8b95a5
-  crimson: '\x1b[38;2;248;113;113m',  // #f87171
+  crimson: '\x1b[38;2;248;113;113m', // #f87171
   bg: '\x1b[48;2;11;14;20m',
   bold: '\x1b[1m',
 };
 
 // ASCII Logo (简化版 CogitoAgent)
 const LOGO = [
-  '  ████████╗ ██████╗  ██████╗ ██╗  ██╗██╗   ██╗',
-  '  ╚══██╔══╝██╔═══██╗██╔═══██╗██║ ██╔╝██║   ██║',
-  '     ██║   ██║   ██║██║   ██║█████╔╝ ██║   ██║',
-  '     ██║   ██║   ██║██║   ██║██╔═██╗ ██║   ██║',
-  '     ██║   ╚██████╔╝╚██████╔╝██║  ██╗╚██████╔╝',
-  '     ╚═╝    ╚═════╝  ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ',
+  ' ██████╗ ██████╗  ██████╗ ██╗████████╗ ██████╗ ',
+  '██╔════╝██╔═══██╗██╔════╝ ██║╚══██╔══╝██╔═══██╗',
+  '██║     ██║   ██║██║  ███╗██║   ██║   ██║   ██║',
+  '██║     ██║   ██║██║   ██║██║   ██║   ██║   ██║',
+  '╚██████╗╚██████╔╝╚██████╔╝██║   ██║   ╚██████╔╝',
+  ' ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝   ╚═╝    ╚═════╝',
 ];
 
 function fmtDuration(ms: number): string {
@@ -112,11 +112,9 @@ function printBanner(info: BannerInfo = {}): void {
   }
 
   lines.push('');
+  lines.push(`${C.silverDim}  ${'─'.repeat(56)}${C.reset}`);
   lines.push(
-    `${C.silverDim}  ${'─'.repeat(56)}${C.reset}`
-  );
-  lines.push(
-    `${C.phosphor}  ▸ Cogito, ergo sum${C.reset} ${C.silverDim}| Continuous thinking · Local execution · Privacy first${C.reset}`
+    `${C.phosphor}  ▸ Cogito, ergo sum${C.reset} ${C.silverDim}| Continuous thinking · Local execution · Privacy first${C.reset}`,
   );
   lines.push('');
 

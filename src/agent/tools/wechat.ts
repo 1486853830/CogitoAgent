@@ -14,7 +14,9 @@ import { broadcast } from '../../io/ws-server.ts';
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const STATE_DIR = path.resolve(DATA_DIR, 'data', 'wechat');
 const STATE_FILE = path.join(STATE_DIR, 'wechat-state.json');
-const MESSAGES_FILE = path.join(STATE_DIR, 'weichat.json');
+const MESSAGES_FILE = path.join(STATE_DIR, 'wechat.json');
+// 历史版本因文件名拼写错误使用 weichat.json，首次加载时迁移到正确文件名。
+const LEGACY_MESSAGES_FILE = path.join(STATE_DIR, 'weichat.json');
 
 interface WechatState {
   loggedIn: boolean;
@@ -112,6 +114,20 @@ function loadWechatMessages(): { messages: unknown[] } {
     if (fs.existsSync(MESSAGES_FILE)) {
       const data = fs.readFileSync(MESSAGES_FILE, 'utf-8');
       return JSON.parse(data);
+    }
+    // 迁移旧拼写文件：存在 legacy 文件时读入并将其复制到正确文件名，避免历史消息丢失
+    if (fs.existsSync(LEGACY_MESSAGES_FILE)) {
+      const data = fs.readFileSync(LEGACY_MESSAGES_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      try {
+        if (!fs.existsSync(STATE_DIR)) {
+          fs.mkdirSync(STATE_DIR, { recursive: true });
+        }
+        fs.writeFileSync(MESSAGES_FILE, JSON.stringify(parsed, null, 2), 'utf-8');
+      } catch (e: unknown) {
+        console.error('[微信] 迁移消息文件失败:', (e as Error).message);
+      }
+      return parsed;
     }
   } catch (e: unknown) {
     console.error('[微信] 加载消息失败:', (e as Error).message);
