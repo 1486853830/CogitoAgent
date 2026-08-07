@@ -113,25 +113,33 @@ function initializeSession(sessionId?: string | null): boolean {
       return false;
     }
     currentSessionId = sessionId;
-  } else if (meta.activeId && meta.sessions.find((s) => s.id === meta.activeId)) {
-    currentSessionId = meta.activeId;
   } else {
-    createNewSession();
+    // 启动时（无显式 sessionId）不自动加载上次的活跃会话，也不自动创建新会话，
+    // 保持"未选中任何对话"状态，等待用户在欢迎页发消息或点击新建任务后再创建。
+    // 同时清除 meta.activeId，避免前端会话列表默认高亮选中某个会话。
+    currentSessionId = null;
+    meta.activeId = null;
+    saveMeta(meta);
   }
 
-  const messages = loadSession(currentSessionId!);
-  if (messages.length === 0) {
+  if (currentSessionId) {
+    const messages = loadSession(currentSessionId);
+    if (messages.length === 0) {
+      conversationHistory = [{ role: 'system', content: buildSystemPrompt() }];
+    } else {
+      conversationHistory = messages;
+      conversationHistory[0] = { role: 'system', content: buildSystemPrompt() };
+    }
+    meta.activeId = currentSessionId;
+    saveMeta(meta);
+    turnCount = conversationHistory.filter((m) => m.role !== 'system').length;
+    console.log(`[会话] 已加载会话: ${currentSessionId} (${turnCount} 条消息)`);
+  } else {
+    // 无会话：仅初始化系统提示词（含默认人设），不写入 meta，也不创建会话文件
     conversationHistory = [{ role: 'system', content: buildSystemPrompt() }];
-  } else {
-    conversationHistory = messages;
-    conversationHistory[0] = { role: 'system', content: buildSystemPrompt() };
+    turnCount = 0;
+    console.log('[会话] 启动：未选中任何会话，等待创建');
   }
-
-  turnCount = conversationHistory.filter((m) => m.role !== 'system').length;
-  meta.activeId = currentSessionId;
-  saveMeta(meta);
-
-  console.log(`[会话] 已加载会话: ${currentSessionId} (${turnCount} 条消息)`);
   return true;
 }
 
@@ -398,6 +406,10 @@ function getMessages(): Message[] {
 }
 
 function addUserMessage(content: string): void {
+  // 无会话时懒创建（首次发消息自动建会话，应用默认人设）
+  if (!currentSessionId) {
+    createNewSession();
+  }
   conversationHistory.push({ role: 'user', content });
   turnCount++;
   saveSession(currentSessionId!, conversationHistory);
@@ -412,12 +424,20 @@ function addUserMessage(content: string): void {
 }
 
 function addAssistantMessage(content: string): void {
+  // 无会话时懒创建（理论上先有用户消息，兜底保护）
+  if (!currentSessionId) {
+    createNewSession();
+  }
   conversationHistory.push({ role: 'assistant', content });
   turnCount++;
   saveSession(currentSessionId!, conversationHistory);
 }
 
 function addToolResultMessage(content: string): void {
+  // 无会话时懒创建（工具结果必然发生在会话中，兜底保护）
+  if (!currentSessionId) {
+    createNewSession();
+  }
   conversationHistory.push({ role: 'user', content });
   saveSession(currentSessionId!, conversationHistory);
 }
@@ -484,7 +504,9 @@ function compressHistory(): void {
   ];
 
   turnCount = recentMessages.length;
-  saveSession(currentSessionId!, conversationHistory);
+  if (currentSessionId) {
+    saveSession(currentSessionId, conversationHistory);
+  }
 }
 
 function generateSummary(messages: Message[]): string {
