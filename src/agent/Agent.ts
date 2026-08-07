@@ -402,6 +402,9 @@ async function streamAndAccumulateResponse(messages: Message[]): Promise<StreamR
     }
     const chunk = iterResult.value as StreamChunk;
     if (shouldStop) {
+      // /stop 中断：复位 shouldStop，避免下次思考周期仍被标记为"应停止"，
+      // 否则 AI 被打断后将永远无法再次回复（streamAndAccumulateResponse 一进入就 stopped）。
+      shouldStop = false;
       printBlank();
       return { fullResponse, usage, stopped: true };
     }

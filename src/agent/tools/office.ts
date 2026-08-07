@@ -38,7 +38,13 @@ interface SlideData {
 async function createPpt(
   options: Record<string, unknown> | string,
   ...rest: unknown[]
-): Promise<{ success: boolean; path?: string; slideCount?: number; error?: string }> {
+): Promise<{
+  success: boolean;
+  data?: string;
+  path?: string;
+  slideCount?: number;
+  error?: string;
+}> {
   try {
     let outputPath: string | undefined,
       slides: SlideData[] = [],
@@ -145,7 +151,12 @@ async function createPpt(
     await fs.mkdir(dir, { recursive: true });
     await ppt.writeFile({ fileName: outputPath });
 
-    return { success: true, path: outputPath, slideCount: slides.length };
+    return {
+      success: true,
+      data: `PPT 文件已创建成功：${outputPath}（共 ${slides.length} 页）`,
+      path: outputPath,
+      slideCount: slides.length,
+    };
   } catch (e: unknown) {
     return { success: false, error: `创建PPT失败: ${(e as Error).message}` };
   }
@@ -172,7 +183,13 @@ interface HeadingMap {
 async function createWord(
   options: Record<string, unknown> | string,
   ...rest: unknown[]
-): Promise<{ success: boolean; path?: string; paragraphCount?: number; error?: string }> {
+): Promise<{
+  success: boolean;
+  data?: string;
+  path?: string;
+  paragraphCount?: number;
+  error?: string;
+}> {
   try {
     let outputPath: string | undefined,
       paragraphs: ParagraphData[] = [],
@@ -304,7 +321,12 @@ async function createWord(
     const buffer = await Packer.toBuffer(doc);
     await fs.writeFile(outputPath, buffer);
 
-    return { success: true, path: outputPath, paragraphCount: paragraphs.length };
+    return {
+      success: true,
+      data: `Word 文档已创建成功：${outputPath}（共 ${paragraphs.length} 个段落）`,
+      path: outputPath,
+      paragraphCount: paragraphs.length,
+    };
   } catch (e: unknown) {
     return { success: false, error: `创建Word文档失败: ${(e as Error).message}` };
   }
@@ -317,10 +339,44 @@ interface SheetData {
   data?: unknown[][];
 }
 
+/**
+ * 规范化工作表数据：将单元格值转为 xlsx 支持的原始类型
+ * （string/number/boolean），对象/数组转为 JSON 字符串，
+ * 避免 aoa_to_sheet 遇到对象值时报 "n.charCodeAt is not a function"。
+ */
+function normalizeSheetData(rows: unknown[][]): (string | number | boolean)[][] {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => {
+    if (!Array.isArray(row)) {
+      return [cellToPrimitive(row)];
+    }
+    return row.map((cell) => cellToPrimitive(cell));
+  });
+}
+
+function cellToPrimitive(cell: unknown): string | number | boolean {
+  if (cell === null || cell === undefined) return '';
+  if (typeof cell === 'string' || typeof cell === 'number' || typeof cell === 'boolean') {
+    return cell;
+  }
+  // 对象/数组转 JSON 字符串，保持可读性
+  try {
+    return JSON.stringify(cell);
+  } catch {
+    return String(cell);
+  }
+}
+
 async function createExcel(
   options: Record<string, unknown> | string,
   ...rest: unknown[]
-): Promise<{ success: boolean; path?: string; sheetCount?: number; error?: string }> {
+): Promise<{
+  success: boolean;
+  data?: string;
+  path?: string;
+  sheetCount?: number;
+  error?: string;
+}> {
   try {
     let outputPath: string | undefined,
       sheets: SheetData[] = [];
@@ -358,7 +414,8 @@ async function createExcel(
 
     for (const sheet of sheets) {
       const sheetName = sheet.name || 'Sheet';
-      const data = sheet.data || [];
+      const rawData = sheet.data || [];
+      const data = normalizeSheetData(rawData);
       const ws = XLSX.utils.aoa_to_sheet(data);
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
     }
@@ -371,7 +428,12 @@ async function createExcel(
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: wbType }) as Buffer;
     await fs.writeFile(outputPath, buffer);
 
-    return { success: true, path: outputPath, sheetCount: sheets.length };
+    return {
+      success: true,
+      data: `Excel 文件已创建成功：${outputPath}（共 ${sheets.length} 个工作表）`,
+      path: outputPath,
+      sheetCount: sheets.length,
+    };
   } catch (e: unknown) {
     return { success: false, error: `创建Excel失败: ${(e as Error).message}` };
   }

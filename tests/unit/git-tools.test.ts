@@ -64,6 +64,26 @@ describe('git tools', () => {
       expect(result.success).toBe(true);
       expect(result.data).toContain('Initial commit');
     });
+
+    it('should accept object options without being rejected by arg validation', async () => {
+      fs.writeFileSync(path.join(tmpDir, 'file.txt'), 'hello');
+      await gitAdd('file.txt');
+      await gitCommit('Initial commit');
+      for (const options of [
+        {},
+        { limit: 1 },
+        { maxCount: 3 },
+        { author: 'Test User' },
+        { since: '2024-01-01' },
+        { oneline: true },
+        '--oneline -5',
+        '--all',
+        '{"limit": 3}',
+      ]) {
+        const result = await gitLog(options, tmpDir);
+        expect(result.success).toBe(true);
+      }
+    });
   });
 
   describe('gitDiff', () => {

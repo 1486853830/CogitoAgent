@@ -29,6 +29,36 @@ function parseAllToolCalls(text: string): ToolCallResult[] {
   return results;
 }
 
+/**
+ * 将参数解析为 JS 值。
+ * AI 常写 `{limit: 5}` / `{author: 'x'}` 这类非严格 JSON 的对象字面量（key 未加引号），
+ * 而 JSON.parse 只接受双引号 key。这里先尝试标准 JSON，失败后补齐 key 引号再解析。
+ * 仅处理 `{...}` 形式的对象；其他内容（含数组字面量）原样返回字符串，由各工具的
+ * parseJson / normalizeTags 等既有逻辑处理，避免改变既有参数语义。
+ */
+function tryParseObjectLiteral(value: string): unknown {
+  const trimmed = value.trim();
+  if (!(trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+    return value;
+  }
+
+  const parsed = safeParseJSON<Record<string, unknown>>(trimmed);
+  if (parsed.success && parsed.data !== null) {
+    return parsed.data;
+  }
+
+  // 兼容 JS 对象字面量：单引号转双引号、补齐未加引号的 key
+  const normalized = trimmed
+    .replace(/'/g, '"')
+    .replace(/([{,]\s*|^)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":');
+  const loose = safeParseJSON<Record<string, unknown>>(normalized);
+  if (loose.success && loose.data !== null) {
+    return loose.data;
+  }
+
+  return value;
+}
+
 function parseArgs(
   argsStr: string,
 ): unknown[] | { isJson: boolean; data: Record<string, unknown> } {
@@ -45,55 +75,49 @@ function parseArgs(
     }
   }
 
-  if (trimmed.includes('"') || trimmed.includes("'")) {
-    const args: string[] = [];
-    let current = '';
-    let inQuote = false;
-    let quoteChar = '';
+  const args: string[] = [];
+  let current = '';
+  let inQuote = false;
+  let quoteChar = '';
+  let bracketDepth = 0;
 
-    for (let i = 0; i < trimmed.length; i++) {
-      const char = trimmed[i];
+  for (let i = 0; i < trimmed.length; i++) {
+    const char = trimmed[i];
 
-      if ((char === '"' || char === "'") && !inQuote) {
-        inQuote = true;
-        quoteChar = char;
-        current += char;
-      } else if (char === quoteChar && inQuote) {
-        inQuote = false;
-        quoteChar = '';
-        current += char;
-      } else if (char === ',' && !inQuote) {
-        args.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-
-    if (current.trim()) {
+    if ((char === '"' || char === "'") && !inQuote) {
+      inQuote = true;
+      quoteChar = char;
+      current += char;
+    } else if (char === quoteChar && inQuote) {
+      inQuote = false;
+      quoteChar = '';
+      current += char;
+    } else if (!inQuote && (char === '[' || char === '{')) {
+      // 嵌套数组/对象：跟踪括号深度，括号内的逗号不应拆分参数
+      bracketDepth++;
+      current += char;
+    } else if (!inQuote && (char === ']' || char === '}')) {
+      if (bracketDepth > 0) bracketDepth--;
+      current += char;
+    } else if (char === ',' && !inQuote && bracketDepth === 0) {
       args.push(current.trim());
-    }
-
-    return args.map((arg) => {
-      const p = arg.trim();
-      if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
-        return unescapeQuoted(p.slice(1, -1));
-      }
-      return p;
-    });
-  }
-
-  const result: unknown[] = [];
-  const parts = trimmed.split(',');
-  for (const part of parts) {
-    const p = part.trim();
-    if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
-      result.push(unescapeQuoted(p.slice(1, -1)));
+      current = '';
     } else {
-      result.push(p);
+      current += char;
     }
   }
-  return result;
+
+  if (current.trim()) {
+    args.push(current.trim());
+  }
+
+  return args.map((arg) => {
+    const p = arg.trim();
+    if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'"))) {
+      return unescapeQuoted(p.slice(1, -1));
+    }
+    return tryParseObjectLiteral(p);
+  });
 }
 
 /**

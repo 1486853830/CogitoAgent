@@ -1,5 +1,6 @@
 import { execFile } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 
 const PROJECT_ROOT = process.cwd();
 
@@ -92,6 +93,30 @@ const ALLOWED_GIT_OPTIONS = new Set([
   'user.name',
   'user.email',
   'user.signingkey',
+  '--pretty',
+  '--format',
+  '--max-count',
+  '--date',
+  '--abbrev-commit',
+  '--no-abbrev-commit',
+  '--reverse',
+  '--topo-order',
+  '--follow',
+  '--no-merges',
+  '--merges',
+  '--left-right',
+  '--cherry-pick',
+  '--first-parent',
+  '--simplify-by-decoration',
+  '--relative-date',
+  '-i',
+  '--regexp-ignore-case',
+  '--extended-regexp',
+  '-E',
+  '-F',
+  '-O',
+  '-c',
+  '--count',
 ]);
 
 /**
@@ -253,6 +278,13 @@ function gitCommand(
       return;
     }
 
+    // 若解析后的目录不存在（AI 可能传了不存在/拼错的相对路径），回退到项目根，
+    // 避免 spawn git 在空目录报 ENOENT。
+    let execCwd = cwdValidation.resolvedPath;
+    if (!execCwd || !fs.existsSync(execCwd) || !fs.statSync(execCwd).isDirectory()) {
+      execCwd = PROJECT_ROOT;
+    }
+
     // 使用 --no-pager 防止通过 git 命令注入
     const safeArgs = ['--no-pager', ...args];
 
@@ -260,7 +292,7 @@ function gitCommand(
       'git',
       safeArgs,
       {
-        cwd: cwdValidation.resolvedPath,
+        cwd: execCwd,
         timeout: 30000,
         encoding: 'utf8' as BufferEncoding,
       },
@@ -387,16 +419,102 @@ function splitGitOptions(options: string): string[] {
 }
 
 /**
+ * 清洗 options 字符串：剥离可能误传的 `git` / 子命令 前缀。
+ * AI 常按习惯传 `git log --oneline` 或 `log --oneline`，而 gitCommand 已自带子命令，
+ * 若不剥离会得到 `git log git log ...` 导致 git 报 ambiguous argument。
+ */
+function stripSubcommandPrefix(options: string, subcommand: string): string {
+  let parts = splitGitOptions(options);
+  while (parts.length > 0) {
+    const first = parts[0].toLowerCase();
+    if (first === 'git' || first === subcommand) {
+      parts = parts.slice(1);
+    } else {
+      break;
+    }
+  }
+  return parts.join(' ');
+}
+
+/**
+ * 解析对象字面量参数。
+ * AI 常写 `{limit: 5}` / `{author: 'x'}` 这类非严格 JSON（key 未加引号、单引号），
+ * 先按标准 JSON 解析，失败后补齐 key 引号再解析。
+ */
+function parseObjectLiteral(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    const normalized = value
+      .replace(/'/g, '"')
+      .replace(/([{,]\s*|^)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":');
+    try {
+      return JSON.parse(normalized);
+    } catch {
+      return null;
+    }
+  }
+}
+
+/**
+ * 将 git log 的 options 参数规范化为参数数组。
+ * 兼容三种 AI 常见传参形式：
+ *  - 字符串："--oneline -5" / "git log --all" / '{"limit": 5}'
+ *  - 对象：{ limit: 5 } / { author: "x" } / { oneline: true }
+ * 对象键映射：limit/maxCount → -n，author/since/until/grep → --key=value，
+ * 布尔键（oneline/all/graph 等）→ --key。
+ */
+function normalizeGitOptions(options: unknown, subcommand: string = 'log'): string[] {
+  if (options === null || options === undefined) return [];
+  if (typeof options === 'string') {
+    const trimmed = options.trim();
+    // 字符串可能是 JSON 对象（AI 习惯），尝试解析；失败时兼容 `{limit: 5}` 这类
+    // 非严格 JSON 对象字面量（key 未加引号 / 单引号），避免按普通选项拆包后
+    // 因花括号触发参数安全校验拒绝。
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      const parsedObject = parseObjectLiteral(trimmed);
+      if (parsedObject && typeof parsedObject === 'object' && !Array.isArray(parsedObject)) {
+        return normalizeGitOptions(parsedObject, subcommand);
+      }
+    }
+    const cleaned = stripSubcommandPrefix(trimmed, subcommand);
+    return cleaned ? splitGitOptions(cleaned) : [];
+  }
+  if (typeof options === 'object' && !Array.isArray(options)) {
+    const args: string[] = [];
+    for (const [key, value] of Object.entries(options)) {
+      const k = key.toLowerCase();
+      // 数量限制：limit/maxCount → -n
+      if (k === 'limit' || k === 'maxcount' || k === 'max_count') {
+        if (value !== undefined && value !== null) {
+          args.push('-n', String(value));
+        }
+        continue;
+      }
+      // 布尔开关
+      if (value === true) {
+        args.push(`--${k}`);
+        continue;
+      }
+      if (value === false) continue;
+      // 带值选项：author/since/until/grep 等
+      if (typeof value === 'string' || typeof value === 'number') {
+        args.push(`--${k}=${value}`);
+      }
+    }
+    return args;
+  }
+  return [];
+}
+
+/**
  * 查看日志
  */
 async function gitLog(
-  options: string = '',
+  options: string | Record<string, unknown> = '',
   cwd: string = process.cwd(),
 ): Promise<{ success: boolean; data?: string; error?: string }> {
-  const args = ['log'];
-  if (options) {
-    args.push(...splitGitOptions(options));
-  }
+  const args = ['log', ...normalizeGitOptions(options, 'log')];
   return await gitCommand(args, cwd);
 }
 
@@ -463,13 +581,10 @@ async function gitMerge(
  * 查看差异
  */
 async function gitDiff(
-  options: string = '',
+  options: string | Record<string, unknown> = '',
   cwd: string = process.cwd(),
 ): Promise<{ success: boolean; data?: string; error?: string }> {
-  const args = ['diff'];
-  if (options) {
-    args.push(...splitGitOptions(options));
-  }
+  const args = ['diff', ...normalizeGitOptions(options, 'diff')];
   return await gitCommand(args, cwd);
 }
 

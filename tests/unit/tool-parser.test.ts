@@ -36,6 +36,44 @@ describe('tool-parser.ts', () => {
       expect(result.isJson).toBe(true);
       expect(result.data.language).toBe('python');
     });
+
+    it('should keep array args intact (commas inside brackets not split)', () => {
+      const result = parseArgs('"hello", ["测试","debug"], "general"') as string[];
+      expect(result.length).toBe(3);
+      expect(result[0]).toBe('hello');
+      expect(result[1]).toBe('["测试","debug"]');
+      expect(result[2]).toBe('general');
+    });
+
+    it('should handle nested brackets in array args', () => {
+      const result = parseArgs('[[1,2],[3,4]], "sheet"') as string[];
+      expect(result.length).toBe(2);
+      expect(result[0]).toBe('[[1,2],[3,4]]');
+      expect(result[1]).toBe('sheet');
+    });
+
+    it('should parse object literal args with unquoted keys', () => {
+      const result = parseArgs('{limit: 5}, "cogito-agent"') as unknown[];
+      expect(result.length).toBe(2);
+      expect(result[0]).toEqual({ limit: 5 });
+      expect(result[1]).toBe('cogito-agent');
+    });
+
+    it('should parse object literal args with single quotes', () => {
+      const result = parseArgs("{author: 'test'}") as unknown[];
+      expect(result[0]).toEqual({ author: 'test' });
+    });
+
+    it('should keep non-object string args intact', () => {
+      const result = parseArgs('"--oneline -5"') as string[];
+      expect(result).toEqual(['--oneline -5']);
+    });
+
+    it('should parse object literal with nested array value', () => {
+      const result = parseArgs('{content: "x", tags: ["a","b"]}, 123') as unknown[];
+      expect(result[0]).toEqual({ content: 'x', tags: ['a', 'b'] });
+      expect(result[1]).toBe('123');
+    });
   });
 
   describe('parseToolCall', () => {
