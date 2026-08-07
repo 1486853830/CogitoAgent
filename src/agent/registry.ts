@@ -102,7 +102,12 @@ const TOOL_REGISTRY: Record<string, ToolRegistryEntry> = {
   searchMemory: { fn: tools.searchMemory, argCount: 2, category: 'memory' },
   getAllMemories: { fn: tools.getAllMemories, argCount: 1, category: 'memory' },
   getMemory: { fn: tools.getMemory, argCount: 1, category: 'memory' },
-  updateMemory: { fn: tools.updateMemory, argCount: 2, category: 'memory' },
+  updateMemory: {
+    fn: tools.updateMemory,
+    argCount: 2,
+    category: 'memory',
+    parseJson: [false, true],
+  },
   deleteMemory: { fn: tools.deleteMemory, argCount: 1, category: 'memory' },
   getMemoryStats: { fn: tools.getMemoryStats, argCount: 0, category: 'memory' },
   getRelatedMemories: { fn: tools.getRelatedMemories, argCount: 2, category: 'memory' },

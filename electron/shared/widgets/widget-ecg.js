@@ -5,7 +5,7 @@
  *  依赖 WS 推送的 thought-trace 事件
  * ============================================================ */
 
-window.WidgetRegistry?.register('ecg', (container, opts = {}) => {
+window.WidgetRegistry?.register('ecg', (container) => {
   const state = {
     canvas: null,
     ctx: null,

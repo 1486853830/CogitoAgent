@@ -14,7 +14,7 @@ import {
   pageStateSnapshot,
 } from './browser-state.ts';
 
-// 以下声明仅用于 page.evaluate() 回调中的类型检查，不产生运行时代码。
+// 以下声明仅用于 page!.evaluate() 回调中的类型检查，不产生运行时代码。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const document: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,7 +43,7 @@ export async function clickElement(
   }
 
   try {
-    await page.evaluate('1');
+    await page!.evaluate('1');
   } catch {
     return { success: false, error: '浏览器页面已关闭，请重新使用 initBrowser 打开网页' };
   }
@@ -52,18 +52,18 @@ export async function clickElement(
     let element = null;
 
     try {
-      element = await page.$(selector);
+      element = await page!.$(selector);
     } catch {
       // 不是有效的 CSS 选择器
     }
 
     if (!element && (selector.startsWith('//') || selector.startsWith('id('))) {
-      element = await page.$(`xpath=${selector}`);
+      element = await page!.$(`xpath=${selector}`);
     }
 
     if (!element) {
       const textSelector = selector.trim();
-      element = await page.locator(`text=${textSelector}`).first();
+      element = await page!.locator(`text=${textSelector}`).first();
       if (!(await element.count())) {
         element = null;
       }
@@ -81,7 +81,7 @@ export async function clickElement(
 
       for (const sel of selectors) {
         try {
-          element = await page.$(sel);
+          element = await page!.$(sel);
           if (element) break;
         } catch {
           continue;
@@ -103,7 +103,7 @@ export async function clickElement(
         await element.click({ force: true });
       } catch {
         try {
-          await page.evaluate((el: _Element) => {
+          await page!.evaluate((el: _Element) => {
             el.click();
           }, element);
         } catch {
@@ -114,7 +114,7 @@ export async function clickElement(
         }
       }
     }
-    await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+    await page!.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
     const newState = await capturePageState();
     const changes = comparePageState(pageStateSnapshot, newState);
@@ -152,7 +152,7 @@ export async function fillField(
   }
 
   try {
-    await page.evaluate('1');
+    await page!.evaluate('1');
   } catch {
     return { success: false, error: '浏览器页面已关闭，请重新使用 initBrowser 打开网页' };
   }
@@ -161,13 +161,13 @@ export async function fillField(
     let element = null;
 
     try {
-      element = await page.$(selector);
+      element = await page!.$(selector);
     } catch {
       // 不是有效的 CSS 选择器
     }
 
     if (!element && (selector.startsWith('//') || selector.startsWith('id('))) {
-      element = await page.$(`xpath=${selector}`);
+      element = await page!.$(`xpath=${selector}`);
     }
 
     if (!element) {
@@ -183,7 +183,7 @@ export async function fillField(
 
       for (const sel of selectors) {
         try {
-          element = await page.$(sel);
+          element = await page!.$(sel);
           if (element) break;
         } catch {
           continue;
@@ -235,7 +235,7 @@ export async function selectOption(
   }
 
   try {
-    await page.selectOption(selector, value);
+    await page!.selectOption(selector, value);
 
     const newState = await capturePageState();
     const changes = comparePageState(pageStateSnapshot, newState);
@@ -315,19 +315,19 @@ export async function downloadFile(
       }
     } else {
       if (urlOrSelector.startsWith('http')) {
-        await page.goto(urlOrSelector, { waitUntil: 'networkidle', timeout: 30000 });
+        await page!.goto(urlOrSelector, { waitUntil: 'networkidle', timeout: 30000 });
       }
     }
 
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-    await page.waitForTimeout(1000);
+    await page!.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    await page!.waitForTimeout(1000);
 
     let downloadElement = null;
     let usedSelector = '';
 
     if (!urlOrSelector.startsWith('http')) {
       try {
-        downloadElement = await page.$(urlOrSelector);
+        downloadElement = await page!.$(urlOrSelector);
         usedSelector = urlOrSelector;
       } catch {
         // 不是有效的选择器
@@ -362,7 +362,7 @@ export async function downloadFile(
 
       for (const selector of downloadSelectors) {
         try {
-          downloadElement = await page.$(selector);
+          downloadElement = await page!.$(selector);
           if (downloadElement && (await downloadElement.isVisible())) {
             usedSelector = selector;
             break;
@@ -375,7 +375,7 @@ export async function downloadFile(
 
     if (!downloadElement && description) {
       try {
-        downloadElement = await page.locator(`text=${description}`).first();
+        downloadElement = await page!.locator(`text=${description}`).first();
         if (await downloadElement.count()) {
           usedSelector = `text=${description}`;
         } else {
@@ -387,7 +387,7 @@ export async function downloadFile(
     }
 
     if (!downloadElement) {
-      const pageInfo = await page.evaluate(() => {
+      const pageInfo = await page!.evaluate(() => {
         const links = Array.from(document.querySelectorAll('a[href]'));
         const downloadLinks = links
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -427,7 +427,7 @@ export async function downloadFile(
     const text = await downloadElement.innerText();
 
     const [download] = await Promise.all([
-      page.waitForEvent('download', { timeout }),
+      page!.waitForEvent('download', { timeout }),
       downloadElement.click(),
     ]);
 
@@ -435,7 +435,6 @@ export async function downloadFile(
     const finalPath = fullPath ? fullPath : path.join(savePath, suggestedFilename);
 
     await download.saveAs(finalPath);
-    await download.finished();
 
     return {
       success: true,
@@ -467,7 +466,7 @@ export async function searchOnPage(
   }
 
   try {
-    const results = await page.evaluate((searchText: string) => {
+    const results = await page!.evaluate((searchText: string) => {
       function getXPathInternal(element: _Element | null): string | null {
         if (!element) return null;
         if (element.id !== '') return `id("${element.id}")`;
@@ -589,8 +588,26 @@ export async function findElements(
   }
 
   try {
-    const elements = await page.evaluate((searchSelector: string) => {
-      function getXPathInternal(element: any): string | null {
+    const elements = await page!.evaluate((searchSelector: string) => {
+      interface DomElement {
+        id?: string;
+        tagName: string;
+        className?: string;
+        innerText?: string;
+        textContent?: string;
+        parentNode: DomElement | null;
+        childNodes: DomElement[];
+        nodeType: number;
+      }
+      interface FoundElementInfo {
+        tag: string;
+        id: string | null;
+        class: string | null;
+        text: string;
+        xpath: string | null;
+      }
+
+      function getXPathInternal(element: DomElement | null): string | null {
         if (!element) return null;
         if (element.id !== '') return `id("${element.id}")`;
         if (element === document.body) return '/html/body';
@@ -611,11 +628,11 @@ export async function findElements(
         return null;
       }
 
-      const results: any[] = [];
+      const results: FoundElementInfo[] = [];
       const found = document.querySelectorAll(searchSelector);
 
       if (found.length === 0) {
-        document.querySelectorAll('*').forEach((el: any) => {
+        document.querySelectorAll('*').forEach((el: DomElement) => {
           const text = el.innerText || el.textContent || '';
           if (text.includes(searchSelector)) {
             results.push({
@@ -628,7 +645,7 @@ export async function findElements(
           }
         });
       } else {
-        found.forEach((el: any) => {
+        found.forEach((el: DomElement) => {
           results.push({
             tag: el.tagName.toLowerCase(),
             id: el.id || null,
@@ -650,15 +667,26 @@ export async function findElements(
     }
 
     let output = `找到 ${elements.length} 个匹配元素：\n\n`;
-    elements.forEach((el: any, idx: number) => {
-      output += `[${idx + 1}] <${el.tag}>`;
-      if (el.id) output += `#${el.id}`;
-      if (el.class) output += `.${el.class.split(' ')[0]}`;
-      output += `\n`;
-      if (el.text) output += `   文本：${el.text}\n`;
-      if (el.xpath) output += `   XPath: ${el.xpath}\n`;
-      output += '\n';
-    });
+    elements.forEach(
+      (
+        el: {
+          tag: string;
+          id: string | null;
+          class: string | null;
+          text: string;
+          xpath: string | null;
+        },
+        idx: number,
+      ) => {
+        output += `[${idx + 1}] <${el.tag}>`;
+        if (el.id) output += `#${el.id}`;
+        if (el.class) output += `.${el.class.split(' ')[0]}`;
+        output += `\n`;
+        if (el.text) output += `   文本：${el.text}\n`;
+        if (el.xpath) output += `   XPath: ${el.xpath}\n`;
+        output += '\n';
+      },
+    );
 
     return { success: true, data: output };
   } catch (error) {

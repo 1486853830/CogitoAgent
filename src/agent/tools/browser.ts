@@ -22,7 +22,7 @@ import {
   findElements,
 } from './browser-actions.ts';
 
-// 以下声明仅用于 page.evaluate() 回调中的类型检查，不产生运行时代码。
+// 以下声明仅用于 page!.evaluate() 回调中的类型检查，不产生运行时代码。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const document: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,7 +88,7 @@ async function getPageContent(): Promise<{
   }
 
   try {
-    const content = await page.evaluate(() => {
+    const content = await page!.evaluate(() => {
       return {
         url: window.location.href,
         title: document.title,
@@ -146,7 +146,7 @@ async function takeScreenshot(
     // 安全验证：防止路径注入
     const safeName = name.replace(/[\\:*?"<>|]/g, '_').replace(/\.\./g, '');
     const screenshotPath = `${safeName}-${Date.now()}.png`;
-    await page.screenshot({ path: screenshotPath, fullPage: true });
+    await page!.screenshot({ path: screenshotPath, fullPage: true });
     return {
       success: true,
       data: `截图已保存：${screenshotPath}`,
@@ -159,7 +159,21 @@ async function takeScreenshot(
 /**
  * 在搜索引擎中搜索
  */
-async function searchOnEngine(query: string, engine: string = 'bing'): Promise<any> {
+interface BrowserActionResult {
+  success: boolean;
+  data?: string;
+  error?: string;
+}
+
+interface SearchResultItem {
+  title: string;
+  url: string;
+}
+
+async function searchOnEngine(
+  query: string,
+  engine: string = 'bing',
+): Promise<BrowserActionResult> {
   if (!(await checkPlaywright())) {
     return {
       success: false,
@@ -187,8 +201,8 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
       return initResult;
     }
 
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-    await page.waitForTimeout(1000);
+    await page!.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    await page!.waitForTimeout(1000);
 
     const searchInputSelectors = [
       'input[name="wd"]',
@@ -220,7 +234,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
 
     for (const selector of searchInputSelectors) {
       try {
-        searchInput = await page.$(selector);
+        searchInput = await page!.$(selector);
         if (searchInput && (await searchInput.isVisible())) {
           usedSelector = selector;
           break;
@@ -232,7 +246,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
 
     if (!searchInput) {
       try {
-        const inputs = await page.$$('input, textarea');
+        const inputs = await page!.$$('input, textarea');
         for (const input of inputs) {
           const isVisible = await input.isVisible().catch(() => false);
           if (isVisible) {
@@ -266,7 +280,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
 
     if (!searchInput) {
       try {
-        const inputs = await page.$$('input[type="text"], input:not([type])');
+        const inputs = await page!.$$('input[type="text"], input:not([type])');
         for (const input of inputs) {
           if (await input.isVisible().catch(() => false)) {
             const boundingBox = await input.boundingBox();
@@ -283,7 +297,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
     }
 
     if (!searchInput) {
-      const pageInfo = await page.evaluate(() => {
+      const pageInfo = await page!.evaluate(() => {
         const inputs = Array.from(document.querySelectorAll('input, textarea'));
         return {
           url: window.location.href,
@@ -312,12 +326,15 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
     }
 
     try {
-      await page.evaluate(
-        (selector: string, value: string) => {
-          let element: any = null;
+      await page!.evaluate(
+        ({ selector, value }: { selector: string; value: string }) => {
+          let element: { value: string; dispatchEvent: (e: unknown) => void } | null = null;
 
           try {
-            element = document.querySelector(selector);
+            element = document.querySelector(selector) as {
+              value: string;
+              dispatchEvent: (e: unknown) => void;
+            };
           } catch {
             // 无效选择器时 element 保持 null，回退到 XPath
           }
@@ -353,20 +370,20 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
             throw new Error(`找不到元素：${selector}`);
           }
         },
-        usedSelector,
-        query,
+        { selector: usedSelector, value: query },
       );
-    } catch (fillError: any) {
+    } catch (fillError: unknown) {
       try {
-        await searchInput.evaluate((el: any, value: string) => {
-          el.value = value;
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
+        await searchInput.evaluate((el: unknown, value: string) => {
+          const input = el as { value: string; dispatchEvent: (e: Event) => void };
+          input.value = value;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
         }, query);
       } catch {
         return {
           success: false,
-          error: `填写搜索框失败：${fillError.message}`,
+          error: `填写搜索框失败：${fillError instanceof Error ? fillError.message : String(fillError)}`,
         };
       }
     }
@@ -390,7 +407,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
     let submitButton = null;
     for (const selector of submitSelectors) {
       try {
-        submitButton = await page.$(selector);
+        submitButton = await page!.$(selector);
         if (submitButton && (await submitButton.isVisible())) {
           break;
         }
@@ -405,19 +422,20 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
       await searchInput.press('Enter');
     }
 
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-    await page.waitForTimeout(2000);
+    await page!.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    await page!.waitForTimeout(2000);
 
-    const searchResults = await page.evaluate(() => {
-      const results: any[] = [];
+    const searchResults = await page!.evaluate(() => {
+      const results: SearchResultItem[] = [];
       const resultContainers = document.querySelectorAll(
         '#content_left, #search, .results, .search-results, [role="main"], #main',
       );
       const container = resultContainers[0] || document.body;
 
-      container.querySelectorAll('a[href]').forEach((link: any) => {
-        const href = link.href;
-        const text = (link.innerText || link.textContent || '').trim();
+      container.querySelectorAll('a[href]').forEach((link: unknown) => {
+        const el = link as { href: string; innerText?: string; textContent?: string };
+        const href = el.href;
+        const text = (el.innerText || el.textContent || '').trim();
 
         if (
           href &&
@@ -436,7 +454,7 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
         }
       });
 
-      const unique: any[] = [];
+      const unique: SearchResultItem[] = [];
       const seen = new Set();
       for (const item of results) {
         if (!seen.has(item.url) && unique.length < 15) {
@@ -449,12 +467,12 @@ async function searchOnEngine(query: string, engine: string = 'bing'): Promise<a
     });
 
     let output = `已在 ${engine} 搜索 "${query}"\n\n`;
-    output += `当前页面：${page.url()}\n`;
+    output += `当前页面：${page!.url()}\n`;
     output += `使用搜索框选择器：${usedSelector}\n\n`;
 
     if (searchResults.length > 0) {
       output += `找到 ${searchResults.length} 个搜索结果：\n\n`;
-      searchResults.forEach((result: any, idx: number) => {
+      searchResults.forEach((result: SearchResultItem, idx: number) => {
         output += `[${idx + 1}] ${result.title}\n`;
         output += `    ${result.url}\n\n`;
       });

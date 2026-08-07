@@ -23,7 +23,7 @@ interface CodeLimits {
  * 支持 .env 中 COGITO_CODE_TIMEOUT / COGITO_CODE_MAX_OUTPUT 配置。
  */
 function getCodeLimits(): CodeLimits {
-  const cfg: any = loadConfig();
+  const cfg = loadConfig();
   return {
     maxExecutionTime: cfg.code?.maxExecutionTime ?? 30000,
     maxOutputSize: cfg.code?.maxOutputSize ?? 100000,
@@ -54,8 +54,8 @@ async function writeSecureTmpFile(filePath: string, content: string): Promise<bo
       await fd.close();
     }
     return true;
-  } catch (error: any) {
-    if (error.code === 'EEXIST') {
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
       const newPath = generateSecureTmpPath(path.extname(filePath).slice(1) || 'tmp');
       await fs.writeFile(newPath, content, 'utf8');
       return newPath;

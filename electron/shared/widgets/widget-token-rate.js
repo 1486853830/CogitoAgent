@@ -4,7 +4,7 @@
  *  依赖 WS 推送的 token-usage 事件
  * ============================================================ */
 
-window.WidgetRegistry?.register('tokenRate', (container, opts = {}) => {
+window.WidgetRegistry?.register('tokenRate', (container) => {
   const state = {
     samples: [], // {t: ms, count: n}
     totalToday: 0,

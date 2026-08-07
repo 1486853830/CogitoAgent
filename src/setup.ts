@@ -3,7 +3,6 @@
  */
 
 import readline from 'readline';
-import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { DEFAULT_CONFIG, loadEnvConfig, deepMerge } from './config.ts';
@@ -480,7 +479,7 @@ async function configureSecurity(rl: readline.Interface): Promise<SecuritySetupC
  * 字段集、引号格式、邮箱密码加密、文件权限均由 electron/shared/config-writer.js
  * 统一实现，CLI 与桌面端共用，避免再分叉。
  */
-function saveEnvConfig(config: any): boolean {
+function saveEnvConfig(config: Record<string, unknown>): boolean {
   const dataDir = process.env.COGITO_USER_DATA_DIR || process.cwd();
   const ok = writeEnvConfig(config, { dataDir });
   if (ok) {
@@ -495,7 +494,7 @@ function saveEnvConfig(config: any): boolean {
  * 运行设置向导
  * 返回配置对象
  */
-async function runSetup(): Promise<any> {
+async function runSetup(): Promise<Record<string, unknown> | null> {
   printSetupBanner();
 
   // 检查环境变量配置

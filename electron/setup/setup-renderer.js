@@ -8,22 +8,6 @@ function t(key) {
   return window.I18n ? window.I18n.t(key) : undefined;
 }
 
-function toggleSection(id) {
-  const section = document.getElementById(id);
-  if (!section) return;
-  const toggle = section.parentElement.querySelector('.section-toggle');
-  const header = section.parentElement.querySelector('.section-header');
-  if (section.style.display === 'none') {
-    section.style.display = 'block';
-    if (toggle) toggle.textContent = '−';
-    if (header) header.classList.add('expanded');
-  } else {
-    section.style.display = 'none';
-    if (toggle) toggle.textContent = '+';
-    if (header) header.classList.remove('expanded');
-  }
-}
-
 // CSP 安全：用事件委托替代内联 onclick
 document.querySelectorAll('.section-header').forEach((header) => {
   header.addEventListener('click', () => {
@@ -122,7 +106,7 @@ async function init() {
     if (config) {
       fillConfig(config);
     }
-  } catch (e) {
+  } catch {
     console.log('无已有配置，使用默认值');
   }
 
@@ -312,7 +296,7 @@ function handleBack() {
  * 验证当前步骤
  */
 function validateCurrentStep() {
-  let value = '';
+  let value;
 
   switch (currentStep) {
     case 1:
@@ -340,8 +324,7 @@ function validateCurrentStep() {
       }
       break;
     case 4:
-      // 工作区可选
-      value = workspaceInput.value.trim();
+      // 工作区可选，无需校验
       break;
     case 5:
       // 高级配置可选

@@ -255,7 +255,9 @@ function ensureUserMessageHandler() {
             event.reply('stats-response', msg);
             ws.removeListener('message', handler);
           }
-        } catch {}
+        } catch {
+          // 消息解析失败时忽略，等待下一条
+        }
       };
       ws.on('message', handler);
       ws.send(JSON.stringify({ type: 'stats-request', payload, requestId }));
@@ -278,7 +280,9 @@ function ensureUserMessageHandler() {
             event.reply('tools-response', msg);
             ws.removeListener('message', handler);
           }
-        } catch {}
+        } catch {
+          // 消息解析失败时忽略，等待下一条
+        }
       };
       ws.on('message', handler);
       ws.send(JSON.stringify({ type: 'tools-request', requestId }));

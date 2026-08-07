@@ -704,7 +704,6 @@ describe('browser tools', () => {
       const mockDownload = {
         suggestedFilename: jest.fn().mockReturnValue('file.zip'),
         saveAs: jest.fn().mockResolvedValue(undefined),
-        finished: jest.fn().mockResolvedValue(undefined),
       };
 
       mockPage.$.mockImplementation((selector: string) => {
@@ -719,7 +718,6 @@ describe('browser tools', () => {
       expect(result.data).toContain('file.zip');
       expect(result.data).toContain('/tmp/downloaded-file');
       expect(mockDownload.saveAs).toHaveBeenCalled();
-      expect(mockDownload.finished).toHaveBeenCalled();
     });
 
     it('should return error when download fails', async () => {

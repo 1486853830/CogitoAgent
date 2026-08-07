@@ -13,20 +13,25 @@ declare const window: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type _Element = any;
 
-export let browser: any = null; // playwright Browser, lazily loaded
-export let page: any = null; // playwright Page, lazily loaded
-export let pageStateSnapshot: Record<string, unknown> | null = null;
-export let chromium: any = null; // playwright chromium module, lazily loaded
+import type { Browser, Page } from 'playwright';
 
-export function setBrowser(b: any): void {
+type ChromiumModule = typeof import('playwright').chromium;
+
+export let browser: Browser | null = null; // playwright Browser, lazily loaded
+export let page: Page | null = null; // playwright Page, lazily loaded
+export let pageStateSnapshot: Record<string, unknown> | null = null;
+// playwright chromium 模块对象（lazily loaded）
+export let chromium: ChromiumModule | null = null;
+
+export function setBrowser(b: Browser | null): void {
   browser = b;
 }
 
-export function setPage(p: any): void {
+export function setPage(p: Page | null): void {
   page = p;
 }
 
-export function setChromium(c: any): void {
+export function setChromium(c: ChromiumModule | null): void {
   chromium = c;
 }
 
@@ -83,7 +88,7 @@ export async function capturePageState(): Promise<Record<string, unknown> | null
       const forms: Record<string, unknown>[] = [];
       document
         .querySelectorAll('form, input, select, textarea, button, table')
-        .forEach((el: _Element, idx: number) => {
+        .forEach((el: _Element) => {
           forms.push({
             tag: el.tagName.toLowerCase(),
             id: el.id || null,
@@ -183,7 +188,7 @@ export async function initBrowser(
       page = null;
     }
 
-    browser = await chromium.launch({
+    browser = await chromium!.launch({
       headless: false,
       args: ['--start-maximized'],
     });
@@ -191,7 +196,6 @@ export async function initBrowser(
     const context = await browser.newContext({
       viewport: { width: 1920, height: 1080 },
       acceptDownloads: true,
-      downloadsPath: './downloads',
     });
     page = await context.newPage();
 

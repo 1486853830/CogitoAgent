@@ -211,9 +211,10 @@ async function executeTool(
     }
 
     if (typeof result === 'object' && 'success' in result) {
-      recordToolCall(toolName, category, (result as { success: boolean }).success, duration);
+      const toolResult = result as ToolExecutionResult & Record<string, unknown>;
+      recordToolCall(toolName, category, toolResult.success, duration);
       return {
-        ...result,
+        ...toolResult,
         toolName,
         timestamp: new Date().toISOString(),
       };

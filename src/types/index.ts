@@ -105,7 +105,10 @@ export interface ToolResult {
 }
 
 export interface ToolRegistryEntry {
-  fn: (...args: any[]) => Promise<any> | any;
+  // 工具函数签名各异（参数个数、返回类型不定），用宽泛函数类型表达；
+  // 调用处统一走 executeTool/registry 的预处理与结果归一化。
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+  fn: Function;
   argCount: number;
   customArgs?: boolean;
   parseJson?: boolean | boolean[];

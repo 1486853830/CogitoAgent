@@ -7,7 +7,7 @@
 import { app, BrowserWindow, ipcMain, screen, dialog, shell } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn, execSync, execFileSync } from 'child_process';
+import { spawn, execFileSync } from 'child_process';
 import { initAgentBridge, sendToAgent, setUserDataDir, sendToAgentRaw } from './agent-bridge.js';
 import fs from 'fs';
 import os from 'os';
@@ -146,7 +146,9 @@ function killPortProcess(port = 9527) {
           encoding: 'utf-8',
           windowsHide: true,
         });
-      } catch {}
+      } catch {
+        // 无法查询端口占用时按无占用处理
+      }
       const pids = new Set();
       for (const line of result.split('\n')) {
         // 匹配包含 :port 的行（如 TCP 127.0.0.1:9527 ... LISTENING 1234）
@@ -162,7 +164,9 @@ function killPortProcess(port = 9527) {
         try {
           execFileSync('taskkill', ['/PID', pid, '/F'], { windowsHide: true });
           console.log(`[主进程] 已清理端口 ${port} 占用进程 (PID: ${pid})`);
-        } catch {}
+        } catch {
+          // 进程可能已被清理，忽略
+        }
       }
     } else {
       try {
@@ -179,14 +183,20 @@ function killPortProcess(port = 9527) {
         for (const pid of pids) {
           try {
             execFileSync('kill', ['-9', pid], { windowsHide: true });
-          } catch {}
+          } catch {
+            // 进程可能已被清理，忽略
+          }
         }
         if (pids.length > 0) {
           console.log(`[主进程] 已清理端口 ${port} 占用进程`);
         }
-      } catch {}
+      } catch {
+        // 非 Windows 平台端口清理失败时忽略
+      }
     }
-  } catch {}
+  } catch {
+    // 端口清理整体失败不影响主流程
+  }
 }
 
 /**
@@ -215,7 +225,10 @@ function loadEnvFile() {
         }
 
         // 移除 BOM 字符和 null 字节
-        content = content.replace(/^\uFEFF/, '').replace(/\x00/g, '');
+        content = content
+          .replace(/^\uFEFF/, '')
+          .split('\u0000')
+          .join('');
 
         const lines = content.split('\n');
         for (const line of lines) {
@@ -372,7 +385,9 @@ function stopAgentProcess() {
       if (agentProcess) {
         try {
           agentProcess.kill();
-        } catch {}
+        } catch {
+          // 进程可能已退出，忽略
+        }
         agentProcess = null;
       }
       finish();
@@ -934,7 +949,9 @@ app.whenReady().then(async () => {
         if (envConfig['COGITO_PERSONA']) {
           persona = envConfig['COGITO_PERSONA'];
         }
-      } catch (e) {}
+      } catch {
+        // 忽略 .env 读取失败
+      }
     }
 
     // 回退到内存缓存
@@ -1075,7 +1092,9 @@ app.whenReady().then(async () => {
               } else {
                 fs.chmodSync(metaPath, 0o600);
               }
-            } catch {}
+            } catch {
+              // 权限设置失败不影响恢复
+            }
             console.log(`[主进程] 已从磁盘恢复 ${recovered.length} 个会话`);
           }
         } catch {

@@ -154,14 +154,25 @@ import json, sys, os
 from Bio import SeqIO
 
 data = json.load(sys.stdin)
-count = SeqIO.convert(
-    os.path.normpath(data["inputPath"]),
-    data["inputFormat"],
-    os.path.normpath(data["outputPath"]),
-    data["outputFormat"]
-)
+in_path = os.path.normpath(data["inputPath"])
+out_path = os.path.normpath(data["outputPath"])
+in_fmt = data["inputFormat"]
+out_fmt = data["outputFormat"]
+
+# FASTA/FASTQ 转 GenBank/EMBL 时，Biopython 无法自动推断 molecule_type，
+# 需手动补 annotation，否则 SeqIO.convert 会报 "no molecule type" 错误。
+needs_molecule = out_fmt in ("genbank", "embl") and in_fmt in ("fasta", "fastq")
+
+if needs_molecule:
+    records = list(SeqIO.parse(in_path, in_fmt))
+    for rec in records:
+        rec.annotations["molecule_type"] = "DNA"
+    count = SeqIO.write(records, out_path, out_fmt)
+else:
+    count = SeqIO.convert(in_path, in_fmt, out_path, out_fmt)
+
 print(f"成功转换 {count} 条序列")
-print(f"格式: {data['inputFormat']} -> {data['outputFormat']}")
+print(f"格式: {in_fmt} -> {out_fmt}")
 `;
       const result = await runPython(script, {
         inputPath,

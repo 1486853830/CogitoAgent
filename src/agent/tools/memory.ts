@@ -4,12 +4,60 @@ import path from 'path';
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const MEMORY_FILE = path.resolve(DATA_DIR, 'data', 'memory.json');
 
-let memories: any[] = [];
+interface Memory {
+  id: number;
+  content: string;
+  tags: string[];
+  category: string;
+  createdAt: string;
+  accessedAt: string;
+  accessCount: number;
+}
+
+interface MemorySearchResult extends Memory {
+  score: number;
+}
+
+interface ActionResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+/**
+ * 规范化标签参数为字符串数组。
+ * 兼容数组、JSON 数组字符串（如 '["a","b"]'）、逗号分隔字符串（如 "a, b"）等 AI 常见传参。
+ */
+function normalizeTags(tags: unknown): string[] {
+  if (Array.isArray(tags)) {
+    return tags.map((t) => String(t).trim()).filter(Boolean);
+  }
+  if (typeof tags === 'string' && tags.trim()) {
+    const trimmed = tags.trim();
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed: unknown = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.map((t) => String(t).trim()).filter(Boolean);
+        }
+      } catch {
+        // JSON 解析失败则按逗号分隔处理
+      }
+    }
+    return trimmed
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+let memories: Memory[] = [];
 
 /**
  * 安全解析 ID，返回数字或 null（无效时）
  */
-function safeParseId(id: any): number | null {
+function safeParseId(id: unknown): number | null {
   const numId = typeof id === 'string' ? parseInt(id, 10) : id;
   return typeof numId === 'number' && !isNaN(numId) ? numId : null;
 }
@@ -26,10 +74,11 @@ async function loadMemory(): Promise<void> {
         .catch(() => false)
     ) {
       const data = await fs.readFile(MEMORY_FILE, 'utf-8');
-      memories = JSON.parse(data);
+      const parsed: unknown = JSON.parse(data);
+      memories = Array.isArray(parsed) ? (parsed as Memory[]) : [];
     }
-  } catch (e: any) {
-    console.error(`[记忆] 加载失败: ${e.message}`);
+  } catch (e: unknown) {
+    console.error(`[记忆] 加载失败: ${e instanceof Error ? e.message : String(e)}`);
     memories = [];
   }
 }
@@ -52,9 +101,9 @@ async function saveMemory(): Promise<boolean> {
     }
     await fs.writeFile(MEMORY_FILE, JSON.stringify(memories, null, 2), 'utf-8');
     return true;
-  } catch (e: any) {
-    const error = new Error(`[记忆] 保存失败: ${e.message}`);
-    (error as any).code = 'MEMORY_SAVE_FAILED';
+  } catch (e: unknown) {
+    const error = new Error(`[记忆] 保存失败: ${e instanceof Error ? e.message : String(e)}`);
+    (error as Error & { code?: string }).code = 'MEMORY_SAVE_FAILED';
     console.error(error.message);
     throw error; // 重新抛出错误，让调用者知道保存失败
   }
@@ -65,18 +114,18 @@ async function saveMemory(): Promise<boolean> {
  */
 async function addMemory(
   content: string,
-  tags: any[] = [],
+  tags: unknown[] = [],
   category: string = 'general',
-): Promise<any> {
+): Promise<ActionResult<Memory>> {
   await loadMemory();
 
-  // 参数验证和转换
-  const processedTags = Array.isArray(tags) ? tags : [];
+  // 参数验证和转换：兼容数组、JSON 数组字符串、逗号分隔字符串等 AI 常见传参格式
+  const processedTags = normalizeTags(tags);
 
-  const memory = {
+  const memory: Memory = {
     id: Date.now(),
     content,
-    tags: processedTags.map((t) => String(t).toLowerCase()),
+    tags: processedTags.map((t) => t.toLowerCase()),
     category: String(category).toLowerCase(),
     createdAt: new Date().toISOString(),
     accessedAt: new Date().toISOString(),
@@ -95,12 +144,15 @@ async function addMemory(
 /**
  * 搜索记忆
  */
-async function searchMemory(query: string, limit: number = 10): Promise<any> {
+async function searchMemory(
+  query: string,
+  limit: number = 10,
+): Promise<ActionResult<MemorySearchResult[]>> {
   await loadMemory();
 
   const queryLower = query.toLowerCase();
 
-  const results = memories
+  const results: MemorySearchResult[] = memories
     .map((memory) => {
       let score = 0;
 
@@ -108,7 +160,7 @@ async function searchMemory(query: string, limit: number = 10): Promise<any> {
         score += 10;
       }
 
-      memory.tags.forEach((tag: string) => {
+      memory.tags.forEach((tag) => {
         if (tag.includes(queryLower)) {
           score += 5;
         }
@@ -143,12 +195,13 @@ async function searchMemory(query: string, limit: number = 10): Promise<any> {
 /**
  * 获取所有记忆
  */
-async function getAllMemories(category: string | null = null): Promise<any> {
+async function getAllMemories(category: unknown = null): Promise<ActionResult<Memory[]>> {
   await loadMemory();
 
   let filtered = memories;
-  if (category) {
-    filtered = filtered.filter((m) => m.category === category.toLowerCase());
+  // 仅当 category 为有效字符串时按分类过滤（AI 可能传数字/对象等异常类型）
+  if (typeof category === 'string' && category.trim()) {
+    filtered = filtered.filter((m) => m.category === category.trim().toLowerCase());
   }
 
   return {
@@ -160,7 +213,7 @@ async function getAllMemories(category: string | null = null): Promise<any> {
 /**
  * 获取记忆详情
  */
-async function getMemory(id: any): Promise<any> {
+async function getMemory(id: unknown): Promise<ActionResult<Memory>> {
   await loadMemory();
 
   const numId = safeParseId(id);
@@ -192,7 +245,7 @@ async function getMemory(id: any): Promise<any> {
 /**
  * 更新记忆
  */
-async function updateMemory(id: any, updates: any): Promise<any> {
+async function updateMemory(id: unknown, updates: unknown): Promise<ActionResult<Memory>> {
   await loadMemory();
 
   const numId = safeParseId(id);
@@ -211,9 +264,16 @@ async function updateMemory(id: any, updates: any): Promise<any> {
     };
   }
 
-  if (updates.content !== undefined) memory.content = updates.content;
-  if (updates.tags !== undefined) memory.tags = updates.tags.map((t: string) => t.toLowerCase());
-  if (updates.category !== undefined) memory.category = updates.category.toLowerCase();
+  const patch = (updates && typeof updates === 'object' ? updates : {}) as Record<string, unknown>;
+
+  if (patch.content !== undefined) memory.content = String(patch.content);
+  if (patch.tags !== undefined) {
+    const normalized = normalizeTags(patch.tags);
+    if (normalized.length > 0 || patch.tags === '' || Array.isArray(patch.tags)) {
+      memory.tags = normalized;
+    }
+  }
+  if (patch.category !== undefined) memory.category = String(patch.category).toLowerCase();
   memory.accessedAt = new Date().toISOString();
 
   await saveMemory();
@@ -227,7 +287,7 @@ async function updateMemory(id: any, updates: any): Promise<any> {
 /**
  * 删除记忆
  */
-async function deleteMemory(id: any): Promise<any> {
+async function deleteMemory(id: unknown): Promise<ActionResult<string>> {
   await loadMemory();
 
   const numId = safeParseId(id);
@@ -255,13 +315,20 @@ async function deleteMemory(id: any): Promise<any> {
   };
 }
 
+interface MemoryStats {
+  total: number;
+  byCategory: Record<string, number>;
+  topTags: Record<string, number>;
+  mostAccessed: Memory[];
+}
+
 /**
  * 获取记忆统计
  */
-async function getMemoryStats(): Promise<any> {
+async function getMemoryStats(): Promise<ActionResult<MemoryStats>> {
   await loadMemory();
 
-  const stats: any = {
+  const stats: MemoryStats = {
     total: memories.length,
     byCategory: {},
     topTags: {},
@@ -271,7 +338,7 @@ async function getMemoryStats(): Promise<any> {
   memories.forEach((memory) => {
     stats.byCategory[memory.category] = (stats.byCategory[memory.category] || 0) + 1;
 
-    memory.tags.forEach((tag: string) => {
+    memory.tags.forEach((tag) => {
       stats.topTags[tag] = (stats.topTags[tag] || 0) + 1;
     });
   });
@@ -290,7 +357,10 @@ async function getMemoryStats(): Promise<any> {
 /**
  * 获取相关记忆（根据标签关联）
  */
-async function getRelatedMemories(id: any, limit: number = 5): Promise<any> {
+async function getRelatedMemories(
+  id: unknown,
+  limit: number = 5,
+): Promise<ActionResult<MemorySearchResult[]>> {
   await loadMemory();
 
   const numId = safeParseId(id);
@@ -309,11 +379,11 @@ async function getRelatedMemories(id: any, limit: number = 5): Promise<any> {
     };
   }
 
-  const related = memories
+  const related: MemorySearchResult[] = memories
     .filter((m) => m.id !== numId)
     .map((m) => {
       let score = 0;
-      memory.tags.forEach((tag: string) => {
+      memory.tags.forEach((tag) => {
         if (m.tags.includes(tag)) {
           score++;
         }
@@ -336,7 +406,7 @@ async function getRelatedMemories(id: any, limit: number = 5): Promise<any> {
 /**
  * 清空所有记忆
  */
-async function clearMemory(): Promise<any> {
+async function clearMemory(): Promise<ActionResult<string>> {
   memories = [];
   await saveMemory();
 

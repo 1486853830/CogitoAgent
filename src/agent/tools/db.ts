@@ -347,7 +347,9 @@ async function insert(table: string, data: Record<string, unknown>): Promise<Que
     const stmt = database.prepare(sql);
     stmt.bind(values);
     // 空循环：遍历驱动 SQL 执行
-    while (stmt.step()) {}
+    while (stmt.step()) {
+      /* 遍历结果 */
+    }
     stmt.free();
     const changes = database.getRowsModified();
     await saveDB();
@@ -411,7 +413,9 @@ async function update(
     const stmt = database.prepare(sql);
     stmt.bind(values);
     // 空循环：遍历驱动 SQL 执行
-    while (stmt.step()) {}
+    while (stmt.step()) {
+      /* 遍历结果 */
+    }
     stmt.free();
     const changes = database.getRowsModified();
     await saveDB();
@@ -461,7 +465,9 @@ async function deleteData(
     const stmt = database.prepare(sql);
     stmt.bind(params);
     // 空循环：遍历驱动 SQL 执行
-    while (stmt.step()) {}
+    while (stmt.step()) {
+      /* 遍历结果 */
+    }
     stmt.free();
     const changes = database.getRowsModified();
     await saveDB();
@@ -638,7 +644,9 @@ async function executeTransaction(sqlStatements: TransactionStatement[]): Promis
         try {
           prepared.bind(params);
           // 空循环：遍历驱动 SQL 执行
-          while (prepared.step()) {}
+          while (prepared.step()) {
+            /* 遍历结果 */
+          }
         } finally {
           prepared.free();
         }

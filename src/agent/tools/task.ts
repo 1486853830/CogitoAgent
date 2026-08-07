@@ -4,13 +4,39 @@ import path from 'path';
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const TASKS_FILE = path.resolve(DATA_DIR, 'data', 'tasks.json');
 
-let tasks: any[] = [];
+interface Task {
+  id: number;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  parentId: number | null;
+  children: number[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+type TaskUpdates = Partial<Pick<Task, 'title' | 'description' | 'status' | 'priority'>>;
+
+interface TaskFilter {
+  status?: string;
+  priority?: string;
+  parentId?: number | null;
+}
+
+interface ActionResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+let tasks: Task[] = [];
 let nextId = 1;
 
 /**
  * 安全解析 ID，返回数字或 null（无效时）
  */
-function safeParseId(id: any): number | null {
+function safeParseId(id: unknown): number | null {
   const numId = typeof id === 'string' ? parseInt(id, 10) : id;
   return typeof numId === 'number' && !isNaN(numId) ? numId : null;
 }
@@ -20,14 +46,19 @@ function safeParseId(id: any): number | null {
  */
 async function loadTasks(): Promise<void> {
   try {
-    if (await fs.access(TASKS_FILE).then(() => true).catch(() => false)) {
+    if (
+      await fs
+        .access(TASKS_FILE)
+        .then(() => true)
+        .catch(() => false)
+    ) {
       const data = await fs.readFile(TASKS_FILE, 'utf-8');
-      const loaded = JSON.parse(data);
+      const loaded = JSON.parse(data) as { tasks?: Task[]; nextId?: number };
       tasks = loaded.tasks || [];
       nextId = loaded.nextId || 1;
     }
-  } catch (e: any) {
-    console.error(`[任务] 加载失败: ${e.message}`);
+  } catch (e: unknown) {
+    console.error(`[任务] 加载失败: ${e instanceof Error ? e.message : String(e)}`);
     tasks = [];
     nextId = 1;
   }
@@ -41,14 +72,19 @@ async function loadTasks(): Promise<void> {
 async function saveTasks(): Promise<boolean> {
   const dir = path.dirname(TASKS_FILE);
   try {
-    if (!(await fs.access(dir).then(() => true).catch(() => false))) {
+    if (
+      !(await fs
+        .access(dir)
+        .then(() => true)
+        .catch(() => false))
+    ) {
       await fs.mkdir(dir, { recursive: true });
     }
     await fs.writeFile(TASKS_FILE, JSON.stringify({ tasks, nextId }, null, 2), 'utf-8');
     return true;
-  } catch (e: any) {
-    const error = new Error(`[任务] 保存失败: ${e.message}`);
-    (error as any).code = 'TASK_SAVE_FAILED';
+  } catch (e: unknown) {
+    const error = new Error(`[任务] 保存失败: ${e instanceof Error ? e.message : String(e)}`);
+    (error as Error & { code?: string }).code = 'TASK_SAVE_FAILED';
     console.error(error.message);
     throw error;
   }
@@ -57,25 +93,33 @@ async function saveTasks(): Promise<boolean> {
 /**
  * 创建任务
  */
-async function createTask(title: string, description: string = '', priority: string = 'medium', parentId: any = null): Promise<any> {
+async function createTask(
+  title: string,
+  description: string = '',
+  priority: string = 'medium',
+  parentId: unknown = null,
+): Promise<ActionResult<Task>> {
   await loadTasks();
 
-  const task = {
+  // parentId 兼容多种输入："null"/空/null → null，数字字符串 → number
+  const parsedParentId = normalizeParentId(parentId);
+
+  const task: Task = {
     id: nextId++,
     title,
     description,
     priority: priority.toLowerCase(),
     status: 'pending',
-    parentId,
+    parentId: parsedParentId,
     children: [],
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
 
   tasks.push(task);
 
-  if (parentId) {
-    const parent = tasks.find(t => t.id === parentId);
+  if (parsedParentId) {
+    const parent = tasks.find((t) => t.id === parsedParentId);
     if (parent) {
       parent.children.push(task.id);
     }
@@ -85,81 +129,96 @@ async function createTask(title: string, description: string = '', priority: str
 
   return {
     success: true,
-    data: task
+    data: task,
   };
+}
+
+/**
+ * 规范化 parentId：null/undefined/"null"/空 → null；数字字符串 → number；其余保持原值。
+ */
+function normalizeParentId(parentId: unknown): number | null {
+  if (parentId === null || parentId === undefined) return null;
+  if (typeof parentId === 'string') {
+    const trimmed = parentId.trim();
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return null;
+    const num = parseInt(trimmed, 10);
+    return isNaN(num) ? null : num;
+  }
+  if (typeof parentId === 'number') return isNaN(parentId) ? null : parentId;
+  return null;
 }
 
 /**
  * 获取任务列表
  */
-async function getTasks(filter: any = {}): Promise<any> {
+async function getTasks(filter: TaskFilter = {}): Promise<ActionResult<Task[]>> {
   await loadTasks();
 
   let filtered = tasks;
 
   if (filter.status) {
-    filtered = filtered.filter(t => t.status === filter.status);
+    filtered = filtered.filter((t) => t.status === filter.status);
   }
   if (filter.priority) {
-    filtered = filtered.filter(t => t.priority === filter.priority);
+    filtered = filtered.filter((t) => t.priority === filter.priority);
   }
   if (filter.parentId !== undefined) {
-    filtered = filtered.filter(t => t.parentId === filter.parentId);
+    filtered = filtered.filter((t) => t.parentId === filter.parentId);
   }
 
   return {
     success: true,
-    data: filtered
+    data: filtered,
   };
 }
 
 /**
  * 获取单个任务
  */
-async function getTask(id: any): Promise<any> {
+async function getTask(id: unknown): Promise<ActionResult<Task>> {
   await loadTasks();
 
   const numId = safeParseId(id);
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const task = tasks.find(t => t.id === numId);
+  const task = tasks.find((t) => t.id === numId);
   if (!task) {
     return {
       success: false,
-      error: `任务不存在: ${id}`
+      error: `任务不存在: ${id}`,
     };
   }
 
   return {
     success: true,
-    data: task
+    data: task,
   };
 }
 
 /**
  * 更新任务
  */
-async function updateTask(id: any, updates: any): Promise<any> {
+async function updateTask(id: unknown, updates: TaskUpdates): Promise<ActionResult<Task>> {
   await loadTasks();
 
   const numId = safeParseId(id);
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const task = tasks.find(t => t.id === numId);
+  const task = tasks.find((t) => t.id === numId);
   if (!task) {
     return {
       success: false,
-      error: `任务不存在: ${id}`
+      error: `任务不存在: ${id}`,
     };
   }
 
@@ -173,87 +232,90 @@ async function updateTask(id: any, updates: any): Promise<any> {
 
   return {
     success: true,
-    data: task
+    data: task,
   };
 }
 
 /**
  * 删除任务
  */
-async function deleteTask(id: any): Promise<any> {
+async function deleteTask(id: unknown): Promise<ActionResult<string>> {
   await loadTasks();
 
   const numId = safeParseId(id);
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const index = tasks.findIndex(t => t.id === numId);
+  const index = tasks.findIndex((t) => t.id === numId);
   if (index === -1) {
     return {
       success: false,
-      error: `任务不存在: ${id}`
+      error: `任务不存在: ${id}`,
     };
   }
 
   const task = tasks[index];
 
-  tasks = tasks.filter(t => t.id !== numId && t.parentId !== numId);
+  tasks = tasks.filter((t) => t.id !== numId && t.parentId !== numId);
 
-  tasks.forEach(t => {
-    t.children = t.children.filter((c: any) => c !== numId);
+  tasks.forEach((t) => {
+    t.children = t.children.filter((c) => c !== numId);
   });
 
   await saveTasks();
 
   return {
     success: true,
-    data: `任务已删除: ${task.title}`
+    data: `任务已删除: ${task.title}`,
   };
 }
 
 /**
  * 标记任务完成
  */
-async function completeTask(id: any): Promise<any> {
+async function completeTask(id: unknown): Promise<ActionResult<Task>> {
   return await updateTask(id, { status: 'completed' });
 }
 
 /**
  * 分解任务为子任务
  */
-async function splitTask(id: any, subtasks: any[]): Promise<any> {
+async function splitTask(
+  id: unknown,
+  subtasks: Array<{ title: string; description?: string; priority?: string }>,
+): Promise<ActionResult<{ parentTask: Task; createdSubtasks: Task[] }>> {
   await loadTasks();
 
   const numId = safeParseId(id);
   if (numId === null) {
     return {
       success: false,
-      error: `无效的 ID: ${id}`
+      error: `无效的 ID: ${id}`,
     };
   }
 
-  const task = tasks.find(t => t.id === numId);
+  const task = tasks.find((t) => t.id === numId);
   if (!task) {
     return {
       success: false,
-      error: `任务不存在: ${id}`
+      error: `任务不存在: ${id}`,
     };
   }
 
-  const created = [];
+  const created: Task[] = [];
 
   for (const subtask of subtasks) {
     const result = await createTask(
       subtask.title,
       subtask.description || '',
       subtask.priority || 'medium',
-      numId
+      numId,
     );
-    if (result.success) {
+    if (result.success && result.data) {
       created.push(result.data);
     }
   }
@@ -262,46 +324,54 @@ async function splitTask(id: any, subtasks: any[]): Promise<any> {
     success: true,
     data: {
       parentTask: task,
-      createdSubtasks: created
-    }
+      createdSubtasks: created,
+    },
   };
 }
 
 /**
  * 获取任务统计
  */
-async function getTaskStats(): Promise<any> {
+async function getTaskStats(): Promise<
+  ActionResult<{
+    total: number;
+    pending: number;
+    inProgress: number;
+    completed: number;
+    byPriority: { high: number; medium: number; low: number };
+  }>
+> {
   await loadTasks();
 
   const stats = {
     total: tasks.length,
-    pending: tasks.filter(t => t.status === 'pending').length,
-    inProgress: tasks.filter(t => t.status === 'in_progress').length,
-    completed: tasks.filter(t => t.status === 'completed').length,
+    pending: tasks.filter((t) => t.status === 'pending').length,
+    inProgress: tasks.filter((t) => t.status === 'in_progress').length,
+    completed: tasks.filter((t) => t.status === 'completed').length,
     byPriority: {
-      high: tasks.filter(t => t.priority === 'high').length,
-      medium: tasks.filter(t => t.priority === 'medium').length,
-      low: tasks.filter(t => t.priority === 'low').length
-    }
+      high: tasks.filter((t) => t.priority === 'high').length,
+      medium: tasks.filter((t) => t.priority === 'medium').length,
+      low: tasks.filter((t) => t.priority === 'low').length,
+    },
   };
 
   return {
     success: true,
-    data: stats
+    data: stats,
   };
 }
 
 /**
  * 清空所有任务
  */
-async function clearTasks(): Promise<any> {
+async function clearTasks(): Promise<ActionResult<string>> {
   tasks = [];
   nextId = 1;
   await saveTasks();
 
   return {
     success: true,
-    data: '所有任务已清空'
+    data: '所有任务已清空',
   };
 }
 
@@ -314,5 +384,5 @@ export {
   completeTask,
   splitTask,
   getTaskStats,
-  clearTasks
+  clearTasks,
 };

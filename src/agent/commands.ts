@@ -3,7 +3,7 @@
  * 处理 /help、/status、/config 等特殊命令
  */
 
-import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import path from 'path';
 import { println, printDivider, printTag } from '../io/terminal.ts';
 import { loadConfig } from '../config.ts';

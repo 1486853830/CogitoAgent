@@ -17,19 +17,47 @@ import {
 } from './code-exec-utils.ts';
 import { findPythonExecutable } from './code.ts';
 
+interface SandboxResult {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+}
+
+/** isolated-vm 模块的最小结构（该包无完整 TS 类型，按使用面定义） */
+interface IvmModule {
+  Isolate: new (options: Record<string, unknown>) => IvmIsolate;
+}
+
+/** isolated-vm Context 的最小结构 */
+interface IvmContext {
+  global: IvmReference;
+  eval: (code: string, options?: Record<string, unknown>) => Promise<string>;
+}
+
+/** isolated-vm Reference（jail/global 包装）的最小结构 */
+interface IvmReference {
+  set: (key: string, value: unknown) => Promise<void>;
+}
+
+/** isolated-vm Isolate 实例的最小结构 */
+interface IvmIsolate {
+  createContext: () => Promise<IvmContext>;
+  dispose: () => void;
+}
+
 /**
  * 动态加载 isolated-vm（原生模块可能在 Electron 等环境中不可用）
  */
-let _ivm: any = null;
+let _ivm: IvmModule | null = null;
 let _ivmLoadAttempted = false;
 
-async function getIvm(): Promise<any> {
+async function getIvm(): Promise<IvmModule | null> {
   if (_ivm) return _ivm;
   if (_ivmLoadAttempted) return null;
   _ivmLoadAttempted = true;
   try {
     const mod = await import('isolated-vm');
-    _ivm = mod.default || mod;
+    _ivm = (mod.default || mod) as IvmModule;
     return _ivm;
   } catch {
     console.warn('[sandbox] isolated-vm 不可用，将使用原生 vm 模块');
@@ -60,7 +88,10 @@ function isSandboxEnabled(): boolean {
  *  - 结果通过 JSON 字符串中转：context.eval 仅能直接传回可转移原始值，
  *    对象默认返回 undefined，故用 JSON.stringify 包成字符串再在宿主解析。
  */
-async function runJavaScriptIsolated(code: string, timeout: number = 10000): Promise<any> {
+async function runJavaScriptIsolated(
+  code: string,
+  timeout: number = 10000,
+): Promise<SandboxResult> {
   const ivm = await getIvm();
   if (!ivm) {
     throw new Error('isolated-vm 不可用，请降级到原生 vm');
@@ -68,7 +99,7 @@ async function runJavaScriptIsolated(code: string, timeout: number = 10000): Pro
 
   const { maxExecutionTime, maxOutputSize } = getCodeLimits();
 
-  let isolate: any = null;
+  let isolate: IvmIsolate | null = null;
 
   try {
     isolate = new ivm.Isolate({
@@ -140,9 +171,15 @@ async function runJavaScriptIsolated(code: string, timeout: number = 10000): Pro
       breakOnSigint: true,
     });
 
-    let resultObj: any;
+    interface IsolateExecResult {
+      success?: boolean;
+      result?: unknown;
+      error?: string;
+      logs?: string[];
+    }
+    let resultObj: IsolateExecResult;
     try {
-      resultObj = JSON.parse(resultStr);
+      resultObj = JSON.parse(resultStr) as IsolateExecResult;
     } catch {
       return {
         success: false,
@@ -179,10 +216,10 @@ async function runJavaScriptIsolated(code: string, timeout: number = 10000): Pro
     }
 
     return { success: true, data: output };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error: `沙箱执行失败: ${error.message}`,
+      error: `沙箱执行失败: ${error instanceof Error ? error.message : String(error)}`,
     };
   } finally {
     if (isolate) {
@@ -203,7 +240,7 @@ async function runJavaScriptIsolated(code: string, timeout: number = 10000): Pro
  * 受限 vm 上下文的场景直接使用，但不再参与 runJavaScriptSandbox 的执行路径。
  */
 
-function createFrozenObject(obj: any): any {
+function createFrozenObject<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
@@ -234,8 +271,13 @@ function createFrozenObject(obj: any): any {
   return Object.freeze(obj);
 }
 
-function createJavaScriptSandbox(): any {
-  const sandbox = Object.create(null);
+interface SandboxContext {
+  sandbox: Record<string, unknown>;
+  context: vm.Context;
+}
+
+function createJavaScriptSandbox(): SandboxContext {
+  const sandbox: Record<string, unknown> = Object.create(null);
 
   sandbox.console = Object.seal(
     Object.assign(Object.create(null), {
@@ -291,7 +333,7 @@ async function runJavaScriptSandbox(
   code: string,
   timeout: number = 10000,
   _signal?: AbortSignal,
-): Promise<any> {
+): Promise<SandboxResult> {
   // _signal 目前仅用于保持调用链一致；isolated-vm 的同步执行无法在信号触发时中止，
   // 真正的超时由 timeout/cpuTimeout 兜底。此处显式 void，避免未使用告警。
   void _signal;
@@ -325,7 +367,7 @@ async function runJavaScriptSandbox(
  * context 只注入白名单工具，process/require/module/Buffer 等全局不可直接访问，
  * 缩小了被恶意代码触达宿主环境的表面积。
  */
-async function runJavaScriptDirect(code: string): Promise<any> {
+async function runJavaScriptDirect(code: string): Promise<SandboxResult> {
   console.warn('[安全警告] 非沙箱模式执行 JavaScript 代码，可能存在安全风险');
 
   return new Promise((resolve) => {
@@ -340,10 +382,11 @@ async function runJavaScriptDirect(code: string): Promise<any> {
     const logSink: string[] = [];
     const safeGlobals: Record<string, unknown> = {
       console: {
-        log: (...args: any[]) => logSink.push(args.map(fmtDirectValue).join(' ')),
-        error: (...args: any[]) => logSink.push('[ERROR] ' + args.map(fmtDirectValue).join(' ')),
-        warn: (...args: any[]) => logSink.push('[WARN] ' + args.map(fmtDirectValue).join(' ')),
-        info: (...args: any[]) => logSink.push('[INFO] ' + args.map(fmtDirectValue).join(' ')),
+        log: (...args: unknown[]) => logSink.push(args.map(fmtDirectValue).join(' ')),
+        error: (...args: unknown[]) =>
+          logSink.push('[ERROR] ' + args.map(fmtDirectValue).join(' ')),
+        warn: (...args: unknown[]) => logSink.push('[WARN] ' + args.map(fmtDirectValue).join(' ')),
+        info: (...args: unknown[]) => logSink.push('[INFO] ' + args.map(fmtDirectValue).join(' ')),
       },
       JSON: JSON,
       Math: Math,
@@ -415,11 +458,11 @@ async function runJavaScriptDirect(code: string): Promise<any> {
         success: true,
         data: output,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       clearTimeout(timeoutId);
       resolve({
         success: false,
-        error: `执行失败: ${error.message}`,
+        error: `执行失败: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   });
@@ -443,10 +486,10 @@ function fmtDirectValue(a: unknown): string {
  * 执行 Python 代码（使用沙箱隔离的临时文件）
  * @param signal - 可选 AbortSignal，传给 execFile，中断时直接 kill 子进程。
  */
-async function runPythonSandbox(code: string, signal?: AbortSignal): Promise<any> {
+async function runPythonSandbox(code: string, signal?: AbortSignal): Promise<SandboxResult> {
   // eslint-disable-next-line no-async-promise-executor -- executor 内已用 try/catch 完整兜底，且需统一管理超时与 resolve 时机
   return new Promise(async (resolve) => {
-    let tmpPath: any = null;
+    let tmpPath: string | null = null;
     let timedOut = false;
     const { maxExecutionTime, maxOutputSize } = getCodeLimits();
 
@@ -520,7 +563,7 @@ async function runPythonSandbox(code: string, signal?: AbortSignal): Promise<any
           maxBuffer: maxOutputSize * 2,
           signal,
         },
-        async (error: any, stdout: any, stderr: any) => {
+        async (error: Error | null, stdout: string, stderr: string) => {
           if (timedOut) return;
 
           clearTimeout(timeoutId);
@@ -555,12 +598,12 @@ async function runPythonSandbox(code: string, signal?: AbortSignal): Promise<any
           });
         },
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       clearTimeout(timeoutId);
       await cleanupTmpFile(tmpPath);
       resolve({
         success: false,
-        error: `执行失败: ${error.message}`,
+        error: `执行失败: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   });
@@ -573,7 +616,7 @@ async function executeCodeSandbox(
   code: string,
   language: string = 'javascript',
   signal?: AbortSignal,
-): Promise<any> {
+): Promise<SandboxResult> {
   const lang = language.toLowerCase();
 
   switch (lang) {
@@ -602,3 +645,4 @@ export {
   cleanupTmpFile,
   createJavaScriptSandbox,
 };
+export type { SandboxResult };

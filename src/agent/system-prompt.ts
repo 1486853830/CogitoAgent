@@ -266,7 +266,9 @@ COGITO_CONFIRM_DANGEROUS=false
 - molSubstruct(smiles, substructure) - 子结构搜索，检测分子中是否包含指定片段
 - molSimilarity(smiles1, smiles2) - 计算两个分子的 Tanimoto 相似度
 
-【重要】以上工具需要启用科学模式（COGITO_CODE_SCIENTIFIC_MODE=true）并安装 Python 库：pip install rdkit
+【重要】
+1. 以上工具需要启用科学模式（COGITO_CODE_SCIENTIFIC_MODE=true）并安装 Python 库：pip install rdkit
+2. 文件路径参数（如 outputPath）必须使用【相对工作区的相对路径】，不要传绝对路径（如 C:\\\\... 或 /home/...），否则会被拒绝
 
 `;
         break;
@@ -280,7 +282,10 @@ COGITO_CONFIRM_DANGEROUS=false
 - bioFastaStats(fastaPath) - FASTA 文件序列统计（长度、GC含量、序列数量）
 - bioMsa(inputFasta, outputAln) - 多序列比对（需要安装 clustalw）
 
-【重要】以上工具需要启用科学模式（COGITO_CODE_SCIENTIFIC_MODE=true）并安装 Python 库：pip install biopython
+【重要】
+1. 以上工具需要启用科学模式（COGITO_CODE_SCIENTIFIC_MODE=true）并安装 Python 库：pip install biopython
+2. 文件路径参数（inputPath/outputPath/pdbPath/fastaPath 等）必须使用【相对工作区的相对路径】，不要传绝对路径（如 C:\\\\... 或 /home/...），否则会被拒绝
+3. bioConvert 从 FASTA 转 GenBank/EMBL 时会自动补 DNA 分子类型注释
 
 `;
         break;

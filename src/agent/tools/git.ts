@@ -119,6 +119,8 @@ function validateGitArgs(args: string[]): boolean {
     if (arg.startsWith('-')) {
       // 允许 --no-pager 总是可用
       if (arg === '--no-pager') continue;
+      // 纯数字短选项（如 git log -5）是安全的行数/计数参数
+      if (/^-\d+$/.test(arg)) continue;
       // 严格白名单：必须在允许的选项集合中。
       // 此前曾有 `!arg.startsWith('--')` 豁免分支，使任何 `--xxx` 都能通过，
       // 导致 --upload-pack / --config=core.sshCommand / --receive-pack / --exec
@@ -161,13 +163,28 @@ function validateCwd(
     return { valid: true, resolvedPath: process.cwd() };
   }
 
-  // 检查是否包含危险字符
-  const dangerousPattern = /[;&|`$<>!(){}[\]\\*?\n\r'""]/;
-  if (dangerousPattern.test(cwd)) {
-    return {
-      valid: false,
-      error: `工作目录路径包含危险字符: ${cwd}`,
-    };
+  // 绝对路径（如 Windows 的 C:\...）：反斜杠是路径分隔符而非注入字符，
+  // 危险字符检查跳过 \\（否则会误拒所有 Windows 绝对路径）。
+  const isAbsolutePath = path.isAbsolute(cwd);
+
+  // 检查是否包含危险字符（相对路径场景）
+  if (!isAbsolutePath) {
+    const dangerousPattern = /[;&|`$<>!(){}[\]\\*?\n\r'""]/;
+    if (dangerousPattern.test(cwd)) {
+      return {
+        valid: false,
+        error: `工作目录路径包含危险字符: ${cwd}`,
+      };
+    }
+  } else {
+    // 绝对路径仅拒绝真正的命令注入字符（不含路径分隔符反斜杠）
+    const dangerousPattern = /[;&|`$<>!(){}[*?\n\r'""]/;
+    if (dangerousPattern.test(cwd)) {
+      return {
+        valid: false,
+        error: `工作目录路径包含危险字符: ${cwd}`,
+      };
+    }
   }
 
   // 解析为绝对路径

@@ -1931,8 +1931,8 @@
     let stored = null;
     try {
       stored = localStorage.getItem(STORAGE_KEY);
-    } catch (e) {
-      stored = null;
+    } catch {
+      // 忽略 localStorage 访问异常
     }
     if (stored && SUPPORTED.includes(stored)) return stored;
     if (typeof navigator !== 'undefined' && navigator.language) {
@@ -1972,7 +1972,7 @@
     current = target;
     try {
       localStorage.setItem(STORAGE_KEY, target);
-    } catch (e) {
+    } catch {
       /* ignore */
     }
     document.documentElement.lang = target;
@@ -1981,7 +1981,7 @@
     // 同步语言到后端配置
     try {
       window.electronAPI?.updateLanguage?.(target);
-    } catch (e) {
+    } catch {
       /* ignore */
     }
     return current;

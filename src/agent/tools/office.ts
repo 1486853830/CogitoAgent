@@ -3,7 +3,7 @@ let _PptxGen: any = null;
 async function getPptxGen() {
   if (!_PptxGen) {
     const mod = await import('pptxgenjs');
-    _PptxGen = (mod as any).default || mod;
+    _PptxGen = 'default' in mod ? mod.default : mod;
   }
   return new _PptxGen();
 }
@@ -366,7 +366,10 @@ async function createExcel(
     const dir = path.dirname(outputPath);
     await fs.mkdir(dir, { recursive: true });
 
-    XLSX.writeFile(wb, outputPath);
+    // 用 XLSX.write 生成 buffer 后写入，避免 XLSX.writeFile 对文件系统/扩展名推断的依赖
+    const wbType = outputPath.toLowerCase().endsWith('.csv') ? 'csv' : 'xlsx';
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: wbType }) as Buffer;
+    await fs.writeFile(outputPath, buffer);
 
     return { success: true, path: outputPath, sheetCount: sheets.length };
   } catch (e: unknown) {

@@ -30,7 +30,10 @@ export default [
     },
     rules: {
       "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-unused-vars": ["warn", {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }],
       "no-empty": "warn",
       "no-useless-assignment": "warn",
       "no-useless-escape": "warn",

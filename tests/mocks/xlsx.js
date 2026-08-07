@@ -1,13 +1,14 @@
 export default {
   readFile: () => ({
     Sheets: {},
-    SheetNames: []
+    SheetNames: [],
   }),
   utils: {
     sheet_to_json: () => [],
     book_new: () => ({ Sheets: {}, SheetNames: [] }),
     aoa_to_sheet: () => ({}),
-    book_append_sheet: () => {}
+    book_append_sheet: () => {},
   },
-  writeFile: () => {}
+  write: () => Buffer.from('xlsx-mock'),
+  writeFile: () => {},
 };

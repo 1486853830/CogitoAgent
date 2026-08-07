@@ -4,13 +4,35 @@ import path from 'path';
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const TASKS_FILE = path.resolve(DATA_DIR, 'data', 'schedule.json');
 
-let tasks: any[] = [];
-let intervals: any = {};
+interface ScheduleTask {
+  id: number;
+  name: string;
+  cronExpr: string;
+  action: string;
+  params: Record<string, unknown>;
+  enabled: boolean;
+  createdAt: string;
+  lastRun: string | null;
+  nextRun: string | null;
+  runCount: number;
+  lastError: string | null;
+}
+
+type TaskUpdates = Partial<Omit<ScheduleTask, 'id' | 'createdAt'>>;
+
+interface ActionResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+let tasks: ScheduleTask[] = [];
+let intervals: Record<number, NodeJS.Timeout> = {};
 
 /**
  * 安全解析 ID，返回数字或 null（无效时）
  */
-function safeParseId(id: any): number | null {
+function safeParseId(id: unknown): number | null {
   const numId = typeof id === 'string' ? parseInt(id, 10) : id;
   return typeof numId === 'number' && !isNaN(numId) ? numId : null;
 }
@@ -27,7 +49,8 @@ async function loadTasks(): Promise<void> {
         .catch(() => false)
     ) {
       const data = await fs.readFile(TASKS_FILE, 'utf-8');
-      tasks = JSON.parse(data);
+      const parsed: unknown = JSON.parse(data);
+      tasks = Array.isArray(parsed) ? (parsed as ScheduleTask[]) : [];
     } else {
       // 文件不存在时清空内存任务，避免残留脏数据被重复调度
       tasks = [];
@@ -55,9 +78,9 @@ async function saveTasks(): Promise<boolean> {
     }
     await fs.writeFile(TASKS_FILE, JSON.stringify(tasks, null, 2), 'utf-8');
     return true;
-  } catch (e: any) {
-    const error = new Error(`[定时任务] 保存失败: ${e.message}`);
-    (error as any).code = 'SCHEDULER_SAVE_FAILED';
+  } catch (e: unknown) {
+    const error = new Error(`[定时任务] 保存失败: ${e instanceof Error ? e.message : String(e)}`);
+    (error as Error & { code?: string }).code = 'SCHEDULER_SAVE_FAILED';
     console.error(error.message);
     throw error;
   }
@@ -70,11 +93,11 @@ async function addScheduleTask(
   name: string,
   cronExpr: string,
   action: string,
-  params: any = {},
-): Promise<any> {
+  params: Record<string, unknown> = {},
+): Promise<ActionResult<ScheduleTask>> {
   await loadTasks();
 
-  const task = {
+  const task: ScheduleTask = {
     id: Date.now(),
     name,
     cronExpr,
@@ -102,7 +125,7 @@ async function addScheduleTask(
 /**
  * 删除定时任务
  */
-async function removeScheduleTask(id: any): Promise<any> {
+async function removeScheduleTask(id: unknown): Promise<ActionResult<string>> {
   await loadTasks();
 
   const numId = safeParseId(id);
@@ -139,7 +162,7 @@ async function removeScheduleTask(id: any): Promise<any> {
 /**
  * 获取定时任务列表
  */
-async function getScheduleTasks(): Promise<any> {
+async function getScheduleTasks(): Promise<ActionResult<ScheduleTask[]>> {
   await loadTasks();
 
   return {
@@ -151,7 +174,7 @@ async function getScheduleTasks(): Promise<any> {
 /**
  * 获取单个定时任务
  */
-async function getScheduleTask(id: any): Promise<any> {
+async function getScheduleTask(id: unknown): Promise<ActionResult<ScheduleTask>> {
   await loadTasks();
 
   const numId = safeParseId(id);
@@ -179,7 +202,10 @@ async function getScheduleTask(id: any): Promise<any> {
 /**
  * 更新定时任务
  */
-async function updateScheduleTask(id: any, updates: any): Promise<any> {
+async function updateScheduleTask(
+  id: unknown,
+  updates: TaskUpdates,
+): Promise<ActionResult<ScheduleTask>> {
   await loadTasks();
 
   const numId = safeParseId(id);
@@ -225,7 +251,9 @@ async function updateScheduleTask(id: any, updates: any): Promise<any> {
 /**
  * 启用/禁用定时任务
  */
-async function toggleScheduleTask(id: any): Promise<any> {
+async function toggleScheduleTask(
+  id: unknown,
+): Promise<ActionResult<{ id: number; name: string; enabled: boolean }>> {
   await loadTasks();
 
   const numId = safeParseId(id);
@@ -267,7 +295,7 @@ async function toggleScheduleTask(id: any): Promise<any> {
 /**
  * 调度任务
  */
-function scheduleTask(task: any): void {
+function scheduleTask(task: ScheduleTask): void {
   if (!task.enabled) return;
 
   unscheduleTask(task.id);
@@ -287,16 +315,18 @@ function scheduleTask(task: any): void {
       console.log(`[定时任务] 执行: ${task.name}`);
 
       await executeAction(task.action, task.params);
-    } catch (e: any) {
-      task.lastError = e.message;
-      console.error(`[定时任务] 执行失败: ${task.name} - ${e.message}`);
+    } catch (e: unknown) {
+      task.lastError = e instanceof Error ? e.message : String(e);
+      console.error(`[定时任务] 执行失败: ${task.name} - ${task.lastError}`);
     }
 
     // saveTasks 必须在 try/catch 内，否则 setInterval 回调产生 unhandledRejection。
     try {
       await saveTasks();
-    } catch (e: any) {
-      console.error(`[定时任务] 保存任务状态失败: ${task.name} - ${e.message}`);
+    } catch (e: unknown) {
+      console.error(
+        `[定时任务] 保存任务状态失败: ${task.name} - ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
   };
 
@@ -310,9 +340,10 @@ function scheduleTask(task: any): void {
 /**
  * 取消调度任务
  */
-function unscheduleTask(id: any): void {
-  if (intervals[id]) {
-    clearInterval(intervals[id]);
+function unscheduleTask(id: number): void {
+  const timer = intervals[id];
+  if (timer) {
+    clearInterval(timer);
     delete intervals[id];
   }
 }
@@ -320,7 +351,7 @@ function unscheduleTask(id: any): void {
 /**
  * 重新调度任务
  */
-function rescheduleTask(task: any): void {
+function rescheduleTask(task: ScheduleTask): void {
   unscheduleTask(task.id);
   if (task.enabled) {
     scheduleTask(task);
@@ -338,7 +369,7 @@ function parseCronToMs(cronExpr: string): number {
   // 简单关键字格式
   if (parts.length === 1) {
     const simple = parts[0].toLowerCase();
-    const simpleMap: any = {
+    const simpleMap: Record<string, number> = {
       secondly: 1000,
       minutely: 60000,
       hourly: 3600000,
@@ -426,7 +457,7 @@ function parseCronToMs(cronExpr: string): number {
     const num = parseInt(match[1], 10);
     const unit = match[2].toLowerCase();
 
-    const unitMap: any = {
+    const unitMap: Record<string, number> = {
       second: 1000,
       seconds: 1000,
       minute: 60000,
@@ -447,7 +478,7 @@ function parseCronToMs(cronExpr: string): number {
 /**
  * 执行任务动作
  */
-async function executeAction(action: string, _params: any): Promise<void> {
+async function executeAction(action: string, _params: Record<string, unknown>): Promise<void> {
   // 内置 action 均为无参函数，params 当前不生效（保留接口以便扩展自定义 action）。
   // 此前 fn()(params) 把 params 传给无参函数被静默丢弃，这里改为显式不传，避免误用。
   const actions: Record<string, () => Promise<void>> = {

@@ -9,6 +9,7 @@ import {
   setContextToken,
   getContextToken,
 } from '@pawastation/ilink-bot-sdk';
+import type { MessageItem, SendOptions } from '@pawastation/ilink-bot-sdk';
 import { broadcast } from '../../io/ws-server.ts';
 
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
@@ -300,7 +301,7 @@ async function startWechatPolling(
         if (msg.context_token) {
           setContextToken(wechatState.accountId as string, from, msg.context_token as string);
         }
-        const text = bodyFromItemList(msg.item_list as any);
+        const text = bodyFromItemList(msg.item_list as MessageItem[]);
         if (text && messageHandler) {
           await messageHandler({
             from,
@@ -402,15 +403,18 @@ async function sendWechatImage(
       };
     }
 
+    const sendOpts: SendOptions = {
+      baseUrl: wechatState.baseUrl as string,
+      token: wechatState.botToken as string,
+      contextToken: getContextToken(wechatState.accountId as string, to),
+    };
+    // 本实现传 filePath 直接发送（区别于 SDK 的 uploaded 流程），
+    // 类型不符处用 unknown 断言桥接，运行时行为不变。
     await sendImage({
       to,
       filePath: fullPath,
-      opts: {
-        baseUrl: wechatState.baseUrl as string,
-        token: wechatState.botToken as string,
-        contextToken: getContextToken(wechatState.accountId as string, to),
-      },
-    } as any);
+      opts: sendOpts,
+    } as unknown as Parameters<typeof sendImage>[0]);
 
     return {
       success: true,

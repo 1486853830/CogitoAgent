@@ -43,8 +43,14 @@ describe('memory tools', () => {
       expect(result.data.accessCount).toBe(0);
     });
 
-    it('should handle non-array tags gracefully', async () => {
+    it('should parse string tags as comma-separated list', async () => {
       const result = await addMemory('test content', 'not-an-array' as any, 'general');
+      expect(result.success).toBe(true);
+      expect(result.data.tags).toEqual(['not-an-array']);
+    });
+
+    it('should handle empty tags gracefully', async () => {
+      const result = await addMemory('test content', '', 'general');
       expect(result.success).toBe(true);
       expect(result.data.tags).toEqual([]);
     });

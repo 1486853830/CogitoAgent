@@ -3,7 +3,7 @@ import path from 'path';
 import { loadConfig } from '../../config.ts';
 
 function getBasePath(): string {
-  const cfg: any = loadConfig();
+  const cfg = loadConfig();
   return cfg.workspace || os.homedir();
 }
 

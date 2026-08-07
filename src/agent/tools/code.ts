@@ -4,13 +4,19 @@ import path from 'path';
 import os from 'os';
 import { loadConfig } from '../../config.ts';
 import { resolveInWorkspace } from './path.ts';
-import { runJavaScriptSandbox } from './sandbox.ts';
+import { runJavaScriptSandbox, type SandboxResult } from './sandbox.ts';
 import {
   getCodeLimits,
   generateSecureTmpPath,
   writeSecureTmpFile,
   cleanupTmpFile,
 } from './code-exec-utils.ts';
+
+interface CodeExecResult {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+}
 
 function findPythonExecutable(): string {
   const candidates = ['python', 'python3', 'python.exe', 'python3.exe'];
@@ -38,7 +44,7 @@ function findPythonExecutable(): string {
   return 'python';
 }
 
-async function runJavaScript(code: string, signal?: AbortSignal): Promise<any> {
+async function runJavaScript(code: string, signal?: AbortSignal): Promise<SandboxResult> {
   // 安全决策：JavaScript 执行统一走 isolated-vm 沙箱（见 sandbox.ts）。
   // 此前基于 Node 原生 vm 模块的实现并非安全沙箱——攻击者可通过原型链
   // （如 [].constructor.constructor）拿到宿主 Function 构造器，逃逸出沙箱
@@ -82,7 +88,7 @@ ${code}
   return guiWrapper;
 }
 
-async function runPython(code: string, signal?: AbortSignal): Promise<any> {
+async function runPython(code: string, signal?: AbortSignal): Promise<CodeExecResult> {
   // eslint-disable-next-line no-async-promise-executor -- executor 内已用 try/catch 完整兜底，且需统一管理超时与 resolve 时机
   return new Promise(async (resolve) => {
     let tmpPath: string | null = null;
@@ -116,7 +122,7 @@ async function runPython(code: string, signal?: AbortSignal): Promise<any> {
       }
 
       // 科学模式：允许使用已安装的 Python 科学库
-      const cfg: any = loadConfig();
+      const cfg = loadConfig();
       const scientificMode = cfg.code?.scientificMode === true;
 
       const secureEnv: Record<string, string | undefined> = {
@@ -160,7 +166,7 @@ async function runPython(code: string, signal?: AbortSignal): Promise<any> {
         {
           timeout: maxExecutionTime,
           encoding: 'utf8',
-          env: secureEnv as any,
+          env: secureEnv,
           signal,
           // 注意：Python 执行当前无真正的沙盒隔离（不同于 runJavaScript 的 isolated-vm）。
           // 此前传入的 gid/uid 取自当前进程自身，等于零隔离，反而误导维护者以为有权限降级。
@@ -212,12 +218,12 @@ async function runPython(code: string, signal?: AbortSignal): Promise<any> {
           });
         },
       );
-    } catch (e: any) {
+    } catch (e: unknown) {
       clearTimeout(timeoutId);
       await cleanupTmpFile(tmpPath);
       resolve({
         success: false,
-        error: `执行失败: ${e.message}`,
+        error: `执行失败: ${e instanceof Error ? e.message : String(e)}`,
       });
     }
   });
@@ -227,7 +233,7 @@ async function executeCode(
   code: string,
   language: string = 'javascript',
   signal?: AbortSignal,
-): Promise<any> {
+): Promise<CodeExecResult> {
   const lang = language.toLowerCase();
 
   if (lang === 'python' || lang === 'py') {
@@ -246,7 +252,7 @@ async function executeFile(
   filePath: string,
   language: string | null = null,
   signal?: AbortSignal,
-): Promise<any> {
+): Promise<CodeExecResult> {
   const resolvedPath = resolveInWorkspace(filePath);
   if (!resolvedPath) {
     return {
@@ -271,15 +277,15 @@ async function executeFile(
     }
 
     return await executeCode(content, language, signal);
-  } catch (e: any) {
+  } catch (e: unknown) {
     return {
       success: false,
-      error: `读取文件失败: ${e.message}`,
+      error: `读取文件失败: ${e instanceof Error ? e.message : String(e)}`,
     };
   }
 }
 
-async function formatCode(code: string, language: string = 'javascript'): Promise<any> {
+async function formatCode(code: string, language: string = 'javascript'): Promise<CodeExecResult> {
   if (language.toLowerCase() === 'python') {
     try {
       const pythonExec = findPythonExecutable();
