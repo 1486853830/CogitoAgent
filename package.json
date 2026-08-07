@@ -80,7 +80,7 @@
     "@pawastation/ilink-bot-sdk": "^0.2.0",
     "cheerio": "^1.0.0",
     "docx": "^9.7.1",
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.13",
     "dotenv": "^16.4.5",
     "echarts": "^6.1.0",
     "isolated-vm": "^6.1.2",
