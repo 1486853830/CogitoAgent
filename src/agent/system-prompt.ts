@@ -3,7 +3,7 @@
  * 根据启用的工具分类动态生成 AI 系统提示词
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import { getBasePath } from './tools/index.ts';
 import { getEnabledCategories, getAllCategories } from './registry.ts';
@@ -318,10 +318,24 @@ function buildSystemPrompt(): string {
     '\n\n## 语言规则\n- 请使用用户输入所使用的语言来回复。\n- 如果用户用中文提问，就用中文回复；如果用英文提问，就用英文回复；以此类推。\n- 保持回复语言与用户消息语言一致。\n';
 
   // 读取 persona（支持热切换）
+  // 优先读用户数据目录下的 persona.md（用户显式切换/选择的人设）；
+  // 不存在时回退到人设根目录 personas/persona.md（默认人设，无人设时自动调用），
+  // 避免启动时复制默认人设文件而污染项目根目录。
   let personaHeader = '';
-  try {
+  const personaFile = (() => {
     const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
-    const personaContent = readFileSync(path.resolve(DATA_DIR, 'persona.md'), 'utf-8');
+    return path.resolve(DATA_DIR, 'persona.md');
+  })();
+  try {
+    let personaContent = '';
+    if (existsSync(personaFile)) {
+      personaContent = readFileSync(personaFile, 'utf-8');
+    } else {
+      const defaultPersonaFile = path.resolve(process.cwd(), 'personas', 'persona.md');
+      if (existsSync(defaultPersonaFile)) {
+        personaContent = readFileSync(defaultPersonaFile, 'utf-8');
+      }
+    }
     if (personaContent.trim()) {
       personaHeader = personaContent + '\n\n---\n\n';
     }

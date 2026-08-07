@@ -81,6 +81,11 @@ class PluginManager {
 
         if (!stat.isDirectory()) continue;
 
+        // 跳过公共辅助目录（如 shared/）：没有 index.js 的目录不是独立插件，
+        // 避免把供插件复用的公共模块误当作插件加载而报错。
+        const indexPath = path.join(pluginPath, 'index.js');
+        if (!existsSync(indexPath)) continue;
+
         try {
           await this.loadPlugin(entry, pluginPath);
           loaded++;

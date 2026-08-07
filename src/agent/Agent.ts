@@ -108,8 +108,7 @@ import {
   formatToolError,
 } from './tool-utils.ts';
 import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from './thought-trace.ts';
-import { applyPersona, applyDefaultPersona, getCurrentPersonaTitle } from './persona.ts';
-import path from 'path';
+import { applyPersona, getCurrentPersonaTitle } from './persona.ts';
 import { loadPlugins } from './plugin.ts';
 import type { Message } from '../types/index.ts';
 
@@ -758,12 +757,9 @@ async function start(): Promise<void> {
       console.warn(`[Agent] Persona 文件复制失败或不存在: ${envPersona}`);
     }
   } else {
-    // 无人设时自动调用人设根目录下的默认人设 personas/persona.md
-    if (applyDefaultPersona()) {
-      console.log('[Agent] 已应用默认人设: personas/persona.md');
-    } else {
-      console.warn('[Agent] 默认人设 personas/persona.md 不存在');
-    }
+    // 无人设：不复制文件，system-prompt 构建时会自动回退读取
+    // 人设根目录 personas/persona.md 作为默认人设（避免污染项目根目录）
+    console.log('[Agent] 无人设，使用默认人设 personas/persona.md');
   }
 
   // 自动加载科学插件

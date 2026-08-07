@@ -28,6 +28,9 @@ async function loadTasks(): Promise<void> {
     ) {
       const data = await fs.readFile(TASKS_FILE, 'utf-8');
       tasks = JSON.parse(data);
+    } else {
+      // 文件不存在时清空内存任务，避免残留脏数据被重复调度
+      tasks = [];
     }
   } catch {
     tasks = [];

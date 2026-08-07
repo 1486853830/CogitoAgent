@@ -6,7 +6,7 @@ import type { Message, SessionMeta, SessionInfo } from '../types/index.ts';
 import { broadcast } from '../io/ws-server.ts';
 import { recordSession } from './stats.ts';
 import { estimateTokens } from '../utils/token.ts';
-import { applyPersona, applyDefaultPersona } from './persona.ts';
+import { applyPersona } from './persona.ts';
 
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const SESSIONS_DIR = path.resolve(DATA_DIR, 'data', 'sessions');
@@ -173,11 +173,6 @@ function getOrCreateWechatSession(): string {
 function createNewSession(name?: string | null, persona?: string | null) {
   if (currentSessionId) {
     archiveCurrentSession();
-  }
-
-  // 无人设时自动应用人设根目录下的默认人设 personas/persona.md
-  if (!persona) {
-    applyDefaultPersona();
   }
 
   const meta = loadMeta();
