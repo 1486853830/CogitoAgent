@@ -84,12 +84,6 @@ function initStats(): void {
     'vision',
     'cluster',
     'wechat',
-    'gis',
-    'bio',
-    'med',
-    'chem',
-    'finance',
-    'math',
   ];
   for (const cat of categories) {
     toolStats[cat] = {

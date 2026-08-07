@@ -325,7 +325,6 @@ const AppState = {
   isWaiting: false, // Agent 是否在等待用户输入
   currentAssistantBubble: null,
   lastToolKey: '',
-  currentMode: 'work', // work / code / design
   view: 'welcome', // welcome / chat
   currentSessionId: null, // 追踪当前会话 ID
   wechatSessionId: null, // 微信通道会话 ID
@@ -479,13 +478,6 @@ const WindowManager = {
 // ============================================================
 const NavManager = {
   init() {
-    // Work/Code/Design 模式切换
-    document.querySelectorAll('.mode-tab').forEach((tab) => {
-      tab.addEventListener('click', () => {
-        this.switchMode(tab.dataset.mode);
-      });
-    });
-
     // 新建任务按钮
     const newTaskBtn = document.getElementById('newTaskBtn');
     if (newTaskBtn) {
@@ -612,8 +604,8 @@ const NavManager = {
             </svg>
           </div>
           <div class="session-info">
-            <div class="session-name">${this.escapeHtml(session.name)}</div>
-            <div class="session-preview">${session.preview ? this.escapeHtml(session.preview) : ''}</div>
+            <div class="session-name">${SharedUtils.escapeHtml(session.name)}</div>
+            <div class="session-preview">${session.preview ? SharedUtils.escapeHtml(session.preview) : ''}</div>
             <div class="session-time">${this.formatTime(session.lastActiveAt)}</div>
           </div>
         </div>
@@ -796,20 +788,10 @@ const NavManager = {
   },
 
   /**
-   * HTML 转义
+   * HTML 转义（统一走 SharedUtils.escapeHtml）
    */
   escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  },
-
-  switchMode(mode) {
-    AppState.currentMode = mode;
-    document.querySelectorAll('.mode-tab').forEach((t) => {
-      t.classList.toggle('active', t.dataset.mode === mode);
-    });
-    console.log('[NavManager] 切换模式:', mode);
+    return SharedUtils.escapeHtml(text);
   },
 
   newTask() {

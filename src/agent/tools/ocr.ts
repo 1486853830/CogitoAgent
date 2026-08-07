@@ -1,107 +1,13 @@
-import fs from 'fs';
-import path from 'path';
-import { loadConfig } from '../../config.ts';
-import { getBasePath } from './path.ts';
+import { analyzeLocalImage } from './vision-common.ts';
+import type { VisionToolConfig } from './vision-common.ts';
 
-const SUPPORTED_FORMATS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif']);
-
-function getMimeType(ext: string): string {
-  const map: Record<string, string> = {
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.png': 'image/png',
-    '.webp': 'image/webp',
-    '.bmp': 'image/bmp',
-    '.gif': 'image/gif',
-  };
-  return map[ext.toLowerCase()] || 'image/jpeg';
-}
-
-function encodeImageToBase64(imagePath: string): string {
-  const buffer = fs.readFileSync(imagePath);
-  return buffer.toString('base64');
-}
-
-function buildOcrPrompt(prompt?: string): string {
-  if (prompt && prompt.trim()) {
-    return prompt.trim();
-  }
-  return '请识别图片中的所有文字内容，并逐行输出。保持原有的格式和换行。';
-}
-
-async function callVLApi(
-  imageBase64: string,
-  mimeType: string,
-  userPrompt: string,
-): Promise<string> {
-  const cfg: Record<string, unknown> = loadConfig() as unknown as Record<string, unknown>;
-  const ocrCfg = (cfg.ocr || {}) as Record<string, unknown>;
-
-  // OCR_API_KEY 回退到主 API Key（COGITO_API_KEY）
-  const apiKey =
-    (ocrCfg.apiKey as string) || ((cfg.api as Record<string, unknown>)?.apiKey as string);
-  if (!apiKey) {
-    throw new Error(
-      'OCR API 密钥未配置。请在 config.json 的 ocr.apiKey 中填入你的密钥，或设置环境变量 COGITO_OCR_API_KEY / OCR_API_KEY，也可设置主 API Key (COGITO_API_KEY) 作为回退',
-    );
-  }
-
-  const baseURL =
-    (ocrCfg.baseURL as string) || ((cfg.api as Record<string, unknown>)?.baseURL as string);
-  const model = (ocrCfg.model as string) || 'InternVL3-78B';
-
-  const url = baseURL.endsWith('/') ? `${baseURL}chat/completions` : `${baseURL}/chat/completions`;
-
-  const payload = {
-    model: model,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: userPrompt,
-          },
-          {
-            type: 'image_url',
-            image_url: {
-              url: `data:${mimeType};base64,${imageBase64}`,
-            },
-          },
-        ],
-      },
-    ],
-    max_tokens: 2048,
-    temperature: 0.1,
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OCR API 请求失败 (${response.status}): ${errorText}`);
-  }
-
-  const data: Record<string, unknown> = (await response.json()) as Record<string, unknown>;
-  if (
-    data.choices &&
-    (data.choices as Record<string, unknown>[])[0] &&
-    (data.choices as Record<string, unknown>[])[0].message &&
-    ((data.choices as Record<string, unknown>[])[0].message as Record<string, unknown>).content
-  ) {
-    return ((data.choices as Record<string, unknown>[])[0].message as Record<string, unknown>)
-      .content as string;
-  }
-
-  throw new Error('OCR API 返回格式错误：未找到识别结果');
-}
+const OCR_CONFIG: VisionToolConfig = {
+  section: 'ocr',
+  defaultPrompt: '请识别图片中的所有文字内容，并逐行输出。保持原有的格式和换行。',
+  resultLabel: '[OCR 识别结果]',
+  errorPrefix: 'OCR',
+  failMessage: 'OCR 识别失败',
+};
 
 /**
  * 识别图片中的文字内容（OCR）
@@ -114,44 +20,7 @@ async function ocr(
   imagePath: string,
   prompt?: string,
 ): Promise<{ success: boolean; data?: string; error?: string }> {
-  if (!imagePath || !imagePath.trim()) {
-    return { success: false, error: '请提供图片路径' };
-  }
-
-  const basePath = getBasePath();
-  const fullPath = path.isAbsolute(imagePath) ? imagePath : path.join(basePath, imagePath);
-
-  try {
-    if (!fs.existsSync(fullPath)) {
-      return { success: false, error: `图片文件不存在: ${fullPath}` };
-    }
-
-    const ext = path.extname(fullPath).toLowerCase();
-    if (!SUPPORTED_FORMATS.has(ext)) {
-      return {
-        success: false,
-        error: `不支持的图片格式: ${ext}。支持格式: ${[...SUPPORTED_FORMATS].join(', ')}`,
-      };
-    }
-
-    const stat = fs.statSync(fullPath);
-    if (stat.size > 10 * 1024 * 1024) {
-      return { success: false, error: '图片文件过大（超过10MB），请压缩后再试' };
-    }
-
-    const mimeType = getMimeType(ext);
-    const base64Data = encodeImageToBase64(fullPath);
-    const ocrPrompt = buildOcrPrompt(prompt);
-
-    const resultText = await callVLApi(base64Data, mimeType, ocrPrompt);
-
-    return {
-      success: true,
-      data: `[OCR 识别结果] ${fullPath}\n\n${resultText}`,
-    };
-  } catch (error: unknown) {
-    return { success: false, error: `OCR 识别失败: ${(error as Error).message}` };
-  }
+  return analyzeLocalImage(imagePath, prompt, OCR_CONFIG);
 }
 
 /**

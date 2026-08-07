@@ -35,21 +35,20 @@
 
 ## 核心功能
 
-| 功能                | 描述                                                                                                             |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **TypeScript 核心** | 全量 TypeScript 重构，类型安全，编译时错误检测                                                                   |
-| **隐私优先**        | 用户工作文件保留在本地，仅通过 API 将必要上下文发送至你指定的模型服务商                                          |
-| **持续思考**        | 每 3 秒自动触发一次思考循环（可配置）                                                                            |
-| **工具执行**        | 28 工具模块，200+ 工具，覆盖文件操作、代码执行、Git、数据库、OCR、Office 文档、GIS、生物信息、医学、化学、金融等 |
-| **安全沙箱**        | JavaScript 代码执行使用 `isolated-vm` 进行进程级隔离                                                             |
-| **多会话管理**      | 多个独立的对话会话，持久化存储，自动压缩                                                                         |
-| **桌面模式**        | Electron 桌面窗口，通过 WebSocket 与终端 Agent 通信                                                              |
-| **MCP 协议**        | 将工具暴露为 MCP Server，支持与其他 AI 客户端集成                                                                |
-| **插件系统**        | 动态加载自定义工具插件                                                                                           |
-| **思维链可视化**    | 实时可视化思考过程和工具执行                                                                                     |
-| **智能体集群**      | 支持子智能体创建与任务委派，多智能体协作                                                                         |
-| **监控面板**        | 独立窗口实时展示集群拓扑、思维链和工具统计                                                                       |
-| **微信集成**        | 扫码登录、消息收发、专属会话、工具气泡展示                                                                       |
+| 功能                | 描述                                                                                      |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| **TypeScript 核心** | 全量 TypeScript 重构，类型安全，编译时错误检测                                            |
+| **隐私优先**        | 用户工作文件保留在本地，仅通过 API 将必要上下文发送至你指定的模型服务商                   |
+| **持续思考**        | 每 3 秒自动触发一次思考循环（可配置）                                                     |
+| **工具执行**        | 28 工具模块，200+ 工具，覆盖文件操作、代码执行、Git、数据库、OCR、Office 文档、生物信息等 |
+| **安全沙箱**        | JavaScript 代码执行使用 `isolated-vm` 进行进程级隔离                                      |
+| **多会话管理**      | 多个独立的对话会话，持久化存储，自动压缩                                                  |
+| **桌面模式**        | Electron 桌面窗口，通过 WebSocket 与终端 Agent 通信                                       |
+| **插件系统**        | 动态加载自定义工具插件                                                                    |
+| **思维链可视化**    | 实时可视化思考过程和工具执行                                                              |
+| **智能体集群**      | 支持子智能体创建与任务委派，多智能体协作                                                  |
+| **监控面板**        | 独立窗口实时展示集群拓扑、思维链和工具统计                                                |
+| **微信集成**        | 扫码登录、消息收发、专属会话、工具气泡展示                                                |
 
 ---
 
@@ -118,16 +117,14 @@ flowchart LR
     subgraph MODULES["28 个工具模块"]
         direction LR
         CORE1["file<br/>web<br/>code<br/>system<br/>browser"]
-        CORE2["git<br/>data<br/>db<br/>path<br/>storage"]
+        CORE2["git<br/>data<br/>db<br/>path"]
         AI["memory<br/>ocr<br/>vision"]
         COMM["wechat<br/>email<br/>cluster"]
         AUTO["task<br/>scheduler<br/>monitor<br/>office"]
-        PROF["gis<br/>bio<br/>med<br/>chem<br/>finance<br/>math"]
     end
 
     subgraph EXTENSION["扩展"]
         PLUGIN["plugin.ts<br/>动态加载"]
-        MCP["mcp.ts<br/>JSON-RPC 2.0"]
         DANGER["DANGEROUS_OPERATIONS<br/>用户确认"]
     end
 
@@ -139,7 +136,6 @@ flowchart LR
     EXECUTOR --> TRACE
     EXECUTOR --> DANGER
     PLUGIN --> REG
-    MCP --> REG
 
     classDef invocation fill:#161b28,stroke:#5eead4,color:#5eead4;
     classDef registry fill:#161b28,stroke:#fbbf24,color:#fbbf24;
@@ -148,8 +144,8 @@ flowchart LR
 
     class LLM,PARSER,EXECUTOR invocation;
     class REG,STATS,TRACE registry;
-    class CORE1,CORE2,AI,COMM,AUTO,PROF modules;
-    class PLUGIN,MCP,DANGER extension;
+    class CORE1,CORE2,AI,COMM,AUTO modules;
+    class PLUGIN,DANGER extension;
 ```
 
 | 分类         | 文件           | 主要函数                                                                                                                                                                                                                                                                                          |
@@ -169,18 +165,11 @@ flowchart LR
 | 邮件         | `email.ts`     | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig`                                                                                                                                                                                |
 | 系统监控     | `monitor.ts`   | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem`                                                                                                                                            |
 | 定时任务     | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler`                                                                                                                                     |
-| 存储         | `storage.ts`   | `FileStorage`, `createStorage`, `getStorage`, `clearStorage`                                                                                                                                                                                                                                      |
 | 图像识别     | `ocr.ts`       | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
 | 视觉分析     | `vision.ts`    | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
 | Office 文档  | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
 | 集群管理     | `cluster.ts`   | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting`                                                                                                                                                        |
 | 微信消息     | `wechat.ts`    | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode`                                                                                                                                                                                  |
-| GIS 地理信息 | `gis.ts`       | `convertCoord`, `calcDistance`, `calcArea`, `calcCenter`, `pointInPolygon`, `isInChina`, `readGeoJSON`, `queryGeoJSON`, `geoJSONStats`, `geoJSONToCSV`, `geoJSONToKML`                                                                                                                            |
-| 生命科学     | `bio.ts`       | `dnaComplement`, `dnaReverseComplement`, `rnaTranscribe`, `translate`, `gcContent`, `molecularWeight`, `hammingDistance`, `levenshteinDistance`, `tmEstimate`, `hairpinCheck`, `parseFASTA`, `parseFASTQ`, `fastaToCSV`, `codonUsage`, `randomSeq`                                                |
-| 医学         | `med.ts`       | `bmi`, `bsa`, `egfr`, `crcl`, `childPugh`, `calculateDose`, `bsaDose`, `infusionRate`, `idealBodyWeight`, `convertUnit`, `temperatureConvert`, `meanArterialPressure`, `anionGap`, `correctedCalcium`, `oxygenIndex`, `parseVitalSigns`, `vitalsReport`                                           |
-| 化学         | `chem.ts`      | `elementInfo`, `molWeight`, `elementComposition`, `molarity`, `dilution`, `phFromH`, `phToH`, `idealGasLaw`, `gasDensity`                                                                                                                                                                         |
-| 金融         | `finance.ts`   | `compoundInterest`, `presentValue`, `futureValueAnnuity`, `npv`, `irr`, `paybackPeriod`, `roi`, `loanPayment`, `amortizationSchedule`, `totalInterest`, `movingAverage`, `volatility`                                                                                                             |
-| 数学统计     | `math.ts`      | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `matrixDeterminant`, `matrixInverse`, `solveQuadratic`, `factorial`, `combination`, `permutation`, `siConvert`                                                                                                                   |
 
 > 详细工具文档：注册机制、使用示例、最佳实践 → [introduction/tools.md](introduction/tools.md)
 
@@ -246,7 +235,6 @@ flowchart TB
     end
 
     subgraph EXT["扩展"]
-        MCP["mcp.ts<br/>JSON-RPC :3001"]
         PLUGIN["plugin.ts<br/>动态加载"]
         RETRY["retry.ts<br/>熔断器"]
         CLUSTER["orchestrator.ts<br/>子智能体集群"]
@@ -288,7 +276,6 @@ flowchart TB
     EXT --> CLUSTER
     EXT --> WECHAT
     PLUGIN --> REG
-    MCP --> REG
 
     THINK --> CYCLE
     CYCLE --> THINK
@@ -310,7 +297,7 @@ flowchart TB
     class AWAIT,THINKING,CONFIRM state;
     class PERSIST,COMPRESS,HISTORY session;
     class REG,STATS,TRACE tools;
-    class MCP,PLUGIN,RETRY,CLUSTER,WECHAT ext;
+    class PLUGIN,RETRY,CLUSTER,WECHAT ext;
     class LLM api;
 ```
 
@@ -325,7 +312,6 @@ flowchart TB
 | **stats.ts**          | 统计 —— 工具使用追踪和指标                                  |
 | **tracing.ts**        | 追踪 —— 工具执行和 LLM 调用的轻量级可观测性                 |
 | **retry.ts**          | 重试与熔断 —— 可靠的网络请求                                |
-| **mcp.ts**            | MCP Server —— 将工具暴露为 MCP 协议                         |
 | **plugin.ts**         | 插件系统 —— 动态加载自定义工具插件                          |
 | **ws-server.ts**      | WebSocket —— 桌面模式通信（端口 9527）                      |
 | **wechat-manager.ts** | 微信通道 —— iLink 协议集成、消息路由、会话同步              |
@@ -380,7 +366,7 @@ cogito-agent/
 │   ├── agent/                        # 核心 agent 模块
 │   │   ├── Agent.ts / state.ts / registry.ts
 │   │   ├── commands.ts / session.ts / stats.ts
-│   │   ├── mcp.ts / plugin.ts / thought-trace.ts / retry.ts
+│   │   ├── plugin.ts / thought-trace.ts / retry.ts
 │   │   ├── wechat-manager.ts         # 微信通道管理
 │   │   └── tools/                    # 28+ 工具模块
 │   ├── api/                          # API 层（client, models, webSearch）
@@ -447,7 +433,6 @@ flowchart TD
     end
 
     subgraph INTEGRATION["集成层"]
-        MCP["mcp.ts<br/>JSON-RPC 2.0 端口 :3001"]
         PLUGIN["plugin.ts<br/>动态工具加载"]
         WECHAT["wechat-manager.ts<br/>iLink 扫码登录 + 路由"]
     end
@@ -466,7 +451,6 @@ flowchart TD
     AGENT --> TRACING
     AGENT --> DANGER
     AGENT --> RETRY
-    AGENT --> MCP
     AGENT --> PLUGIN
     AGENT --> WECHAT
 
@@ -482,7 +466,7 @@ flowchart TD
     class REGISTRY,SANDBOX,TASK,CLUSTER execution;
     class STATS,TRACING obs;
     class DANGER,RETRY security;
-    class MCP,PLUGIN,WECHAT integration;
+    class PLUGIN,WECHAT integration;
 ```
 
 - **记忆系统** —— 基于 JSON 的长期存储和标签语义检索
@@ -511,7 +495,6 @@ flowchart TD
 > 详见 [introduction/extensions.md](introduction/extensions.md)
 
 - **插件系统** —— 动态加载自定义工具插件
-- **MCP 协议** —— 将工具暴露为 MCP Server
 - **追踪系统** —— 工具执行和 LLM 调用的轻量级可观测性
 - **熔断与重试** —— 可靠的网络请求
 - **多模型支持** —— OpenAI、Moark、Anthropic、Google

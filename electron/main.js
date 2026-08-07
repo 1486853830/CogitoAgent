@@ -774,7 +774,13 @@ app.whenReady().then(async () => {
   });
 
   // 加载已有配置（用于回填表单）
-  ipcMain.handle('load-config', () => {
+  // 仅允许 setup 窗口调用：该接口返回明文 API Key 与解密后的邮箱密码，
+  // 不能暴露给 dashboard/desktop/monitor 等其他窗口。
+  ipcMain.handle('load-config', (event) => {
+    const senderId = event.sender.id;
+    if (!setupWindow || setupWindow.webContents.id !== senderId) {
+      return null;
+    }
     const env = loadEnvFile();
 
     // 同时读取 config.json 作为补充数据源
@@ -799,8 +805,8 @@ app.whenReady().then(async () => {
       language: configJson.chat?.language || 'zh',
       mode: env['COGITO_MODE'] || 'dashboard',
       email: {
-        host: env['COGITO_EMAIL_HOST'] || '',
-        port: env['COGITO_EMAIL_PORT'] || '',
+        smtpHost: env['COGITO_EMAIL_HOST'] || '',
+        smtpPort: env['COGITO_EMAIL_PORT'] || '',
         user: env['COGITO_EMAIL_USER'] || '',
         password: decryptCredential(env['COGITO_EMAIL_PASSWORD'] || ''),
         from: env['COGITO_EMAIL_FROM'] || '',
@@ -817,8 +823,8 @@ app.whenReady().then(async () => {
         model: env['COGITO_VISION_MODEL'] || '',
       },
       code: {
-        timeout: env['COGITO_CODE_TIMEOUT'] || '',
-        maxOutput: env['COGITO_CODE_MAX_OUTPUT'] || '',
+        maxExecutionTime: env['COGITO_CODE_TIMEOUT'] || '',
+        maxOutputSize: env['COGITO_CODE_MAX_OUTPUT'] || '',
         scientificMode: env['COGITO_CODE_SCIENTIFIC_MODE'] === 'true',
         scientificLibraries: env['COGITO_CODE_SCIENTIFIC_LIBRARIES'] || '',
       },
