@@ -294,7 +294,14 @@ class AgentOrchestrator {
 
         if (result.success) {
           stepResult.result = result.data;
-          context = result.data as string; // 传递给下一步
+          // 子智能体可能返回对象/数组，不能直接作字符串拼接（会变成 [object Object]），
+          // 统一序列化为可读文本后再作为下一步的上下文。
+          context =
+            typeof result.data === 'string'
+              ? result.data
+              : typeof result.data === 'object' && result.data !== null
+                ? JSON.stringify(result.data, null, 2)
+                : String(result.data);
         } else {
           stepResult.error = result.error;
           pipelineResults.push(stepResult);
@@ -504,6 +511,9 @@ class AgentOrchestrator {
     messages: Array<{ role: string; content: string }>,
   ): Promise<string> {
     let fullResponse = '';
+    // 连续两轮调用「相同签名」的工具说明模型在截断的工具输出下无法取得进展，
+    // 继续循环只会重复执行同一动作，直接终止避免死循环。
+    let previousToolSignatures = '';
 
     for (let i = 0; i < this.maxIterations; i++) {
       agent.iterationCount = i + 1;
@@ -531,6 +541,17 @@ class AgentOrchestrator {
         // 没有工具调用，这就是最终回复
         break;
       }
+
+      // 检测重复工具调用：本轮与上轮的工具+参数签名一致 → 停止循环
+      const signatures = toolCalls
+        .map((tc) => `${tc.tool}(${JSON.stringify(tc.args)})`)
+        .sort()
+        .join('|');
+      if (previousToolSignatures !== '' && signatures === previousToolSignatures) {
+        fullResponse += '\n\n[系统] 检测到重复调用相同工具，无法取得进展，已终止循环。';
+        break;
+      }
+      previousToolSignatures = signatures;
 
       // 添加助手回复到消息历史
       messages.push({ role: 'assistant', content: response });

@@ -19,9 +19,20 @@ const DANGEROUS_STATEMENTS = [
   'VACUUM',
 ];
 
+/**
+ * 去除 SQL 中的注释（块注释与行注释 -- ...），再校验危险语句。
+ * 否则对形如（注释前缀 + DROP TABLE users）或（DROP--x 换行 TABLE）的输入，
+ * 仅凭 trim/uppercase + startsWith 检查可被绕过。
+ * 注意：无法解析字符串字面量内的 '--'，但对危险语句校验而言，误判（把字符串里的
+ * -- 当注释）只会更严格，不会放行真正的危险语句。
+ */
+function stripSQLComments(sql: string): string {
+  return sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\n\r]*/g, ' ');
+}
+
 function isDangerousSQL(sql: string): boolean {
-  const upperSql = sql.trim().toUpperCase();
-  return DANGEROUS_STATEMENTS.some((stmt) => upperSql.startsWith(stmt));
+  const normalized = stripSQLComments(sql).trim().toUpperCase().replace(/\s+/g, ' ');
+  return DANGEROUS_STATEMENTS.some((stmt) => new RegExp(`^${stmt}\\b`).test(normalized));
 }
 
 /**
@@ -200,7 +211,10 @@ async function executeSQL(sql: string, params: unknown[] = []): Promise<QueryRes
           success: true,
           data: {
             changes: changes,
-            lastID: database.lastInsertRowid ? database.lastInsertRowid() : null,
+            // sql.js 的 lastInsertRowid 是方法；先判断为函数再调用，避免在
+            // 某些版本/属性形态下直接调用报错。
+            lastID:
+              typeof database.lastInsertRowid === 'function' ? database.lastInsertRowid() : null,
           },
         };
       }
@@ -341,7 +355,7 @@ async function insert(table: string, data: Record<string, unknown>): Promise<Que
       success: true,
       data: {
         changes: changes,
-        lastID: database.lastInsertRowid ? database.lastInsertRowid() : null,
+        lastID: typeof database.lastInsertRowid === 'function' ? database.lastInsertRowid() : null,
       },
     };
   } catch (err: unknown) {

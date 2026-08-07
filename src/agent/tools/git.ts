@@ -53,8 +53,6 @@ const ALLOWED_GIT_OPTIONS = new Set([
   '--only',
   '--onto',
   '-r',
-  '-a',
-  '-v',
   '--verbose',
   '--stat',
   '--short',
@@ -338,6 +336,40 @@ async function gitStatus(
 }
 
 /**
+ * 将选项字符串按空白拆分成参数数组，同时保留引号内的空格。
+ * 原实现直接 options.split(' ')，会导致 --grep "foo bar" 这类带引号的值
+ * 被拆成多个参数，破坏校验白名单并让 git 收到错误参数。
+ * 返回的是保留引号的内容（不含引号本身），便于直接传入 git。
+ */
+function splitGitOptions(options: string): string[] {
+  const args: string[] = [];
+  let current = '';
+  let inQuote: string | null = null;
+
+  for (let i = 0; i < options.length; i++) {
+    const char = options[i];
+    if (inQuote) {
+      if (char === inQuote) {
+        inQuote = null;
+      } else {
+        current += char;
+      }
+    } else if (char === '"' || char === "'") {
+      inQuote = char;
+    } else if (char === ' ' || char === '\t') {
+      if (current) {
+        args.push(current);
+        current = '';
+      }
+    } else {
+      current += char;
+    }
+  }
+  if (current) args.push(current);
+  return args;
+}
+
+/**
  * 查看日志
  */
 async function gitLog(
@@ -346,7 +378,7 @@ async function gitLog(
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   const args = ['log'];
   if (options) {
-    args.push(...options.split(' '));
+    args.push(...splitGitOptions(options));
   }
   return await gitCommand(args, cwd);
 }
@@ -419,7 +451,7 @@ async function gitDiff(
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   const args = ['diff'];
   if (options) {
-    args.push(...options.split(' '));
+    args.push(...splitGitOptions(options));
   }
   return await gitCommand(args, cwd);
 }

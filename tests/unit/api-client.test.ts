@@ -115,7 +115,7 @@ describe('api/client.ts', () => {
 
     it('should estimate tokens for mixed Chinese and English', () => {
       const text = '你好 hello'; // 2 chinese + 6 other (incl. space) = 8 chars total
-      const expected = Math.ceil(2 / 1.5 + 6 / 4); // ceil(1.33 + 1.5) = ceil(2.83) = 3
+      const expected = Math.ceil(2 / 1.5) + Math.ceil(6 / 4); // ceil(1.33) + ceil(1.5) = 2 + 2 = 4
       expect(estimateTokens(text)).toBe(expected);
     });
 

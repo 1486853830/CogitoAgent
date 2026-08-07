@@ -1,5 +1,19 @@
 import { streamChat } from '../api/client.ts';
+import { createRequire } from 'module';
 import * as tools from './tools/index.ts';
+
+// 从 package.json 读取应用版本，避免在多个位置硬编码导致版本号漂移。
+// Electron 运行时可改用 app.getVersion()，CLI/测试环境下回退到包内版本。
+const APP_VERSION: string = (() => {
+  try {
+    if (process.env.npm_package_version) return process.env.npm_package_version;
+    const require = createRequire(import.meta.url);
+    const pkg = require('../../package.json') as { version?: string };
+    return pkg.version || '2.3.2';
+  } catch {
+    return '2.3.2';
+  }
+})();
 import {
   getMessages,
   addUserMessage,
@@ -11,6 +25,7 @@ import {
   estimateTokens,
   resetConversation,
   updateSystemPrompt,
+  listSessions,
 } from './session.ts';
 import { reloadConfig } from '../config.ts';
 import {
@@ -162,9 +177,13 @@ async function executeTool(
   const processedArgs = preprocessToolArgs(toolName, args);
 
   try {
-    const toolPromise = fn(...(processedArgs as unknown[]));
+    // 把 signal 作为额外尾参传给工具函数，让支持中断的工具（如 runPython/executeCode）
+    // 在 /stop 时真正终止底层进程，而不只是被 Promise.race 忽略结果。
+    const toolPromise = signal
+      ? fn(...(processedArgs as unknown[]), signal)
+      : fn(...(processedArgs as unknown[]));
     // /stop 触发 signal.abort 时立即返回中断结果，不再等待单个工具执行完毕。
-    // 注意：race 不会取消底层工具进程，但会解除 thinkCycle 的阻塞；长时工具
+    // 注意：race 不会取消不支持 signal 的工具进程，但会解除 thinkCycle 的阻塞；长时工具
     // 自身仍有 maxExecutionTime 超时兜底。
     const result = signal
       ? await Promise.race([
@@ -821,10 +840,10 @@ async function start(): Promise<void> {
   }
 
   printBanner({
-    version: '2.3.2',
+    version: APP_VERSION,
     persona: cfg.persona || 'Assistant',
     workspace: tools.getBasePath(),
-    sessions: 1,
+    sessions: listSessions().length,
     mode: process.env.CLI_MODE ? 'CLI' : process.env.ELECTRON_MODE ? 'Electron' : 'CLI',
   });
   printDivider('─', 'cyan');

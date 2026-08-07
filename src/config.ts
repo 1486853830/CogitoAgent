@@ -91,6 +91,10 @@ const DEFAULT_CONFIG: Config = {
   scheduler: {
     enabled: true,
   },
+  security: {
+    confirmDangerous: true,
+    sandboxMode: true,
+  },
 };
 
 let config: Config | null = null;
@@ -174,8 +178,15 @@ function loadEnvConfig(): Partial<Config> {
     emailConfig.user = process.env.COGITO_EMAIL_USER;
   }
   if (process.env.COGITO_EMAIL_PASSWORD) {
-    // .env 中存储的密码可能是加密格式（enc:v1:...）或旧版明文，decrypt 会自动识别
-    emailConfig.password = decryptCredential(process.env.COGITO_EMAIL_PASSWORD);
+    // .env 中存储的密码可能是加密格式（enc:v1:...）或旧版明文，decrypt 会自动识别。
+    // decrypt 内部对损坏密文/机器变更会返回空串；此处再兜底一次 try/catch，
+    // 防止解密过程意外抛错导致整个配置加载失败。
+    try {
+      emailConfig.password = decryptCredential(process.env.COGITO_EMAIL_PASSWORD);
+    } catch (e) {
+      console.error(`[配置] 邮箱密码解密失败: ${(e as Error).message}`);
+      emailConfig.password = '';
+    }
   }
   if (process.env.COGITO_EMAIL_FROM) {
     emailConfig.from = process.env.COGITO_EMAIL_FROM;
@@ -200,6 +211,17 @@ function loadEnvConfig(): Partial<Config> {
     if (!isNaN(maxSize) && maxSize > 0) {
       codeConfig.maxOutputSize = maxSize;
     }
+  }
+  if (process.env.COGITO_CODE_SCIENTIFIC_MODE) {
+    // 与 config-writer.js 写入的 .env 字段保持一致（'true'/'false'）
+    codeConfig.scientificMode =
+      String(process.env.COGITO_CODE_SCIENTIFIC_MODE).toLowerCase() === 'true';
+  }
+  if (process.env.COGITO_CODE_SCIENTIFIC_LIBRARIES) {
+    codeConfig.scientificLibraries = String(process.env.COGITO_CODE_SCIENTIFIC_LIBRARIES)
+      .split(',')
+      .map((lib) => lib.trim())
+      .filter(Boolean);
   }
   if (Object.keys(codeConfig).length > 0) {
     envConfig.code = codeConfig as Config['code'];

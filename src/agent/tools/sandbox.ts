@@ -41,15 +41,10 @@ const MAX_MEMORY_MB = 128;
 
 /**
  * 检查是否启用沙箱模式
+ * 环境变量值始终是字符串，仅 'false' 表示显式关闭。
  */
 function isSandboxEnabled(): boolean {
-  if (process.env.COGITO_SANDBOX_MODE === 'false') {
-    return false;
-  }
-  if (process.env.COGITO_SANDBOX_MODE === 'true') {
-    return true;
-  }
-  return true;
+  return process.env.COGITO_SANDBOX_MODE !== 'false';
 }
 
 /**
@@ -84,17 +79,17 @@ async function runJavaScriptIsolated(code: string, timeout: number = 10000): Pro
 
     const context = await isolate.createContext();
     const jail = context.global;
-    await jail.set('global', jail.derefInto());
 
-    // isolate 自带标准 V8 全局（JSON/Math/Date/parseInt/encodeURIComponent 等），
-    // 已作用于该 isolate 的独立堆，无需也无法"逃逸"到宿主。process/require/module
-    // 等 Node 全局本就不存在。isolated-vm 的堆隔离才是安全边界，而非属性屏蔽。
+    // 用户代码以「数据」而非「源码内联」的形式传入 isolate：先 set 到全局变量，
+    // 再在 isolate 内用 new Function(__userCode) 构造执行。
+    // 这样即使用户代码含 }); 等内容，也不会突破外层包裹结构（修复字符串内联注入）。
+    await jail.set('__userCode', code);
 
-    // console 在 isolate 内部实现：收集日志到数组，随结果一起返回。
-    // 结果通过 JSON 字符串中转回宿主。
-    const wrappedCode = `
+    // isolate 自行实现 console：收集日志到 __logs，随结果 JSON 一起返回。
+    // context.eval 仅能直接传回可转移原始值，对象默认返回 undefined，故结果同样用
+    // JSON.stringify 包成字符串再在宿主解析。
+    await context.eval(`
       (function() {
-        var __logs = [];
         function __fmt(a) {
           if (a === undefined) return 'undefined';
           if (a === null) return 'null';
@@ -109,22 +104,38 @@ async function runJavaScriptIsolated(code: string, timeout: number = 10000): Pro
           for (var i = 0; i < args.length; i++) out.push(__fmt(args[i]));
           return out.join(' ');
         }
-        console = {
-          log: function() { __logs.push(__join(arguments)); },
-          info: function() { __logs.push('[INFO] ' + __join(arguments)); },
-          warn: function() { __logs.push('[WARN] ' + __join(arguments)); },
-          error: function() { __logs.push('[ERROR] ' + __join(arguments)); }
+        globalThis.__logs = [];
+        globalThis.console = {
+          log: function() { globalThis.__logs.push(__join(arguments)); },
+          info: function() { globalThis.__logs.push('[INFO] ' + __join(arguments)); },
+          warn: function() { globalThis.__logs.push('[WARN] ' + __join(arguments)); },
+          error: function() { globalThis.__logs.push('[ERROR] ' + __join(arguments)); }
         };
+      })()
+    `);
+
+    // 在 isolate 内用 new Function 执行用户代码：无害的变量名/注释无法破坏包裹结构，
+    // 且代码作用域是该 isolate 的堆（process/require 等 Node 全局天然不存在）。
+    const wrappedExecution = `
+      (function() {
         try {
-          var result = (function() { ${code} })();
-          return JSON.stringify({ success: true, result: result, logs: __logs });
+          var result = new Function(globalThis.__userCode).call(globalThis);
+          return JSON.stringify({
+            success: true,
+            result: result === undefined ? null : result,
+            logs: Array.isArray(globalThis.__logs) ? globalThis.__logs : []
+          });
         } catch (e) {
-          return JSON.stringify({ success: false, error: e && e.message ? e.message : String(e), logs: __logs });
+          return JSON.stringify({
+            success: false,
+            error: e && e.message ? e.message : String(e),
+            logs: Array.isArray(globalThis.__logs) ? globalThis.__logs : []
+          });
         }
       })()
     `;
 
-    const resultStr = await context.eval(wrappedCode, {
+    const resultStr = await context.eval(wrappedExecution, {
       timeout: Math.min(timeout, maxExecutionTime),
       breakOnSigint: true,
     });
@@ -272,8 +283,19 @@ function createJavaScriptSandbox(): any {
 
 /**
  * 执行 JavaScript 代码（优先使用 isolated-vm）
+ * @param signal - 可选 AbortSignal。isolated-vm 执行本身受 cpuTimeout/timeout 约束，
+ *                 当前无法在信号触发时中止同步的 isolate 执行；保留参数供未来接入，
+ *                 并保证与 runJavaScript(code, signal) 的调用链一致。
  */
-async function runJavaScriptSandbox(code: string, timeout: number = 10000): Promise<any> {
+async function runJavaScriptSandbox(
+  code: string,
+  timeout: number = 10000,
+  _signal?: AbortSignal,
+): Promise<any> {
+  // _signal 目前仅用于保持调用链一致；isolated-vm 的同步执行无法在信号触发时中止，
+  // 真正的超时由 timeout/cpuTimeout 兜底。此处显式 void，避免未使用告警。
+  void _signal;
+
   if (!isSandboxEnabled()) {
     return runJavaScriptDirect(code);
   }
@@ -296,6 +318,12 @@ async function runJavaScriptSandbox(code: string, timeout: number = 10000): Prom
 
 /**
  * 直接执行 JavaScript 代码（非沙箱模式）
+ *
+ * 安全说明：此路径仅为「显式关闭沙箱」的兼容用途，不是安全沙箱。
+ * 实现上不再用 new Function 在宿主全局作用域执行（那样代码可直接访问
+ * process/require 等 Node 全局），改为在独立的 vm context 内执行——
+ * context 只注入白名单工具，process/require/module/Buffer 等全局不可直接访问，
+ * 缩小了被恶意代码触达宿主环境的表面积。
  */
 async function runJavaScriptDirect(code: string): Promise<any> {
   console.warn('[安全警告] 非沙箱模式执行 JavaScript 代码，可能存在安全风险');
@@ -309,77 +337,60 @@ async function runJavaScriptDirect(code: string): Promise<any> {
       });
     }, maxExecutionTime);
 
-    try {
-      const safeGlobals: any = {
-        console: {
-          log: (...args: any[]) => {
-            const output = args
-              .map((a) => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)))
-              .join(' ');
-            console.log(output);
-          },
-          error: (...args: any[]) => {
-            const output = args
-              .map((a) => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)))
-              .join(' ');
-            console.error(output);
-          },
-          warn: (...args: any[]) => {
-            const output = args
-              .map((a) => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)))
-              .join(' ');
-            console.warn(output);
-          },
-          info: (...args: any[]) => {
-            const output = args
-              .map((a) => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)))
-              .join(' ');
-            console.info(output);
-          },
-        },
-        JSON: JSON,
-        Math: Math,
-        Date: Date,
-        Array: Array,
-        Object: Object,
-        String: String,
-        Number: Number,
-        Boolean: Boolean,
-        RegExp: RegExp,
-        Error: Error,
-        Map: Map,
-        Set: Set,
-        Promise: Promise,
-        parseInt: parseInt,
-        parseFloat: parseFloat,
-        isNaN: isNaN,
-        isFinite: isFinite,
-        encodeURIComponent: encodeURIComponent,
-        decodeURIComponent: decodeURIComponent,
-      };
+    const logSink: string[] = [];
+    const safeGlobals: Record<string, unknown> = {
+      console: {
+        log: (...args: any[]) => logSink.push(args.map(fmtDirectValue).join(' ')),
+        error: (...args: any[]) => logSink.push('[ERROR] ' + args.map(fmtDirectValue).join(' ')),
+        warn: (...args: any[]) => logSink.push('[WARN] ' + args.map(fmtDirectValue).join(' ')),
+        info: (...args: any[]) => logSink.push('[INFO] ' + args.map(fmtDirectValue).join(' ')),
+      },
+      JSON: JSON,
+      Math: Math,
+      Date: Date,
+      Array: Array,
+      Object: Object,
+      String: String,
+      Number: Number,
+      Boolean: Boolean,
+      RegExp: RegExp,
+      Error: Error,
+      Map: Map,
+      Set: Set,
+      Promise: Promise,
+      parseInt: parseInt,
+      parseFloat: parseFloat,
+      isNaN: isNaN,
+      isFinite: isFinite,
+      encodeURIComponent: encodeURIComponent,
+      decodeURIComponent: decodeURIComponent,
+    };
+    const context = vm.createContext(safeGlobals);
 
-      const fn = new Function(
-        'global',
-        `
-        'use strict';
-        with (global) {
-          return (function() {
-            try {
-              return { success: true, result: (function() { ${code} })() };
-            } catch (e) {
-              return { success: false, error: e.message };
-            }
-          })();
+    // 代码在 vm context 内执行：其词法作用域不含宿主全局，process/require 等
+    // 不可直接引用（ReferenceError）。结果与日志统一带回宿主。
+    const wrapped = `
+      'use strict';
+      (function() {
+        try {
+          return { success: true, result: (function() { ${code} })() };
+        } catch (e) {
+          return { success: false, error: e && e.message ? e.message : String(e) };
         }
-        `,
-      );
+      })()
+    `;
 
-      const result = fn(safeGlobals);
+    try {
+      const result = vm.runInContext(wrapped, context, { timeout: maxExecutionTime }) as {
+        success?: boolean;
+        result?: unknown;
+        error?: string;
+      };
 
       clearTimeout(timeoutId);
 
-      let output;
-      if (result.success) {
+      let output: string;
+      if (result && result.success) {
         if (result.result === undefined) {
           output = '执行完成，无返回值';
         } else if (typeof result.result === 'object') {
@@ -388,7 +399,12 @@ async function runJavaScriptDirect(code: string): Promise<any> {
           output = String(result.result);
         }
       } else {
-        output = '[执行错误]: ' + result.error;
+        output = '[执行错误]: ' + (result && result.error);
+      }
+
+      if (logSink.length > 0) {
+        output =
+          logSink.join('\n') + (output && output !== '执行完成，无返回值' ? '\n' + output : '');
       }
 
       if (output.length > maxOutputSize) {
@@ -409,10 +425,25 @@ async function runJavaScriptDirect(code: string): Promise<any> {
   });
 }
 
+function fmtDirectValue(a: unknown): string {
+  if (a === undefined) return 'undefined';
+  if (a === null) return 'null';
+  if (typeof a === 'function') return '[Function]';
+  if (typeof a === 'object') {
+    try {
+      return JSON.stringify(a, null, 2);
+    } catch {
+      return '[Object]';
+    }
+  }
+  return String(a);
+}
+
 /**
  * 执行 Python 代码（使用沙箱隔离的临时文件）
+ * @param signal - 可选 AbortSignal，传给 execFile，中断时直接 kill 子进程。
  */
-async function runPythonSandbox(code: string): Promise<any> {
+async function runPythonSandbox(code: string, signal?: AbortSignal): Promise<any> {
   // eslint-disable-next-line no-async-promise-executor -- executor 内已用 try/catch 完整兜底，且需统一管理超时与 resolve 时机
   return new Promise(async (resolve) => {
     let tmpPath: any = null;
@@ -487,6 +518,7 @@ async function runPythonSandbox(code: string): Promise<any> {
           cwd: os.tmpdir(),
           env: secureEnv,
           maxBuffer: maxOutputSize * 2,
+          signal,
         },
         async (error: any, stdout: any, stderr: any) => {
           if (timedOut) return;
@@ -537,16 +569,20 @@ async function runPythonSandbox(code: string): Promise<any> {
 /**
  * 执行通用代码（根据语言选择执行方式）
  */
-async function executeCodeSandbox(code: string, language: string = 'javascript'): Promise<any> {
+async function executeCodeSandbox(
+  code: string,
+  language: string = 'javascript',
+  signal?: AbortSignal,
+): Promise<any> {
   const lang = language.toLowerCase();
 
   switch (lang) {
     case 'javascript':
     case 'js':
-      return runJavaScriptSandbox(code);
+      return runJavaScriptSandbox(code, 10000, signal);
     case 'python':
     case 'py':
-      return runPythonSandbox(code);
+      return runPythonSandbox(code, signal);
     default:
       return {
         success: false,

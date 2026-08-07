@@ -52,12 +52,14 @@ function isNetworkError(error: unknown): boolean {
 /**
  * 启发式估算 token 数（API 未返回 usage 时兜底）
  * 中文约 1 token/1.5 字符，英文约 1 token/4 字符
+ * 实现与 src/agent/session.ts 保持一致（同样的中文字符范围与逐项取整），
+ * 避免两处统计口径分叉导致用量估算不一致。
  */
 function estimateTokens(text: string): number {
   if (!text) return 0;
-  const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+  const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
   const otherChars = text.length - chineseChars;
-  return Math.ceil(chineseChars / 1.5 + otherChars / 4);
+  return Math.ceil(chineseChars / 1.5) + Math.ceil(otherChars / 4);
 }
 
 /**
@@ -91,7 +93,10 @@ async function* streamChat(
     try {
       const cfg = loadConfig();
 
-      const baseURL = cfg.api.baseURL.replace(/\/+$/, '');
+      const baseURL = (cfg.api.baseURL || '').replace(/\/+$/, '');
+      if (!baseURL) {
+        throw new Error('API baseURL 未配置，请先运行 setup 或设置 COGITO_API_BASE_URL');
+      }
       const response = await fetch(`${baseURL}/chat/completions`, {
         method: 'POST',
         headers: {
