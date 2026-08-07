@@ -7,7 +7,7 @@ import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import path from 'path';
 import { println, printDivider, printTag } from '../io/terminal.ts';
 import { loadConfig } from '../config.ts';
-import { applyPersona } from './persona.ts';
+import { applyPersona, getCurrentPersonaTitle } from './persona.ts';
 import { getToolNames, getToolsByCategory } from './registry.ts';
 import * as tools from './tools/index.ts';
 import {
@@ -322,7 +322,7 @@ function printStatus(): void {
   println('  CogitoAgent 当前状态', 'cyan');
   printDivider('=', 'cyan');
   println('');
-  println(`  Persona: ${printTag(cfg.persona || 'default', 'bgBlue')}`, 'white');
+  println(`  Persona: ${printTag(cfg.persona || getCurrentPersonaTitle(), 'bgBlue')}`, 'white');
   println(`  模型: ${cfg.api.model || 'N/A'}`, 'white');
   println(`  API: ${cfg.api.baseURL || 'N/A'}`, 'white');
   println(`  工作区: ${tools.getBasePath()}`, 'white');
@@ -463,7 +463,7 @@ function printConfig(): void {
   println('  当前配置', 'cyan');
   printDivider('=', 'cyan');
   println('');
-  println(`  Persona: ${cfg.persona || 'default'}`, 'white');
+  println(`  Persona: ${cfg.persona || getCurrentPersonaTitle()}`, 'white');
   println(`  工作区: ${cfg.workspace || './'}`, 'white');
   println(`  模型: ${cfg.api.model || 'N/A'}`, 'white');
   println(`  API Base: ${cfg.api.baseURL || 'N/A'}`, 'white');

@@ -26,7 +26,49 @@ export function applyPersona(personaName: string): boolean {
   }
 }
 
+/**
+ * 应用人设根目录下的默认人设（personas/persona.md）作为活动人设。
+ * 无人设时系统自动调用该默认人设，其"## 形象"声明决定默认形象。
+ */
+export function applyDefaultPersona(): boolean {
+  const dataDir = process.env.COGITO_USER_DATA_DIR || process.cwd();
+  const defaultPath = path.resolve(process.cwd(), 'personas', 'persona.md');
+  const targetPath = path.resolve(dataDir, 'persona.md');
+
+  try {
+    if (!existsSync(defaultPath)) {
+      return false;
+    }
+    const content = readFileSync(defaultPath, 'utf-8');
+    const dir = path.dirname(targetPath);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    writeFileSync(targetPath, content, 'utf-8');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** 同步当前 Persona 到 .env 的 COGITO_PERSONA（由上层决定是否调用）。 */
 export function getPersonaPath(personaName: string): string {
   return path.resolve(process.cwd(), 'personas', personaName, 'persona.md');
+}
+
+/** 读取当前活动 persona.md 的第一行标题（用于 CLI banner/状态显示）。 */
+export function getCurrentPersonaTitle(): string {
+  const dataDir = process.env.COGITO_USER_DATA_DIR || process.cwd();
+  const targetPath = path.resolve(dataDir, 'persona.md');
+  try {
+    if (existsSync(targetPath)) {
+      const firstLine = readFileSync(targetPath, 'utf-8').split('\n')[0].trim();
+      if (firstLine) {
+        return firstLine.replace(/^#+\s*/, '');
+      }
+    }
+  } catch {
+    // 忽略读取失败，返回默认
+  }
+  return '默认';
 }

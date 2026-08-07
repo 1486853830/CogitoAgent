@@ -528,6 +528,15 @@ const NavManager = {
       });
     }
 
+    // 左上角 COGITO 字样 → 返回欢迎页
+    const logoEl = document.querySelector('.sidebar-logo');
+    if (logoEl) {
+      logoEl.addEventListener('click', () => {
+        this.goWelcome();
+      });
+      logoEl.style.cursor = 'pointer';
+    }
+
     // 重新配置按钮 — 打开 Setup 向导
     const reconfigLink = document.getElementById('reconfigLink');
     if (reconfigLink) {
@@ -876,6 +885,19 @@ const NavManager = {
   switchToDesktop() {
     console.log('[NavManager] 切换到桌宠模式');
     window.electronAPI?.switchToDesktop();
+  },
+
+  goWelcome() {
+    console.log('[NavManager] 返回欢迎页');
+    SkillsManager.hide();
+    AppState.view = 'welcome';
+    document.getElementById('welcomeView').style.display = '';
+    document.getElementById('chatView').style.display = 'none';
+    const inputTop = document.getElementById('chatInput');
+    if (inputTop) {
+      inputTop.value = '';
+      Utils.autoResizeTextarea(inputTop);
+    }
   },
 
   connectWechat() {
