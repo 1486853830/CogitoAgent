@@ -7,6 +7,7 @@ import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import path from 'path';
 import { println, printDivider, printTag } from '../io/terminal.ts';
 import { loadConfig } from '../config.ts';
+import { applyPersona } from './persona.ts';
 import { getToolNames, getToolsByCategory } from './registry.ts';
 import * as tools from './tools/index.ts';
 import {
@@ -373,33 +374,13 @@ function printClearConfirm(): void {
  * 切换 Persona（将 persona 文件复制为 persona.md 并重置对话）
  */
 function switchPersona(personaName: string): void {
-  const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
-  const personaPath = path.resolve(process.cwd(), 'personas', personaName, 'persona.md');
-  const targetPath = path.resolve(DATA_DIR, 'persona.md');
-
-  if (!existsSync(personaPath)) {
+  if (!applyPersona(personaName)) {
     println(`[错误] Persona "${personaName}" 不存在`, 'red');
     println(`  可用 Persona 列表:`, 'gray');
     const dirs = readdirSync(path.resolve(process.cwd(), 'personas'), { withFileTypes: true })
       .filter((dir) => dir.isDirectory())
       .map((dir) => dir.name);
     dirs.forEach((d) => println(`    ${d}`, 'gray'));
-    return;
-  }
-
-  let content: string;
-  try {
-    content = readFileSync(personaPath, 'utf-8');
-  } catch (err) {
-    println(`[错误] 无法读取 Persona 文件: ${(err as Error).message}`, 'red');
-    return;
-  }
-
-  // 写入 persona 文件
-  try {
-    writeFileSync(targetPath, content, 'utf-8');
-  } catch (err) {
-    println(`[错误] 无法写入 persona.md: ${(err as Error).message}`, 'red');
     return;
   }
 

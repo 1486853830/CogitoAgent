@@ -92,6 +92,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   switchToDesktop: () => ipcRenderer.send('switch-to-desktop'),
   switchToDashboard: () => ipcRenderer.send('switch-to-dashboard'),
 
+  // 打开配置向导（重新配置）
+  openSetup: () => ipcRenderer.send('open-setup'),
+
   // 打开监控面板
   openMonitor: () => ipcRenderer.send('open-monitor'),
 

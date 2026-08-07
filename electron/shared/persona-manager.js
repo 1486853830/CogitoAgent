@@ -12,7 +12,7 @@ const PersonaManager = {
     const {
       containerSelector = '.character',
       containerEl = null,
-      defaultMediaPath = './video.mp4',
+      defaultMediaPath = '../shared/video.mp4',
       autoLoad = true,
     } = options;
 

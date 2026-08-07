@@ -17,7 +17,6 @@
 | **统计模块**         | `stats.ts`            | 工具使用追踪和性能指标，记录调用次数、耗时等统计数据                                         |
 | **追踪模块**         | `tracing.ts`          | 轻量级可观测性，记录工具执行和 LLM 调用的详细追踪信息                                        |
 | **集群命令**         | `cluster-commands.ts` | 子智能体管理，支持创建、委派、停止子智能体                                                   |
-| **MCP Server**       | `mcp.ts`              | 将工具暴露为 MCP 协议，支持与其他 AI 客户端集成                                              |
 | **插件系统**         | `plugin.ts`           | 动态加载自定义工具插件，扩展 Agent 能力                                                      |
 | **WebSocket 服务器** | `ws-server.ts`        | 实时双向通信层，为 Electron 客户端和其他 WS 客户端提供消息通道（端口 9527）                  |
 
@@ -44,7 +43,6 @@ flowchart TB
         Stats["stats.ts<br/>统计模块"]
         Tracing["tracing.ts<br/>追踪模块"]
         Cluster["cluster-commands.ts<br/>集群命令"]
-        MCP["mcp.ts<br/>MCP Server"]
         Plugin["plugin.ts<br/>插件系统"]
     end
 
@@ -52,7 +50,6 @@ flowchart TB
         LLM["LLM API"]
         Tools["工具集<br/>文件/终端/搜索等"]
         WSClient["自定义 WS 客户端"]
-        MCPClient["MCP 客户端"]
     end
 
     Main --> Preload
@@ -68,14 +65,13 @@ flowchart TB
     Commands --> Sandbox
     Agent --> Cluster
     Registry --> Plugin
-    Agent --> MCP
+    Agent --> Cluster
 
     WSServer <-->|"WebSocket<br/>JSON 消息"| Agent
 
     Agent <-->|"HTTP/SSE"| LLM
     Commands --> Tools
     WSClient <-->|"WebSocket"| WSServer
-    MCPClient <-->|"MCP Protocol"| MCP
 ```
 
 ---

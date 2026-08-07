@@ -7,6 +7,7 @@
 
 import { loadConfig } from '../config.ts';
 import { safeParseJSON } from '../utils/llm-validator.ts';
+import { estimateTokens } from '../utils/token.ts';
 
 // 重试配置
 const MAX_RETRIES = 5; // 最大重试次数
@@ -47,19 +48,6 @@ function isNetworkError(error: unknown): boolean {
     msg.includes('Premature close') ||
     msg.includes('premature_close')
   );
-}
-
-/**
- * 启发式估算 token 数（API 未返回 usage 时兜底）
- * 中文约 1 token/1.5 字符，英文约 1 token/4 字符
- * 实现与 src/agent/session.ts 保持一致（同样的中文字符范围与逐项取整），
- * 避免两处统计口径分叉导致用量估算不一致。
- */
-function estimateTokens(text: string): number {
-  if (!text) return 0;
-  const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
-  const otherChars = text.length - chineseChars;
-  return Math.ceil(chineseChars / 1.5) + Math.ceil(otherChars / 4);
 }
 
 /**

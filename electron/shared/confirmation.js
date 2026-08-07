@@ -176,21 +176,14 @@
           </svg>
           <span>${t('confirm.title', '确认执行危险操作？')}</span>
         </div>
-        <p class="confirm-hint">${escapeHtml(hint)}</p>
-        <div class="confirm-args">${escapeHtml(args)}</div>
+        <p class="confirm-hint">${SharedUtils.escapeHtml(hint)}</p>
+        <div class="confirm-args">${SharedUtils.escapeHtml(args)}</div>
         <div class="confirm-actions">
           <button class="confirm-btn confirm-btn-cancel" data-action="cancel">${t('common.cancel', '取消')}</button>
           <button class="confirm-btn confirm-btn-confirm" data-action="confirm">${t('confirm.allow', '允许执行')}</button>
         </div>
       </div>
     `;
-  }
-
-  function escapeHtml(str) {
-    if (str === null || str === undefined) return '';
-    const d = document.createElement('div');
-    d.textContent = String(str);
-    return d.innerHTML;
   }
 
   function respond(confirmed) {

@@ -28,7 +28,7 @@ const ToastManager = {
 
     toast.innerHTML = `
       <div class="toast-icon">${icon}</div>
-      <div class="toast-message">${this._escapeHtml(message)}</div>
+      <div class="toast-message">${SharedUtils.escapeHtml(message)}</div>
     `;
 
     const btn = document.createElement('button');
@@ -79,12 +79,6 @@ const ToastManager = {
       default:
         return '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>';
     }
-  },
-
-  _escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
   },
 };
 

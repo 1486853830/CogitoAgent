@@ -10,12 +10,6 @@ import { DEFAULT_CONFIG, loadEnvConfig, deepMerge } from './config.ts';
 // 复用 electron 端的 .env 写入逻辑，避免 CLI 与桌面端字段集/格式分叉
 import { writeEnvConfig } from '../electron/shared/config-writer.js';
 
-interface PersonaInfo {
-  name: string;
-  firstLine: string;
-  filename: string;
-}
-
 interface EmailSetupConfig {
   host: string;
   port: number;
@@ -263,85 +257,10 @@ function checkEnvConfig(): boolean {
 }
 
 /**
- * 获取可用的人设列表
- */
-function getAvailablePersonas(): PersonaInfo[] {
-  const personasDir = path.join(process.cwd(), 'personas');
-  const personas: PersonaInfo[] = [];
-
-  try {
-    const dirs = fs
-      .readdirSync(personasDir, { withFileTypes: true })
-      .filter((dir) => dir.isDirectory())
-      .map((dir) => dir.name);
-    for (const dir of dirs) {
-      const personaPath = path.join(personasDir, dir, 'persona.md');
-      if (fs.existsSync(personaPath)) {
-        const content = fs.readFileSync(personaPath, 'utf-8');
-        const firstLine = content.split('\n')[0].replace(/^#\s*/, '').trim();
-        personas.push({ name: dir, firstLine, filename: `${dir}/persona.md` });
-      }
-    }
-  } catch {
-    // 目录不存在，使用默认
-  }
-
-  return personas;
-}
-
-/**
- * 选择人设
- */
-async function selectPersona(
-  rl: readline.Interface,
-  personas: PersonaInfo[],
-): Promise<PersonaInfo | null> {
-  printStepTitle(5, '选择人设');
-  println('');
-  println(COLORS.dim + '  0 - 不使用人设（使用默认行为）' + COLORS.reset);
-  println('');
-
-  personas.forEach((p, i) => {
-    println(
-      COLORS.white +
-        `  ${i + 1} - ` +
-        COLORS.cyan +
-        p.firstLine +
-        COLORS.dim +
-        ` (${p.name})` +
-        COLORS.reset,
-    );
-  });
-  println('');
-
-  const answer = await question(rl, COLORS.yellow + '  请输入编号或名称: ' + COLORS.reset);
-  const trimmed = answer.trim();
-
-  if (trimmed === '0' || trimmed === '') {
-    return null;
-  }
-
-  // 按编号选择
-  const num = parseInt(trimmed, 10);
-  if (!isNaN(num) && num >= 1 && num <= personas.length) {
-    return personas[num - 1];
-  }
-
-  // 按名称选择
-  const found = personas.find(
-    (p) =>
-      p.name.toLowerCase() === trimmed.toLowerCase() ||
-      p.firstLine.toLowerCase().includes(trimmed.toLowerCase()),
-  );
-
-  return found || null;
-}
-
-/**
  * 配置思考间隔
  */
 async function configureThinkingInterval(rl: readline.Interface): Promise<number> {
-  printStepTitle(6, '思考间隔配置（可选）');
+  printStepTitle(5, '思考间隔配置（可选）');
   println('');
   printTip('AI 自动思考的时间间隔，单位毫秒，最小值 1000');
   println(COLORS.dim + '  按回车使用默认值: 3000' + COLORS.reset);
@@ -556,23 +475,6 @@ async function configureSecurity(rl: readline.Interface): Promise<SecuritySetupC
 }
 
 /**
- * 应用选择的人设
- */
-function applyPersona(persona: PersonaInfo | null): boolean {
-  if (!persona) return false;
-
-  const srcPath = path.join(process.cwd(), 'personas', persona.filename);
-  const destPath = path.join(process.cwd(), 'persona.md');
-
-  try {
-    fs.copyFileSync(srcPath, destPath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * 保存配置到 .env 文件
  *
  * 字段集、引号格式、邮箱密码加密、文件权限均由 electron/shared/config-writer.js
@@ -690,36 +592,31 @@ async function runSetup(): Promise<any> {
   printInfo(`工作区: ${normalizedWorkspace}`);
   println('');
 
-  // 5. 人设选择
-  const personas = getAvailablePersonas();
-  const selectedPersona = await selectPersona(rl, personas);
-  println('');
-
-  // 6. 思考间隔配置（可选）
+  // 5. 思考间隔配置（可选）
   const thinkingInterval = await configureThinkingInterval(rl);
   println('');
 
-  // 7. 启动模式配置（可选）
+  // 6. 启动模式配置（可选）
   const mode = await configureMode(rl);
   println('');
 
-  // 8. 邮件配置（可选）
+  // 7. 邮件配置（可选）
   const emailConfig = await configureEmail(rl);
   println('');
 
-  // 9. OCR 配置（可选）
+  // 8. OCR 配置（可选）
   const ocrConfig = await configureOCR(rl);
   println('');
 
-  // 10. 视觉分析配置（可选）
+  // 9. 视觉分析配置（可选）
   const visionConfig = await configureVision(rl);
   println('');
 
-  // 11. 代码执行配置（可选）
+  // 10. 代码执行配置（可选）
   const codeConfig = await configureCode(rl);
   println('');
 
-  // 12. 安全配置（可选）
+  // 11. 安全配置（可选）
   const securityConfig = await configureSecurity(rl);
 
   rl.close();
@@ -763,7 +660,6 @@ async function runSetup(): Promise<any> {
         }
       : undefined,
     security: securityConfig,
-    persona: selectedPersona?.name || '',
   };
 
   // 保存到 .env 文件
@@ -773,19 +669,9 @@ async function runSetup(): Promise<any> {
 
   const saved = saveEnvConfig(config);
   if (saved) {
-    // 应用人设
-    if (selectedPersona) {
-      if (applyPersona(selectedPersona)) {
-        printSuccess(`已应用人设: ${selectedPersona.firstLine}`);
-      } else {
-        printWarning('人设应用失败，将使用默认行为');
-      }
-    } else {
-      printInfo('未选择人设，使用默认行为');
-    }
-
     printCompleteBanner();
     printTip('如需修改配置，请编辑 .env 文件');
+    printTip('人设可在进入 Dashboard 后自由选择');
   } else {
     printError('配置保存失败，请检查目录权限');
   }

@@ -32,5 +32,5 @@ ENV THINKING_INTERVAL=3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:9527/health || exit 1
 
-# 启动命令
-CMD ["npm", "start"]
+# 启动命令：容器为无头环境，运行 CLI 模式（Electron 桌面界面在容器中不可用）
+CMD ["npx", "tsx", "src/index.ts"]

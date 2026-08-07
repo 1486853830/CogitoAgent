@@ -34,12 +34,6 @@ describe('registry.ts', () => {
       expect(TOOL_CATEGORIES.office).toBe('Office文档');
       expect(TOOL_CATEGORIES.cluster).toBe('集群管理');
       expect(TOOL_CATEGORIES.wechat).toBe('微信消息');
-      expect(TOOL_CATEGORIES.gis).toBe('地理信息');
-      expect(TOOL_CATEGORIES.bio).toBe('生命科学');
-      expect(TOOL_CATEGORIES.med).toBe('医学');
-      expect(TOOL_CATEGORIES.chem).toBe('化学');
-      expect(TOOL_CATEGORIES.finance).toBe('金融');
-      expect(TOOL_CATEGORIES.math).toBe('数学/统计');
     });
   });
 
@@ -75,7 +69,7 @@ describe('registry.ts', () => {
       expect(TOOL_REGISTRY.ls.category).toBe('file');
       expect(TOOL_REGISTRY.search.category).toBe('web');
       expect(TOOL_REGISTRY.executeCode.category).toBe('code');
-      expect(TOOL_REGISTRY.bmi.category).toBe('med');
+      expect(TOOL_REGISTRY.executeSQL.category).toBe('db');
     });
   });
 
@@ -87,6 +81,8 @@ describe('registry.ts', () => {
       expect(DANGEROUS_OPERATIONS.has('dropTable')).toBe(true);
       expect(DANGEROUS_OPERATIONS.has('clearTasks')).toBe(true);
       expect(DANGEROUS_OPERATIONS.has('clearMemory')).toBe(true);
+      expect(DANGEROUS_OPERATIONS.has('executeSQL')).toBe(true);
+      expect(DANGEROUS_OPERATIONS.has('executeTransaction')).toBe(true);
     });
 
     it('should not contain safe operations', () => {

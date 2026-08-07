@@ -5,6 +5,8 @@ import { buildSystemPrompt } from './system-prompt.ts';
 import type { Message, SessionMeta, SessionInfo } from '../types/index.ts';
 import { broadcast } from '../io/ws-server.ts';
 import { recordSession } from './stats.ts';
+import { estimateTokens } from '../utils/token.ts';
+import { applyPersona } from './persona.ts';
 
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const SESSIONS_DIR = path.resolve(DATA_DIR, 'data', 'sessions');
@@ -244,21 +246,8 @@ function switchSession(sessionId: string): {
 
   // 如果会话绑定了人设，切换到对应人设
   if (session.persona) {
-    const personaSrc = path.resolve(
-      process.cwd(),
-      'personas',
-      session.persona as string,
-      'persona.md',
-    );
-    const personaTarget = path.resolve(DATA_DIR, 'persona.md');
-    try {
-      if (existsSync(personaSrc)) {
-        const content = readFileSync(personaSrc, 'utf-8');
-        writeFileSync(personaTarget, content, 'utf-8');
-        console.log(`[会话] 切换到人设: ${session.persona}`);
-      }
-    } catch (e) {
-      console.error(`[会话] 切换人设失败: ${e}`);
+    if (applyPersona(session.persona as string)) {
+      console.log(`[会话] 切换到人设: ${session.persona}`);
     }
   }
 
@@ -426,13 +415,6 @@ function addAssistantMessage(content: string): void {
 function addToolResultMessage(content: string): void {
   conversationHistory.push({ role: 'user', content });
   saveSession(currentSessionId!, conversationHistory);
-}
-
-function estimateTokens(text: string): number {
-  if (!text) return 0;
-  const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
-  const otherChars = text.length - chineseChars;
-  return Math.ceil(chineseChars / 1.5) + Math.ceil(otherChars / 4);
 }
 
 function getContextTokenEstimate(): number {

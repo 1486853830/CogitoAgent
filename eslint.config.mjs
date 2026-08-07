@@ -6,7 +6,7 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
-  { ignores: ["dist/", "node_modules/", "coverage/", "electron/"] },
+  { ignores: ["dist/", "node_modules/", "coverage/"] },
   {
     languageOptions: {
       globals: {
@@ -39,6 +39,79 @@ export default [
       "preserve-caught-error": "warn",
       "no-control-regex": "warn",
       "no-unassigned-vars": "warn"
+    }
+  },
+  {
+    files: ["electron/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        window: "readonly",
+        document: "readonly",
+        navigator: "readonly",
+        location: "readonly",
+        localStorage: "readonly",
+        console: "readonly",
+        process: "readonly",
+        require: "readonly",
+        module: "readonly",
+        __dirname: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        fetch: "readonly",
+        WebSocket: "readonly",
+        alert: "readonly",
+        Blob: "readonly",
+        FileReader: "readonly",
+        MutationObserver: "readonly",
+        requestAnimationFrame: "readonly",
+        cancelAnimationFrame: "readonly",
+        CustomEvent: "readonly",
+        URL: "readonly",
+        marked: "readonly",
+        DOMPurify: "readonly",
+        SharedUtils: "readonly",
+        MessageRenderer: "readonly",
+        PersonaManager: "readonly",
+        WindowControls: "readonly",
+        ToastManager: "readonly",
+        ConfirmationManager: "readonly",
+        StreamReplyHandler: "readonly",
+        TokenManager: "readonly",
+        PanelToggle: "readonly",
+        I18n: "readonly",
+        electronAPI: "readonly"
+      }
+    },
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-require-imports": "off",
+      "no-case-declarations": "off"
+    }
+  },
+  {
+    files: ["electron/**/*.cjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "commonjs",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        require: "readonly",
+        module: "readonly",
+        __dirname: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly"
+      }
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off"
     }
   },
   {

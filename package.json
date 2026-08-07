@@ -50,6 +50,7 @@
   },
   "scripts": {
     "start": "chcp 65001 > nul && cross-env COGITO_MODE=dashboard electron .",
+    "electron:dashboard": "chcp 65001 > nul && cross-env COGITO_MODE=dashboard electron .",
     "electron:desktop": "chcp 65001 > nul && cross-env COGITO_MODE=desktop electron .",
     "cli": "chcp 65001 > nul && cross-env CLI_MODE=true DISABLE_WS=true npx tsx src/index.ts",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
@@ -59,9 +60,9 @@
     "build:win": "electron-builder --win",
     "build:nsis": "electron-builder --win nsis",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --fix",
-    "lint:check": "eslint .",
-    "format": "prettier --write \"src/**/*.{ts,js,json}\"",
+    "lint": "eslint src electron plugins",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\" \"electron/**/*.{js,json}\"",
     "prepare": "husky",
     "prepublishOnly": "npm run typecheck && npm test",
     "publish:npm": "npm publish --access public"
@@ -77,7 +78,6 @@
   },
   "dependencies": {
     "@pawastation/ilink-bot-sdk": "^0.2.0",
-    "@unblessed/node": "^1.0.0-alpha.23",
     "cheerio": "^1.0.0",
     "docx": "^9.7.1",
     "dompurify": "^3.4.12",

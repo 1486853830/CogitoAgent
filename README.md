@@ -37,21 +37,20 @@ Unlike cloud-dependent agents that upload your files to third-party servers, Cog
 
 ## Core Features
 
-| Feature                         | Description                                                                                                                                                             |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **TypeScript Core**             | Full TypeScript migration with type safety and compile-time error detection                                                                                             |
-| **Privacy First**               | Workspace files stay local; only conversation context is sent to the LLM API you specify                                                                                |
-| **Continuous Thinking**         | Automatically triggers a thinking cycle every 3 seconds (configurable)                                                                                                  |
-| **Tool Execution**              | 28 tool modules with 200+ tools for file operations, code execution, Git, databases, OCR, Office documents, GIS, bioinformatics, medicine, chemistry, finance, and more |
-| **Security Sandbox**            | JavaScript code execution uses `isolated-vm` for process-level isolation                                                                                                |
-| **Multi-Session Management**    | Multiple independent conversation sessions with persistent storage and auto-compression                                                                                 |
-| **Desktop Mode**                | Electron desktop window communicating via WebSocket with the terminal Agent                                                                                             |
-| **MCP Protocol**                | Expose tools as MCP Server for integration with other AI clients                                                                                                        |
-| **Plugin System**               | Dynamically load custom tool plugins                                                                                                                                    |
-| **Thought Chain Visualization** | Real-time visualization of thinking process and tool execution                                                                                                          |
-| **Agent Cluster**               | Sub-agent creation, task delegation, and multi-agent collaboration                                                                                                      |
-| **Monitor Panel**               | Dedicated window for real-time cluster topology, thought chain, and tool stats                                                                                          |
-| **WeChat Integration**          | QR code login, message sending/receiving, dedicated session, tool bubble display                                                                                        |
+| Feature                         | Description                                                                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **TypeScript Core**             | Full TypeScript migration with type safety and compile-time error detection                                                          |
+| **Privacy First**               | Workspace files stay local; only conversation context is sent to the LLM API you specify                                             |
+| **Continuous Thinking**         | Automatically triggers a thinking cycle every 3 seconds (configurable)                                                               |
+| **Tool Execution**              | 28 tool modules with 200+ tools for file operations, code execution, Git, databases, OCR, Office documents, bioinformatics, and more |
+| **Security Sandbox**            | JavaScript code execution uses `isolated-vm` for process-level isolation                                                             |
+| **Multi-Session Management**    | Multiple independent conversation sessions with persistent storage and auto-compression                                              |
+| **Desktop Mode**                | Electron desktop window communicating via WebSocket with the terminal Agent                                                          |
+| **Plugin System**               | Dynamically load custom tool plugins                                                                                                 |
+| **Thought Chain Visualization** | Real-time visualization of thinking process and tool execution                                                                       |
+| **Agent Cluster**               | Sub-agent creation, task delegation, and multi-agent collaboration                                                                   |
+| **Monitor Panel**               | Dedicated window for real-time cluster topology, thought chain, and tool stats                                                       |
+| **WeChat Integration**          | QR code login, message sending/receiving, dedicated session, tool bubble display                                                     |
 
 ### Comparison with Other AI Agents
 
@@ -60,7 +59,6 @@ Unlike cloud-dependent agents that upload your files to third-party servers, Cog
 | **Privacy (files stay local)**       |        ✅        |        ❌        |      ❌       |        ⚠️        |
 | **Continuous thinking (auto-cycle)** |      ✅ 3s       |        ❌        |      ❌       |        ❌        |
 | **Desktop GUI (Electron)**           |        ✅        |        ❌        |      ❌       |        ❌        |
-| **MCP Protocol support**             |    ✅ Server     |        ❌        |   ✅ Client   |    ✅ Client     |
 | **Plugin system**                    | ✅ Dynamic load  |        ✅        |      ❌       |        ❌        |
 | **Agent Cluster (sub-agents)**       |        ✅        |        ❌        |      ❌       |        ❌        |
 | **WeChat integration**               |        ✅        |        ❌        |      ❌       |        ❌        |
@@ -149,16 +147,14 @@ flowchart LR
     subgraph MODULES["28 Tool Modules"]
         direction LR
         CORE1["file<br/>web<br/>code<br/>system<br/>browser"]
-        CORE2["git<br/>data<br/>db<br/>path<br/>storage"]
+        CORE2["git<br/>data<br/>db<br/>path"]
         AI["memory<br/>ocr<br/>vision"]
         COMM["wechat<br/>email<br/>cluster"]
         AUTO["task<br/>scheduler<br/>monitor<br/>office"]
-        PROF["gis<br/>bio<br/>med<br/>chem<br/>finance<br/>math"]
     end
 
     subgraph EXTENSION["Extension"]
         PLUGIN["plugin.ts<br/>Dynamic Load"]
-        MCP["mcp.ts<br/>JSON-RPC 2.0"]
         DANGER["DANGEROUS_OPERATIONS<br/>User Confirmation"]
     end
 
@@ -170,7 +166,6 @@ flowchart LR
     EXECUTOR --> TRACE
     EXECUTOR --> DANGER
     PLUGIN --> REG
-    MCP --> REG
 
     classDef invocation fill:#161b28,stroke:#5eead4,color:#5eead4;
     classDef registry fill:#161b28,stroke:#fbbf24,color:#fbbf24;
@@ -179,8 +174,8 @@ flowchart LR
 
     class LLM,PARSER,EXECUTOR invocation;
     class REG,STATS,TRACE registry;
-    class CORE1,CORE2,AI,COMM,AUTO,PROF modules;
-    class PLUGIN,MCP,DANGER extension;
+    class CORE1,CORE2,AI,COMM,AUTO modules;
+    class PLUGIN,DANGER extension;
 ```
 
 | Category           | File           | Main Functions                                                                                                                                                                                                                                                                                    |
@@ -200,18 +195,11 @@ flowchart LR
 | Email              | `email.ts`     | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig`                                                                                                                                                                                |
 | System Monitoring  | `monitor.ts`   | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem`                                                                                                                                            |
 | Scheduled Tasks    | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler`                                                                                                                                     |
-| Storage            | `storage.ts`   | `FileStorage`, `createStorage`, `getStorage`, `clearStorage`                                                                                                                                                                                                                                      |
 | Image Recognition  | `ocr.ts`       | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
 | Vision Analysis    | `vision.ts`    | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
 | Office Documents   | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
 | Cluster            | `cluster.ts`   | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting`                                                                                                                                                        |
 | WeChat             | `wechat.ts`    | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode`                                                                                                                                                                                  |
-| GIS                | `gis.ts`       | `convertCoord`, `calcDistance`, `calcArea`, `calcCenter`, `pointInPolygon`, `isInChina`, `readGeoJSON`, `queryGeoJSON`, `geoJSONStats`, `geoJSONToCSV`, `geoJSONToKML`                                                                                                                            |
-| Life Science       | `bio.ts`       | `dnaComplement`, `dnaReverseComplement`, `rnaTranscribe`, `translate`, `gcContent`, `molecularWeight`, `hammingDistance`, `levenshteinDistance`, `tmEstimate`, `hairpinCheck`, `parseFASTA`, `parseFASTQ`, `fastaToCSV`, `codonUsage`, `randomSeq`                                                |
-| Medicine           | `med.ts`       | `bmi`, `bsa`, `egfr`, `crcl`, `childPugh`, `calculateDose`, `bsaDose`, `infusionRate`, `idealBodyWeight`, `convertUnit`, `temperatureConvert`, `meanArterialPressure`, `anionGap`, `correctedCalcium`, `oxygenIndex`, `parseVitalSigns`, `vitalsReport`                                           |
-| Chemistry          | `chem.ts`      | `elementInfo`, `molWeight`, `elementComposition`, `molarity`, `dilution`, `phFromH`, `phToH`, `idealGasLaw`, `gasDensity`                                                                                                                                                                         |
-| Finance            | `finance.ts`   | `compoundInterest`, `presentValue`, `futureValueAnnuity`, `npv`, `irr`, `paybackPeriod`, `roi`, `loanPayment`, `amortizationSchedule`, `totalInterest`, `movingAverage`, `volatility`                                                                                                             |
-| Math/Stats         | `math.ts`      | `describe`, `correlation`, `linearRegression`, `matrixMultiply`, `matrixDeterminant`, `matrixInverse`, `solveQuadratic`, `factorial`, `combination`, `permutation`, `siConvert`                                                                                                                   |
 
 > Detailed tool documentation: registration mechanism, usage examples, best practices → [introduction/tools.md](introduction/tools.md) (Chinese)
 
@@ -277,7 +265,6 @@ flowchart TB
     end
 
     subgraph EXT["Extensions"]
-        MCP["mcp.ts<br/>JSON-RPC :3001"]
         PLUGIN["plugin.ts<br/>Dynamic Load"]
         RETRY["retry.ts<br/>Circuit Breaker"]
         CLUSTER["orchestrator.ts<br/>Sub-Agent Cluster"]
@@ -319,7 +306,6 @@ flowchart TB
     EXT --> CLUSTER
     EXT --> WECHAT
     PLUGIN --> REG
-    MCP --> REG
 
     THINK --> CYCLE
     CYCLE --> THINK
@@ -341,7 +327,7 @@ flowchart TB
     class AWAIT,THINKING,CONFIRM state;
     class PERSIST,COMPRESS,HISTORY session;
     class REG,STATS,TRACE tools;
-    class MCP,PLUGIN,RETRY,CLUSTER,WECHAT ext;
+    class PLUGIN,RETRY,CLUSTER,WECHAT ext;
     class LLM api;
 ```
 
@@ -356,7 +342,6 @@ flowchart TB
 | **stats.ts**            | Statistics — tool usage tracking and metrics                               |
 | **tracing.ts**          | Tracing — lightweight observability for tool executions and LLM calls      |
 | **cluster-commands.ts** | Cluster commands — spawn, delegate, stop sub-agents                        |
-| **mcp.ts**              | MCP Server — expose tools as MCP protocol                                  |
 | **plugin.ts**           | Plugin system — dynamic loading of custom tool plugins                     |
 | **ws-server.ts**        | WebSocket — desktop mode communication (port 9527)                         |
 | **wechat-manager.ts**   | WeChat Channel — iLink protocol integration, message routing, session sync |
@@ -411,7 +396,7 @@ cogito-agent/
 │   ├── agent/                        # Core agent module
 │   │   ├── Agent.ts / state.ts / registry.ts
 │   │   ├── commands.ts / session.ts / stats.ts
-│   │   ├── mcp.ts / plugin.ts / thought-trace.ts / retry.ts
+│   │   ├── plugin.ts / thought-trace.ts / retry.ts
 │   │   ├── wechat-manager.ts         # WeChat channel management
 │   │   └── tools/                    # 28+ tool modules
 │   ├── api/                          # API layer (client, models, webSearch)
@@ -478,7 +463,6 @@ flowchart TD
     end
 
     subgraph INTEGRATION["Integration"]
-        MCP["mcp.ts<br/>JSON-RPC 2.0 on :3001"]
         PLUGIN["plugin.ts<br/>Dynamic Tool Loading"]
         WECHAT["wechat-manager.ts<br/>iLink QR Login + Routing"]
     end
@@ -497,7 +481,6 @@ flowchart TD
     AGENT --> TRACING
     AGENT --> DANGER
     AGENT --> RETRY
-    AGENT --> MCP
     AGENT --> PLUGIN
     AGENT --> WECHAT
 
@@ -513,7 +496,7 @@ flowchart TD
     class REGISTRY,SANDBOX,TASK,CLUSTER execution;
     class STATS,TRACING obs;
     class DANGER,RETRY security;
-    class MCP,PLUGIN,WECHAT integration;
+    class PLUGIN,WECHAT integration;
 ```
 
 - **Memory System** — JSON-based long-term storage with tag-based semantic retrieval
@@ -542,7 +525,6 @@ flowchart TD
 > See [introduction/extensions.md](introduction/extensions.md) (Chinese) for details
 
 - **Plugin System** — Dynamic loading of custom tool plugins
-- **MCP Protocol** — Expose tools as MCP Server
 - **Tracing** — Lightweight observability for tool executions and LLM calls
 - **Circuit Breaker & Retry** — Reliable network requests
 - **Multi-Model** — OpenAI, Moark, Anthropic, Google support
