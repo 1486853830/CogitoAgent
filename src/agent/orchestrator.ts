@@ -5,7 +5,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
-import { streamChatNative } from '../api/client.ts';
+import { streamChatNative, isAbortError } from '../api/client.ts';
 import type { NativeStreamReturn, NativeStreamChunk } from '../api/client.ts';
 import { TOOL_REGISTRY, isDangerousOperation, getEnabledToolNames } from './registry.ts';
 import { broadcast } from '../io/ws-server.ts';
@@ -30,6 +30,14 @@ class SubAgent {
   toolCalls: number; // 工具调用次数
   error: string | null; // 错误信息
   iterationCount: number; // 思考迭代次数
+  /** 当前任务的中断句柄；无任务时为 null。 */
+  abortController: AbortController | null;
+  /** 是否已被请求停止（stopAgent / 硬超时 / 从集群移除）。 */
+  stopRequested: boolean;
+  /** 中断原因，用于回传给调用方而不是笼统地报"失败"。 */
+  interruptReason: string | null;
+  /** 任务硬超时时间戳（epoch ms）；无任务时为 null。 */
+  deadlineAt: number | null;
 
   constructor(id: string, persona: string, name: string, instruction: string) {
     this.id = id;
@@ -44,6 +52,27 @@ class SubAgent {
     this.toolCalls = 0;
     this.error = null;
     this.iterationCount = 0;
+    this.abortController = null;
+    this.stopRequested = false;
+    this.interruptReason = null;
+    this.deadlineAt = null;
+  }
+
+  /**
+   * 请求停止本智能体：置停止标志并 abort 正在进行的 LLM 流。
+   * 仅置标志是不够的——不 abort 的话已发出的请求会继续把整段回复读完，
+   * 表面上智能体已被删除，实际仍在消耗 token 并占用连接（僵尸子智能体）。
+   */
+  requestStop(reason: string): void {
+    if (!this.stopRequested) {
+      this.stopRequested = true;
+      this.interruptReason = reason;
+    }
+    try {
+      this.abortController?.abort();
+    } catch {
+      /* abort 失败不影响停止语义 */
+    }
   }
 }
 
@@ -80,6 +109,7 @@ class AgentOrchestrator {
   maxToolOutput: number; // 工具输出最大长度
   maxSubAgents: number; // 子智能体数量上限
   maxParallelTasks: number; // 并行/讨论/流水线任务数量上限
+  taskTimeoutMs: number; // 单个任务硬超时（防止 LLM/工具卡死导致任务永不结束）
 
   constructor() {
     this.agents = new Map();
@@ -88,6 +118,7 @@ class AgentOrchestrator {
     this.maxToolOutput = 5000;
     this.maxSubAgents = 12;
     this.maxParallelTasks = 8;
+    this.taskTimeoutMs = 10 * 60 * 1000;
   }
 
   /**
@@ -158,6 +189,13 @@ class AgentOrchestrator {
     agent.state = 'thinking';
     agent.lastActiveAt = new Date().toISOString();
     agent.iterationCount = 0;
+    // 每次委托都是全新任务：重置上一轮遗留的中断状态与错误，
+    // 并建立本轮的中断句柄 + 硬超时截止时间。
+    agent.stopRequested = false;
+    agent.interruptReason = null;
+    agent.error = null;
+    agent.abortController = new AbortController();
+    agent.deadlineAt = Date.now() + this.taskTimeoutMs;
     this._broadcastClusterState();
 
     try {
@@ -176,17 +214,57 @@ class AgentOrchestrator {
       // 执行智能体的思考-行动循环
       const result = await this._executeAgentLoop(agent, messages);
 
+      // 被 stopAgent / 硬超时 / 移出集群中断的任务不能算成功，
+      // 否则 pipeline 会拿半截结果继续往下走。
+      if (agent.stopRequested) {
+        const reason = agent.interruptReason ?? '任务已被中断';
+        agent.state = 'stopped';
+        agent.error = reason;
+        agent.result = result;
+        this._broadcastClusterState();
+        return { success: false, error: reason, data: result };
+      }
+
       agent.state = 'done';
       agent.result = result;
       this._broadcastClusterState();
 
       return { success: true, data: result };
     } catch (error: unknown) {
+      if (isAbortError(error) || agent.stopRequested) {
+        const reason = agent.interruptReason ?? '任务已被中断';
+        agent.state = 'stopped';
+        agent.error = reason;
+        this._broadcastClusterState();
+        return { success: false, error: reason };
+      }
       agent.state = 'error';
       agent.error = (error as Error).message;
       this._broadcastClusterState();
       return { success: false, error: (error as Error).message };
+    } finally {
+      agent.abortController = null;
+      agent.deadlineAt = null;
+      agent.lastActiveAt = new Date().toISOString();
     }
+  }
+
+  /**
+   * 检查智能体是否应当中断当前任务，返回中断原因（无需中断时返回 null）。
+   * 三种情况：显式 stopAgent、任务硬超时、智能体已被移出集群。
+   * 后两种会顺带触发 requestStop 以 abort 正在进行的 LLM 流。
+   */
+  _checkInterrupt(agent: SubAgent): string | null {
+    if (agent.stopRequested) return agent.interruptReason ?? '任务已被停止';
+    if (agent.deadlineAt !== null && Date.now() > agent.deadlineAt) {
+      agent.requestStop(`任务执行超过 ${Math.round(this.taskTimeoutMs / 1000)} 秒上限，已强制中断`);
+      return agent.interruptReason;
+    }
+    if (!this.agents.has(agent.id)) {
+      agent.requestStop('智能体已从集群中移除');
+      return agent.interruptReason;
+    }
+    return null;
   }
 
   /**
@@ -463,6 +541,11 @@ class AgentOrchestrator {
       return { success: false, error: `智能体 "${agentId}" 不存在` };
     }
 
+    // 先 abort 正在进行的 LLM 流，再从集群摘除。
+    // 只 delete 不 abort 会留下"看不见但仍在跑"的僵尸子智能体：
+    // 它会继续读完整个流、继续执行剩余工具调用、继续烧 token。
+    agent.requestStop('智能体已被停止');
+    agent.state = 'stopped';
     this.agents.delete(agentId);
     this._broadcastClusterState();
 
@@ -474,6 +557,10 @@ class AgentOrchestrator {
    */
   stopAllAgents(): OperationResult {
     const count = this.agents.size;
+    for (const agent of this.agents.values()) {
+      agent.requestStop('集群已被整体停止');
+      agent.state = 'stopped';
+    }
     this.agents.clear();
     this._broadcastClusterState();
     return { success: true, data: { stoppedCount: count } };
@@ -548,20 +635,45 @@ class AgentOrchestrator {
     // 否则任务会被标记为 done 却没有拿到最终结果。
     let hasFinalAnswer = false;
 
-    const tools = buildOpenAITools(getEnabledToolNames(), { strict: false });
+    // 子智能体禁用集群工具：cluster 分类含 spawnAgent / delegateTask /
+    // parallelExecute / pipeline / stopAllAgents。这些工具既不在
+    // DANGEROUS_OPERATIONS、权限又默认 allow，两道门都会放行，子智能体因此
+    // 可以再 spawn 子智能体并 parallelExecute，形成指数级 LLM 调用；
+    // 也能调 stopAllAgents 把整个集群清空。集群编排必须只由主 Agent 发起。
+    const tools = buildOpenAITools(
+      getEnabledToolNames().filter((name) => TOOL_REGISTRY[name]?.category !== 'cluster'),
+      { strict: false },
+    );
 
     for (let i = 0; i < this.maxIterations; i++) {
+      // 每轮开始先判定中断：stopAgent / 硬超时 / 已被移出集群时立刻收手。
+      const preReason = this._checkInterrupt(agent);
+      if (preReason) {
+        fullResponse += `\n\n[系统] ${preReason}`;
+        return fullResponse;
+      }
+
       agent.iterationCount = i + 1;
       agent.state = 'thinking';
       this._broadcastClusterState();
 
       // 调用 LLM（原生工具协议）
       let content = '';
-      let toolCalls: Array<{ id: string; name: string; arguments: string }>;
-      let result!: NativeStreamReturn;
+      let result: NativeStreamReturn | null = null;
+      let interrupted = false;
+      const stream = streamChatNative(messages, {
+        tools,
+        signal: agent.abortController?.signal,
+      });
       try {
-        const stream = streamChatNative(messages, { tools });
         while (true) {
+          if (this._checkInterrupt(agent)) {
+            interrupted = true;
+            // 必须走 stream.return() 让生成器的 finally 取消 reader，
+            // 裸 break 会把底层 TCP 连接泄漏在连接池里。
+            await stream.return({ input: 0, output: 0, stopReason: 'aborted', toolCalls: [] });
+            break;
+          }
           const iterResult = await stream.next();
           if (iterResult.done) {
             result = iterResult.value;
@@ -570,12 +682,22 @@ class AgentOrchestrator {
           const chunk = iterResult.value as NativeStreamChunk;
           if (chunk.content) content += chunk.content;
         }
-        toolCalls = result.toolCalls || [];
       } catch (error: unknown) {
-        throw new Error(`LLM 调用失败: ${(error as Error).message}`, { cause: error });
+        if (isAbortError(error) || agent.stopRequested) {
+          interrupted = true;
+        } else {
+          throw new Error(`LLM 调用失败: ${(error as Error).message}`, { cause: error });
+        }
       }
 
       fullResponse += content;
+
+      if (interrupted) {
+        fullResponse += `\n\n[系统] ${agent.interruptReason ?? '任务已被中断'}`;
+        return fullResponse;
+      }
+
+      const toolCalls = result?.toolCalls || [];
 
       if (toolCalls.length === 0) {
         // 没有工具调用，这就是最终回复
@@ -607,7 +729,21 @@ class AgentOrchestrator {
       // 执行工具并把结果以 role=tool 消息注入
       agent.state = 'tool_executing';
 
+      let toolLoopInterrupted = false;
       for (const tc of toolCalls) {
+        // 工具是顺序执行的，一次调用可能很慢；每个工具前都要重新判定中断，
+        // 否则 stopAgent 之后剩余工具仍会全部跑完（写文件、发请求等副作用照做）。
+        const interruptReason = this._checkInterrupt(agent);
+        if (interruptReason) {
+          toolLoopInterrupted = true;
+          messages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: `[工具跳过 - ${agent.name}]: ${interruptReason}`,
+          });
+          continue;
+        }
+
         agent.toolCalls++;
         const registry = TOOL_REGISTRY[tc.name];
 
@@ -625,6 +761,18 @@ class AgentOrchestrator {
             role: 'tool',
             tool_call_id: tc.id,
             content: `[工具错误 - ${agent.name}]: 子智能体不允许执行危险操作`,
+          });
+          continue;
+        }
+
+        // 集群工具对子智能体一律禁止：工具表已过滤掉 cluster 分类，此处是
+        // 执行侧兜底，防止模型凭记忆硬编码工具名绕过工具表，递归 spawn 出
+        // 指数级子智能体或调用 stopAllAgents 摧毁集群。
+        if (registry.category === 'cluster') {
+          messages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: `[工具错误 - ${agent.name}]: 子智能体不允许调用集群管理工具 "${tc.name}"，集群编排只能由主智能体发起`,
           });
           continue;
         }
@@ -675,6 +823,11 @@ class AgentOrchestrator {
         }
       }
 
+      if (toolLoopInterrupted) {
+        fullResponse += `\n\n[系统] ${agent.interruptReason ?? '任务已被中断'}`;
+        return fullResponse;
+      }
+
       this._broadcastClusterState();
     }
 
@@ -682,6 +835,12 @@ class AgentOrchestrator {
     // 追加一次收尾调用，让模型基于已收集的信息直接给出最终结果。
     // （缺失此步骤时任务会在没完成的情况下被标记 done，返回的只是中间推理片段。）
     if (!hasFinalAnswer) {
+      // 中断状态下不再补发收尾请求——那会在"已停止"之后又打一次 LLM。
+      const wrapUpReason = this._checkInterrupt(agent);
+      if (wrapUpReason) {
+        return `${fullResponse}\n\n[系统] ${wrapUpReason}`;
+      }
+
       agent.state = 'thinking';
       this._broadcastClusterState();
       messages.push({
@@ -689,16 +848,25 @@ class AgentOrchestrator {
         content:
           '[系统] 你已用尽本次任务的思考迭代次数。请基于上面已经取得的工具结果，立刻给出你的最终结果和结论，不要再调用任何工具。',
       });
+      const stream = streamChatNative(messages, { signal: agent.abortController?.signal });
       try {
-        const stream = streamChatNative(messages);
         while (true) {
+          if (this._checkInterrupt(agent)) {
+            await stream.return({ input: 0, output: 0, stopReason: 'aborted', toolCalls: [] });
+            fullResponse += `\n\n[系统] ${agent.interruptReason ?? '任务已被中断'}`;
+            break;
+          }
           const iterResult = await stream.next();
           if (iterResult.done) break;
           const chunk = iterResult.value as NativeStreamChunk;
           if (chunk.content) fullResponse += chunk.content;
         }
       } catch (error: unknown) {
-        throw new Error(`LLM 调用失败: ${(error as Error).message}`, { cause: error });
+        if (isAbortError(error) || agent.stopRequested) {
+          fullResponse += `\n\n[系统] ${agent.interruptReason ?? '任务已被中断'}`;
+        } else {
+          throw new Error(`LLM 调用失败: ${(error as Error).message}`, { cause: error });
+        }
       }
     }
 

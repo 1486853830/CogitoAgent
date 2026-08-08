@@ -39,11 +39,11 @@ describe('config.js', () => {
       expect(result).toEqual({ a: { b: { c: 3, d: 2 } } });
     });
 
-    test('应该处理undefined值', () => {
+    test('应该跳过undefined值（视为未配置，不覆盖默认值）', () => {
       const target = { a: 1 };
       const source = { a: undefined, b: 2 };
       const result = deepMerge(target, source);
-      expect(result).toEqual({ a: undefined, b: 2 });
+      expect(result).toEqual({ a: 1, b: 2 });
     });
   });
 

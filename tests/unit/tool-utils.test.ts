@@ -155,6 +155,23 @@ describe('tool-utils.ts', () => {
       const error = new Error('something went wrong');
       expect(classifyToolError(error)).toBe('unknown');
     });
+
+    it('should NOT classify offline errors containing "network" substring as network', () => {
+      // 回归：Python 图论库 networkx 报错（ModuleNotFoundError）含 "network" 子串，
+      // 若误判为 network，离线场景会得到荒谬的"网络连接失败"提示。
+      const error = new Error("ModuleNotFoundError: No module named 'networkx'");
+      expect(classifyToolError(error)).toBe('unknown');
+    });
+
+    it('should classify standalone "network error" message as network', () => {
+      const error = new Error('network error: cannot reach host');
+      expect(classifyToolError(error)).toBe('network');
+    });
+
+    it('should return network for ECONNRESET', () => {
+      const error = Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' });
+      expect(classifyToolError(error)).toBe('network');
+    });
   });
 
   describe('formatToolError', () => {

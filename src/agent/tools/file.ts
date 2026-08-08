@@ -2,6 +2,12 @@ import fs from 'fs/promises';
 import path from 'path';
 import { resolveInWorkspace } from './path.ts';
 
+/**
+ * 单次读取的字节上限（2MB）。
+ * 文本内容随后还会按 50000 字符截断，这里的上限只是防止把超大文件整个读进内存。
+ */
+const MAX_READ_BYTES = 2 * 1024 * 1024;
+
 const BINARY_EXTENSIONS = new Set([
   '.pdf',
   '.ppt',
@@ -117,16 +123,41 @@ async function read(
   }
   try {
     const ext = path.extname(fullPath);
-    const buffer = await fs.readFile(fullPath);
+
+    // 先 stat 再决定怎么读：此前无条件 readFile 把整个文件读进内存后才截断，
+    // 一个几 GB 的日志/镜像文件足以直接 OOM 掉 Agent 进程。
+    const stat = await fs.stat(fullPath);
+    if (stat.isDirectory()) {
+      return { success: false, error: '目标是目录，请使用 list 工具' };
+    }
+    let buffer: Buffer;
+    let partial = false;
+    if (stat.size > MAX_READ_BYTES) {
+      // 只读取前 MAX_READ_BYTES 字节，避免整文件进内存
+      const handle = await fs.open(fullPath, 'r');
+      try {
+        const buf = Buffer.alloc(MAX_READ_BYTES);
+        const { bytesRead } = await handle.read(buf, 0, MAX_READ_BYTES, 0);
+        buffer = buf.subarray(0, bytesRead);
+        partial = true;
+      } finally {
+        await handle.close();
+      }
+    } else {
+      buffer = await fs.readFile(fullPath);
+    }
 
     if (isBinaryFile(ext, buffer)) {
       return {
         success: true,
-        data: buildBinaryHint(ext, fullPath, buffer.length),
+        data: buildBinaryHint(ext, fullPath, stat.size),
       };
     }
 
-    const content = buffer.toString('utf-8');
+    let content = buffer.toString('utf-8');
+    if (partial) {
+      content += `\n\n[文件大小 ${stat.size} 字节，超过 ${MAX_READ_BYTES} 字节上限，仅读取开头部分]`;
+    }
     const truncated =
       content.length > 50000
         ? content.substring(0, 50000) +

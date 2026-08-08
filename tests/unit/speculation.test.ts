@@ -6,6 +6,12 @@ import type { NativeToolInvocation } from '../../src/types/index.ts';
 
 jest.unstable_mockModule('../../src/api/client.ts', () => ({
   streamChatNative: jest.fn(),
+  // registry→tools→cluster-tools→orchestrator 会从 client.ts 取 isAbortError，
+  // mock 若缺该导出，整个模块图解析时报 SyntaxError。
+  isAbortError: (error: unknown) =>
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { name?: string }).name === 'AbortError',
 }));
 
 // ESM 下必须用 await import 取 mocked 模块；静态 import 会在 mock 生效前绑定真实实现。
@@ -105,9 +111,25 @@ describe('PatternStore (R2.8 PASTE 模式挖掘)', () => {
   it('持久化：重新加载后保留模式', () => {
     const s1 = new spec.PatternStore(file);
     s1.observe('k', 'gitStatus', 'gitStatus');
+    // 落盘是防抖的（避免每轮同步 IO 阻塞思考循环），显式 flush 后再读取
+    s1.flush();
     const s2 = new spec.PatternStore(file);
     expect(s2.samples('k')).toBe(1);
     expect(s2.confidence('k')).toBe(1);
+  });
+
+  it('容量上限：超出 MAX_ENTRIES 后淘汰最旧条目，内存不会无限增长', () => {
+    const store = new spec.PatternStore(file);
+    const max = spec.PatternStore.MAX_ENTRIES;
+    // 写入 max + 10 个不同签名
+    for (let i = 0; i < max + 10; i++) {
+      store.observe(`ctx-${i}`, 'gitStatus', 'gitStatus');
+    }
+    // 最早的 10 个应已被淘汰，最新的仍在
+    expect(store.samples('ctx-0')).toBe(0);
+    expect(store.samples('ctx-9')).toBe(0);
+    expect(store.samples(`ctx-${max + 9}`)).toBe(1);
+    store.flush();
   });
 });
 

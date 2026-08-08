@@ -24,6 +24,7 @@ const {
   getMessages,
   addUserMessage,
   addAssistantMessage,
+  addAssistantNativeMessage,
   addToolResultMessage,
   shouldCompress,
   compressHistory,
@@ -515,6 +516,75 @@ describe('session.ts', () => {
         (m) => m.role === 'user' && m.content.startsWith('[上下文摘要]'),
       );
       expect(summary).toBeDefined();
+    });
+
+    it('should keep tool-call boundaries intact (no orphan tool messages)', async () => {
+      createNewSession('Tool Boundary');
+      // 10 user + 9 assistant 普通消息（19 条，index 0-18）
+      for (let i = 0; i < 10; i++) addUserMessage(`user ${i}`);
+      for (let i = 0; i < 9; i++) addAssistantMessage(`plain ${i}`);
+      // 工具调用序列（index 19-20）：assistant(tool_calls) + tool 结果
+      // 切点 = 30 - KEEP_RECENT_TURNS(10) = 20，恰好落在 tool 结果上，
+      // 若不做边界对齐，tool 结果会被单独保留成孤儿消息。
+      addAssistantNativeMessage('calling tool', [
+        {
+          id: 'call_abc',
+          type: 'function',
+          function: { name: 'get_weather', arguments: '{}' },
+        },
+      ]);
+      addToolResultMessage('sunny, 25C', { toolCallId: 'call_abc' });
+      // 尾部 5 user + 4 assistant（index 21-29）
+      for (let i = 0; i < 5; i++) addUserMessage(`tail user ${i}`);
+      for (let i = 0; i < 4; i++) addAssistantMessage(`tail plain ${i}`);
+
+      await compressHistory();
+
+      const messages = getMessages();
+      // 断言 1：不存在孤儿 tool 消息——每个 role='tool' 消息前都有发起它的 assistant(tool_calls)
+      for (let i = 0; i < messages.length; i++) {
+        if (messages[i].role === 'tool') {
+          expect(messages[i - 1]?.role).toBe('assistant');
+          const producer = messages[i - 1];
+          const ids = producer?.tool_calls?.map((tc) => tc.id) ?? [];
+          expect(ids).toContain(messages[i].tool_call_id);
+        }
+      }
+      // 断言 2：被归档的工具序列整体消失（不存在只有 tool 没有 assistant 的残留）
+      const orphanTool = messages.find(
+        (m, i) => m.role === 'tool' && messages[i - 1]?.role !== 'assistant',
+      );
+      expect(orphanTool).toBeUndefined();
+    });
+
+    it('should not drop a tool sequence that fits entirely in the kept window', async () => {
+      createNewSession('Tool Kept');
+      // 10 user + 9 assistant 普通消息（19 条）
+      for (let i = 0; i < 10; i++) addUserMessage(`user ${i}`);
+      for (let i = 0; i < 9; i++) addAssistantMessage(`plain ${i}`);
+      // 工具序列放在保留区中部（index 20-21）
+      addUserMessage('do tool');
+      addAssistantNativeMessage('calling tool', [
+        {
+          id: 'call_keep',
+          type: 'function',
+          function: { name: 'read_file', arguments: '{}' },
+        },
+      ]);
+      addToolResultMessage('file content', { toolCallId: 'call_keep' });
+      // 尾部 8 条普通消息
+      for (let i = 0; i < 4; i++) addUserMessage(`tail user ${i}`);
+      for (let i = 0; i < 4; i++) addAssistantMessage(`tail plain ${i}`);
+
+      await compressHistory();
+
+      const messages = getMessages();
+      const hasProducer = messages.some(
+        (m) => m.role === 'assistant' && m.tool_calls?.some((tc) => tc.id === 'call_keep'),
+      );
+      const hasResult = messages.some((m) => m.role === 'tool' && m.tool_call_id === 'call_keep');
+      // 要么成对保留，要么成对归档，绝不能只剩一半
+      expect(hasProducer).toBe(hasResult);
     });
   });
 

@@ -139,6 +139,21 @@ let cycleSeq = 0;
 // 当前工具执行的 AbortController：/stop 时 abort，让 executeTool 通过 Promise.race
 // 立即返回中断结果，而不必等待单个工具（如 executeCode 跑 30s）执行完毕。
 let toolAbortController: AbortController | null = null;
+// 推测执行（R2.7）的 AbortController：此前传入 `new AbortController().signal`，
+// 该 controller 无人持有、永不 abort，导致 /stop 后预执行的工具仍在后台跑完。
+let speculativeAbortController: AbortController | null = null;
+
+/** 中断正在进行的工具执行与推测预执行（用于 /stop、中断、周期退出） */
+function abortInFlightTools(): void {
+  if (toolAbortController) {
+    toolAbortController.abort();
+    toolAbortController = null;
+  }
+  if (speculativeAbortController) {
+    speculativeAbortController.abort();
+    speculativeAbortController = null;
+  }
+}
 
 interface ToolExecutionResult {
   success: boolean;
@@ -297,11 +312,8 @@ function handleUserInput(input: string, replyKey?: string): void {
     if (input === '/stop') {
       shouldStop = true;
       if (thinkingTimer) clearTimeout(thinkingTimer);
-      // 中断正在执行的单个工具：abort 后 executeTool 的 Promise.race 立即返回
-      if (toolAbortController) {
-        toolAbortController.abort();
-        toolAbortController = null;
-      }
+      // 中断正在执行的单个工具与推测预执行：abort 后 executeTool 的 Promise.race 立即返回
+      abortInFlightTools();
       // 若正在等待危险操作确认，必须 resolve 挂起的 Promise：否则 thinkCycle
       // 会卡在 await requestConfirmation 直到 5 分钟超时。解除后旧周期经 shouldStop
       // 检查自行退出并由其 finally 复位 isProcessing（所有权令牌保证不误清新周期）。
@@ -363,11 +375,8 @@ function handleUserInput(input: string, replyKey?: string): void {
   if (state.current === STATE.THINKING) {
     shouldStop = true;
     if (thinkingTimer) clearTimeout(thinkingTimer);
-    // 中断正在执行的工具：abort 让 executeTool 尽快返回，缩短旧周期的退出路径
-    if (toolAbortController) {
-      toolAbortController.abort();
-      toolAbortController = null;
-    }
+    // 中断正在执行的工具与推测预执行：abort 让 executeTool 尽快返回，缩短旧周期的退出路径
+    abortInFlightTools();
     // 若正在等待危险操作确认，同样需要解除挂起的 Promise，否则旧周期卡死
     if (isAwaitingConfirmation()) {
       cancelConfirmation();
@@ -376,6 +385,20 @@ function handleUserInput(input: string, replyKey?: string): void {
     // 会在 shouldStop 检查后自行退出并复位 isProcessing——由周期所有权令牌保证
     // 只有「仍持有当前周期」的 finally 才允许复位。立即置 false 会让旧周期仍
     // 卡在网络/工具等待期间，新的 thinkCycle 并发启动，造成工具重复执行。
+
+    // 带内容的打断（终端输入了文字、微信/Webhook/心跳等非终端来源推送了消息）：
+    // 此前实现只中断不入队，消息文本被整条丢弃——非终端来源尤其致命，因为
+    // 发送方不知道消息已丢。改为中断旧周期后把消息入队并调度新周期。
+    if (input) {
+      println(`\n[中断] 已停止上一轮思考，接管新消息`, 'yellow');
+      println(`[消息] ${input}`, 'yellow');
+      addUserMessage(input);
+      state.current = STATE.THINKING;
+      broadcast('agent-state', { state: 'thinking' });
+      scheduleNextCycle();
+      return;
+    }
+
     println('\n[中断] 思考已停止，请输入消息...', 'yellow');
     state.current = STATE.AWAITING_INPUT;
     broadcast('agent-state', { state: 'idle' });
@@ -664,7 +687,9 @@ async function runNativeTurnLoop(): Promise<void> {
             getToolPermission(pred.name) === 'allow'
           ) {
             const safePred = pred; // 已收窄为 NativeToolInvocation，供 .then/.catch 闭包安全引用
-            speculativeTask = executeNativeInvocation(safePred, new AbortController().signal)
+            // 用可持有的 controller，使 /stop / 中断能真正取消这次预执行
+            speculativeAbortController = new AbortController();
+            speculativeTask = executeNativeInvocation(safePred, speculativeAbortController.signal)
               .then((outcome) => ({ predicted: safePred, outcome }))
               .catch((err) => ({
                 predicted: safePred,
@@ -699,6 +724,15 @@ async function runNativeTurnLoop(): Promise<void> {
       const chunk = iterResult.value as { content: string | null; reasoning: string | null };
       if (shouldStop) {
         shouldStop = false;
+        // 必须显式 return 生成器：直接 `return` 会抛弃生成器而不触发其 finally，
+        // SSE reader 不会被 cancel，底层 TCP 连接一直挂着不归还连接池。
+        try {
+          await stream.return({ input: 0, output: 0, stopReason: 'aborted', toolCalls: [] });
+        } catch {
+          /* 生成器已结束 */
+        }
+        // 同时取消可能仍在后台跑的推测预执行
+        abortInFlightTools();
         printBlank();
         return;
       }
@@ -749,6 +783,8 @@ async function runNativeTurnLoop(): Promise<void> {
         predicted: NativeToolInvocation;
         outcome: { content: string; success: boolean };
       };
+      // 预执行已结束，释放 controller 引用，避免后续 /stop 误 abort 已完成的任务
+      speculativeAbortController = null;
     }
     if (predicted) {
       patternStore.observe(sig, predicted.name, invocations[0]?.name ?? '');
@@ -937,25 +973,42 @@ async function thinkCycle(): Promise<void> {
   }
 }
 
-function scheduleNextCycle(): void {
+// 旧周期尚未退出时的重排上限：50ms 起步、单次上限 500ms，最多 60 次（约 25 秒）
+const MAX_RESCHEDULE_RETRIES = 60;
+
+function scheduleNextCycle(retry = 0): void {
   if (thinkingTimer) clearTimeout(thinkingTimer);
   // R2.1/R2.2：原生 function calling 路径事件驱动——工具完成后由 runNativeTurnLoop
   // 自身 continue 立即推进，首轮用户消息也无需等待。此处仅负责把 thinkCycle 推到
   // 下一 tick 启动（避免在 handleUserInput 调用栈内重入），延迟为 0。
   // isProcessing 守卫防止旧周期未退出时并发；thinkingTimer 保留供 /stop 取消挂起调度。
+  const delay = retry > 0 ? Math.min(50 * retry, 500) : 0;
   thinkingTimer = setTimeout(async () => {
     thinkingTimer = null;
-    if (state.current === STATE.THINKING) {
-      // 若另一周期仍在处理（例如中断后旧周期尚未退出），本次调用会因
-      // isProcessing 守卫立即返回。旧周期的 finally 会在退出后复位 isProcessing，
-      // 而下一条用户消息会再次触发 scheduleNextCycle，保证后续周期不会丢失。
-      const wasBlocked = isProcessing;
-      await thinkCycle();
-      if (!wasBlocked) {
-        scheduleNextCycle();
+    if (state.current !== STATE.THINKING) return;
+
+    // 旧周期（中断后仍在飞行中）尚未退出：此前的实现直接调用 thinkCycle 让它被
+    // isProcessing 守卫弹回，并且因为 wasBlocked 为 true 而不再重排——那条已经
+    // addUserMessage 进历史的消息就此永远不会被处理（打断后紧接着发消息必现）。
+    // 改为退避重排，直到旧周期的 finally 复位 isProcessing。
+    if (isProcessing) {
+      if (retry < MAX_RESCHEDULE_RETRIES) {
+        scheduleNextCycle(retry + 1);
+      } else {
+        console.warn('[Agent] 上一思考周期长时间未退出，放弃本次调度');
+        state.current = STATE.AWAITING_INPUT;
+        broadcast('agent-state', { state: 'idle' });
+        showPrompt();
       }
+      return;
     }
-  }, 0);
+
+    // 新周期不得继承上一周期遗留的中断标志，否则会在第一个检查点立刻自杀，
+    // 让刚入队的用户消息永远得不到回复。
+    shouldStop = false;
+    await thinkCycle();
+    scheduleNextCycle();
+  }, delay);
 }
 
 /**

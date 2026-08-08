@@ -87,16 +87,44 @@ function isLocalRemoteAddress(remoteAddress: string | undefined): boolean {
   );
 }
 
+/** 监听地址是否为回环（决定是否强制"只允许本地连接"）。 */
+function isLoopbackHost(host: string): boolean {
+  const h = host.trim().toLowerCase();
+  return h === '127.0.0.1' || h === 'localhost' || h === '::1' || h.startsWith('127.');
+}
+
+/**
+ * 是否允许非回环来源的连接。
+ * 由启动时的监听地址推导：绑定 0.0.0.0（容器/无头部署，见 Dockerfile
+ * COGITO_WS_HOST=0.0.0.0）时，来源必然是网桥 IP 而非 127.0.0.1；
+ * 若仍强制回环校验，容器里的所有连接都会被 403，WS 服务等于没启动。
+ * 放开地址校验后，访问控制完全由 ws token 承担（token 始终强制校验）。
+ */
+let allowRemoteConnections = false;
+
 function startWsServer(port = 9527): Promise<WebSocketServer> {
   return new Promise((resolve, reject) => {
     try {
-      // 启动时生成随机 token 并写入文件，供 agent-bridge 读取
-      wsToken = crypto.randomUUID();
+      // 启动时生成随机 token 并写入文件，供 agent-bridge 读取。
+      // 容器部署下客户端读不到宿主机的 .ws-token 文件，故支持 COGITO_WS_TOKEN
+      // 显式注入固定 token（否则远程部署每次重启 token 都变，无法接入）。
+      const envToken = (process.env.COGITO_WS_TOKEN || '').trim();
+      wsToken = envToken || crypto.randomUUID();
       writeTokenFile();
 
       // 默认仅绑定回环地址（桌面场景安全默认）。容器/无头部署可用
       // COGITO_WS_HOST=0.0.0.0 放开监听（端口映射由 docker-compose 控制）。
       const host = process.env.COGITO_WS_HOST || '127.0.0.1';
+      allowRemoteConnections = !isLoopbackHost(host);
+      if (allowRemoteConnections) {
+        if (!envToken) {
+          console.warn(
+            `[WS] 已绑定非回环地址 ${host}，但未设置 COGITO_WS_TOKEN；` +
+              `token 为本次启动随机生成，远程客户端需自行读取 ${getTokenFilePath()}`,
+          );
+        }
+        console.warn(`[WS] 监听 ${host}:${port}，非本机连接需携带正确的 ws token 才能接入`);
+      }
 
       wss = new WebSocketServer(
         {
@@ -105,35 +133,30 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
           // 限制单条消息大小，避免恶意客户端发送超大 payload 撑爆内存
           maxPayload: 1024 * 1024, // 1MB
           verifyClient: (info, callback) => {
-            // 双重校验：
-            // 1. 必须来自本机回环地址；
-            // 2. 必须携带正确的 ws token（agent-bridge 通过 x-ws-token header 或 ?token= 传递）。
-            //    不再对 Origin 头放行——任何本机进程都可伪造 Origin，故一律要求 token，
-            //    浏览器渲染进程实际并不直连 WS（均通过 main 进程的 agent-bridge 转发）。
-            const remoteAddress = info.req?.socket?.remoteAddress;
-            const addrOk = isLocalRemoteAddress(remoteAddress);
-
-            if (addrOk) {
-              const clientToken = readTokenFromRequest(info.req);
-              if (wsToken && clientToken === wsToken) {
-                callback(true);
-                return;
-              }
-              console.warn('[WS] 拒绝缺少有效 token 的本地连接');
+            // 两道校验，顺序固定：
+            // 1. token 永远强制（agent-bridge 通过 x-ws-token header 或 ?token= 传递）。
+            //    不对 Origin 头放行——任何本机进程都可伪造 Origin；
+            //    浏览器渲染进程也不直连 WS（均经 main 进程的 agent-bridge 转发）。
+            // 2. 来源地址校验仅在"绑定回环"时生效。绑定 0.0.0.0 属于运维显式
+            //    选择的远程部署，此时来源必为网桥/外网 IP，再做回环校验会把
+            //    容器内所有连接一律 403（与 Dockerfile 的 COGITO_WS_HOST=0.0.0.0 直接冲突）。
+            const clientToken = readTokenFromRequest(info.req);
+            if (!wsToken || clientToken !== wsToken) {
+              console.warn('[WS] 拒绝缺少有效 token 的连接');
               callback(false, 403, '缺少有效的 ws token');
               return;
             }
 
-            // 兜底：服务绑定在 127.0.0.1，能连上来的请求必然来自本机。
-            // 当 remoteAddress 取不到时（理论上不应发生），仍要求携带 token。
-            if (!remoteAddress) {
-              const clientToken = readTokenFromRequest(info.req);
-              if (wsToken && clientToken === wsToken) {
-                callback(true);
-                return;
-              }
-              console.warn('[WS] remoteAddress 未知且缺少 token，拒绝连接');
-              callback(false, 403, '缺少有效的 ws token');
+            if (allowRemoteConnections) {
+              callback(true);
+              return;
+            }
+
+            const remoteAddress = info.req?.socket?.remoteAddress;
+            // remoteAddress 取不到时（理论上不应发生）按本地放行：
+            // 服务此时绑定在回环地址上，能连上来的请求必然来自本机，且 token 已校验通过。
+            if (!remoteAddress || isLocalRemoteAddress(remoteAddress)) {
+              callback(true);
               return;
             }
 
@@ -353,6 +376,16 @@ function broadcast(type: string, data: Record<string, unknown>): void {
 
 async function stopWsServer(): Promise<void> {
   if (healthServer) {
+    // 强制关闭健康检查端口的 keep-alive 空闲连接，避免 close() 回调挂起
+    try {
+      if (typeof healthServer.closeAllConnections === 'function') {
+        healthServer.closeAllConnections();
+      } else if (typeof healthServer.closeIdleConnections === 'function') {
+        healthServer.closeIdleConnections();
+      }
+    } catch {
+      // 忽略
+    }
     await new Promise<void>((resolve) => {
       healthServer!.close(() => resolve());
     });

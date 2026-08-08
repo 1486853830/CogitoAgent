@@ -90,8 +90,14 @@ function classifyToolError(error: Error & { code?: string }): string {
   if (
     error.code === 'ENOTFOUND' ||
     error.code === 'ECONNREFUSED' ||
-    error.code === 'ETIMEDOUT' ||
-    error.message?.includes('network')
+    error.code === 'ECONNRESET' ||
+    error.code === 'EAI_AGAIN' ||
+    error.code === 'ENETUNREACH' ||
+    error.code === 'EHOSTUNREACH' ||
+    // 词边界限定：'networkx'、'network_utils' 等离线错误消息（如 Python
+    // ModuleNotFoundError: No module named 'networkx'）只是包含 network 子串，
+    // 不是网络错误，不得误判为 network。
+    /\bnetwork\b/i.test(error.message || '')
   ) {
     return 'network';
   }

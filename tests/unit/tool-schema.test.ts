@@ -216,5 +216,33 @@ describe('tool-schema.ts', () => {
       const err = toRichError('EEXEC', 'stdout timeout');
       expect(err.message).toContain('stdout timeout');
     });
+
+    it('should NOT classify "networkx" module error as network (regression)', () => {
+      // 回归：Python ModuleNotFoundError: No module named 'networkx' 含 "network" 子串，
+      // 修复前会命中 /network/ 启发式被误判为 ENETWORK，离线场景得到
+      // "网络连接失败，请检查网络后重试" 的荒谬提示。
+      const err = toRichError('', "ModuleNotFoundError: No module named 'networkx'");
+      expect(err.code).not.toBe('ENETWORK');
+      expect(err.message).toContain('networkx');
+    });
+
+    it('should still classify real network failures as ENETWORK', () => {
+      const err = toRichError('', 'fetch failed: getaddrinfo ENOTFOUND api.example.com');
+      expect(err.code).toBe('ENETWORK');
+    });
+
+    it('should classify standalone "network error" message as ENETWORK', () => {
+      const err = toRichError('', 'network error: connection lost');
+      expect(err.code).toBe('ENETWORK');
+    });
+
+    it('should map lowercase class names to rich codes', () => {
+      // classifyToolError 输出的小写分类应映射到对应富错误码，而不是落入 EUNKNOWN
+      expect(toRichError('network', 'x').code).toBe('ENETWORK');
+      expect(toRichError('timeout', 'x').code).toBe('ETIMEOUT');
+      expect(toRichError('permission', 'x').code).toBe('EDENIED');
+      expect(toRichError('filesystem', 'x').code).toBe('ENOTFOUND');
+      expect(toRichError('unknown', 'x').code).toBe('EUNKNOWN');
+    });
   });
 });

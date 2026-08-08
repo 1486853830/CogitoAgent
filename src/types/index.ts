@@ -246,7 +246,11 @@ export type ToolCategory =
   // （见 plugins/biopython-bio、plugins/rdkit-chem 等），不可删除。
   | 'chemistry'
   | 'bioinformatics'
-  | 'literature';
+  | 'literature'
+  // 外部 MCP server 接入的工具分类（见 src/agent/mcp.ts）。
+  // 必须同时登记在 registry.ts 的 TOOL_CATEGORIES 中，否则
+  // getEnabledToolNames() 会把这些工具过滤掉，导致注册后永不可见。
+  | 'mcp';
 
 export interface Message {
   role: 'user' | 'assistant' | 'system' | 'tool';

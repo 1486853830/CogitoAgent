@@ -25,6 +25,7 @@ const TOOL_CATEGORIES: Record<ToolCategory, string> = {
   chemistry: '化学信息学',
   bioinformatics: '生物信息学',
   literature: '文献检索',
+  mcp: '外部MCP工具',
 };
 
 const TOOL_REGISTRY: Record<string, ToolRegistryEntry> = {

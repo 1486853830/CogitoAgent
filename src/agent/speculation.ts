@@ -71,6 +71,14 @@ interface PatternEntry {
  */
 export class PatternStore {
   private map = new Map<string, PatternEntry>();
+  private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private dirty = false;
+
+  /** 模式条目上限。上下文签名是 sha1，长会话下几乎每轮都是新 key，
+   *  不设上限会让内存与 JSON 文件无限增长（长期运行必然 OOM）。 */
+  static readonly MAX_ENTRIES = 2000;
+  /** 落盘防抖窗口：此前每轮 observe 都同步 writeFileSync，主循环被 IO 阻塞。 */
+  static readonly SAVE_DEBOUNCE_MS = 3000;
 
   constructor(private readonly filePath: string) {
     this.load();
@@ -96,15 +104,51 @@ export class PatternStore {
     }
   }
 
-  private save(): void {
+  /** 立即落盘（原子写：tmp + rename，避免崩溃留下半截 JSON）。 */
+  flush(): void {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+    }
+    if (!this.dirty) return;
+    this.dirty = false;
+    const tmpPath = `${this.filePath}.${process.pid}.tmp`;
     try {
       const dir = path.dirname(this.filePath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       const obj: Record<string, PatternEntry> = {};
       for (const [k, v] of this.map) obj[k] = v;
-      fs.writeFileSync(this.filePath, JSON.stringify(obj, null, 2), 'utf-8');
+      fs.writeFileSync(tmpPath, JSON.stringify(obj, null, 2), 'utf-8');
+      fs.renameSync(tmpPath, this.filePath);
     } catch {
       // 持久化失败不阻塞主流程。
+      try {
+        if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  /** 防抖落盘：合并同一窗口内的多次写入，避免每轮同步 IO 阻塞思考循环。 */
+  private scheduleSave(): void {
+    this.dirty = true;
+    if (this.saveTimer) return;
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      this.flush();
+    }, PatternStore.SAVE_DEBOUNCE_MS);
+    if (typeof (this.saveTimer as { unref?: () => void }).unref === 'function') {
+      (this.saveTimer as unknown as { unref: () => void }).unref();
+    }
+  }
+
+  /** 超出容量时淘汰最久未更新的条目（Map 保持插入序，队首即最旧）。 */
+  private evictIfNeeded(): void {
+    while (this.map.size > PatternStore.MAX_ENTRIES) {
+      const oldest = this.map.keys().next();
+      if (oldest.done) break;
+      this.map.delete(oldest.value);
     }
   }
 
@@ -113,8 +157,11 @@ export class PatternStore {
     const e = this.map.get(contextSig) ?? { predicted, hits: 0, total: 0 };
     e.total += 1;
     if (predicted === actual) e.hits += 1;
+    // delete + set 把该 key 移到队尾，实现 LRU 语义
+    this.map.delete(contextSig);
     this.map.set(contextSig, e);
-    this.save();
+    this.evictIfNeeded();
+    this.scheduleSave();
   }
 
   confidence(contextSig: string): number {
@@ -136,18 +183,27 @@ export class PatternStore {
   /** 测试/调试用：清空全部模式。 */
   reset(): void {
     this.map.clear();
-    this.save();
+    this.dirty = true;
+    this.flush();
   }
 }
 
 export function defaultPatternStorePath(): string {
-  return path.join(process.cwd(), 'data', 'speculation-patterns.json');
+  // 与 config.ts 保持一致：打包后 cwd 可能是只读的 resources 目录，
+  // 必须写入 Electron 传入的用户数据目录。
+  const baseDir = process.env.COGITO_USER_DATA_DIR || process.cwd();
+  return path.join(baseDir, 'data', 'speculation-patterns.json');
 }
 
 let globalStore: PatternStore | null = null;
 /** 进程级单例（写入 data/speculation-patterns.json）。测试可自建 PatternStore 隔离。 */
 export function getGlobalPatternStore(): PatternStore {
-  if (!globalStore) globalStore = new PatternStore(defaultPatternStorePath());
+  if (!globalStore) {
+    globalStore = new PatternStore(defaultPatternStorePath());
+    // 防抖 timer 是 unref 的，进程退出时可能还有未落盘的观测，这里兜底 flush
+    const store = globalStore;
+    process.once('exit', () => store.flush());
+  }
   return globalStore;
 }
 

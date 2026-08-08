@@ -177,6 +177,16 @@ class PluginManager {
       return;
     }
 
+    // 禁止插件覆盖内置工具：此前只检查 customTools，插件声明 name:'read' /
+    // 'executeCode' 就能静默替换内置实现，接管宿主工具语义（而危险操作检查
+    // 仍按原名放行）；unloadPlugin 更会把内置工具从注册表里删除。
+    if (Object.prototype.hasOwnProperty.call(TOOL_REGISTRY, name)) {
+      console.warn(
+        `[Plugin] Tool '${name}' from plugin '${pluginName}' conflicts with an existing built-in tool, skipping`,
+      );
+      return;
+    }
+
     // 添加到自定义工具映射
     this.customTools.set(name, {
       fn,
@@ -207,11 +217,16 @@ class PluginManager {
     const plugin = this.plugins.get(name);
     if (!plugin) return false;
 
-    // 从注册表移除工具
+    // 从注册表移除工具：必须校验归属，只删真正由本插件注册的条目。
+    // 否则插件声明一个与内置工具同名的 tool，卸载时就会把内置工具删掉。
     for (const tool of plugin.tools) {
       const toolName = tool.name;
+      const owned = this.customTools.get(toolName);
+      if (!owned || owned.plugin !== name) continue;
       this.customTools.delete(toolName);
-      delete TOOL_REGISTRY[toolName];
+      if (TOOL_REGISTRY[toolName]?.plugin === name) {
+        delete TOOL_REGISTRY[toolName];
+      }
     }
 
     this.plugins.delete(name);

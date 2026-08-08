@@ -97,11 +97,16 @@ describe('state.ts', () => {
     });
 
     afterEach(() => {
+      // 兜底作废可能悬挂的确认请求（失败用例不应把 confirmationResolve /
+      // pendingConfirmation / timer 残留到下一个用例）
+      cancelConfirmation();
       jest.useRealTimers();
     });
 
     it('should set state to AWAITING_CONFIRMATION', async () => {
       const promise = requestConfirmation('testTool', ['arg1']);
+      // 串行链下 exclusive（弹框）在微任务中启动：等一拍再断言同步可见性
+      await Promise.resolve();
       expect(getState()).toBe(STATE.AWAITING_CONFIRMATION);
       resolveConfirmation(true);
       await promise;
@@ -109,6 +114,7 @@ describe('state.ts', () => {
 
     it('should store pending confirmation with toolName and args', async () => {
       const promise = requestConfirmation('myTool', [1, 2, 3]);
+      await Promise.resolve();
       const pending = getPendingConfirmation();
       expect(pending).toEqual({ toolName: 'myTool', args: [1, 2, 3] });
       resolveConfirmation(true);
@@ -117,6 +123,8 @@ describe('state.ts', () => {
 
     it('should resolve to false on timeout', async () => {
       const promise = requestConfirmation('timeoutTool', []);
+      // exclusive（含 5 分钟定时器）在微任务中启动：先推进微任务再拨动定时器
+      await Promise.resolve();
       // Advance past the 5 minute timeout
       jest.advanceTimersByTime(5 * 60 * 1000 + 1);
       const result = await promise;
@@ -125,6 +133,7 @@ describe('state.ts', () => {
 
     it('should reset state to THINKING after timeout', async () => {
       const promise = requestConfirmation('timeoutTool', []);
+      await Promise.resolve();
       jest.advanceTimersByTime(5 * 60 * 1000 + 1);
       await promise;
       expect(getState()).toBe(STATE.THINKING);
@@ -132,6 +141,7 @@ describe('state.ts', () => {
 
     it('should clear pending confirmation after timeout', async () => {
       const promise = requestConfirmation('timeoutTool', []);
+      await Promise.resolve();
       jest.advanceTimersByTime(5 * 60 * 1000 + 1);
       await promise;
       expect(getPendingConfirmation()).toBe(null);
@@ -146,6 +156,7 @@ describe('state.ts', () => {
     });
 
     afterEach(() => {
+      cancelConfirmation();
       jest.useRealTimers();
     });
 
@@ -184,6 +195,7 @@ describe('state.ts', () => {
     });
 
     afterEach(() => {
+      cancelConfirmation();
       jest.useRealTimers();
     });
 

@@ -47,6 +47,73 @@ function isValidSessionId(id) {
 }
 
 /**
+ * 校验并归一化 persona 目录名，防止 `../../..` 遍历到 personas 之外。
+ * persona 名来自渲染进程 IPC（update-current-persona）与 config.json，均不可信。
+ * @returns {string} 合法的目录名；非法时返回 ''（调用方回退默认人设）
+ */
+function sanitizePersonaId(name) {
+  if (typeof name !== 'string') return '';
+  const trimmed = name.trim();
+  if (!trimmed) return '';
+  // 只允许字母数字、下划线、连字符与中文，长度 <= 64；显式排除任何分隔符与 '..'
+  if (!/^[\w\u4e00-\u9fa5-]{1,64}$/.test(trimmed)) return '';
+  if (trimmed === '.' || trimmed === '..') return '';
+  // 二次校验：解析后必须仍位于 personas/ 之下
+  const personasRoot = path.join(PROJECT_ROOT, 'personas');
+  const resolved = path.resolve(personasRoot, trimmed);
+  const rel = path.relative(personasRoot, resolved);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return '';
+  return trimmed;
+}
+
+/**
+ * 校验 persona.md 中声明的媒体文件名，禁止路径分隔符与遍历。
+ */
+function isSafeMediaName(name) {
+  return (
+    typeof name === 'string' &&
+    name.length > 0 &&
+    name.length <= 128 &&
+    !name.includes('/') &&
+    !name.includes('\\') &&
+    !name.includes('..') &&
+    path.basename(name) === name
+  );
+}
+
+/**
+ * 原子写文件：tmp + fsync + rename。
+ * 直接 writeFileSync 在写入中途崩溃/断电会留下半截 JSON，
+ * 下次读取解析失败即静默丢失全部配置。
+ */
+function writeFileAtomicSync(filePath, content) {
+  const tmpPath = `${filePath}.${process.pid}.tmp`;
+  let fd;
+  try {
+    fd = fs.openSync(tmpPath, 'w');
+    fs.writeSync(fd, content, 0, 'utf-8');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    fd = undefined;
+    fs.renameSync(tmpPath, filePath);
+  } catch (e) {
+    if (fd !== undefined) {
+      try {
+        fs.closeSync(fd);
+      } catch {
+        /* ignore */
+      }
+    }
+    try {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+    } catch {
+      /* ignore */
+    }
+    throw e;
+  }
+}
+
+/**
  * 检查是否已配置
  */
 function isConfigured() {
@@ -80,28 +147,38 @@ function isConfigured() {
  */
 function saveConfig(config) {
   try {
-    // 人设不再写入 .env；此处持久化到 config.json 顶层 persona 字段，
-    // 若传入 config 不含 persona（如设置向导），则保留 config.json 已有值。
-    let existingPersona = '';
+    // 先读出现有 config.json：设置向导只覆盖它认识的字段，
+    // 其余顶层键（mcp / tools.permissions / plugins 等）必须原样保留，
+    // 否则用户在扩展面板配置的 MCP 服务与工具权限会在"重新配置"时被静默清空。
+    let existing = {};
     try {
       if (fs.existsSync(CONFIG_FILE)) {
-        existingPersona = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8')).persona || '';
+        const parsed = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          existing = parsed;
+        }
       }
     } catch {
-      // 读取失败则视为无已有人设
+      // 读取/解析失败则视为无已有配置
     }
-    const persona = config?.persona || existingPersona;
 
-    // 保存 config.json（过滤敏感字段）
+    // 人设不再写入 .env；此处持久化到 config.json 顶层 persona 字段，
+    // 若传入 config 不含 persona（如设置向导），则保留 config.json 已有值。
+    const persona = sanitizePersonaId(config?.persona || existing.persona || '');
+
+    // 保存 config.json（过滤敏感字段），在已有配置之上做浅合并
     const configData = {
+      ...existing,
       persona,
       api: {
+        ...(existing.api && typeof existing.api === 'object' ? existing.api : {}),
         provider: config.api?.provider || 'custom',
         baseURL: config.api?.baseURL || '',
         model: config.api?.model || '',
         // 不保存 apiKey
       },
       chat: {
+        ...(existing.chat && typeof existing.chat === 'object' ? existing.chat : {}),
         maxTokens: 384000,
         temperature: 0.7,
         topP: 0.7,
@@ -111,16 +188,21 @@ function saveConfig(config) {
         language: config.chat?.language || 'zh',
       },
       search: {
+        ...(existing.search && typeof existing.search === 'object' ? existing.search : {}),
         enabled: true,
-        baseURL: '',
+        baseURL: existing.search?.baseURL || '',
       },
-      workspace: config.workspace || path.join(os.homedir(), 'cogito-workspace'),
+      workspace:
+        config.workspace || existing.workspace || path.join(os.homedir(), 'cogito-workspace'),
       database: {
-        path: './data/example.db',
+        ...(existing.database && typeof existing.database === 'object' ? existing.database : {}),
+        path: existing.database?.path || './data/example.db',
       },
     };
+    // apiKey 绝不落盘到 config.json（历史文件里若混入需主动清除）
+    delete configData.api.apiKey;
 
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(configData, null, 2), 'utf-8');
+    writeFileAtomicSync(CONFIG_FILE, JSON.stringify(configData, null, 2));
     console.log('[主进程] 配置已保存到 config.json');
 
     // 保存 .env 文件：字段集、引号格式、邮箱密码加密、文件权限统一由
@@ -276,6 +358,91 @@ function loadEnvFile() {
   return envConfig;
 }
 
+// ===== Agent 子进程生命周期状态 =====
+let isStoppingAgent = false; // 主动停止中，exit 不触发自动重启
+let agentRestartAttempts = 0; // 连续异常退出重启次数
+let agentRestartTimer = null; // 待执行的重启定时器
+const AGENT_MAX_RESTARTS = 3;
+
+/**
+ * 杀死进程树。
+ * dev 模式下用 `shell: true` 拉起 `npx tsx`，proc.kill() 只会杀掉外层 shell，
+ * 真正持有 9527 端口的 node 子进程会成为僵尸，导致下次启动端口被占。
+ */
+function killProcessTree(proc) {
+  if (!proc || proc.killed || typeof proc.pid !== 'number') return;
+  const pid = proc.pid;
+  if (process.platform === 'win32') {
+    try {
+      execFileSync('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true });
+      return;
+    } catch {
+      // taskkill 失败（进程已退出等）时回落到普通 kill
+    }
+  } else {
+    try {
+      // spawn 时未 detached，进程组 id 即父 shell pid，负号表示杀整组
+      process.kill(-pid, 'SIGTERM');
+      return;
+    } catch {
+      // 不是组长或已退出，回落
+    }
+  }
+  try {
+    proc.kill('SIGKILL');
+  } catch {
+    /* 已退出 */
+  }
+}
+
+/**
+ * Agent 异常退出后按退避策略自动重启，避免用户面对一个"活着但没有后端"的界面。
+ */
+function scheduleAgentRestart(code, signal) {
+  if (isQuitting || isStoppingAgent) return;
+  if (agentRestartAttempts >= AGENT_MAX_RESTARTS) {
+    console.error(`[主进程] Agent 连续 ${AGENT_MAX_RESTARTS} 次异常退出，放弃自动重启`);
+    broadcastToWindows('agent-reply', {
+      text: `[系统] Agent 进程反复异常退出（code=${code}, signal=${signal}），已停止自动重启。请检查配置后重新启动应用。`,
+      isError: true,
+    });
+    return;
+  }
+  agentRestartAttempts += 1;
+  const delay = 2000 * 2 ** (agentRestartAttempts - 1); // 2s / 4s / 8s
+  console.warn(
+    `[主进程] Agent 异常退出 (code=${code}, signal=${signal})，${delay}ms 后第 ${agentRestartAttempts} 次重启`,
+  );
+  broadcastToWindows('agent-reply', {
+    text: `[系统] Agent 进程异常退出，正在自动重启（第 ${agentRestartAttempts}/${AGENT_MAX_RESTARTS} 次）...`,
+    isError: true,
+  });
+  if (agentRestartTimer) clearTimeout(agentRestartTimer);
+  agentRestartTimer = setTimeout(() => {
+    agentRestartTimer = null;
+    if (isQuitting || isStoppingAgent || agentProcess) return;
+    startAgentProcess().catch((err) => {
+      console.error('[主进程] 自动重启 Agent 失败:', err.message);
+    });
+  }, delay);
+  if (typeof agentRestartTimer.unref === 'function') agentRestartTimer.unref();
+}
+
+/**
+ * 向所有存活窗口广播事件（用于系统级提示）
+ */
+function broadcastToWindows(channel, payload) {
+  for (const win of [mainWindow, dashboardWindow, monitorWindow]) {
+    if (win && !win.isDestroyed()) {
+      try {
+        win.webContents.send(channel, payload);
+      } catch {
+        /* 窗口正在销毁 */
+      }
+    }
+  }
+}
+
 /**
  * 启动终端 Agent 进程
  */
@@ -336,6 +503,7 @@ function startAgentProcess() {
 
       if (!resolved && text.includes('WebSocket 服务已启动')) {
         resolved = true;
+        agentRestartAttempts = 0; // 成功就绪，重置退避计数
         resolve();
       }
     });
@@ -354,9 +522,19 @@ function startAgentProcess() {
       }
     });
 
-    agentProcess.on('exit', (code) => {
-      console.log(`[主进程] Agent 已退出 (code: ${code})`);
+    agentProcess.on('exit', (code, signal) => {
+      console.log(`[主进程] Agent 已退出 (code: ${code}, signal: ${signal})`);
       agentProcess = null;
+      // 启动阶段就退出：视为启动失败，让调用方感知
+      if (!resolved) {
+        resolved = true;
+        reject(new Error(`Agent 进程在就绪前退出 (code=${code}, signal=${signal})`));
+        return;
+      }
+      // 运行期异常退出：自动重启（主动 stop / 应用退出时不触发）
+      if (code !== 0) {
+        scheduleAgentRestart(code, signal);
+      }
     });
 
     setTimeout(() => {
@@ -375,15 +553,25 @@ function startAgentProcess() {
  * 返回 Promise，在进程真正退出（或被 kill）后 resolve，便于重启流程 await。
  */
 function stopAgentProcess() {
+  // 取消待执行的自动重启，避免"停了又被拉起来"
+  if (agentRestartTimer) {
+    clearTimeout(agentRestartTimer);
+    agentRestartTimer = null;
+  }
+  isStoppingAgent = true;
   return new Promise((resolve) => {
     if (!agentProcess) {
+      isStoppingAgent = false;
       resolve();
       return;
     }
     let resolved = false;
+    let timer = null;
     const finish = () => {
       if (resolved) return;
       resolved = true;
+      if (timer) clearTimeout(timer);
+      isStoppingAgent = false;
       resolve();
     };
     // 进程主动退出时（startAgentProcess 中注册的 exit 处理器会置 agentProcess=null）
@@ -393,13 +581,11 @@ function stopAgentProcess() {
     } catch (e) {
       console.warn('[主进程] 写入 exit 指令失败:', e.message);
     }
-    setTimeout(() => {
+    timer = setTimeout(() => {
       if (agentProcess) {
-        try {
-          agentProcess.kill();
-        } catch {
-          // 进程可能已退出，忽略
-        }
+        // 必须杀进程树：dev 模式经 shell 拉起 npx tsx，只 kill 外层 shell 会留下
+        // 仍占用 9527 端口的 node 僵尸进程。
+        killProcessTree(agentProcess);
         agentProcess = null;
       }
       finish();
@@ -747,7 +933,19 @@ app.whenReady().then(async () => {
 
   // 提交配置
   let isSetupConfiguring = false;
-  ipcMain.on('setup-submit-config', async (_event, config) => {
+  ipcMain.on('setup-submit-config', async (event, config) => {
+    // 仅允许 setup 窗口提交：该接口可改写 .env / config.json（包括 API baseURL、
+    // 密钥与安全开关）。若任意渲染进程（含被注入脚本的 dashboard/monitor）都能调用，
+    // 一次 XSS 即可把流量导向攻击者的 baseURL 或关闭安全限制。
+    if (
+      !setupWindow ||
+      setupWindow.isDestroyed() ||
+      setupWindow.webContents.id !== event.sender.id
+    ) {
+      console.warn('[主进程] 拒绝非配置向导窗口的 setup-submit-config 调用');
+      return;
+    }
+    if (!config || typeof config !== 'object') return;
     if (isSetupConfiguring) return; // 防重入
     isSetupConfiguring = true;
     try {
@@ -778,6 +976,20 @@ app.whenReady().then(async () => {
                 mainWindow.reload();
               }
               isReconfiguring = false;
+            } catch (err) {
+              // startAgentProcess 可能因端口占用/脚本缺失而 reject。
+              // 不捕获会变成 unhandledRejection，用户界面停在"保存成功"却没有 Agent。
+              console.error('[主进程] 重新配置后重启 Agent 失败:', err);
+              isReconfiguring = false;
+              const msg = err && err.message ? err.message : String(err);
+              for (const win of [dashboardWindow, mainWindow]) {
+                if (win && !win.isDestroyed()) {
+                  win.webContents.send('agent-reply', {
+                    text: `[系统] 配置已保存，但重启 Agent 失败：${msg}`,
+                    isError: true,
+                  });
+                }
+              }
             } finally {
               isSetupConfiguring = false;
             }
@@ -869,7 +1081,7 @@ app.whenReady().then(async () => {
         const configJson = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
         configJson.chat = configJson.chat || {};
         configJson.chat.language = lang || 'zh';
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(configJson, null, 2), 'utf-8');
+        writeFileAtomicSync(CONFIG_FILE, JSON.stringify(configJson, null, 2));
         console.log('[主进程] 语言配置已更新:', lang);
       }
       // 通过 WebSocket 通知 Agent 进程刷新 system prompt
@@ -942,10 +1154,11 @@ app.whenReady().then(async () => {
     const DEFAULT_PERSONA = 'cogito';
 
     // 当前人设：优先用渲染进程同步过来的 currentPersona（Agent 侧切换人设时广播）
-    const persona = currentPersona || '';
+    // 该值来自 IPC/config.json，必须校验后才能拼接路径，否则 `../../..` 可枚举任意目录
+    const persona = sanitizePersonaId(currentPersona);
 
-    // 确定人设文件夹名：空 -> 默认文件夹
-    const personaDir = persona ? persona : DEFAULT_PERSONA;
+    // 确定人设文件夹名：空/非法 -> 默认文件夹
+    const personaDir = persona || DEFAULT_PERSONA;
     const personaDirPath = path.join(PROJECT_ROOT, 'personas', personaDir);
 
     let personaContent = '';
@@ -961,7 +1174,7 @@ app.whenReady().then(async () => {
     // 1) persona.md 显式声明了"## 形象"媒体文件且存在 -> 优先使用
     if (personaContent) {
       const mediaDecl = parsePersonaMedia(personaContent);
-      if (mediaDecl) {
+      if (mediaDecl && isSafeMediaName(mediaDecl.name)) {
         const mediaPath = path.join(personaDirPath, mediaDecl.name);
         if (fs.existsSync(mediaPath)) {
           return { type: mediaDecl.type, path: `../../personas/${personaDir}/${mediaDecl.name}` };
@@ -997,15 +1210,21 @@ app.whenReady().then(async () => {
   // ===== 会话管理 IPC =====
   // 更新当前 persona（在 Agent 侧切换人设时同步），并持久化到 config.json
   ipcMain.on('update-current-persona', (_event, personaName) => {
-    currentPersona = personaName;
-    console.log('[主进程] Persona 已同步:', personaName);
+    // 空串 = 回到默认人设，是合法输入；非空但非法（含分隔符/遍历）一律拒绝
+    const safe = personaName ? sanitizePersonaId(personaName) : '';
+    if (personaName && !safe) {
+      console.warn('[主进程] 拒绝非法 persona 名:', personaName);
+      return;
+    }
+    currentPersona = safe;
+    console.log('[主进程] Persona 已同步:', safe || '默认');
     try {
       if (fs.existsSync(CONFIG_FILE)) {
         const configJson = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
         // 空字符串表示默认人设（Cogito），仍写入以覆盖之前的显式人设
-        configJson.persona = personaName || '';
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(configJson, null, 2), 'utf-8');
-        console.log('[主进程] Persona 已持久化到 config.json:', personaName || '默认');
+        configJson.persona = safe;
+        writeFileAtomicSync(CONFIG_FILE, JSON.stringify(configJson, null, 2));
+        console.log('[主进程] Persona 已持久化到 config.json:', safe || '默认');
       }
     } catch (e) {
       console.error('[主进程] 持久化 persona 失败:', e.message);
@@ -1031,7 +1250,7 @@ app.whenReady().then(async () => {
   function writeConfigJson(patch) {
     const configJson = readConfigJson();
     const merged = { ...configJson, ...patch };
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2), 'utf-8');
+    writeFileAtomicSync(CONFIG_FILE, JSON.stringify(merged, null, 2));
     return merged;
   }
 
@@ -1201,7 +1420,7 @@ app.whenReady().then(async () => {
               lastActiveAt: s.lastActiveAt,
               messageCount: s.messageCount || 0,
             }));
-            fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
+            writeFileAtomicSync(metaPath, JSON.stringify(meta, null, 2));
             try {
               if (process.platform === 'win32') {
                 execFileSync(

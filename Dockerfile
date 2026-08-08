@@ -24,8 +24,8 @@ COPY . .
 # 创建数据目录
 RUN mkdir -p /app/data
 
-# 暴露端口
-EXPOSE 9527
+# 暴露端口：9527 = WebSocket，9528 = 健康检查 HTTP
+EXPOSE 9527 9528
 
 # 环境变量
 ENV NODE_ENV=production
@@ -34,6 +34,14 @@ ENV COGITO_THINKING_INTERVAL=3000
 ENV COGITO_WS_HOST=0.0.0.0
 ENV COGITO_WS_HEALTH=true
 ENV COGITO_WS_HEALTH_PORT=9528
+# 运行期用户数据目录指向持久卷：ws token、推测执行模式库等落在这里，
+# 否则会写进容器可写层，重启即丢失。
+ENV COGITO_USER_DATA_DIR=/app/data
+
+# 注意：绑定 0.0.0.0 后访问控制完全由 ws token 承担。
+# 生产部署务必通过 COGITO_WS_TOKEN 注入一个固定强随机 token，
+# 否则每次重启 token 都会变化，远程客户端无法稳定接入。
+# ENV COGITO_WS_TOKEN=
 
 # 健康检查：探测独立 HTTP 健康端点（WS 端口不提供 HTTP 服务）
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \

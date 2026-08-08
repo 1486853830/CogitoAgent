@@ -10,6 +10,7 @@ import {
   getContextToken,
 } from '@pawastation/ilink-bot-sdk';
 import type { MessageItem, SendOptions } from '@pawastation/ilink-bot-sdk';
+import { resolveInWorkspace } from './path.ts';
 import { broadcast } from '../../io/ws-server.ts';
 
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
@@ -392,9 +393,15 @@ async function sendWechatImage(
   }
 
   try {
-    const fullPath = path.isAbsolute(imagePath)
-      ? imagePath
-      : path.resolve(process.cwd(), imagePath);
+    // 工作区校验：未校验时 Agent 可指定任意绝对路径，把工作区外的敏感文件
+    // （截图、凭据文件等）当作图片直接发送给微信联系人，造成数据外泄。
+    const fullPath = resolveInWorkspace(imagePath);
+    if (!fullPath) {
+      return {
+        success: false,
+        error: `图片路径超出允许访问的工作区范围: ${imagePath}`,
+      };
+    }
 
     if (!fs.existsSync(fullPath)) {
       return {

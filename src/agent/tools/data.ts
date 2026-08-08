@@ -3,6 +3,27 @@ import path from 'path';
 import { resolveInWorkspace } from './path.ts';
 
 /**
+ * 数据文件读取上限（16MB）。
+ * CSV/JSON 会被整体解析成对象数组，内存占用是原文件的数倍；
+ * 无上限时一个大导出文件足以 OOM 掉 Agent 进程。
+ */
+const MAX_DATA_FILE_BYTES = 16 * 1024 * 1024;
+/** 解析后保留的最大行数，避免几百万行 CSV 撑爆内存与后续 JSON 序列化。 */
+const MAX_CSV_ROWS = 100000;
+
+/**
+ * 校验待读取的数据文件大小，超限时返回错误信息。
+ */
+async function checkFileSize(resolvedPath: string, label: string): Promise<string | null> {
+  const stat = await fs.stat(resolvedPath);
+  if (stat.isDirectory()) return `${label} 目标是目录，不是文件`;
+  if (stat.size > MAX_DATA_FILE_BYTES) {
+    return `${label} 文件过大（${stat.size} 字节），超过 ${MAX_DATA_FILE_BYTES} 字节上限，请先拆分或使用数据库工具`;
+  }
+  return null;
+}
+
+/**
  * 读取 CSV 文件
  */
 async function readCSV(filePath: string): Promise<{
@@ -15,6 +36,9 @@ async function readCSV(filePath: string): Promise<{
     if (!resolvedPath) {
       return { success: false, error: `路径不在工作区内: ${filePath}` };
     }
+    const sizeError = await checkFileSize(resolvedPath, '读取 CSV 失败:');
+    if (sizeError) return { success: false, error: sizeError };
+
     const content = await fs.readFile(resolvedPath, 'utf-8');
     const lines = content.split('\n').filter((line) => line.trim());
 
@@ -26,7 +50,9 @@ async function readCSV(filePath: string): Promise<{
     }
 
     const headers = lines[0].split(',').map((h) => h.trim());
-    const rows = lines.slice(1).map((line) => {
+    const dataLines = lines.slice(1);
+    const truncated = dataLines.length > MAX_CSV_ROWS;
+    const rows = (truncated ? dataLines.slice(0, MAX_CSV_ROWS) : dataLines).map((line) => {
       const values = parseCSVLine(line);
       const row: Record<string, string> = {};
       headers.forEach((header, idx) => {
@@ -34,6 +60,12 @@ async function readCSV(filePath: string): Promise<{
       });
       return row;
     });
+
+    if (truncated) {
+      console.warn(
+        `[data] CSV 行数 ${dataLines.length} 超过 ${MAX_CSV_ROWS} 上限，仅返回前 ${MAX_CSV_ROWS} 行`,
+      );
+    }
 
     return {
       success: true,
@@ -138,6 +170,9 @@ async function readJSON(
     if (!resolvedPath) {
       return { success: false, error: `路径不在工作区内: ${filePath}` };
     }
+    const sizeError = await checkFileSize(resolvedPath, '读取 JSON 失败:');
+    if (sizeError) return { success: false, error: sizeError };
+
     const content = await fs.readFile(resolvedPath, 'utf-8');
     const data = JSON.parse(content);
 

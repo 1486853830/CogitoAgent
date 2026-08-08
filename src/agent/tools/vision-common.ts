@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { loadConfig } from '../../config.ts';
-import { getBasePath } from './path.ts';
+import { resolveInWorkspace } from './path.ts';
 
 const SUPPORTED_FORMATS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif']);
 
@@ -122,8 +122,13 @@ async function analyzeLocalImage(
     return { success: false, error: '请提供图片路径' };
   }
 
-  const basePath = getBasePath();
-  const fullPath = path.isAbsolute(imagePath) ? imagePath : path.join(basePath, imagePath);
+  // 必须走工作区校验：此前直接接受绝对路径，Agent 传入
+  // C:/Users/<user>/.ssh/id_rsa 或带 ../ 的相对路径即可把工作区外的任意文件
+  // 当作图片读走（内容会随请求发往视觉 API），绕过了其他文件工具的统一防护。
+  const fullPath = resolveInWorkspace(imagePath);
+  if (!fullPath) {
+    return { success: false, error: `图片路径超出允许访问的工作区范围: ${imagePath}` };
+  }
 
   try {
     if (!fs.existsSync(fullPath)) {

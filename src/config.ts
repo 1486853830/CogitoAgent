@@ -1,4 +1,13 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import {
+  readFileSync,
+  existsSync,
+  openSync,
+  writeSync,
+  fsyncSync,
+  closeSync,
+  renameSync,
+  unlinkSync,
+} from 'fs';
 import path from 'path';
 import os from 'os';
 import type { Config, McpConfig, ToolPermissionRule } from './types/index.ts';
@@ -331,19 +340,34 @@ function loadEnvConfig(): Partial<Config> {
   return envConfig;
 }
 
+/**
+ * 原型污染防护：JSON.parse 会把 "__proto__" 解析成自有属性，
+ * 而 `result[key] = ...` 赋值会触发 Object.prototype 的 setter，
+ * 导致全局原型被替换。合并外部 JSON 时必须跳过这些键。
+ */
+const FORBIDDEN_MERGE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 function deepMerge(
   target: Record<string, unknown>,
   source: Record<string, unknown>,
 ): Record<string, unknown> {
   const result = { ...target };
-  for (const key in source) {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+  for (const key of Object.keys(source)) {
+    if (FORBIDDEN_MERGE_KEYS.has(key)) continue;
+    const value = source[key];
+    // null 不应覆盖默认值：配置文件里写 null 通常表示"未配置"，
+    // 直接覆盖会让下游取到 null 而非默认对象，引发 TypeError。
+    if (value === null || value === undefined) continue;
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const targetValue = target[key];
       result[key] = deepMerge(
-        (target[key] as Record<string, unknown>) || {},
-        source[key] as Record<string, unknown>,
+        targetValue && typeof targetValue === 'object' && !Array.isArray(targetValue)
+          ? (targetValue as Record<string, unknown>)
+          : {},
+        value as Record<string, unknown>,
       );
     } else {
-      result[key] = source[key];
+      result[key] = value;
     }
   }
   return result;
@@ -504,10 +528,44 @@ function saveConfig(cfg: Config): boolean {
     if (sanitized.vision && typeof sanitized.vision === 'object') {
       delete (sanitized.vision as Record<string, unknown>).apiKey;
     }
-    writeFileSync(getConfigFile(), JSON.stringify(sanitized, null, 2), 'utf-8');
+    writeFileAtomic(getConfigFile(), JSON.stringify(sanitized, null, 2));
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * 原子写入：先写同目录临时文件并 fsync，再 rename 覆盖目标。
+ * rename 在同一文件系统内是原子操作，因此进程在任意时刻崩溃，
+ * 目标文件要么是旧内容、要么是新内容，绝不会是写了一半的坏 JSON。
+ * 直接 writeFileSync 覆盖会在中断时留下截断文件，导致下次加载解析失败
+ * 而静默回退默认配置（MCP 配置与工具权限规则全部丢失）。
+ */
+function writeFileAtomic(filePath: string, content: string): void {
+  const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  let fd: number | undefined;
+  try {
+    fd = openSync(tmpPath, 'w');
+    writeSync(fd, content, null, 'utf-8');
+    fsyncSync(fd);
+    closeSync(fd);
+    fd = undefined;
+    renameSync(tmpPath, filePath);
+  } catch (e) {
+    if (fd !== undefined) {
+      try {
+        closeSync(fd);
+      } catch {
+        // 关闭失败不掩盖原始错误
+      }
+    }
+    try {
+      if (existsSync(tmpPath)) unlinkSync(tmpPath);
+    } catch {
+      // 临时文件清理失败不影响错误传播
+    }
+    throw e;
   }
 }
 

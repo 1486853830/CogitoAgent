@@ -24,12 +24,19 @@ jest.unstable_mockModule('playwright', () => ({
 
 // === Mock fs / path 避免 downloadFile 产生文件系统副作用 ===
 // browser.ts 顶部 import './path.ts' → path.ts import config.ts → config.ts 用 readFileSync，
-// 故 fs mock 必须包含 readFileSync/writeFileSync，否则模块加载时报错。
+// 且 config.ts 的原子写需要 openSync/writeSync/fsyncSync/closeSync/renameSync/unlinkSync，
+// 故 fs mock 必须覆盖全部 named export，否则模块加载时报 SyntaxError。
 jest.unstable_mockModule('fs', () => ({
   existsSync: jest.fn().mockReturnValue(true),
   mkdirSync: jest.fn(),
   readFileSync: jest.fn().mockReturnValue(''),
   writeFileSync: jest.fn(),
+  openSync: jest.fn().mockReturnValue(3),
+  writeSync: jest.fn().mockReturnValue(0),
+  fsyncSync: jest.fn(),
+  closeSync: jest.fn(),
+  renameSync: jest.fn(),
+  unlinkSync: jest.fn(),
   realpathSync: jest.fn((p) => p),
   // path.ts 用 `import fs from 'fs'`（默认导入），mock 必须提供 default
   default: {
@@ -37,6 +44,12 @@ jest.unstable_mockModule('fs', () => ({
     mkdirSync: jest.fn(),
     readFileSync: jest.fn().mockReturnValue(''),
     writeFileSync: jest.fn(),
+    openSync: jest.fn().mockReturnValue(3),
+    writeSync: jest.fn().mockReturnValue(0),
+    fsyncSync: jest.fn(),
+    closeSync: jest.fn(),
+    renameSync: jest.fn(),
+    unlinkSync: jest.fn(),
     realpathSync: jest.fn((p) => p),
   },
 }));

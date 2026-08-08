@@ -343,6 +343,74 @@ describe('io/ws-server.ts', () => {
     });
   });
 
+  // 回归：容器部署（COGITO_WS_HOST=0.0.0.0）下的访问控制策略。
+  // 旧实现无条件要求回环来源地址，导致 Dockerfile 里绑定 0.0.0.0 后
+  // 容器网桥 IP 一律被 403，WS 服务实际不可用。
+  describe('远程绑定模式（容器部署）', () => {
+    const savedHost = process.env.COGITO_WS_HOST;
+    const savedToken = process.env.COGITO_WS_TOKEN;
+
+    afterEach(() => {
+      if (savedHost === undefined) delete process.env.COGITO_WS_HOST;
+      else process.env.COGITO_WS_HOST = savedHost;
+      if (savedToken === undefined) delete process.env.COGITO_WS_TOKEN;
+      else process.env.COGITO_WS_TOKEN = savedToken;
+    });
+
+    it('绑定 0.0.0.0 时应放行携带正确 token 的非回环连接', async () => {
+      process.env.COGITO_WS_HOST = '0.0.0.0';
+      await startWsServer(9527);
+      expect(lastServerInstance.options.host).toBe('0.0.0.0');
+
+      const verifyClient = lastServerInstance.options.verifyClient;
+      const cb = jest.fn();
+      verifyClient(
+        {
+          origin: undefined,
+          req: { socket: { remoteAddress: '172.17.0.1' }, url: `/?token=${getWsToken()}` },
+        },
+        cb,
+      );
+      expect(cb).toHaveBeenCalledWith(true);
+      stopWsServer();
+    });
+
+    it('绑定 0.0.0.0 时仍必须校验 token，缺 token 一律拒绝', async () => {
+      process.env.COGITO_WS_HOST = '0.0.0.0';
+      await startWsServer(9527);
+
+      const verifyClient = lastServerInstance.options.verifyClient;
+      const cb = jest.fn();
+      verifyClient({ origin: undefined, req: { socket: { remoteAddress: '172.17.0.1' } } }, cb);
+      expect(cb).toHaveBeenCalledWith(false, 403, '缺少有效的 ws token');
+      stopWsServer();
+    });
+
+    it('回环绑定下非本地地址依然拒绝（默认桌面场景不放宽）', async () => {
+      delete process.env.COGITO_WS_HOST;
+      await startWsServer(9527);
+
+      const verifyClient = lastServerInstance.options.verifyClient;
+      const cb = jest.fn();
+      verifyClient(
+        {
+          origin: undefined,
+          req: { socket: { remoteAddress: '172.17.0.1' }, url: `/?token=${getWsToken()}` },
+        },
+        cb,
+      );
+      expect(cb).toHaveBeenCalledWith(false, 403, '只允许本地连接');
+      stopWsServer();
+    });
+
+    it('COGITO_WS_TOKEN 应覆盖随机 token，保证重启后仍可接入', async () => {
+      process.env.COGITO_WS_TOKEN = 'fixed-token-for-container';
+      await startWsServer(9527);
+      expect(getWsToken()).toBe('fixed-token-for-container');
+      stopWsServer();
+    });
+  });
+
   describe('stopWsServer', () => {
     it('should close the server and clear state', async () => {
       await startWsServer();

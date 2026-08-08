@@ -4,6 +4,10 @@ import { jest } from '@jest/globals';
 const mockStreamChatNative = jest.fn();
 jest.unstable_mockModule('../../src/api/client.ts', () => ({
   streamChatNative: mockStreamChatNative,
+  isAbortError: (error: unknown) =>
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { name?: string }).name === 'AbortError',
 }));
 
 // --- Mock WebSocket broadcast ---
@@ -331,6 +335,46 @@ describe('orchestrator.ts', () => {
       const result = orchestrator.stopAgent('nonexistent');
       expect(result.success).toBe(false);
       expect(result.error).toContain('不存在');
+    });
+
+    it('should abort a running delegateTask and resolve it promptly', async () => {
+      // LLM 流：产出一帧后阻塞，直到收到 abort 信号才结束（模拟卡住的流）
+      mockStreamChatNative.mockImplementation(async function* (
+        _messages: unknown,
+        opts?: { signal?: AbortSignal },
+      ) {
+        yield { content: 'thinking' };
+        const signal = opts?.signal;
+        if (signal) {
+          await new Promise<void>((resolve) => {
+            if (signal.aborted) resolve();
+            else signal.addEventListener('abort', () => resolve(), { once: true });
+          });
+        } else {
+          await new Promise(() => {
+            /* 永不结束 */
+          });
+        }
+        return { input: 0, output: 0, stopReason: 'aborted', toolCalls: [] };
+      });
+
+      const spawnResult = await orchestrator.spawnAgent('Assistant', 'TestAgent', 'instruction');
+      const agentId = spawnResult.data.id;
+
+      const taskPromise = orchestrator.delegateTask(agentId, 'long running task');
+
+      // 等 delegateTask 进入 LLM 流（此时任务应处于进行中）
+      await new Promise((r) => setImmediate(r));
+      expect(orchestrator.getAgent(agentId)?.state).toBe('thinking');
+
+      const stopResult = orchestrator.stopAgent(agentId);
+      expect(stopResult.success).toBe(true);
+
+      // 被中止的任务应立即结束，而不是永久挂起
+      const result = await taskPromise;
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('停止');
+      expect(orchestrator.getAgent(agentId)).toBeNull();
     });
   });
 

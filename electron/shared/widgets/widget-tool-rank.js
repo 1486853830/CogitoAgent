@@ -10,6 +10,18 @@ window.WidgetRegistry?.register('toolRank', (container, opts = {}) => {
   const tr = (key, fb) =>
     window.I18n && typeof window.I18n.t === 'function' ? window.I18n.t(key) : fb;
 
+  // 工具名/分类来自统计库，可能包含模型编造的任意字符串，直接插入 innerHTML 会构成 XSS。
+  // SharedUtils 未加载时回退到 textContent 转义，绝不返回原始文本。
+  const esc = (v) => {
+    if (v === null || v === undefined) return '';
+    if (window.SharedUtils && typeof window.SharedUtils.escapeHtml === 'function') {
+      return window.SharedUtils.escapeHtml(String(v));
+    }
+    const div = document.createElement('div');
+    div.textContent = String(v);
+    return div.innerHTML;
+  };
+
   const CAT_MAP = {
     file: 'widget.cat.file',
     web: 'widget.cat.web',
@@ -49,7 +61,8 @@ window.WidgetRegistry?.register('toolRank', (container, opts = {}) => {
 
     const items = top
       .map((t, idx) => {
-        const pct = (t.callCount / maxCount) * 100;
+        const rawPct = (Number(t.callCount) / (Number(maxCount) || 1)) * 100;
+        const pct = Number.isFinite(rawPct) ? Math.max(0, Math.min(100, rawPct)) : 0;
         let barCls = '';
         if (t.successRate < 70) barCls = 'danger';
         else if (t.successRate < 90) barCls = 'warn';
@@ -57,8 +70,8 @@ window.WidgetRegistry?.register('toolRank', (container, opts = {}) => {
         return `
         <div class="tool-rank-item">
           <span class="tool-rank-no">${String(idx + 1).padStart(2, '0')}</span>
-          <span class="tool-rank-name" title="${t.toolName} (${catName(t.category)})">${t.toolName}</span>
-          <span class="tool-rank-count">${t.callCount}</span>
+          <span class="tool-rank-name" title="${esc(t.toolName)} (${esc(catName(t.category))})">${esc(t.toolName)}</span>
+          <span class="tool-rank-count">${esc(t.callCount)}</span>
           <div class="tool-rank-bar-wrap">
             <div class="tool-rank-bar ${barCls}" style="width: ${pct}%"></div>
           </div>

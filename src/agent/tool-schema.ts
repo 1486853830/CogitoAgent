@@ -291,6 +291,15 @@ export const RICH_ERROR_HINTS: Record<string, string> = {
  * 把工具错误归一化为「稳定错误码 + 用户可读文案」的富错误（R1.9）。
  * errorCode 未命中时根据 message 启发式归类。
  */
+/** classifyToolError（tool-utils）输出的分类名 → 富错误码。 */
+const ERROR_CLASS_TO_CODE: Record<string, string> = {
+  network: 'ENETWORK',
+  timeout: 'ETIMEOUT',
+  permission: 'EDENIED',
+  filesystem: 'ENOTFOUND',
+  unknown: 'EUNKNOWN',
+};
+
 export function toRichError(errorCode: string, message: string): { code: string; message: string } {
   let code = errorCode;
   if (!code) {
@@ -301,11 +310,20 @@ export function toRichError(errorCode: string, message: string): { code: string;
         ? 'ENOTFOUND'
         : /permission|denied|eacces|拒绝/.test(msg)
           ? 'EDENIED'
-          : /network|econn|etimedout|enotfound|fetch failed/.test(msg)
+          : // 词边界限定：'networkx'、'ModuleNotFoundError'（含 "eNotFound" 子串）等
+            // 离线错误（如 Python ModuleNotFoundError）不得误判为网络错误；
+            // 错误码形式的 econn*/etimedout/enotfound 独立成词时才判网络。
+            /\bnetwork\b|\beconn(?:refused|reset|aborted)\b|\betimedout\b|\benotfound\b|fetch failed/.test(
+                msg,
+              )
             ? 'ENETWORK'
             : /invalid|illegal|非法|不合法/.test(msg)
               ? 'EINVALID'
               : 'EEXEC';
+  } else if (ERROR_CLASS_TO_CODE[errorCode]) {
+    // classifyToolError 返回的小写分类（'network'/'timeout'/...）映射到对应富错误码，
+    // 否则会落入 EUNKNOWN，把明确的错误类别退化成泛化文案。
+    code = ERROR_CLASS_TO_CODE[errorCode];
   }
   const hint = RICH_ERROR_HINTS[code] || RICH_ERROR_HINTS.EUNKNOWN;
   return { code, message: hint.replace('{message}', message.slice(0, 300)) };

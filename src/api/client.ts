@@ -12,7 +12,59 @@ import { estimateTokens } from '../utils/token.ts';
 // 重试配置
 const MAX_RETRIES = 5; // 最大重试次数
 const RETRY_DELAY_BASE = 2000; // 基础重试延迟（毫秒）
-const REQUEST_TIMEOUT_MS = 120000; // 单次请求超时 120 秒（流式响应整体上限）
+const REQUEST_TIMEOUT_MS = 120000; // 非流式请求整体超时 120 秒
+
+// 流式请求不能用"整体超时"：一次长回答（长文写作、大段代码）正常就可能超过 2 分钟，
+// 绝对超时会在模型正常输出中途 abort，且因为已 yield 过内容不能重试，直接失败。
+// 改为两段式：
+//   1) 建连 + 响应头阶段用 CONNECT_TIMEOUT_MS；
+//   2) 开始读流后切换为"空闲超时"，每收到一个数据块就重置，只有真正卡死才 abort。
+const CONNECT_TIMEOUT_MS = 60000; // 建连/首包 60 秒
+const STREAM_IDLE_TIMEOUT_MS = 120000; // 流中两次数据间最长间隔 120 秒
+
+// SSE 行缓冲上限：服务端异常（如返回超长单行 / 无换行的二进制）时
+// buffer 会无限增长直至 OOM，必须设硬上限。
+const MAX_SSE_BUFFER_BYTES = 8 * 1024 * 1024; // 8MB
+
+/**
+ * 可重置的超时控制器：用于流式请求的空闲超时。
+ */
+function createResettableTimeout(controller: AbortController) {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  return {
+    arm(ms: number) {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => controller.abort(), ms);
+      if (typeof (timer as { unref?: () => void }).unref === 'function') {
+        (timer as unknown as { unref: () => void }).unref();
+      }
+    },
+    clear() {
+      if (timer) clearTimeout(timer);
+      timer = null;
+    },
+  };
+}
+
+/**
+ * 构造标准 AbortError（name === 'AbortError'），让上层能与网络故障区分开。
+ */
+function createAbortError(message: string): Error {
+  const err = new Error(message);
+  err.name = 'AbortError';
+  return err;
+}
+
+/**
+ * 判断错误是否为"主动取消"。上层据此把中断当作正常终止而非任务失败。
+ */
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { name?: string }).name === 'AbortError'
+  );
+}
 
 // 支持 top_k 参数的供应商 host（Moark/DeepSeek 系）。OpenAI 官方 API 会拒绝未知参数。
 const TOP_K_PROVIDER_HINTS = ['moark', 'deepseek'];
@@ -56,7 +108,8 @@ function isNetworkError(error: unknown): boolean {
     e.code === 'ENOTFOUND' ||
     e.code === 'ETIMEDOUT' ||
     e.code === 'ECONNRESET' ||
-    msg.includes('network') ||
+    // 词边界限定：避免 'networkx' 等含 network 子串的非网络消息被误判为网络错误
+    /\bnetwork\b/i.test(msg) ||
     msg.includes('timeout') ||
     msg.includes('ECONNREFUSED') ||
     msg.includes('Premature close') ||
@@ -87,7 +140,8 @@ async function* streamChat(
     // AbortController 实现请求级超时：fetch 默认无超时，服务端不响应时会
     // 永久挂起，占满连接池。超时后 abort 触发 AbortError，进入重试。
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeout = createResettableTimeout(controller);
+    timeout.arm(CONNECT_TIMEOUT_MS);
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
     // 流式阶段一旦开始 yield 便不再重试，否则已输出内容会重复
     let streamStarted = false;
@@ -139,18 +193,32 @@ async function* streamChat(
       }
 
       // 直接读取 SSE 流
-      reader = response.body!.getReader();
+      if (!response.body) {
+        throw new Error('API 返回空响应体（无 SSE 流）');
+      }
+      reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let finishReason: string | null = null;
+      let sawContent = false;
+      // 进入流式阶段：切换为空闲超时
+      timeout.arm(STREAM_IDLE_TIMEOUT_MS);
 
       while (true) {
         const { done, value } = await reader.read();
 
         if (done) break;
+        // 收到数据即重置空闲计时，长回答不会被绝对超时截断
+        timeout.arm(STREAM_IDLE_TIMEOUT_MS);
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
+        if (buffer.length > MAX_SSE_BUFFER_BYTES) {
+          throw new Error(
+            `SSE 单行超过 ${MAX_SSE_BUFFER_BYTES} 字节上限，疑似服务端返回异常，已中断`,
+          );
+        }
 
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
@@ -160,7 +228,10 @@ async function* streamChat(
           try {
             const parsedResult = safeParseJSON<{
               usage?: { prompt_tokens?: number; completion_tokens?: number };
-              choices?: Array<{ delta?: { content?: string; reasoning_content?: string } }>;
+              choices?: Array<{
+                delta?: { content?: string; reasoning_content?: string };
+                finish_reason?: string | null;
+              }>;
             }>(data);
             if (!parsedResult.success) continue;
             const parsed = parsedResult.data;
@@ -176,10 +247,13 @@ async function* streamChat(
             const choices = parsed.choices;
             if (!choices || choices.length === 0) continue;
 
+            if (choices[0].finish_reason) finishReason = choices[0].finish_reason;
+
             const delta = choices[0].delta;
             if (!delta) continue;
 
             streamStarted = true;
+            if (delta.content) sawContent = true;
             yield {
               content: delta.content || null,
               reasoning: delta.reasoning_content || null,
@@ -188,6 +262,14 @@ async function* streamChat(
             // 跳过单个 SSE 事件的解析错误
           }
         }
+      }
+
+      // 流提前中断检测：服务端在未给出 finish_reason 的情况下关闭连接，
+      // 说明回答被截断。静默返回会让上层把半句话当成完整回复。
+      if (sawContent && finishReason === null) {
+        console.warn('[API] 流在未返回 finish_reason 的情况下结束，回复可能被截断');
+      } else if (finishReason === 'length') {
+        console.warn('[API] 回复因达到 max_tokens 上限而截断');
       }
 
       // 成功完成 - 返回 usage（API 未返回时用启发式估算兜底）
@@ -243,7 +325,7 @@ async function* streamChat(
           /* 忽略取消失败 */
         }
       }
-      clearTimeout(timeoutId);
+      timeout.clear();
     }
   }
 
@@ -359,6 +441,12 @@ export interface NativeStreamOptions {
   /** 思考模式（R2.9）。 */
   thinking?:
     { type: 'adaptive' } | { type: 'enabled'; budgetTokens?: number } | { type: 'disabled' };
+  /**
+   * 外部中断信号。调用方（如子智能体编排器停止某个 agent）abort 后：
+   * - 立即 abort 正在进行的 fetch / 读流，释放连接；
+   * - 不再进入重试循环（与"超时 abort 需要重试"区分开）。
+   */
+  signal?: AbortSignal;
 }
 
 export interface NativeToolCallChunk {
@@ -394,13 +482,24 @@ async function* streamChatNative(
 ): AsyncGenerator<NativeStreamChunk, NativeStreamReturn, unknown> {
   let retryCount = 0;
 
-  const accumulatedToolCalls = new Map<number, NativeToolCallChunk>();
-  let capturedUsage: { input: number; output: number } | null = null;
-  let stopReason: string | null = null;
-
   while (retryCount < MAX_RETRIES) {
+    // 这三项必须每次重试重新初始化：放在循环外会把上一次失败尝试残留的
+    // finish_reason / 半截 tool_calls 带进新一轮，产生错误的调用参数。
+    const accumulatedToolCalls = new Map<number, NativeToolCallChunk>();
+    let capturedUsage: { input: number; output: number } | null = null;
+    let stopReason: string | null = null;
+
+    const externalSignal = options.signal;
+    if (externalSignal?.aborted) {
+      throw createAbortError('请求在发起前已被调用方取消');
+    }
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    // 把外部信号桥接到本轮请求的 controller：调用方 abort 时立刻断开 fetch/读流。
+    const onExternalAbort = () => controller.abort();
+    externalSignal?.addEventListener('abort', onExternalAbort, { once: true });
+    const timeout = createResettableTimeout(controller);
+    timeout.arm(CONNECT_TIMEOUT_MS);
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
     let streamStarted = false;
 
@@ -452,17 +551,27 @@ async function* streamChatNative(
         throw err;
       }
 
-      reader = response.body!.getReader();
+      if (!response.body) {
+        throw new Error('API 返回空响应体（无 SSE 流）');
+      }
+      reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      timeout.arm(STREAM_IDLE_TIMEOUT_MS);
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        timeout.arm(STREAM_IDLE_TIMEOUT_MS);
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
+        if (buffer.length > MAX_SSE_BUFFER_BYTES) {
+          throw new Error(
+            `SSE 单行超过 ${MAX_SSE_BUFFER_BYTES} 字节上限，疑似服务端返回异常，已中断`,
+          );
+        }
 
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
@@ -533,6 +642,14 @@ async function* streamChatNative(
         }
       }
 
+      // 流提前中断检测：服务端未给 finish_reason 就断流意味着回复被截断。
+      // 若此时把 stopReason 报成 null，上层会当作"正常结束且无工具调用"，
+      // 半截 tool_calls 参数也会被当成完整 JSON 解析失败。显式标记为 incomplete。
+      if (streamStarted && stopReason === null) {
+        console.warn('[API] 流在未返回 finish_reason 的情况下结束，标记为 incomplete');
+        stopReason = 'incomplete';
+      }
+
       // 成功完成 - 返回 usage（API 未返回时用启发式估算兜底）
       if (!capturedUsage) {
         const inputText = messages.map((m) => String(m.content || '')).join('');
@@ -548,6 +665,10 @@ async function* streamChatNative(
       };
     } catch (error: unknown) {
       if (streamStarted) throw error;
+      // 外部主动取消：不是故障，不能重试（否则 stopAgent 之后请求还会再发 4 次）。
+      if (externalSignal?.aborted) {
+        throw createAbortError('请求已被调用方取消');
+      }
       retryCount++;
 
       const e = error as { status?: number; name?: string; retryAfter?: unknown };
@@ -572,6 +693,7 @@ async function* streamChatNative(
 
       throw error;
     } finally {
+      externalSignal?.removeEventListener('abort', onExternalAbort);
       if (reader) {
         try {
           await reader.cancel();
@@ -579,11 +701,11 @@ async function* streamChatNative(
           /* 忽略取消失败 */
         }
       }
-      clearTimeout(timeoutId);
+      timeout.clear();
     }
   }
 
   throw new Error('unreachable');
 }
 
-export { streamChat, streamChatNative, chatText, estimateTokens };
+export { streamChat, streamChatNative, chatText, estimateTokens, isAbortError };

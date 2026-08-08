@@ -681,6 +681,35 @@ function generateSummary(messages: Message[]): string {
  *
  * @param summarizer 可选注入的摘要器（测试用）；缺省走 summarizeConversation（真实 LLM）。
  */
+/**
+ * 把压缩切点对齐到完整的工具调用边界。
+ *
+ * 保留区的第一条消息若是 role='tool'，说明发起它的 assistant(tool_calls) 已被
+ * 归档，该 tool 消息就成了带着悬空 tool_call_id 的孤儿，会让 API 直接 400。
+ *
+ * 优先向后推进切点（多归档几条，压缩效果不打折）；若向后会把保留区清空，
+ * 则改为向前回退，宁可少压一点也不能产生孤儿消息。
+ *
+ * @param messages 已剔除 system 的消息序列
+ * @param desiredCut 期望切点（该索引及之后的消息保留）
+ * @returns 对齐后的安全切点
+ */
+function alignCutToToolBoundary(messages: Message[], desiredCut: number): number {
+  const clamped = Math.max(0, Math.min(desiredCut, messages.length));
+  if (clamped >= messages.length) return clamped;
+  if (messages[clamped]?.role !== 'tool') return clamped;
+
+  // 向后找第一个非 tool 消息
+  let forward = clamped;
+  while (forward < messages.length && messages[forward].role === 'tool') forward++;
+  if (forward < messages.length) return forward;
+
+  // 尾部全是 tool 消息：向前回退到第一个非 tool 消息
+  let backward = clamped;
+  while (backward > 0 && messages[backward].role === 'tool') backward--;
+  return backward;
+}
+
 async function compressHistory(summarizer?: (m: Message[]) => Promise<string>): Promise<void> {
   const nonSystemMessages = conversationHistory.filter((m) => m.role !== 'system');
 
@@ -688,12 +717,21 @@ async function compressHistory(summarizer?: (m: Message[]) => Promise<string>): 
     return;
   }
 
-  const toArchive = nonSystemMessages.slice(0, -KEEP_RECENT_TURNS);
+  // 切点必须对齐到完整的工具调用边界：assistant(tool_calls) 与其后续 role='tool'
+  // 结果消息是不可分割的整体。若从中间切断，保留下来的孤儿 tool 消息会带着
+  // tool_call_id 原样回传给 API，OpenAI 兼容端直接返回 400，且此后每轮都失败，
+  // 该会话再也无法恢复。
+  const cutIndex = alignCutToToolBoundary(
+    nonSystemMessages,
+    nonSystemMessages.length - KEEP_RECENT_TURNS,
+  );
+
+  const toArchive = nonSystemMessages.slice(0, cutIndex);
   if (toArchive.length > 0) {
     archiveCurrentSession();
   }
 
-  const recentMessages = nonSystemMessages.slice(-KEEP_RECENT_TURNS);
+  const recentMessages = nonSystemMessages.slice(cutIndex);
 
   // 对将被丢弃的旧内容做摘要；失败/为空则回退朴素摘要
   let summary = '';

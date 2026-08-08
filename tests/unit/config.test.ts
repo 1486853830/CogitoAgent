@@ -119,11 +119,12 @@ describe('config.ts', () => {
       expect(result).toEqual(target);
     });
 
-    it('should handle null values', () => {
+    it('should skip null values (treated as unset)', () => {
       const target = { a: 1 };
       const source = { a: null };
       const result = deepMerge(target, source);
-      expect(result.a).toBeNull();
+      // null 视为"未配置"：不覆盖默认值，保持 target 原值
+      expect(result.a).toBe(1);
     });
 
     it('should handle arrays', () => {
@@ -131,6 +132,43 @@ describe('config.ts', () => {
       const source = { arr: [3, 4] };
       const result = deepMerge(target, source);
       expect(result.arr).toEqual([3, 4]);
+    });
+
+    it('should reject prototype-pollution keys', () => {
+      // JSON.parse 会把 __proto__ / constructor / prototype 变成自有属性，
+      // 若直接 result[key] = value 赋值，会触发 Object.prototype 的 setter，
+      // 污染全局原型。deepMerge 必须整体跳过这些键。
+      const malicious = JSON.parse(
+        '{"__proto__":{"polluted":true},"constructor":{"prototype":{"polluted2":true}},"prototype":{"polluted3":true},"api":{"model":"gpt-4o"}}',
+      ) as Record<string, unknown>;
+      const result = deepMerge(
+        { ...DEFAULT_CONFIG } as unknown as Record<string, unknown>,
+        malicious,
+      ) as Record<string, unknown>;
+
+      // 危险键被整体跳过（__proto__/constructor 是原型链访问器，需查自有属性）
+      expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(result, 'constructor')).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(result, 'prototype')).toBe(false);
+      // 正常键照常合并
+      expect((result.api as Record<string, unknown>).model).toBe('gpt-4o');
+      // Object.prototype 未被污染
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+      expect(({} as Record<string, unknown>).polluted2).toBeUndefined();
+      expect(({} as Record<string, unknown>).polluted3).toBeUndefined();
+    });
+
+    it('should reject nested prototype-pollution keys', () => {
+      const malicious = JSON.parse(
+        '{"api":{"__proto__":{"polluted":true},"model":"deepseek-v3"}}',
+      ) as Record<string, unknown>;
+      const result = deepMerge(
+        { ...DEFAULT_CONFIG } as unknown as Record<string, unknown>,
+        malicious,
+      ) as Record<string, unknown>;
+      const api = result.api as Record<string, unknown>;
+      expect(api.model).toBe('deepseek-v3');
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     });
   });
 
