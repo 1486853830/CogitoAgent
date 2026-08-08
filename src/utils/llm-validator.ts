@@ -1,12 +1,6 @@
-import { z } from 'zod';
-
-export const LLMResponseSchema = z.object({
-  action: z.enum(['tool_call', 'answer', 'thought']),
-  payload: z.record(z.string(), z.unknown()).optional(),
-  reasoning: z.string().optional(),
-});
-
-export type LLMResponse = z.infer<typeof LLMResponseSchema>;
+// JSON-action schema 遗留（LLMResponseSchema / safeParseLLM / parseLLMResponse）已删除：
+// 当前工具调用走 [TOOL] 标记 + tool-parser 解析，不再使用 { action, payload } JSON 协议。
+// 仅保留通用的 safeParseJSON，仍被 api/client.ts、registry.ts、tool-parser.ts 使用。
 
 export function safeParseJSON<T = unknown>(
   raw: string,
@@ -17,25 +11,4 @@ export function safeParseJSON<T = unknown>(
   } catch (e) {
     return { success: false, data: null, error: e as Error };
   }
-}
-
-export function safeParseLLM(raw: string) {
-  try {
-    const parsed = JSON.parse(raw);
-    return LLMResponseSchema.safeParse(parsed);
-  } catch {
-    return { success: false, error: new Error('Invalid JSON format'), data: undefined };
-  }
-}
-
-export function parseLLMResponse(raw: string): LLMResponse {
-  const result = safeParseLLM(raw);
-  if (!result.success) {
-    console.warn('[LLM] 解析失败:', result.error, '原始内容片段:', raw?.slice(0, 200));
-    return {
-      action: 'answer',
-      payload: { text: '抱歉，当前响应格式异常，请重试。' },
-    };
-  }
-  return result.data as LLMResponse;
 }

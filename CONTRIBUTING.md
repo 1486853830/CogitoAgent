@@ -68,7 +68,7 @@ git checkout -b refactor/your-refactoring   # 代码重构 / Code refactoring
 
 ### 环境要求 / Requirements
 
-- **Node.js** 22.12 或更高版本 / 22.12 or higher
+- **Node.js** 24 或更高版本 / 24 or higher
 - **npm** 或 **yarn** 包管理器 / or yarn package manager
 - **Python** 3.x（可选，用于 Python 代码执行）/ (optional, for Python code execution)
 

@@ -26,7 +26,6 @@ jest.unstable_mockModule('../../src/agent/registry.ts', () => ({
   getNames: () => [],
   isDangerousOperation: () => false,
   isConfirmEnabled: () => false,
-  getToolsForPrompt: () => '',
   getEnabledToolNames: () => [],
   DANGEROUS_OPERATIONS: [],
   preprocessToolArgs: (_name: string, args: unknown) => args,

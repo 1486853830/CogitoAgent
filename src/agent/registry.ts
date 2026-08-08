@@ -350,19 +350,6 @@ function getAllCategories(): Record<ToolCategory, string> {
   return { ...TOOL_CATEGORIES };
 }
 
-function getToolsForPrompt(): Record<string, ToolRegistryEntry> {
-  const enabledCategories = getEnabledCategories();
-  const result: Record<string, ToolRegistryEntry> = {};
-
-  for (const [name, info] of Object.entries(TOOL_REGISTRY)) {
-    if (enabledCategories.includes(info.category as ToolCategory)) {
-      result[name] = info;
-    }
-  }
-
-  return result;
-}
-
 function getEnabledToolNames(): string[] {
   const enabledCategories = getEnabledCategories();
   const toolNames: string[] = [];
@@ -434,7 +421,6 @@ export {
   getEnabledCategories,
   getToolsOverview,
   getAllCategories,
-  getToolsForPrompt,
   getEnabledToolNames,
   preprocessToolArgs,
 };

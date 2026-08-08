@@ -155,9 +155,9 @@ const TOOL_REGISTRY = {
 - `category`: 工具分类（用于分组显示和权限控制）
 - `customArgs`: （可选）如果参数需要特殊解析，设为 `true`
 
-### 第五步：在 `session.ts` 中添加分类描述
+### 第五步：在 `system-prompt.ts` 中添加分类描述
 
-**这一步让 AI 知道工具的存在！** 在 `src/agent/session.ts` 的 `buildToolList()` 函数的 `switch/case` 中添加：
+**这一步让 AI 知道工具的存在！** 在 `src/agent/system-prompt.ts` 的 `buildToolList()` 函数的 `switch/case` 中添加：
 
 ```javascript
 switch (category) {
@@ -250,12 +250,12 @@ if (process.env.MY_TOOL_API_KEY) {
 
 ### 常见问题
 
-| 问题                | 原因                                 | 修复方法                           |
-| ------------------- | ------------------------------------ | ---------------------------------- |
-| "Unknown tool" 错误 | 工具未在 `registry.ts` 注册          | 在 `TOOL_REGISTRY` 中添加注册      |
-| 智能体不调用工具    | 工具未在 `session.ts` 分类描述中列出 | 在 `buildToolList()` switch 中添加 |
-| 导入时工具崩溃      | 缺少或损坏的导入                     | 检查导入和依赖项                   |
-| 参数解析错误        | `argCount` 与实际参数数量不匹配      | 检查并修正 `argCount` 值           |
+| 问题                | 原因                                       | 修复方法                           |
+| ------------------- | ------------------------------------------ | ---------------------------------- |
+| "Unknown tool" 错误 | 工具未在 `registry.ts` 注册                | 在 `TOOL_REGISTRY` 中添加注册      |
+| 智能体不调用工具    | 工具未在 `system-prompt.ts` 分类描述中列出 | 在 `buildToolList()` switch 中添加 |
+| 导入时工具崩溃      | 缺少或损坏的导入                           | 检查导入和依赖项                   |
+| 参数解析错误        | `argCount` 与实际参数数量不匹配            | 检查并修正 `argCount` 值           |
 
 ---
 
@@ -313,7 +313,7 @@ const TOOL_REGISTRY = {
 };
 ```
 
-### 4. 更新 `session.ts`
+### 4. 更新 `system-prompt.ts`
 
 在 `file` 分类中添加：
 

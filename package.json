@@ -46,7 +46,7 @@
     "multi-agent"
   ],
   "engines": {
-    "node": ">=22.12"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "start": "chcp 65001 > nul && cross-env COGITO_MODE=dashboard electron .",
@@ -83,7 +83,7 @@
     "dompurify": "^3.4.13",
     "dotenv": "^16.4.5",
     "echarts": "^6.1.0",
-    "isolated-vm": "^6.1.2",
+    "isolated-vm": "^7.0.1",
     "jszip": "^3.10.1",
     "marked": "^18.0.5",
     "nodemailer": "^9.0.1",

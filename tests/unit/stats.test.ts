@@ -2,7 +2,6 @@ import {
   recordToolCall,
   recordSession,
   recordMessage,
-  recordThinkingTime,
   recordTokenUsage,
   getToolStats,
   getSessionStats,
@@ -72,15 +71,6 @@ describe('stats.ts', () => {
       const after = getSessionStats();
       expect(after.totalMessages).toBe(before + 1);
       expect(after.todayMessages).toBe(1);
-    });
-  });
-
-  describe('recordThinkingTime', () => {
-    it('should accumulate thinking time', () => {
-      const before = getSessionStats().totalThinkingTime;
-      recordThinkingTime(100);
-      const after = getSessionStats();
-      expect(after.totalThinkingTime).toBe(before + 100);
     });
   });
 

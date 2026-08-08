@@ -10,7 +10,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github)](https://github.com/SnowLeopard-io/CogitoAgent)
 [![Version](https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square)](<>)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript)](<>)
-[![Node](https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js)](<>)
+[![Node](https://img.shields.io/badge/Node-%3E%3D24-339933?style=flat-square&logo=node.js)](<>)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](<>)
 [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square)](<>)
 [![CI](https://img.shields.io/github/actions/workflow/status/SnowLeopard-io/CogitoAgent/.github/workflows/ci-cd.yml?style=flat-square&label=CI)](https://github.com/SnowLeopard-io/CogitoAgent/actions)
@@ -77,7 +77,7 @@ Unlike cloud-dependent agents that upload your files to third-party servers, Cog
 
 ### Requirements
 
-- **Node.js** 22.12 or higher
+- **Node.js** 24 or higher
 - **npm** or **yarn** package manager
 - **Python** 3.x (optional, for Python code execution)
 

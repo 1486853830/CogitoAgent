@@ -639,7 +639,13 @@ async function runSetup(): Promise<Record<string, unknown> | null> {
       siteFilter: '',
     },
     workspace: normalizedWorkspace,
-    thinkingInterval,
+    // thinkingInterval 对齐 Config.chat.thinkingInterval：
+    // 此前放在顶层，与 Config 类型 schema 不一致，直接消费该返回对象的代码
+    // 会从 cfg.chat.thinkingInterval 取不到用户设定的值。
+    chat: {
+      ...DEFAULT_CONFIG.chat,
+      thinkingInterval,
+    },
     mode,
     email: emailConfig
       ? {

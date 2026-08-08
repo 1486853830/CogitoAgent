@@ -10,7 +10,6 @@ import {
   getToolsByCategory,
   getEnabledCategories,
   getAllCategories,
-  getToolsForPrompt,
   getEnabledToolNames,
 } from '../../src/agent/registry.ts';
 
@@ -177,13 +176,6 @@ describe('registry.ts', () => {
     it('should return all categories when no config', () => {
       const enabled = getEnabledCategories();
       expect(enabled.length).toBe(Object.keys(TOOL_CATEGORIES).length);
-    });
-  });
-
-  describe('getToolsForPrompt', () => {
-    it('should return enabled tools', () => {
-      const tools = getToolsForPrompt();
-      expect(Object.keys(tools).length).toBeGreaterThan(0);
     });
   });
 

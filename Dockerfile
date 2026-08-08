@@ -1,7 +1,7 @@
 # CogitoAgent Docker Image
 # https://github.com/SnowLeopard-io/CogitoAgent
 
-FROM node:22-alpine
+FROM node:24-alpine
 
 # 安装 Python（用于 Python 代码执行）+ native 模块（isolated-vm）编译工具链
 RUN apk add --no-cache python3 py3-pip wget g++ make

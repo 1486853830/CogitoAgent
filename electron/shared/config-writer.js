@@ -57,7 +57,7 @@ export function buildEnvLines(config) {
     '# ============================================',
     '',
     '# 自动思考间隔时间（毫秒），最小值 1000',
-    `COGITO_THINKING_INTERVAL=${q(c.thinkingInterval || 3000)}`,
+    `COGITO_THINKING_INTERVAL=${q(c.chat?.thinkingInterval || c.thinkingInterval || 3000)}`,
     '',
     '# ============================================',
     '# 启动模式配置（可选）',

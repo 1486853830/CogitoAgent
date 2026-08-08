@@ -62,7 +62,7 @@ function buildBinaryHint(ext: string, fullPath: string, size: number): string {
   switch (ext.toLowerCase()) {
     case '.xlsx':
     case '.xls':
-      return base + `请使用 read_excel("${fullPath}") 读取，返回各工作表（sheet）的二维数组数据。`;
+      return base + `请使用 readExcel("${fullPath}") 读取，返回各工作表（sheet）的二维数组数据。`;
     case '.docx':
     case '.doc':
       return base + `请使用 readWord("${fullPath}") 读取，返回标题、段落和表格。`;

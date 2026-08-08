@@ -15,7 +15,7 @@
   <a href="https://gitee.com/cnt-code/cogito-agent"><img src="https://img.shields.io/badge/Gitee-China-c71d23?style=flat-square&logo=gitee" alt="Gitee"></a>
   <a href="#"><img src="https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square" alt="Version"></a>
   <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript" alt="TypeScript"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D22.12-339933?style=flat-square&logo=node.js" alt="Node"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D24-339933?style=flat-square&logo=node.js" alt="Node"></a>
   <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License"></a>
   <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=flat-square" alt="Status"></a>
   <a href="#"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square" alt="PRs Welcome"></a>
@@ -56,7 +56,7 @@
 
 ### 环境要求
 
-- **Node.js** 22.12 或更高版本
+- **Node.js** 24 或更高版本
 - **npm** 或 **yarn** 包管理器
 - **Python** 3.x（可选，用于 Python 代码执行）
 

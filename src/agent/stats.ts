@@ -314,11 +314,6 @@ function recordMessage(): void {
   saveStats();
 }
 
-function recordThinkingTime(duration: number): void {
-  sessionStats.totalThinkingTime += duration;
-  saveStats();
-}
-
 function recordTokenUsage(inputTokens: number, outputTokens: number): void {
   const input = Number(inputTokens) || 0;
   const output = Number(outputTokens) || 0;
@@ -452,7 +447,6 @@ export {
   recordToolCall,
   recordSession,
   recordMessage,
-  recordThinkingTime,
   recordTokenUsage,
   getToolStats,
   getSessionStats,
