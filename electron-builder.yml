@@ -6,19 +6,35 @@ directories:
 files:
   - electron/**/*
   - src/**/*
+  - plugins/**/*
+  - workflows/**/*
+  - introduction/**/*
+  - personas/**/*
+  - index.html
   - package.json
   - .env.example
-  - personas/**/*
+# Agent 子进程以 process.resourcesPath 为 cwd 运行（src/index.ts、插件、人设、
+# node_modules 均需物理存在于磁盘而非 asar 内），故通过 extraResources 完整外置。
 extraResources:
   - from: src/
     to: src
-  - from: node_modules/
-    to: node_modules
+  - from: plugins/
+    to: plugins
+  - from: workflows/
+    to: workflows
+  - from: introduction/
+    to: introduction
   - from: personas/
     to: personas
-extraFiles:
-  - from: .env.example
-    to: .env.example
+  - from: index.html
+    to: index.html
+  - from: node_modules/
+    to: node_modules
+    filter:
+      - '**/*'
+      - '!**/*.map'
+      - '!**/tests/**'
+      - '!**/docs/**'
 win:
   target:
     - target: nsis
@@ -33,8 +49,11 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: CogitoAgent
 asar: true
+# 原生模块（isolated-vm）需要按 Electron ABI 重新编译，
+# 否则打包版中代码执行工具无法加载隔离沙箱。
+asarUnpack:
+  - '**/node_modules/isolated-vm/**'
 compression: maximum
-npmRebuild: false
 publish:
   provider: generic
-  url: ""
+  url: ''

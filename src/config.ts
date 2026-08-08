@@ -32,7 +32,7 @@ const DEFAULT_CONFIG: Config = {
     temperature: 0.7,
     topP: 0.7,
     topK: 50,
-    frequencyPenalty: 1,
+    frequencyPenalty: 0,
     thinkingInterval: 3000,
     language: 'zh',
   },
@@ -53,7 +53,7 @@ const DEFAULT_CONFIG: Config = {
     apiKey: '',
     model: 'InternVL3-78B',
   },
-  workspace: os.homedir(),
+  workspace: path.join(os.homedir(), 'cogito-workspace'),
   database: {
     path: './data/example.db',
   },
@@ -229,6 +229,23 @@ function loadEnvConfig(): Partial<Config> {
 
   if (process.env.COGITO_WORKSPACE) {
     envConfig.workspace = process.env.COGITO_WORKSPACE;
+  }
+
+  const searchConfig: Partial<Config['search']> = {};
+  if (process.env.COGITO_SEARCH_ENABLED !== undefined) {
+    searchConfig.enabled = process.env.COGITO_SEARCH_ENABLED.toLowerCase() !== 'false';
+  }
+  if (process.env.COGITO_SEARCH_BASE_URL) {
+    searchConfig.baseURL = process.env.COGITO_SEARCH_BASE_URL;
+  }
+  if (process.env.COGITO_SEARCH_RECENCY_FILTER) {
+    searchConfig.recencyFilter = process.env.COGITO_SEARCH_RECENCY_FILTER;
+  }
+  if (process.env.COGITO_SEARCH_SITE_FILTER) {
+    searchConfig.siteFilter = process.env.COGITO_SEARCH_SITE_FILTER;
+  }
+  if (Object.keys(searchConfig).length > 0) {
+    envConfig.search = searchConfig as Config['search'];
   }
 
   const modelsConfig: Partial<Config['models']> = {};

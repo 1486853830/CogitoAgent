@@ -9,6 +9,7 @@ import { streamChat } from '../api/client.ts';
 import { TOOL_REGISTRY, isDangerousOperation, preprocessToolArgs } from './registry.ts';
 import { broadcast } from '../io/ws-server.ts';
 import { parseAllToolCalls } from './tool-parser.ts';
+import { isValidPersonaName } from './persona.ts';
 
 // ============================================
 // SubAgent 类 - 子智能体实例
@@ -74,12 +75,16 @@ class AgentOrchestrator {
   counter: number;
   maxIterations: number; // 单个任务最大迭代次数
   maxToolOutput: number; // 工具输出最大长度
+  maxSubAgents: number; // 子智能体数量上限
+  maxParallelTasks: number; // 并行/讨论/流水线任务数量上限
 
   constructor() {
     this.agents = new Map();
     this.counter = 0;
     this.maxIterations = 5;
     this.maxToolOutput = 5000;
+    this.maxSubAgents = 12;
+    this.maxParallelTasks = 8;
   }
 
   /**
@@ -96,6 +101,16 @@ class AgentOrchestrator {
     personaName = personaName || 'Assistant';
     name = name || `${personaName}_${this.counter + 1}`;
     instruction = instruction || '';
+
+    // 校验人设名称，防止路径穿越读取任意目录 persona.md
+    if (!isValidPersonaName(personaName)) {
+      return { success: false, error: `非法的人设名称: "${personaName}"` };
+    }
+
+    // 限制集群规模，防止子智能体数量无限膨胀
+    if (this.agents.size >= this.maxSubAgents) {
+      return { success: false, error: `子智能体数量已达上限（${this.maxSubAgents}）` };
+    }
 
     // 验证 persona 存在
     const personaPath = path.resolve(process.cwd(), 'personas', personaName, 'persona.md');
@@ -175,12 +190,16 @@ class AgentOrchestrator {
    * 并行执行多个任务（使用不同智能体）
    */
   async parallelExecute(tasks: ParallelTask[]): Promise<OperationResult[]> {
+    const limited = Array.isArray(tasks) ? tasks.slice(0, this.maxParallelTasks) : [];
+    if (limited.length === 0) {
+      return [{ success: false, error: '请至少指定一个任务' }];
+    }
     const results = await Promise.allSettled(
-      tasks.map((t) => this.delegateTask(t.agentId, t.task)),
+      limited.map((t) => this.delegateTask(t.agentId, t.task)),
     );
     return results.map((r, i) => ({
-      agentId: tasks[i].agentId,
-      task: tasks[i].task,
+      agentId: limited[i].agentId,
+      task: limited[i].task,
       success: r.status === 'fulfilled' && r.value.success,
       data: r.status === 'fulfilled' ? r.value.data : undefined,
       error:
@@ -202,9 +221,10 @@ class AgentOrchestrator {
     if (!agentIds || agentIds.length === 0) {
       return { success: false, error: '请至少指定一个智能体参与讨论' };
     }
+    const ids = agentIds.slice(0, this.maxParallelTasks);
 
     // 验证所有智能体存在
-    const invalidIds = agentIds.filter((id) => !this.agents.has(id));
+    const invalidIds = ids.filter((id) => !this.agents.has(id));
     if (invalidIds.length > 0) {
       return { success: false, error: `智能体不存在: ${invalidIds.join(', ')}` };
     }
@@ -217,7 +237,7 @@ class AgentOrchestrator {
       success: boolean;
       response?: unknown;
     }> = [];
-    for (const agentId of agentIds) {
+    for (const agentId of ids) {
       const agent = this.agents.get(agentId)!;
       this._broadcastClusterState();
 
@@ -249,7 +269,7 @@ class AgentOrchestrator {
       success: true,
       data: {
         topic,
-        participantCount: agentIds.length,
+        participantCount: ids.length,
         opinions,
       },
     };
@@ -262,9 +282,10 @@ class AgentOrchestrator {
     if (!steps || steps.length === 0) {
       return { success: false, error: '请至少指定一个流水线步骤' };
     }
+    const limitedSteps = steps.slice(0, this.maxParallelTasks);
 
     // 验证所有智能体存在
-    const invalidIds = steps.filter((s) => !this.agents.has(s.agentId));
+    const invalidIds = limitedSteps.filter((s) => !this.agents.has(s.agentId));
     if (invalidIds.length > 0) {
       return {
         success: false,
@@ -275,8 +296,8 @@ class AgentOrchestrator {
     const pipelineResults: Array<Record<string, unknown>> = [];
     let context = '';
 
-    for (let i = 0; i < steps.length; i++) {
-      const step = steps[i];
+    for (let i = 0; i < limitedSteps.length; i++) {
+      const step = limitedSteps[i];
       const agent = this.agents.get(step.agentId)!;
       const stepName = step.name || `步骤 ${i + 1} (${agent.name})`;
 
@@ -328,7 +349,7 @@ class AgentOrchestrator {
     return {
       success: true,
       data: {
-        totalSteps: steps.length,
+        totalSteps: limitedSteps.length,
         finalResult: context,
         pipelineResults,
       },
@@ -349,19 +370,23 @@ class AgentOrchestrator {
     if (!agentIds || agentIds.length === 0) {
       return { success: false, error: '请至少指定一个智能体参与投票' };
     }
+    const ids = agentIds.slice(0, this.maxParallelTasks);
 
-    const invalidIds = agentIds.filter((id) => !this.agents.has(id));
+    const invalidIds = ids.filter((id) => !this.agents.has(id));
     if (invalidIds.length > 0) {
       return { success: false, error: `智能体不存在: ${invalidIds.join(', ')}` };
     }
 
     const optionsText =
       options.length > 0
-        ? `\n\n选项：\n${options.map((o, i) => `${i + 1}. ${o}`).join('\n')}\n\n请从以上选项中选择一个，并说明理由。`
+        ? `\n\n选项：\n${options
+            .slice(0, 20)
+            .map((o, i) => `${i + 1}. ${o}`)
+            .join('\n')}\n\n请从以上选项中选择一个，并说明理由。`
         : '';
 
     const votes: Array<Record<string, unknown>> = [];
-    for (const agentId of agentIds) {
+    for (const agentId of ids) {
       const agent = this.agents.get(agentId)!;
       this._broadcastClusterState();
 
@@ -608,13 +633,17 @@ class AgentOrchestrator {
    * 构建子智能体的系统提示词
    */
   async _buildSystemPrompt(agent: SubAgent): Promise<string> {
-    // 读取 persona 文件
+    // 读取 persona 文件（名称先做安全校验，避免路径穿越读取任意目录）
     let personaContent: string;
-    const personaPath = path.resolve(process.cwd(), 'personas', agent.persona, 'persona.md');
-    try {
-      personaContent = readFileSync(personaPath, 'utf-8');
-    } catch {
+    if (!isValidPersonaName(agent.persona)) {
       personaContent = `# ${agent.persona}\n\n一个专业的智能助手。`;
+    } else {
+      const personaPath = path.resolve(process.cwd(), 'personas', agent.persona, 'persona.md');
+      try {
+        personaContent = readFileSync(personaPath, 'utf-8');
+      } catch {
+        personaContent = `# ${agent.persona}\n\n一个专业的智能助手。`;
+      }
     }
 
     // 获取所有工具名

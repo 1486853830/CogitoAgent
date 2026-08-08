@@ -11,7 +11,7 @@ function freshConfig() {
     },
     search: {
       enabled: true,
-      baseURL: '',
+      baseURL: 'https://search.test.com/v1',
       recencyFilter: '',
       siteFilter: '',
     },
@@ -79,8 +79,9 @@ describe('api/webSearch.ts', () => {
       expect(url).toBe('https://search.custom.com/v1');
     });
 
-    it('should fall back to cfg.api.baseURL + /web-search-v2 when search.baseURL is empty', async () => {
+    it('should fall back to cfg.api.baseURL + /web-search-v2 when search.baseURL is empty and provider is moark', async () => {
       mockConfig.search.baseURL = '';
+      mockConfig.api.provider = 'moark';
       fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ results: [] }),
@@ -92,9 +93,10 @@ describe('api/webSearch.ts', () => {
       expect(url).toBe('https://api.test.com/v1/web-search-v2');
     });
 
-    it('should fall back to default moark URL when both search.baseURL and api.baseURL are empty', async () => {
+    it('should fall back to default moark URL when both search.baseURL and api.baseURL are empty and provider is moark', async () => {
       mockConfig.search.baseURL = '';
       mockConfig.api.baseURL = '';
+      mockConfig.api.provider = 'moark';
       fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ results: [] }),
@@ -104,6 +106,16 @@ describe('api/webSearch.ts', () => {
 
       const [url] = fetchMock.mock.calls[0];
       expect(url).toBe('https://api.moark.com/v1/web-search-v2');
+    });
+
+    it('should return error when search.baseURL is empty and provider is not moark', async () => {
+      mockConfig.search.baseURL = '';
+      mockConfig.api.provider = 'openai';
+      const result = await search('query');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('未配置搜索服务地址');
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('should prefer search.baseURL over api.baseURL', async () => {

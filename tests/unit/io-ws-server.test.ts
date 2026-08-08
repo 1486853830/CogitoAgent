@@ -102,52 +102,14 @@ describe('io/ws-server.ts', () => {
     });
   });
 
-  describe('verifyClient / origin validation', () => {
-    it('should accept localhost origins', async () => {
-      await startWsServer();
-      const verifyClient = lastServerInstance.options.verifyClient;
-      const cb = jest.fn();
-      verifyClient({ origin: 'http://localhost:3000' }, cb);
-      expect(cb).toHaveBeenCalledWith(true);
-      stopWsServer();
-    });
-
-    it('should accept 127.0.0.1 origins', async () => {
-      await startWsServer();
-      const verifyClient = lastServerInstance.options.verifyClient;
-      const cb = jest.fn();
-      verifyClient({ origin: 'https://127.0.0.1:443' }, cb);
-      expect(cb).toHaveBeenCalledWith(true);
-      stopWsServer();
-    });
-
-    it('should reject file:// origins', async () => {
-      await startWsServer();
-      const verifyClient = lastServerInstance.options.verifyClient;
-      const cb = jest.fn();
-      verifyClient({ origin: 'file://' }, cb);
-      expect(cb).toHaveBeenCalledWith(false, 403, '只允许本地连接');
-      stopWsServer();
-    });
-
-    it('should reject undefined origin from non-local address', async () => {
-      // 空 Origin + 非本机地址 → 拒绝（外部恶意进程）
-      await startWsServer();
-      const verifyClient = lastServerInstance.options.verifyClient;
-      const cb = jest.fn();
-      verifyClient({ origin: undefined, req: { socket: { remoteAddress: '10.0.0.5' } } }, cb);
-      expect(cb).toHaveBeenCalledWith(false, 403, expect.any(String));
-      stopWsServer();
-    });
-
-    it('should accept undefined origin from localhost address', async () => {
-      // 空 Origin + 本机回环地址 + 有效 token → 放行（Node ws 客户端不发 Origin 但带 token）
+  describe('verifyClient / auth validation', () => {
+    it('should accept localhost address with valid token in query', async () => {
       await startWsServer();
       const verifyClient = lastServerInstance.options.verifyClient;
       const cb = jest.fn();
       verifyClient(
         {
-          origin: undefined,
+          origin: 'http://localhost:3000',
           req: { socket: { remoteAddress: '127.0.0.1' }, url: `/?token=${getWsToken()}` },
         },
         cb,
@@ -156,13 +118,72 @@ describe('io/ws-server.ts', () => {
       stopWsServer();
     });
 
-    it('should fallback-allow when both origin and remoteAddress are missing', async () => {
-      // 兜底：Origin 和 remoteAddress 都缺失时放行（服务绑定 127.0.0.1）
+    it('should accept localhost address with valid token in header', async () => {
+      await startWsServer();
+      const verifyClient = lastServerInstance.options.verifyClient;
+      const cb = jest.fn();
+      verifyClient(
+        {
+          origin: 'http://localhost:3000',
+          req: { socket: { remoteAddress: '127.0.0.1' }, headers: { 'x-ws-token': getWsToken() } },
+        },
+        cb,
+      );
+      expect(cb).toHaveBeenCalledWith(true);
+      stopWsServer();
+    });
+
+    it('should reject localhost origin without token', async () => {
+      // 任何本机进程都可伪造 Origin，因此即使 Origin 命中本地白名单也必须携带 token
+      await startWsServer();
+      const verifyClient = lastServerInstance.options.verifyClient;
+      const cb = jest.fn();
+      verifyClient(
+        { origin: 'http://localhost:3000', req: { socket: { remoteAddress: '127.0.0.1' } } },
+        cb,
+      );
+      expect(cb).toHaveBeenCalledWith(false, 403, '缺少有效的 ws token');
+      stopWsServer();
+    });
+
+    it('should reject token mismatch from localhost', async () => {
+      await startWsServer();
+      const verifyClient = lastServerInstance.options.verifyClient;
+      const cb = jest.fn();
+      verifyClient(
+        {
+          origin: undefined,
+          req: { socket: { remoteAddress: '127.0.0.1' }, url: '/?token=wrong-token' },
+        },
+        cb,
+      );
+      expect(cb).toHaveBeenCalledWith(false, 403, '缺少有效的 ws token');
+      stopWsServer();
+    });
+
+    it('should reject undefined origin from non-local address', async () => {
+      // 非本机地址 → 拒绝（外部恶意进程）
+      await startWsServer();
+      const verifyClient = lastServerInstance.options.verifyClient;
+      const cb = jest.fn();
+      verifyClient(
+        {
+          origin: undefined,
+          req: { socket: { remoteAddress: '10.0.0.5' }, url: `/?token=${getWsToken()}` },
+        },
+        cb,
+      );
+      expect(cb).toHaveBeenCalledWith(false, 403, expect.any(String));
+      stopWsServer();
+    });
+
+    it('should reject missing remoteAddress without token', async () => {
+      // remoteAddress 未知且无 token → 拒绝（不再兜底放行）
       await startWsServer();
       const verifyClient = lastServerInstance.options.verifyClient;
       const cb = jest.fn();
       verifyClient({ origin: undefined, req: {} }, cb);
-      expect(cb).toHaveBeenCalledWith(true);
+      expect(cb).toHaveBeenCalledWith(false, 403, expect.any(String));
       stopWsServer();
     });
 
@@ -171,7 +192,10 @@ describe('io/ws-server.ts', () => {
       const verifyClient = lastServerInstance.options.verifyClient;
       const cb = jest.fn();
       verifyClient(
-        { origin: 'http://evil.com', req: { socket: { remoteAddress: '10.0.0.5' } } },
+        {
+          origin: 'http://evil.com',
+          req: { socket: { remoteAddress: '10.0.0.5' }, url: `/?token=${getWsToken()}` },
+        },
         cb,
       );
       expect(cb).toHaveBeenCalledWith(false, 403, expect.any(String));

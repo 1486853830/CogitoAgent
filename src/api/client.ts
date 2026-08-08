@@ -14,6 +14,20 @@ const MAX_RETRIES = 5; // 最大重试次数
 const RETRY_DELAY_BASE = 2000; // 基础重试延迟（毫秒）
 const REQUEST_TIMEOUT_MS = 120000; // 单次请求超时 120 秒（流式响应整体上限）
 
+// 支持 top_k 参数的供应商 host（Moark/DeepSeek 系）。OpenAI 官方 API 会拒绝未知参数。
+const TOP_K_PROVIDER_HINTS = ['moark', 'deepseek'];
+
+/**
+ * 判断当前供应商是否支持 top_k 参数。
+ * 通过 baseURL 域名猜测；若用户显式配置了 topK（非默认值），说明其供应商明确支持，也照发。
+ */
+function supportsTopK(cfg: { api?: { baseURL?: string }; chat?: { topK?: number } }): boolean {
+  const baseURL = cfg.api?.baseURL || '';
+  const explicitTopK = cfg.chat?.topK !== undefined && cfg.chat?.topK !== 50;
+  if (explicitTopK) return true;
+  return TOP_K_PROVIDER_HINTS.some((hint) => baseURL.toLowerCase().includes(hint));
+}
+
 /**
  * 等待指定时间
  */
@@ -102,8 +116,10 @@ async function* streamChat(
           max_tokens: cfg.chat?.maxTokens ?? 131072,
           temperature: cfg.chat?.temperature ?? 0.7,
           top_p: cfg.chat?.topP ?? 0.7,
-          top_k: cfg.chat?.topK ?? 50,
-          frequency_penalty: cfg.chat?.frequencyPenalty ?? 1,
+          // top_k 仅对 Moark/DeepSeek 等供应商有效；OpenAI 官方 API 拒绝未知参数（400）。
+          // 仅当用户显式配置 topK 且供应商属于支持方时发送，否则省略以保持兼容。
+          ...(supportsTopK(cfg) ? { top_k: cfg.chat?.topK ?? 50 } : {}),
+          frequency_penalty: cfg.chat?.frequencyPenalty ?? 0,
         }),
         signal: controller.signal,
       });

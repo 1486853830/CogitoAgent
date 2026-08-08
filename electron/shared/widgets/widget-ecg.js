@@ -15,6 +15,8 @@ window.WidgetRegistry?.register('ecg', (container) => {
     lastBeat: 0,
     width: 0,
     height: 0,
+    langHandler: null,
+    resizeHandler: null,
   };
 
   function setupCanvas() {
@@ -174,8 +176,10 @@ window.WidgetRegistry?.register('ecg', (container) => {
   return {
     init() {
       render();
-      document.addEventListener('cogito:langchange', render);
-      window.addEventListener('resize', resize);
+      state.langHandler = render;
+      document.addEventListener('cogito:langchange', state.langHandler);
+      state.resizeHandler = resize;
+      window.addEventListener('resize', state.resizeHandler);
       // 监听 thought-trace 事件
       if (window.electronAPI?.on) {
         window.electronAPI.on('thought-trace', (data) => {
@@ -208,8 +212,13 @@ window.WidgetRegistry?.register('ecg', (container) => {
     destroy() {
       if (state.intervalId) clearInterval(state.intervalId);
       if (state.intervalId2) clearInterval(state.intervalId2);
-      window.removeEventListener('resize', resize);
+      if (state.langHandler) document.removeEventListener('cogito:langchange', state.langHandler);
+      if (state.resizeHandler) window.removeEventListener('resize', state.resizeHandler);
       state.data = [];
+      state.langHandler = null;
+      state.resizeHandler = null;
+      state.intervalId = null;
+      state.intervalId2 = null;
     },
   };
 });

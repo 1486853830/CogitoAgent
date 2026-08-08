@@ -18,11 +18,24 @@ async function search(
     return { success: false, error: '搜索功能未启用' };
   }
 
-  // 构建搜索 URL：优先用 search.baseURL，否则用 api.baseURL + /web-search-v2
-  let searchURL = cfg.search.baseURL || (cfg.api.baseURL ? `${cfg.api.baseURL}/web-search-v2` : '');
-  // 如果 api.baseURL 是空的，使用默认的 moark URL
+  // 构建搜索 URL：优先用 search.baseURL。
+  // 否则仅当主供应商为 moark（其搜索端点格式已知且主 key 属于该平台）时，
+  // 才回退到 api.baseURL + /web-search-v2 或内置默认 Moark URL。
+  // 对 OpenAI/Anthropic/Google 等其他供应商，不猜端点、不把主 key 发给第三方。
+  const provider = (cfg.api?.provider || '').toLowerCase();
+  let searchURL = cfg.search.baseURL;
   if (!searchURL) {
-    searchURL = 'https://api.moark.com/v1/web-search-v2';
+    if (provider.includes('moark')) {
+      searchURL = cfg.api.baseURL
+        ? `${cfg.api.baseURL}/web-search-v2`
+        : 'https://api.moark.com/v1/web-search-v2';
+    } else {
+      return {
+        success: false,
+        error:
+          '未配置搜索服务地址（search.baseURL / COGITO_SEARCH_BASE_URL），且当前 API 供应商不支持自动推导搜索端点',
+      };
+    }
   }
 
   const body: Record<string, unknown> = {

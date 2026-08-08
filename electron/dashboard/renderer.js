@@ -456,10 +456,14 @@ const PersonaSelectModal = {
     const card = document.createElement('div');
     card.className = 'persona-card';
     card.dataset.persona = id;
-    card.innerHTML = `
-      <div class="persona-name">${name}</div>
-      <div class="persona-desc">${desc}</div>
-    `;
+    const nameEl = document.createElement('div');
+    nameEl.className = 'persona-name';
+    nameEl.textContent = name;
+    const descEl = document.createElement('div');
+    descEl.className = 'persona-desc';
+    descEl.textContent = desc;
+    card.appendChild(nameEl);
+    card.appendChild(descEl);
     return card;
   },
 };
@@ -1062,11 +1066,11 @@ const SkillsManager = {
       const catDangerCount = catTools.filter((t) => dangerTools.has(t)).length;
 
       return `
-        <div class="skill-category-card" data-category="${cat.id}">
+        <div class="skill-category-card" data-category="${SharedUtils.escapeHtml(cat.id)}">
           <div class="skill-category-header">
-            <div class="skill-category-code">${cat.code || cat.id.toUpperCase()}</div>
+            <div class="skill-category-code">${SharedUtils.escapeHtml(cat.code || cat.id.toUpperCase())}</div>
             <div class="skill-category-info">
-              <div class="skill-category-name">${locCategoryName(cat)}</div>
+              <div class="skill-category-name">${SharedUtils.escapeHtml(locCategoryName(cat))}</div>
               <div class="skill-category-meta">${catTools.length} TOOLS${catDangerCount ? ` · ${catDangerCount} CRITICAL` : ''}</div>
             </div>
             <div class="skill-category-expand ${isExpanded ? 'expanded' : ''}">
@@ -1079,7 +1083,7 @@ const SkillsManager = {
             ${catTools
               .map((tool) => {
                 const isDanger = dangerTools.has(tool);
-                return `<span class="skill-tool-chip ${isDanger ? 'danger' : ''}">${tool}</span>`;
+                return `<span class="skill-tool-chip ${isDanger ? 'danger' : ''}">${SharedUtils.escapeHtml(tool)}</span>`;
               })
               .join('')}
           </div>

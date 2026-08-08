@@ -582,7 +582,7 @@ async function runSetup(): Promise<Record<string, unknown> | null> {
   printTip(`例如: ${os.homedir()} 或 /home/user/projects`);
   println('');
   const workspace = await question(rl, COLORS.yellow + '  请输入: ' + COLORS.reset);
-  const workspacePath = workspace.trim() || os.homedir();
+  const workspacePath = workspace.trim() || path.join(os.homedir(), 'cogito-workspace');
   // 确保路径以分隔符结尾
   const normalizedWorkspace =
     workspacePath.endsWith(path.sep) || workspacePath.endsWith('/')

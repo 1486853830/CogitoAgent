@@ -3,8 +3,10 @@ import type { WebSocket } from 'ws';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import http from 'http';
 
 let wss: WebSocketServer | null = null;
+let healthServer: http.Server | null = null;
 let messageHandler: ((msg: Record<string, unknown>, ws: WebSocket) => void) | null = null;
 
 type AliveSocket = WebSocket & { __isAlive?: boolean };
@@ -77,16 +79,6 @@ function isLocalRemoteAddress(remoteAddress: string | undefined): boolean {
   );
 }
 
-function isValidOrigin(origin: string | undefined): boolean {
-  const localhostPatterns = [
-    /^http:\/\/localhost(:\d+)?$/,
-    /^https:\/\/localhost(:\d+)?$/,
-    /^http:\/\/127\.0\.0\.1(:\d+)?$/,
-    /^https:\/\/127\.0\.0\.1(:\d+)?$/,
-  ];
-  return !!origin && localhostPatterns.some((pattern) => pattern.test(origin));
-}
-
 function startWsServer(port = 9527): Promise<WebSocketServer> {
   return new Promise((resolve, reject) => {
     try {
@@ -94,49 +86,50 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
       wsToken = crypto.randomUUID();
       writeTokenFile();
 
+      // 默认仅绑定回环地址（桌面场景安全默认）。容器/无头部署可用
+      // COGITO_WS_HOST=0.0.0.0 放开监听（端口映射由 docker-compose 控制）。
+      const host = process.env.COGITO_WS_HOST || '127.0.0.1';
+
       wss = new WebSocketServer(
         {
           port,
-          host: '127.0.0.1',
+          host,
+          // 限制单条消息大小，避免恶意客户端发送超大 payload 撑爆内存
+          maxPayload: 1024 * 1024, // 1MB
           verifyClient: (info, callback) => {
             // 双重校验：
-            // 1. Origin 头（浏览器客户端）必须命中本地白名单；
-            // 2. 非浏览器客户端（如 Electron agent-bridge 的 Node ws 客户端，
-            //    它不发送 Origin 头）必须来自本机回环地址且携带正确 token。
-            //
-            // 注：ws 库的 info 对象只有 origin / secure / req 三个属性，
-            // 没有 info.socket。remoteAddress 必须从 info.req.socket 取。
+            // 1. 必须来自本机回环地址；
+            // 2. 必须携带正确的 ws token（agent-bridge 通过 x-ws-token header 或 ?token= 传递）。
+            //    不再对 Origin 头放行——任何本机进程都可伪造 Origin，故一律要求 token，
+            //    浏览器渲染进程实际并不直连 WS（均通过 main 进程的 agent-bridge 转发）。
             const remoteAddress = info.req?.socket?.remoteAddress;
-            const originOk = isValidOrigin(info.origin);
             const addrOk = isLocalRemoteAddress(remoteAddress);
 
-            // 浏览器客户端：靠 Origin 白名单放行（前端无法安全存储 token）
-            if (originOk) {
-              callback(true);
-              return;
-            }
-
-            // 非浏览器客户端：必须来自回环地址且携带正确 token
             if (addrOk) {
               const clientToken = readTokenFromRequest(info.req);
-              if (!wsToken || clientToken === wsToken) {
+              if (wsToken && clientToken === wsToken) {
                 callback(true);
                 return;
               }
-              console.warn('[WS] 拒绝无 token 的本地连接');
+              console.warn('[WS] 拒绝缺少有效 token 的本地连接');
               callback(false, 403, '缺少有效的 ws token');
               return;
             }
 
             // 兜底：服务绑定在 127.0.0.1，能连上来的请求必然来自本机。
-            // 当 remoteAddress 取不到时（理论上不应发生），放行以避免误杀。
-            if (!remoteAddress && !info.origin) {
-              console.warn('[WS] remoteAddress 未知，但 Origin 也为空，按本机连接放行');
-              callback(true);
+            // 当 remoteAddress 取不到时（理论上不应发生），仍要求携带 token。
+            if (!remoteAddress) {
+              const clientToken = readTokenFromRequest(info.req);
+              if (wsToken && clientToken === wsToken) {
+                callback(true);
+                return;
+              }
+              console.warn('[WS] remoteAddress 未知且缺少 token，拒绝连接');
+              callback(false, 403, '缺少有效的 ws token');
               return;
             }
 
-            console.log('[WS] 拒绝非本地连接:', { origin: info.origin, remoteAddress });
+            console.log('[WS] 拒绝非本地连接:', { remoteAddress });
             callback(false, 403, '只允许本地连接');
           },
         },
@@ -145,6 +138,27 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
           resolve(wss!);
         },
       );
+
+      // Docker/容器部署时启用 /health HTTP 端点供 HEALTHCHECK 探测。
+      // 默认关闭：桌面场景不需要额外监听端口，避免引入非预期攻击面。
+      if (process.env.COGITO_WS_HEALTH === 'true') {
+        const healthPort = Number(process.env.COGITO_WS_HEALTH_PORT || 9528);
+        healthServer = http.createServer((req, res) => {
+          if (req.url === '/health') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'ok' }));
+          } else {
+            res.writeHead(404);
+            res.end();
+          }
+        });
+        healthServer.listen(healthPort, '0.0.0.0', () => {
+          console.log(`[WS] 健康检查服务已启动: http://0.0.0.0:${healthPort}/health`);
+        });
+        healthServer.on('error', (err) => {
+          console.error('[WS] 健康检查服务错误:', err.message);
+        });
+      }
 
       wss.on('error', (err) => {
         // Promise 已 resolve 后 reject 是 no-op；此处始终记日志，避免运行期
@@ -274,13 +288,25 @@ function broadcast(type: string, data: Record<string, unknown>): void {
   if (!wss) return;
   const msg = JSON.stringify({ type, ...data });
   wss.clients.forEach((client) => {
-    if (client.readyState === 1) {
-      client.send(msg);
+    // 单个客户端发送失败（如对端已死但 readyState 尚未更新）不应中断其余客户端，
+    // 也不应把异常抛进调用方（agent 循环）导致消息处理中断。
+    try {
+      if (client.readyState === 1) {
+        client.send(msg);
+      }
+    } catch {
+      // 忽略单个客户端的发送错误
     }
   });
 }
 
 async function stopWsServer(): Promise<void> {
+  if (healthServer) {
+    await new Promise<void>((resolve) => {
+      healthServer!.close(() => resolve());
+    });
+    healthServer = null;
+  }
   if (wss) {
     // 先关闭已有连接（1001=Going Away），仅 wss.close() 不会主动断开 clients
     wss.clients.forEach((c) => c.close(1001));

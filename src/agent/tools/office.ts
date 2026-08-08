@@ -81,6 +81,10 @@ async function createPpt(
 
     if (slides.length === 0) {
       slides = [{ title: 'Blank Slide', content: 'No content provided' }];
+    } else if (slides.length > 100) {
+      // 限制幻灯片数量，防止生成超大 PPT 消耗大量内存/CPU
+      slides = slides.slice(0, 100);
+      console.log(`[提示] 幻灯片数量超过 100，已截断`);
     }
 
     for (const slideData of slides) {

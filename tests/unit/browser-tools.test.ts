@@ -30,6 +30,15 @@ jest.unstable_mockModule('fs', () => ({
   mkdirSync: jest.fn(),
   readFileSync: jest.fn().mockReturnValue(''),
   writeFileSync: jest.fn(),
+  realpathSync: jest.fn((p) => p),
+  // path.ts 用 `import fs from 'fs'`（默认导入），mock 必须提供 default
+  default: {
+    existsSync: jest.fn().mockReturnValue(true),
+    mkdirSync: jest.fn(),
+    readFileSync: jest.fn().mockReturnValue(''),
+    writeFileSync: jest.fn(),
+    realpathSync: jest.fn((p) => p),
+  },
 }));
 
 jest.unstable_mockModule('path', () => ({
@@ -38,6 +47,7 @@ jest.unstable_mockModule('path', () => ({
   isAbsolute: jest.fn().mockReturnValue(false),
   resolve: jest.fn().mockReturnValue('/tmp'),
   sep: '/',
+  basename: jest.fn().mockReturnValue('downloaded-file'),
   // path.ts 用 `import path from 'path'`（默认导入），mock 必须提供 default
   default: {
     dirname: jest.fn().mockReturnValue('/tmp'),
@@ -45,6 +55,7 @@ jest.unstable_mockModule('path', () => ({
     isAbsolute: jest.fn().mockReturnValue(false),
     resolve: jest.fn().mockReturnValue('/tmp'),
     sep: '/',
+    basename: jest.fn().mockReturnValue('downloaded-file'),
   },
 }));
 

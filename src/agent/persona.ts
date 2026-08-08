@@ -2,6 +2,16 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import path from 'path';
 
 /**
+ * 校验人设名称是否安全：仅允许字母/数字/中划线/下划线/点（无路径分隔符与 .. 段），
+ * 防止 persona 参数被用于路径穿越读取任意目录下的 persona.md。
+ */
+export function isValidPersonaName(name: string): boolean {
+  if (!name || typeof name !== 'string') return false;
+  if (name.includes('/') || name.includes('\\') || name.includes('..')) return false;
+  return /^[A-Za-z0-9._-]+$/.test(name);
+}
+
+/**
  * 复制指定 Persona 的 persona.md 到数据目录，返回是否成功。
  * 集中处理路径解析与写入，避免在 setup/commands/session/Agent 等处重复实现。
  */
@@ -9,6 +19,11 @@ export function applyPersona(personaName: string): boolean {
   const dataDir = process.env.COGITO_USER_DATA_DIR || process.cwd();
   const personaPath = path.resolve(process.cwd(), 'personas', personaName, 'persona.md');
   const targetPath = path.resolve(dataDir, 'persona.md');
+
+  if (!isValidPersonaName(personaName)) {
+    console.warn(`[Persona] 非法的人设名称，已拒绝: ${personaName}`);
+    return false;
+  }
 
   try {
     if (!existsSync(personaPath)) {

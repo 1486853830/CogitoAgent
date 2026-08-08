@@ -8,28 +8,29 @@ services:
     container_name: cogito-agent
     restart: unless-stopped
     ports:
-      - "9527:9527"
+      - '9527:9527'
+      - '9528:9528'
     environment:
       - NODE_ENV=production
-      - THINKING_INTERVAL=3000
+      - COGITO_THINKING_INTERVAL=3000
       # API 配置（通过环境变量或配置文件设置）
       - COGITO_API_KEY=${COGITO_API_KEY}
       - COGITO_API_BASE_URL=${COGITO_API_BASE_URL:-https://api.openai.com/v1}
       - COGITO_MODEL=${COGITO_MODEL:-gpt-4o}
       - COGITO_WORKSPACE=/app/workspace
     volumes:
-      # 持久化配置
+      # 持久化配置（若本地无 config.json，先创建空文件再映射，避免 Docker 挂载目录覆盖）
       - ./config.json:/app/config.json:ro
       # 持久化数据
       - cogito-data:/app/data
       # 工作区（可选，映射本地目录）
       - ${COGITO_WORKSPACE:-./workspace}:/app/workspace
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9527/health"]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:9528/health']
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
 volumes:
   cogito-data:

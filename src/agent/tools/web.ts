@@ -68,13 +68,20 @@ async function browse(url: string): Promise<{ success: boolean; data?: string; e
       resolve({ success: false, error: `无效的 URL: ${url}` });
       return;
     }
+    // 拒绝含 shell 元字符的 URL，避免 cmd.exe 二次解析导致命令注入
+    // （合法 URL 中通常不含这些字符，出现即视为恶意输入）
+    if (/[&|^<>%"()\s]/.test(cleanedUrl)) {
+      resolve({ success: false, error: 'URL 包含不安全字符，已拒绝打开' });
+      return;
+    }
     const platform = os.platform();
     let command: string;
     let args: string[];
 
     if (platform === 'win32') {
-      command = 'cmd';
-      args = ['/c', 'start', '', cleanedUrl];
+      // 使用 explorer.exe 而非 cmd /c start，从根源上避免 shell 二次解析
+      command = 'explorer.exe';
+      args = [cleanedUrl];
     } else if (platform === 'darwin') {
       command = 'open';
       args = [cleanedUrl];
@@ -99,17 +106,31 @@ async function browse(url: string): Promise<{ success: boolean; data?: string; e
 async function fetchPage(
   url: string,
 ): Promise<{ success: boolean; data?: string; error?: string }> {
+  // 超时控制 + 响应体大小上限（避免恶意服务端无限拖慢/撑爆内存）
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  const MAX_BODY_BYTES = 1024 * 1024; // 1MB
   try {
     const response = await fetch(url, {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
+      signal: controller.signal,
+      redirect: 'follow',
     });
     if (!response.ok) {
       return { success: false, error: `HTTP ${response.status}: ${response.statusText}` };
     }
-    const html = await response.text();
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    if (contentLength > MAX_BODY_BYTES) {
+      return { success: false, error: '页面过大，已跳过抓取' };
+    }
+    const buf = Buffer.from(await response.arrayBuffer());
+    if (buf.length > MAX_BODY_BYTES) {
+      return { success: false, error: '页面过大，已跳过抓取' };
+    }
+    const html = buf.toString('utf8');
     const $ = cheerio.load(html);
 
     // 提取页面标题
@@ -166,7 +187,13 @@ async function fetchPage(
 
     return { success: true, data: output };
   } catch (error) {
-    return { success: false, error: `抓取失败: ${(error as Error).message}` };
+    const msg =
+      (error as Error).name === 'AbortError'
+        ? '抓取超时，已中止'
+        : `抓取失败: ${(error as Error).message}`;
+    return { success: false, error: msg };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

@@ -168,6 +168,11 @@ function validateGitArgs(args: string[]): boolean {
     if (/[;&|`$<>!(){}[\]\\*?\n\r]/.test(arg)) {
       return false;
     }
+    // 路径穿越防护：拒绝 .. 路径段（git clone 的 dest、git add 等相对路径可逃逸工作区）
+    const segments = arg.split(/[\\/]/);
+    if (segments.some((seg) => seg === '..')) {
+      return false;
+    }
   }
 
   return true;

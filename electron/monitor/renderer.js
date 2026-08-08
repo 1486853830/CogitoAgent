@@ -104,8 +104,12 @@ const StatsManager = {
       window.electronAPI.on('stats-response', (data) => this.handleStatsResponse(data));
     }
 
-    window.addEventListener('beforeunload', () => {
+    // 窗口卸载/重建时清理定时器与图表实例，防止监听器/定时器累积
+    window.addEventListener('pagehide', () => {
       if (this.intervalId) clearInterval(this.intervalId);
+      if (this.chart && typeof this.chart.dispose === 'function') this.chart.dispose();
+      this.chart = null;
+      this.intervalId = null;
     });
   },
 

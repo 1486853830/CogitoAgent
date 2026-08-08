@@ -16,6 +16,8 @@ let hasDragged = false;
 let dragStartX = 0;
 let dragStartY = 0;
 const DRAG_THRESHOLD = 5;
+// rAF 节流移动窗口的 IPC 调用，避免每次 mousemove 触发一次
+let pendingMove = null;
 
 // 流式回复处理器（使用公共 StreamReplyHandler）
 let replyHandler = null;
@@ -217,7 +219,13 @@ function handleCharacterDragMove(e) {
   }
 
   if (hasDragged) {
-    window.electronAPI.moveWindow(deltaX, deltaY);
+    // rAF 节流：合并同一帧内的多次 mousemove，减少 IPC 频率
+    if (!pendingMove) {
+      pendingMove = requestAnimationFrame(() => {
+        pendingMove = null;
+        window.electronAPI.moveWindow(deltaX, deltaY);
+      });
+    }
     dragStartX = e.screenX;
     dragStartY = e.screenY;
   }
@@ -225,6 +233,10 @@ function handleCharacterDragMove(e) {
 
 function handleCharacterDragEnd() {
   isDragging = false;
+  if (pendingMove) {
+    cancelAnimationFrame(pendingMove);
+    pendingMove = null;
+  }
 }
 
 if (document.readyState === 'loading') {

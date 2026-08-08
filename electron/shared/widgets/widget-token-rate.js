@@ -12,6 +12,7 @@ window.WidgetRegistry?.register('tokenRate', (container) => {
     lastTotal: 0,
     maxRate: 100, // 自适应上限
     intervalId: null,
+    langHandler: null,
   };
 
   function pushSample(count) {
@@ -112,7 +113,8 @@ window.WidgetRegistry?.register('tokenRate', (container) => {
   return {
     init() {
       render();
-      document.addEventListener('cogito:langchange', render);
+      state.langHandler = render;
+      document.addEventListener('cogito:langchange', state.langHandler);
       // 发送初始请求获取累计数据
       if (window.electronAPI?.sendStatsRequest) {
         window.electronAPI.sendStatsRequest({ type: 'tokens' });
@@ -150,7 +152,10 @@ window.WidgetRegistry?.register('tokenRate', (container) => {
     },
     destroy() {
       if (state.intervalId) clearInterval(state.intervalId);
+      if (state.langHandler) document.removeEventListener('cogito:langchange', state.langHandler);
       state.samples = [];
+      state.langHandler = null;
+      state.intervalId = null;
     },
   };
 });

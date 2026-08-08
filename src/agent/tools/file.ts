@@ -53,9 +53,7 @@ function isBinaryFile(ext: string, buffer: Buffer): boolean {
   return false;
 }
 
-async function ls(
-  targetPath: string,
-): Promise<{
+async function ls(targetPath: string): Promise<{
   success: boolean;
   data?: { name: string; type: string; path: string }[];
   error?: string;
@@ -66,11 +64,18 @@ async function ls(
   }
   try {
     const entries = await fs.readdir(fullPath, { withFileTypes: true });
-    const result = entries.map((entry) => ({
+    const result = entries.slice(0, 500).map((entry) => ({
       name: entry.name,
       type: entry.isDirectory() ? 'dir' : 'file',
       path: path.join(fullPath, entry.name),
     }));
+    if (entries.length > 500) {
+      result.push({
+        name: `... 其余 ${entries.length - 500} 项省略`,
+        type: 'file',
+        path: '',
+      });
+    }
     return { success: true, data: result };
   } catch (error: unknown) {
     return { success: false, error: (error as Error).message };

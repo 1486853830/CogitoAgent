@@ -94,7 +94,7 @@ function saveConfig(config) {
         temperature: 0.7,
         topP: 0.7,
         topK: 50,
-        frequencyPenalty: 1,
+        frequencyPenalty: 0,
         thinkingInterval: config.thinkingInterval || 3000,
         language: config.chat?.language || 'zh',
       },
@@ -102,7 +102,7 @@ function saveConfig(config) {
         enabled: true,
         baseURL: '',
       },
-      workspace: config.workspace || os.homedir(),
+      workspace: config.workspace || path.join(os.homedir(), 'cogito-workspace'),
       database: {
         path: './data/example.db',
       },
@@ -1218,10 +1218,18 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle('get-wechat-history', () => {
-    const wechatFile = path.join(USER_DATA_DIR, 'data', 'wechat', 'weichat.json');
+    const wechatDir = path.join(USER_DATA_DIR, 'data', 'wechat');
+    // 先读当前使用的正确文件名，回退到旧拼写（迁移前遗留）
+    const wechatFile = path.join(wechatDir, 'wechat.json');
+    const legacyWechatFile = path.join(wechatDir, 'weichat.json');
+    const fileToRead = fs.existsSync(wechatFile)
+      ? wechatFile
+      : fs.existsSync(legacyWechatFile)
+        ? legacyWechatFile
+        : null;
     try {
-      if (fs.existsSync(wechatFile)) {
-        const data = JSON.parse(fs.readFileSync(wechatFile, 'utf-8'));
+      if (fileToRead && fs.existsSync(fileToRead)) {
+        const data = JSON.parse(fs.readFileSync(fileToRead, 'utf-8'));
         return data.messages || [];
       }
     } catch (e) {

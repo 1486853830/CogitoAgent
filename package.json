@@ -118,6 +118,7 @@
     "typescript-eslint": "^8.64.0"
   },
   "overrides": {
+    "image-size": "file:vendor/image-size",
     "brace-expansion": "^5.0.9",
     "js-yaml": "^4.3.1",
     "tar": "^7.4.3",

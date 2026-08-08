@@ -5,7 +5,7 @@
  * ============================================================ */
 
 window.WidgetRegistry?.register('toolRank', (container, opts = {}) => {
-  const state = { data: [], limit: opts.limit || 10, intervalId: null };
+  const state = { data: [], limit: opts.limit || 10, intervalId: null, langHandler: null };
 
   const tr = (key, fb) =>
     window.I18n && typeof window.I18n.t === 'function' ? window.I18n.t(key) : fb;
@@ -86,7 +86,8 @@ window.WidgetRegistry?.register('toolRank', (container, opts = {}) => {
   return {
     init() {
       render();
-      document.addEventListener('cogito:langchange', render);
+      state.langHandler = render;
+      document.addEventListener('cogito:langchange', state.langHandler);
       // 主动拉取
       if (window.electronAPI?.sendStatsRequest) {
         window.electronAPI.sendStatsRequest({ type: 'topTools', limit: state.limit });
@@ -116,7 +117,10 @@ window.WidgetRegistry?.register('toolRank', (container, opts = {}) => {
     },
     destroy() {
       if (state.intervalId) clearInterval(state.intervalId);
+      if (state.langHandler) document.removeEventListener('cogito:langchange', state.langHandler);
       state.data = [];
+      state.langHandler = null;
+      state.intervalId = null;
     },
   };
 });

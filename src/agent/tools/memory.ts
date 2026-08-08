@@ -24,6 +24,13 @@ interface ActionResult<T = unknown> {
   error?: string;
 }
 
+// 单条记忆内容长度上限
+const MAX_CONTENT_LENGTH = 20000;
+// 记忆总条数上限，超出时淘汰最久未访问的
+const MAX_MEMORIES = 2000;
+// 单次最多返回的记忆条数
+const MAX_RESULTS = 200;
+
 /**
  * 规范化标签参数为字符串数组。
  * 兼容数组、JSON 数组字符串（如 '["a","b"]'）、逗号分隔字符串（如 "a, b"）等 AI 常见传参。
@@ -53,6 +60,19 @@ function normalizeTags(tags: unknown): string[] {
 }
 
 let memories: Memory[] = [];
+
+/**
+ * 记忆条数超限时，淘汰最久未访问的记忆，防止 memory.json 无限膨胀
+ */
+function limitMemoryCount(): void {
+  if (memories.length <= MAX_MEMORIES) return;
+  memories.sort((a, b) => {
+    const ta = new Date(a.accessedAt).getTime();
+    const tb = new Date(b.accessedAt).getTime();
+    return (isNaN(ta) ? 0 : ta) - (isNaN(tb) ? 0 : tb);
+  });
+  memories = memories.slice(-MAX_MEMORIES);
+}
 
 /**
  * 安全解析 ID，返回数字或 null（无效时）
@@ -120,12 +140,19 @@ async function addMemory(
   await loadMemory();
 
   // 参数验证和转换：兼容数组、JSON 数组字符串、逗号分隔字符串等 AI 常见传参格式
-  const processedTags = normalizeTags(tags);
+  const processedTags = normalizeTags(tags).slice(0, 50);
+  const contentStr = String(content);
+  if (contentStr.length > MAX_CONTENT_LENGTH) {
+    return {
+      success: false,
+      error: `记忆内容过长（最多 ${MAX_CONTENT_LENGTH} 字符）`,
+    };
+  }
 
   const memory: Memory = {
     id: Date.now(),
-    content,
-    tags: processedTags.map((t) => t.toLowerCase()),
+    content: contentStr,
+    tags: processedTags.map((t) => t.toLowerCase()).map((t) => t.slice(0, 100)),
     category: String(category).toLowerCase(),
     createdAt: new Date().toISOString(),
     accessedAt: new Date().toISOString(),
@@ -133,6 +160,7 @@ async function addMemory(
   };
 
   memories.push(memory);
+  limitMemoryCount();
   await saveMemory();
 
   return {
@@ -174,7 +202,7 @@ async function searchMemory(
     })
     .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+    .slice(0, Math.min(Math.max(limit, 1), MAX_RESULTS));
 
   results.forEach((r) => {
     const idx = memories.findIndex((m) => m.id === r.id);
@@ -206,7 +234,7 @@ async function getAllMemories(category: unknown = null): Promise<ActionResult<Me
 
   return {
     success: true,
-    data: filtered,
+    data: filtered.slice(0, MAX_RESULTS),
   };
 }
 
@@ -266,11 +294,20 @@ async function updateMemory(id: unknown, updates: unknown): Promise<ActionResult
 
   const patch = (updates && typeof updates === 'object' ? updates : {}) as Record<string, unknown>;
 
-  if (patch.content !== undefined) memory.content = String(patch.content);
+  if (patch.content !== undefined) {
+    const contentStr = String(patch.content);
+    if (contentStr.length > MAX_CONTENT_LENGTH) {
+      return {
+        success: false,
+        error: `记忆内容过长（最多 ${MAX_CONTENT_LENGTH} 字符）`,
+      };
+    }
+    memory.content = contentStr;
+  }
   if (patch.tags !== undefined) {
-    const normalized = normalizeTags(patch.tags);
+    const normalized = normalizeTags(patch.tags).slice(0, 50);
     if (normalized.length > 0 || patch.tags === '' || Array.isArray(patch.tags)) {
-      memory.tags = normalized;
+      memory.tags = normalized.map((t) => t.toLowerCase()).map((t) => t.slice(0, 100));
     }
   }
   if (patch.category !== undefined) memory.category = String(patch.category).toLowerCase();
@@ -395,7 +432,7 @@ async function getRelatedMemories(
     })
     .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+    .slice(0, Math.min(Math.max(limit, 1), MAX_RESULTS));
 
   return {
     success: true,

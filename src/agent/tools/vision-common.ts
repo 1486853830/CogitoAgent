@@ -90,6 +90,8 @@ async function callVLApi(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(payload),
+    // 防止视觉 API 无响应导致工具永久挂起
+    signal: AbortSignal.timeout(60000),
   });
 
   if (!response.ok) {

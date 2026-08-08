@@ -9,7 +9,7 @@ function sanitizeAppName(appName: string): string {
     throw new Error('应用名称不能为空');
   }
 
-  const dangerousChars = /[`|;&$<>(){}[\]'"]/;
+  const dangerousChars = /[`|;&$<>(){}[\]'"%^]/;
   if (dangerousChars.test(sanitized)) {
     throw new Error('应用名称包含非法字符');
   }

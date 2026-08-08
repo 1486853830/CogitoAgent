@@ -14,7 +14,7 @@ window.WidgetRegistry?.register('statCards', (container, opts = {}) => {
     { key: 'totalThinkingTime', labelKey: 'widget.thinkingTime', unit: 's', format: 'time' },
   ];
 
-  const state = { data: {}, startedAt: Date.now() };
+  const state = { data: {}, startedAt: Date.now(), langHandler: null };
 
   const tr = (key, fb) =>
     window.I18n && typeof window.I18n.t === 'function' ? window.I18n.t(key) : fb;
@@ -63,7 +63,8 @@ window.WidgetRegistry?.register('statCards', (container, opts = {}) => {
     init() {
       state.startedAt = Date.now();
       render();
-      document.addEventListener('cogito:langchange', render);
+      state.langHandler = render;
+      document.addEventListener('cogito:langchange', state.langHandler);
       // 启动时拉取一次
       if (window.electronAPI?.sendStatsRequest) {
         window.electronAPI.sendStatsRequest({ type: 'session' });
@@ -94,7 +95,9 @@ window.WidgetRegistry?.register('statCards', (container, opts = {}) => {
       }
     },
     destroy() {
+      if (state.langHandler) document.removeEventListener('cogito:langchange', state.langHandler);
       state.data = {};
+      state.langHandler = null;
     },
   };
 });

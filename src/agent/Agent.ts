@@ -115,6 +115,10 @@ import type { Message } from '../types/index.ts';
 let thinkingTimer: ReturnType<typeof setTimeout> | null = null;
 let shouldStop = false;
 let isProcessing = false;
+// 思考周期所有权令牌：每次 thinkCycle 真正开始处理时自增并捕获自己的 id，
+// finally 中仅当自己仍是当前周期时才复位 isProcessing。防止旧周期在中断后
+// 仍处于飞行中、新周期已启动时，旧周期的 finally 误清新周期的标志导致并发。
+let cycleSeq = 0;
 // 当前工具执行的 AbortController：/stop 时 abort，让 executeTool 通过 Promise.race
 // 立即返回中断结果，而不必等待单个工具（如 executeCode 跑 30s）执行完毕。
 let toolAbortController: AbortController | null = null;
@@ -269,14 +273,10 @@ function handleUserInput(input: string, replyKey?: string): void {
         toolAbortController = null;
       }
       // 若正在等待危险操作确认，必须 resolve 挂起的 Promise：否则 thinkCycle
-      // 会卡在 await requestConfirmation 直到 5 分钟超时，期间 isProcessing 被置
-      // false 后新的 thinkCycle 可能被调起，导致两个循环并发、状态机破裂。
+      // 会卡在 await requestConfirmation 直到 5 分钟超时。解除后旧周期经 shouldStop
+      // 检查自行退出并由其 finally 复位 isProcessing（所有权令牌保证不误清新周期）。
       if (isAwaitingConfirmation()) {
         cancelConfirmation(); // resolve(false)，解除 thinkCycle 阻塞
-        // 不在此处置 isProcessing=false：被解除阻塞的 thinkCycle 会经 shouldStop
-        // 检查快速退出，其 finally 块会复位 isProcessing，避免与新周期并发。
-      } else {
-        isProcessing = false;
       }
       println('[中断] 思考已停止', 'yellow');
       state.current = STATE.AWAITING_INPUT;
@@ -333,7 +333,19 @@ function handleUserInput(input: string, replyKey?: string): void {
   if (state.current === STATE.THINKING) {
     shouldStop = true;
     if (thinkingTimer) clearTimeout(thinkingTimer);
-    isProcessing = false;
+    // 中断正在执行的工具：abort 让 executeTool 尽快返回，缩短旧周期的退出路径
+    if (toolAbortController) {
+      toolAbortController.abort();
+      toolAbortController = null;
+    }
+    // 若正在等待危险操作确认，同样需要解除挂起的 Promise，否则旧周期卡死
+    if (isAwaitingConfirmation()) {
+      cancelConfirmation();
+    }
+    // 注意：此处不再立即 isProcessing=false。旧周期（thinkCycle 的 finally）
+    // 会在 shouldStop 检查后自行退出并复位 isProcessing——由周期所有权令牌保证
+    // 只有「仍持有当前周期」的 finally 才允许复位。立即置 false 会让旧周期仍
+    // 卡在网络/工具等待期间，新的 thinkCycle 并发启动，造成工具重复执行。
     println('\n[中断] 思考已停止，请输入消息...', 'yellow');
     state.current = STATE.AWAITING_INPUT;
     broadcast('agent-state', { state: 'idle' });
@@ -647,6 +659,7 @@ async function thinkCycle(): Promise<void> {
   if (isProcessing) return;
   if (state.current !== STATE.THINKING) return;
 
+  const myCycle = ++cycleSeq;
   isProcessing = true;
   broadcast('agent-state', { state: 'thinking' });
 
@@ -700,6 +713,15 @@ async function thinkCycle(): Promise<void> {
     // 4. 执行工具调用
     const toolResults = await executeAllToolCalls(toolCalls);
 
+    // 工具执行期间可能被中断（executeAllToolCalls 已检查 shouldStop 提前退出）。
+    // 中断时不再整合部分结果、不再交付回复，直接退出让 finally 复位 isProcessing，
+    // 避免把中断时刻的半截工具结果写入历史并被当成完整回复交付给用户。
+    if (shouldStop) {
+      shouldStop = false;
+      printBlank();
+      return;
+    }
+
     // 5. 整合结果到对话历史
     const integrateStep = traceStep('整合结果', { toolResultCount: toolResults.length }, 'running');
     integrateResults(finalResponse, toolResults);
@@ -732,7 +754,11 @@ async function thinkCycle(): Promise<void> {
     broadcast('agent-state', { state: 'idle' });
     showPrompt();
   } finally {
-    isProcessing = false;
+    // 所有权校验：只有仍是当前周期的 finally 才允许复位 isProcessing。
+    // 若中断后新周期已启动（cycleSeq 已自增），旧周期不得清掉新周期的标志。
+    if (myCycle === cycleSeq) {
+      isProcessing = false;
+    }
   }
 }
 
@@ -740,8 +766,15 @@ function scheduleNextCycle(): void {
   if (thinkingTimer) clearTimeout(thinkingTimer);
   thinkingTimer = setTimeout(async () => {
     if (state.current === STATE.THINKING) {
+      // 若另一周期仍在处理（例如中断后旧周期尚未退出），本次调用会因
+      // isProcessing 守卫立即返回。此时不重复自旋调度，避免 3 秒轮询空转：
+      // 旧周期的 finally 会在退出后复位 isProcessing，而下一条用户消息会
+      // 再次触发 scheduleNextCycle，保证后续周期不会丢失。
+      const wasBlocked = isProcessing;
       await thinkCycle();
-      scheduleNextCycle();
+      if (!wasBlocked) {
+        scheduleNextCycle();
+      }
     }
   }, thoughtInterval);
 }

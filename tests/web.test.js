@@ -10,15 +10,24 @@ jest.mock('child_process', () => ({
   }),
 }));
 
+// 通过环境变量为 loadConfig 提供搜索端点，使 search 走 fetch mock 而非依赖本机配置。
+// webSearch.ts 仅在显式配置 search.baseURL（或 moark 供应商）时才发请求。
+const ORIG_ENV = process.env;
+
 global.fetch = jest.fn();
 
 describe('Web 模块', () => {
   let webModule;
 
   beforeEach(async () => {
+    process.env = { ...ORIG_ENV, COGITO_SEARCH_BASE_URL: 'https://search.test.com/v1' };
     jest.resetModules();
     jest.clearAllMocks();
     webModule = await import('../src/agent/tools/web.js');
+  });
+
+  afterEach(() => {
+    process.env = ORIG_ENV;
   });
 
   describe('search', () => {
@@ -63,10 +72,12 @@ describe('Web 模块', () => {
 
   describe('fetchPage', () => {
     it('应该正确抓取网页内容', async () => {
+      const html =
+        '<html><head><title>测试页面</title></head><body><h1>测试页面</h1><p>内容</p></body></html>';
       fetch.mockResolvedValue({
         ok: true,
-        text: async () =>
-          '<html><head><title>测试页面</title></head><body><h1>测试页面</h1><p>内容</p></body></html>',
+        headers: { get: () => null },
+        arrayBuffer: async () => new TextEncoder().encode(html).buffer,
       });
 
       const result = await webModule.fetchPage('https://example.com');

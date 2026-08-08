@@ -70,10 +70,11 @@ function connect() {
   shouldReconnect = true;
 
   console.log('[AgentBridge] 正在连接 Agent...');
-  // 携带 token 通过 ws-server 的非浏览器客户端校验
+  // 携带 token 通过 ws-server 校验。优先走 x-ws-token header（避免 token 出现在
+  // URL query 中被 HTTP 层/日志记录），服务端同时兼容两种传法。
   const token = readWsToken();
-  const url = token ? `${WS_URL}?token=${token}` : WS_URL;
-  ws = new WebSocket(url);
+  const headers = token ? { 'x-ws-token': token } : {};
+  ws = new WebSocket(WS_URL, { headers });
 
   ws.on('open', () => {
     console.log('[AgentBridge] 已连接到 Agent');
@@ -242,10 +243,18 @@ function ensureUserMessageHandler() {
     event.reply('agent-history', []);
   });
 
+  // 请求 ID 生成器：单调递增，避免同毫秒并发请求（如监控页多个 widget 同时
+  // 发起 stats-request）使用 Date.now() 碰撞导致响应串扰。
+  let requestSeq = 0;
+  function nextRequestId() {
+    requestSeq += 1;
+    return `${Date.now()}-${requestSeq}`;
+  }
+
   // 统计数据请求
   ipcMain.on('stats-request', (event, payload) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
-      const requestId = Date.now();
+      const requestId = nextRequestId();
       const handler = (raw) => {
         try {
           const msg = JSON.parse(raw.toString());
@@ -272,7 +281,7 @@ function ensureUserMessageHandler() {
   // 技能与工具面板数据请求
   ipcMain.on('tools-request', (event) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
-      const requestId = Date.now();
+      const requestId = nextRequestId();
       const handler = (raw) => {
         try {
           const msg = JSON.parse(raw.toString());

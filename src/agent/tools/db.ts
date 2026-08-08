@@ -19,6 +19,9 @@ const DANGEROUS_STATEMENTS = [
   'VACUUM',
 ];
 
+// 查询结果行数上限：防止大表整表灌入内存与 LLM 上下文
+const MAX_QUERY_ROWS = 500;
+
 /**
  * 去除 SQL 中的注释（块注释与行注释 -- ...），再校验危险语句。
  * 否则对形如（注释前缀 + DROP TABLE users）或（DROP--x 换行 TABLE）的输入，
@@ -193,8 +196,13 @@ async function executeSQL(sql: string, params: unknown[] = []): Promise<QueryRes
       }
 
       const results = [];
+      let rowCount = 0;
       while (stmt.step()) {
+        if (rowCount >= MAX_QUERY_ROWS) {
+          break;
+        }
         results.push(stmt.getAsObject());
+        rowCount++;
       }
       stmt.free();
 
@@ -272,28 +280,6 @@ async function query(
     sql += ' WHERE ' + whereClauses.join(' AND ');
   }
 
-  if (options.limit) {
-    const limit = parseInt(options.limit as string, 10);
-    if (isNaN(limit) || limit < 0) {
-      return {
-        success: false,
-        error: '无效的 limit 值',
-      };
-    }
-    sql += ` LIMIT ${limit}`;
-  }
-
-  if (options.offset) {
-    const offset = parseInt(options.offset as string, 10);
-    if (isNaN(offset) || offset < 0) {
-      return {
-        success: false,
-        error: '无效的 offset 值',
-      };
-    }
-    sql += ` OFFSET ${offset}`;
-  }
-
   if (options.orderBy) {
     const orderParts = options.orderBy.split(',').map((p: string) => p.trim());
     const validParts = [];
@@ -314,6 +300,30 @@ async function query(
       validParts.push(dir ? `\`${col}\` ${dir.toUpperCase()}` : `\`${col}\``);
     }
     sql += ' ORDER BY ' + validParts.join(', ');
+  }
+
+  if (options.limit) {
+    const limit = parseInt(options.limit as string, 10);
+    if (isNaN(limit) || limit < 0) {
+      return {
+        success: false,
+        error: '无效的 limit 值',
+      };
+    }
+    sql += ` LIMIT ${Math.min(limit, MAX_QUERY_ROWS)}`;
+  } else {
+    sql += ` LIMIT ${MAX_QUERY_ROWS}`;
+  }
+
+  if (options.offset) {
+    const offset = parseInt(options.offset as string, 10);
+    if (isNaN(offset) || offset < 0) {
+      return {
+        success: false,
+        error: '无效的 offset 值',
+      };
+    }
+    sql += ` OFFSET ${offset}`;
   }
 
   return await executeSQL(sql, params);
@@ -345,12 +355,16 @@ async function insert(table: string, data: Record<string, unknown>): Promise<Que
   try {
     const database = await getDB();
     const stmt = database.prepare(sql);
-    stmt.bind(values);
-    // 空循环：遍历驱动 SQL 执行
-    while (stmt.step()) {
-      /* 遍历结果 */
+    try {
+      stmt.bind(values);
+      // 空循环：遍历驱动 SQL 执行
+      while (stmt.step()) {
+        /* 遍历结果 */
+      }
+    } finally {
+      // bind/step 抛错时也必须释放 statement，避免内存泄漏
+      stmt.free();
     }
-    stmt.free();
     const changes = database.getRowsModified();
     await saveDB();
     return {
@@ -411,12 +425,16 @@ async function update(
   try {
     const database = await getDB();
     const stmt = database.prepare(sql);
-    stmt.bind(values);
-    // 空循环：遍历驱动 SQL 执行
-    while (stmt.step()) {
-      /* 遍历结果 */
+    try {
+      stmt.bind(values);
+      // 空循环：遍历驱动 SQL 执行
+      while (stmt.step()) {
+        /* 遍历结果 */
+      }
+    } finally {
+      // bind/step 抛错时也必须释放 statement，避免内存泄漏
+      stmt.free();
     }
-    stmt.free();
     const changes = database.getRowsModified();
     await saveDB();
     return {
@@ -463,12 +481,16 @@ async function deleteData(
   try {
     const database = await getDB();
     const stmt = database.prepare(sql);
-    stmt.bind(params);
-    // 空循环：遍历驱动 SQL 执行
-    while (stmt.step()) {
-      /* 遍历结果 */
+    try {
+      stmt.bind(params);
+      // 空循环：遍历驱动 SQL 执行
+      while (stmt.step()) {
+        /* 遍历结果 */
+      }
+    } finally {
+      // bind/step 抛错时也必须释放 statement，避免内存泄漏
+      stmt.free();
     }
-    stmt.free();
     const changes = database.getRowsModified();
     await saveDB();
     return {

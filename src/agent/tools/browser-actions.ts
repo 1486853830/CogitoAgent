@@ -432,7 +432,13 @@ export async function downloadFile(
     ]);
 
     const suggestedFilename = download.suggestedFilename();
-    const finalPath = fullPath ? fullPath : path.join(savePath, suggestedFilename);
+    // 文件名来自服务器（Content-Disposition），必须消毒：仅保留 basename，
+    // 并移除路径分隔符/穿越段，防止恶意文件名逃逸 savePath 写任意路径。
+    // eslint-disable-next-line no-control-regex -- \x00-\x1f 是有意移除的控制字符
+    const safeFilename = path
+      .basename(suggestedFilename || 'download')
+      .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_');
+    const finalPath = fullPath ? fullPath : path.join(savePath, safeFilename);
 
     await download.saveAs(finalPath);
 

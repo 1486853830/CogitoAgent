@@ -82,7 +82,7 @@ describe('config.ts', () => {
       expect(DEFAULT_CONFIG.chat.temperature).toBe(0.7);
       expect(DEFAULT_CONFIG.chat.thinkingInterval).toBe(3000);
       expect(DEFAULT_CONFIG.search.enabled).toBe(true);
-      expect(DEFAULT_CONFIG.workspace).toBe(os.homedir());
+      expect(DEFAULT_CONFIG.workspace).toBe(path.join(os.homedir(), 'cogito-workspace'));
     });
   });
 

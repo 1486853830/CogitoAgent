@@ -5,7 +5,7 @@
  * ============================================================ */
 
 window.WidgetRegistry?.register('heatmap', (container, opts = {}) => {
-  const state = { data: [], metric: opts.metric || 'tokens' };
+  const state = { data: [], metric: opts.metric || 'tokens', langHandler: null };
 
   const METRICS = [
     { key: 'tokens', label: 'TOKEN' },
@@ -124,7 +124,8 @@ window.WidgetRegistry?.register('heatmap', (container, opts = {}) => {
   return {
     init() {
       render();
-      document.addEventListener('cogito:langchange', render);
+      state.langHandler = render;
+      document.addEventListener('cogito:langchange', state.langHandler);
       // 主动拉取
       if (window.electronAPI?.sendStatsRequest) {
         window.electronAPI.sendStatsRequest({ type: 'dailyHistory', limit: 365 });
@@ -166,7 +167,10 @@ window.WidgetRegistry?.register('heatmap', (container, opts = {}) => {
     },
     destroy() {
       if (state.intervalId) clearInterval(state.intervalId);
+      if (state.langHandler) document.removeEventListener('cogito:langchange', state.langHandler);
       state.data = [];
+      state.langHandler = null;
+      state.intervalId = null;
     },
   };
 });

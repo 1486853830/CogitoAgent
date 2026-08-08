@@ -319,12 +319,63 @@ describe('api/client.ts', () => {
       expect(body.max_tokens).toBe(4096);
       expect(body.temperature).toBe(0.7);
       expect(body.top_p).toBe(0.7);
-      expect(body.top_k).toBe(50);
+      // 默认 baseURL 不支持 top_k（非 moark/deepseek 且 topK 为默认值），应省略该参数
+      expect(body.top_k).toBeUndefined();
       expect(body.frequency_penalty).toBe(1);
       expect(body.messages).toEqual([
         { role: 'user', content: 'hello' },
         { role: 'assistant', content: 'hi' },
       ]);
+    });
+
+    it('should include top_k when baseURL is moark/deepseek', async () => {
+      mockLoadConfig.mockReturnValueOnce({
+        api: {
+          baseURL: 'https://api.moark.com/v1',
+          apiKey: 'test-key',
+          model: 'test-model',
+          provider: 'moark',
+        },
+        chat: {
+          maxTokens: 4096,
+          temperature: 0.7,
+          topP: 0.7,
+          topK: 50,
+          frequencyPenalty: 0,
+          thinkingInterval: 3000,
+        },
+      });
+      fetchMock.mockResolvedValueOnce(makeResponse({ chunks: [encode(sseLine('[DONE]'))] }));
+      const gen = streamChat([{ role: 'user', content: 'hi' }]);
+      await collectStream(gen);
+      const [, init] = fetchMock.mock.calls[0];
+      const body = JSON.parse(init.body);
+      expect(body.top_k).toBe(50);
+    });
+
+    it('should include top_k when topK is explicitly configured', async () => {
+      mockLoadConfig.mockReturnValueOnce({
+        api: {
+          baseURL: 'https://api.test.com/v1',
+          apiKey: 'test-key',
+          model: 'test-model',
+          provider: 'test',
+        },
+        chat: {
+          maxTokens: 4096,
+          temperature: 0.7,
+          topP: 0.7,
+          topK: 80,
+          frequencyPenalty: 0,
+          thinkingInterval: 3000,
+        },
+      });
+      fetchMock.mockResolvedValueOnce(makeResponse({ chunks: [encode(sseLine('[DONE]'))] }));
+      const gen = streamChat([{ role: 'user', content: 'hi' }]);
+      await collectStream(gen);
+      const [, init] = fetchMock.mock.calls[0];
+      const body = JSON.parse(init.body);
+      expect(body.top_k).toBe(80);
     });
 
     it('should use config defaults when chat options are missing', async () => {
@@ -349,8 +400,8 @@ describe('api/client.ts', () => {
       expect(body.max_tokens).toBe(131072);
       expect(body.temperature).toBe(0.7);
       expect(body.top_p).toBe(0.7);
-      expect(body.top_k).toBe(50);
-      expect(body.frequency_penalty).toBe(1);
+      expect(body.top_k).toBeUndefined();
+      expect(body.frequency_penalty).toBe(0);
     });
   });
 

@@ -355,9 +355,16 @@ async function analyzeData(
         .map((v: string) => parseFloat(v));
       // 检查数组是否为空，避免 Math.min/max 返回 Infinity
       if (nums.length > 0) {
+        // 用循环求 min/max，避免 Math.min(...大数组) 超过调用栈上限
+        let min = nums[0];
+        let max = nums[0];
+        for (let i = 1; i < nums.length; i++) {
+          if (nums[i] < min) min = nums[i];
+          if (nums[i] > max) max = nums[i];
+        }
         (stats.summary as Record<string, unknown>)[header] = {
-          min: Math.min(...nums),
-          max: Math.max(...nums),
+          min,
+          max,
           avg: nums.reduce((a: number, b: number) => a + b, 0) / nums.length,
           count: nums.length,
         };

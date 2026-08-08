@@ -26,6 +26,11 @@ interface ActionResult<T = unknown> {
   error?: string;
 }
 
+// 定时任务条数上限与字段长度限制
+const MAX_TASKS = 200;
+const MAX_FIELD_LENGTH = 2000;
+const MAX_PARAMS_KEYS = 50;
+
 let tasks: ScheduleTask[] = [];
 let intervals: Record<number, NodeJS.Timeout> = {};
 
@@ -97,12 +102,34 @@ async function addScheduleTask(
 ): Promise<ActionResult<ScheduleTask>> {
   await loadTasks();
 
+  if (tasks.length >= MAX_TASKS) {
+    return {
+      success: false,
+      error: `定时任务数量已达上限（${MAX_TASKS}）`,
+    };
+  }
+  if (!name || name.length > MAX_FIELD_LENGTH || !action || action.length > MAX_FIELD_LENGTH) {
+    return {
+      success: false,
+      error: '定时任务名称/动作无效或过长',
+    };
+  }
+  if (!cronExpr || cronExpr.length > MAX_FIELD_LENGTH) {
+    return {
+      success: false,
+      error: '无效的 cron 表达式',
+    };
+  }
+
   const task: ScheduleTask = {
     id: Date.now(),
     name,
     cronExpr,
     action,
-    params,
+    params:
+      params && typeof params === 'object'
+        ? Object.fromEntries(Object.entries(params).slice(0, MAX_PARAMS_KEYS))
+        : {},
     enabled: true,
     createdAt: new Date().toISOString(),
     lastRun: null,
@@ -230,7 +257,12 @@ async function updateScheduleTask(
     rescheduleTask(task);
   }
   if (updates.action !== undefined) task.action = updates.action;
-  if (updates.params !== undefined) task.params = updates.params;
+  if (updates.params !== undefined) {
+    task.params =
+      updates.params && typeof updates.params === 'object'
+        ? Object.fromEntries(Object.entries(updates.params).slice(0, MAX_PARAMS_KEYS))
+        : {};
+  }
   if (updates.enabled !== undefined) {
     task.enabled = updates.enabled;
     if (task.enabled) {
