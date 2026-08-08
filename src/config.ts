@@ -38,6 +38,8 @@ const DEFAULT_CONFIG: Config = {
     // 单轮工具调用步数上限（安全护栏，防止失控循环；非限制正常工作量）。
     // 研究/写报告等多步任务可能需要十几到二十几次往返，默认给足余量。
     budget: { maxSteps: 20 },
+    // 推测执行（R2.7/R2.8）默认关闭：仅当用户显式开启 enabled 或 auto 时生效。
+    speculative: { enabled: false },
   },
   search: {
     enabled: true,

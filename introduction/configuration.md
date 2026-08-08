@@ -540,3 +540,27 @@ COGITO_THINKING_INTERVAL=3000
 | 慢速/高延迟 API         | 4000-6000ms | 减少不必要的轮询，降低 Token 消耗      |
 | 长时间自主探索          | 3000-5000ms | Agent 自主探索时，较长的间隔更合理     |
 | 调试/开发               | 1000ms      | 快速迭代，实时反馈                     |
+
+## 3. 推理与推测执行（R2.7 / R2.8 / R2.9）
+
+### 3.1 推理深度旋钮（R2.9）
+
+`chat` 配置新增以下字段，均经请求体打通到支持的模型（OpenAI o 系列 / gpt-5 等）：
+
+- `reasoningEffort`：`low` / `medium` / `high` / `xhigh`（也可设 `none` 关闭），控制每轮推理强度。
+- `verbosity`：`low` / `medium` / `high`，输出冗长度，与推理深度解耦。
+- `thinking`：思考模式。
+  - `{ "type": "adaptive" }`：自适应思考，替代固定 token 预算。
+  - `{ "type": "enabled", "budgetTokens": 8000 }`：显式预算 token。
+  - `{ "type": "disabled" }`：关闭思考。
+
+### 3.2 推测执行（R2.7）与 PASTE 模式挖掘（R2.8）
+
+`chat.speculative` 控制推测执行，默认关闭：
+
+- `enabled: true`：显式启用。主模型思考期间并行跑轻量「草稿模型」预测下一步工具调用，仅对**只读/幂等**工具（`classifyTool` 基于 R1.7 注解）预执行；预测命中则复用结果，未命中无损回退。
+- `draftModel`：草稿模型名（轻量/廉价），缺省复用主模型。
+- `auto: true`：自动模式。由 `PatternStore`（`data/speculation-patterns.json`）从执行轨迹挖掘「上下文签名 → 预测工具」模式，命中率（`confidenceThreshold`，默认 0.8）与样本数（`minSamples`，默认 5）双达标后自动启用推测执行。
+- `confidenceThreshold` / `minSamples`：自动启用的门槛。
+
+> 注意：`thinkingInterval` 为历史字段。自 R2.1/R2.2 起主循环已改为事件驱动，不再以固定 3 秒轮询推进，该值不再驱动自动思考节奏。

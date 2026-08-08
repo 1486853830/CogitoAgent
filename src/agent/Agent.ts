@@ -109,7 +109,7 @@ import {
 } from './tool-utils.ts';
 import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from './thought-trace.ts';
 import { getCurrentPersonaTitle, applyPersona } from './persona.ts';
-import { loadPlugins } from './plugin.ts';
+import { loadPlugins, getToolPermission } from './plugin.ts';
 import {
   buildOpenAITools,
   objectArgsToPositional,
@@ -119,6 +119,14 @@ import {
 import { getEnabledToolNames } from './registry.ts';
 import { formatCost, getModelPricing } from '../api/router.ts';
 import { evaluateBudget } from './budget.ts';
+import {
+  classifyTool,
+  predictNextTool,
+  sameToolInvocation,
+  contextSignature,
+  getGlobalPatternStore,
+  PatternStore,
+} from './speculation.ts';
 import type { Message, NativeToolInvocation } from '../types/index.ts';
 
 let thinkingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -160,18 +168,37 @@ async function executeTool(
     };
   }
 
-  if (isConfirmEnabled() && isDangerousOperation(toolName)) {
+  // R5.2 权限门禁：这是所有工具执行的必经咽喉点（原生工具调用 / 推测执行 / 插件 / MCP
+  // 注册的工具最终都落到这里），配置 tools.permissions 与插件 defaultPermission 在此生效。
+  // deny 直接拒绝；ask 需一次用户授权。
+  const permission = getToolPermission(toolName);
+  if (permission === 'deny') {
+    const duration = (Date.now() - startTime) / 1000;
+    recordToolCall(toolName, registry.category, false, duration);
+    return {
+      success: false,
+      error: `工具 ${toolName} 已被权限策略禁用`,
+      toolName,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  // ask 与危险操作确认合并为一次询问，避免同一次调用弹两次授权框。
+  const needsDangerConfirm = isConfirmEnabled() && isDangerousOperation(toolName);
+  if (permission === 'ask' || needsDangerConfirm) {
     const confirmed = await requestConfirmation(
       toolName,
       args as unknown[],
-      getDangerousOperationHint(toolName),
+      needsDangerConfirm
+        ? getDangerousOperationHint(toolName)
+        : `工具 ${toolName} 已配置为需要授权后执行`,
     );
     if (!confirmed) {
       const duration = (Date.now() - startTime) / 1000;
       recordToolCall(toolName, registry.category, false, duration);
       return {
         success: false,
-        error: '用户拒绝执行此危险操作',
+        error: needsDangerConfirm ? '用户拒绝执行此危险操作' : `用户拒绝授权工具 ${toolName}`,
         toolName,
         timestamp: new Date().toISOString(),
       };
@@ -508,6 +535,35 @@ async function executeNativeToolCallsServer(invocations: NativeToolInvocation[])
   }
 }
 
+/**
+ * 推测命中时提交预执行结果（R2.7）：复用已完成的只读/幂等工具结果，避免重复执行。
+ * 广播与落盘逻辑与 executeNativeToolCallsServer 单调用一致。
+ */
+function commitSpeculativeResult(
+  invocation: NativeToolInvocation,
+  outcome: { content: string; success: boolean },
+): void {
+  broadcast('agent-reply', { type: 'tool-start', tool: invocation.name, args: invocation.args });
+  if (outcome.success) {
+    printToolBlock(outcome.content.replace(/^\[工具结果\]:\s*/, ''), '工具结果');
+    broadcast('agent-reply', {
+      type: 'tool-result',
+      tool: invocation.name,
+      success: true,
+      data: outcome.content.replace(/^\[工具结果\]:\s*/, ''),
+    });
+  } else {
+    println(`[失败] ${outcome.content.replace(/^\[工具错误\]:\s*/, '')}`, 'red');
+    broadcast('agent-reply', {
+      type: 'tool-result',
+      tool: invocation.name,
+      success: false,
+      data: outcome.content,
+    });
+  }
+  addToolResultMessage(outcome.content, { toolCallId: invocation.id });
+}
+
 async function runNativeTurnLoop(): Promise<void> {
   const cfg = loadConfig();
   const budget = cfg.chat?.budget || {};
@@ -576,10 +632,56 @@ async function runNativeTurnLoop(): Promise<void> {
       'running',
     );
 
+    // R2.7/R2.8 推测执行：主模型推理期间并行跑草稿模型预测下一步工具调用。
+    // 仅对「只读/幂等」工具预执行；主模型返回后若预测命中复用推测结果，否则无损回退。
+    const sig = contextSignature(getMessages());
+    const spec = cfg.chat?.speculative;
+    const patternStore: PatternStore = getGlobalPatternStore();
+    const speculateExplicit = spec?.enabled === true;
+    const autoLearn = spec?.auto === true;
+    const confThreshold = spec?.confidenceThreshold ?? 0.8;
+    const minSamples = spec?.minSamples ?? 5;
+    const confident = autoLearn && patternStore.shouldSpeculate(sig, confThreshold, minSamples);
+    const runPrediction = speculateExplicit || autoLearn;
+    const shouldPreExec = speculateExplicit || confident;
+
+    let predictionPromise: Promise<NativeToolInvocation | null> | null = null;
+    let speculativeTask: Promise<{
+      predicted: NativeToolInvocation;
+      outcome: { content: string; success: boolean };
+    }> | null = null;
+
+    if (runPrediction) {
+      const draftModel = spec?.draftModel || cfg.api.model;
+      predictionPromise = predictNextTool(buildNativeApiMessages(), tools, draftModel).then(
+        (pred) => {
+          // R5.2：推测执行是"猜测"阶段的预执行，只对权限为 allow 的工具进行。
+          // 否则 ask 类工具会因一次猜测就弹出授权框，deny 类工具则可能被提前执行。
+          if (
+            pred &&
+            shouldPreExec &&
+            classifyTool(pred.name) === 'speculatable' &&
+            getToolPermission(pred.name) === 'allow'
+          ) {
+            const safePred = pred; // 已收窄为 NativeToolInvocation，供 .then/.catch 闭包安全引用
+            speculativeTask = executeNativeInvocation(safePred, new AbortController().signal)
+              .then((outcome) => ({ predicted: safePred, outcome }))
+              .catch((err) => ({
+                predicted: safePred,
+                outcome: { content: `[工具错误]: 推测执行失败 ${String(err)}`, success: false },
+              }));
+          }
+          return pred;
+        },
+      );
+    }
+
     const stream = streamChatNative(buildNativeApiMessages(), {
       tools,
       ...(responseFormat ? { responseFormat } : {}),
       ...(reasoningEffort && reasoningEffort !== 'none' ? { reasoningEffort } : {}),
+      ...(cfg.chat?.verbosity ? { verbosity: cfg.chat.verbosity } : {}),
+      ...(cfg.chat?.thinking ? { thinking: cfg.chat.thinking } : {}),
     });
 
     let content = '';
@@ -636,6 +738,22 @@ async function runNativeTurnLoop(): Promise<void> {
       };
     });
 
+    // R2.7/R2.8：等待草稿模型预测结果，并记录（预测→实际）对照，供 PASTE 模式挖掘。
+    const predicted = predictionPromise ? await predictionPromise : null;
+    let specResult: {
+      predicted: NativeToolInvocation;
+      outcome: { content: string; success: boolean };
+    } | null = null;
+    if (speculativeTask) {
+      specResult = (await speculativeTask) as {
+        predicted: NativeToolInvocation;
+        outcome: { content: string; success: boolean };
+      };
+    }
+    if (predicted) {
+      patternStore.observe(sig, predicted.name, invocations[0]?.name ?? '');
+    }
+
     const finalAssistantText = cleanContent.trim();
 
     if (invocations.length > 0) {
@@ -662,7 +780,22 @@ async function runNativeTurnLoop(): Promise<void> {
 
       // 记录带 tool_calls 的 assistant 消息，结果将以 role=tool 续接
       addAssistantNativeMessage(finalAssistantText, rawToolCallMessages(rawCalls));
-      await executeNativeToolCallsServer(invocations);
+
+      // R2.7：单工具且预测命中 → 复用推测执行的预执行结果（无损）；否则走标准顺序路径。
+      let committed = false;
+      if (
+        specResult &&
+        invocations.length === 1 &&
+        invocations[0].name === specResult.predicted.name &&
+        sameToolInvocation(specResult.predicted, invocations[0])
+      ) {
+        commitSpeculativeResult(invocations[0], specResult.outcome);
+        println(`[推测执行] 命中 ${invocations[0].name}，复用预执行结果`, 'gray');
+        committed = true;
+      }
+      if (!committed) {
+        await executeNativeToolCallsServer(invocations);
+      }
 
       if (shouldStop) {
         shouldStop = false;

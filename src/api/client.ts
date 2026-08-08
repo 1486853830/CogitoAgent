@@ -348,10 +348,17 @@ export interface OpenAITool {
 }
 
 export interface NativeStreamOptions {
+  /** 覆盖使用的模型（推测执行的草稿模型）。缺省复用 cfg.api.model。 */
+  model?: string;
   tools?: OpenAITool[];
   toolChoice?: string | Record<string, unknown>;
   responseFormat?: { type: string; [key: string]: unknown };
-  reasoningEffort?: 'low' | 'medium' | 'high';
+  reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh' | 'none';
+  /** 输出冗长度（OpenAI verbosity）。 */
+  verbosity?: 'low' | 'medium' | 'high';
+  /** 思考模式（R2.9）。 */
+  thinking?:
+    { type: 'adaptive' } | { type: 'enabled'; budgetTokens?: number } | { type: 'disabled' };
 }
 
 export interface NativeToolCallChunk {
@@ -407,7 +414,7 @@ async function* streamChatNative(
 
       const body: Record<string, unknown> = {
         messages,
-        model: cfg.api.model,
+        model: options.model || cfg.api.model,
         stream: true,
         stream_options: { include_usage: true },
         max_tokens: cfg.chat?.maxTokens ?? 131072,
@@ -419,7 +426,10 @@ async function* streamChatNative(
       if (options.tools && options.tools.length > 0) body.tools = options.tools;
       if (options.toolChoice) body.tool_choice = options.toolChoice;
       if (options.responseFormat) body.response_format = options.responseFormat;
-      if (options.reasoningEffort) body.reasoning_effort = options.reasoningEffort;
+      if (options.reasoningEffort && options.reasoningEffort !== 'none')
+        body.reasoning_effort = options.reasoningEffort;
+      if (options.verbosity) body.verbosity = options.verbosity;
+      if (options.thinking) body.thinking = options.thinking;
 
       const response = await fetch(`${baseURL}/chat/completions`, {
         method: 'POST',

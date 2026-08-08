@@ -12,6 +12,7 @@ import { broadcast } from '../io/ws-server.ts';
 import { buildOpenAITools, objectArgsToPositional } from './tool-schema.ts';
 import { safeParseJSON } from '../utils/llm-validator.ts';
 import { isValidPersonaName } from './persona.ts';
+import { getToolPermission } from './plugin.ts';
 
 // ============================================
 // SubAgent 类 - 子智能体实例
@@ -624,6 +625,22 @@ class AgentOrchestrator {
             role: 'tool',
             tool_call_id: tc.id,
             content: `[工具错误 - ${agent.name}]: 子智能体不允许执行危险操作`,
+          });
+          continue;
+        }
+
+        // R5.2 权限门禁：子智能体直接调 registry.fn，绕过了主 Agent 的 executeTool，
+        // 因此必须在此独立校验，否则 deny 规则对子智能体形同虚设。
+        // 子智能体无交互通道，无法发起授权询问，故 ask 与 deny 一并拒绝。
+        const permission = getToolPermission(tc.name);
+        if (permission !== 'allow') {
+          messages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content:
+              permission === 'deny'
+                ? `[工具错误 - ${agent.name}]: 工具 ${tc.name} 已被权限策略禁用`
+                : `[工具错误 - ${agent.name}]: 工具 ${tc.name} 需要用户授权，子智能体无法执行`,
           });
           continue;
         }

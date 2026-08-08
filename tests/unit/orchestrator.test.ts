@@ -265,6 +265,51 @@ describe('orchestrator.ts', () => {
       const agent = orchestrator.getAgent(spawnResult.data.id);
       expect(agent.state).toBe('done');
     });
+
+    // R5.2 权限门禁：子智能体直接调 registry.fn，绕过主 Agent 的 executeTool，
+    // 此前 tools.permissions 对子智能体完全无效，deny 的工具照样执行。
+    it('should refuse tools denied by permission policy', async () => {
+      const { registerTool } = await import('../../src/agent/plugin.ts');
+      const { setToolPermission, reloadConfig } = await import('../../src/config.ts');
+
+      let executed = 0;
+      registerTool('subAgentDeniedProbe', () => {
+        executed++;
+        return 'should-not-run';
+      });
+      setToolPermission('subAgentDeniedProbe', 'deny');
+      reloadConfig();
+
+      const spawnResult = await orchestrator.spawnAgent('Assistant', 'TestAgent', '');
+      let emitted = false;
+      mockStreamChatNative.mockImplementation(async function* () {
+        yield { content: 'mock response' };
+        if (emitted) return { input: 0, output: 0, stopReason: 'stop', toolCalls: [] };
+        emitted = true;
+        return {
+          input: 0,
+          output: 0,
+          stopReason: 'tool_calls',
+          toolCalls: [{ id: 'c1', name: 'subAgentDeniedProbe', arguments: '{}' }],
+        };
+      });
+
+      await orchestrator.delegateTask(spawnResult.data.id, 'do something');
+
+      // 关键回归断言：被 deny 的工具函数一次都不能被调用
+      expect(executed).toBe(0);
+
+      // 对照组：改为 allow 后同一工具必须真的执行。
+      // 否则「executed 为 0」可能只是因为工具没注册成功，测试会变成假绿。
+      setToolPermission('subAgentDeniedProbe', 'allow');
+      reloadConfig();
+
+      const allowSpawn = await orchestrator.spawnAgent('Assistant', 'TestAgent2', '');
+      emitted = false;
+      await orchestrator.delegateTask(allowSpawn.data.id, 'do something');
+
+      expect(executed).toBe(1);
+    });
   });
 
   // ============================================

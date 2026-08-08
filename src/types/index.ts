@@ -29,8 +29,32 @@ export interface ChatConfig {
     /** 单轮预估花费上限（美元），按路由表价格换算；达到即强制收敛并通知用户。0 或不设表示不限制。 */
     costBudget?: number;
   };
-  /** 每个助手回合的推理强度（o 系列模型 reasoning_effort）。 */
-  reasoningEffort?: 'low' | 'medium' | 'high' | 'none';
+  /** 每个助手回合的推理强度（o 系列模型 reasoning_effort）。'none' 表示关闭。 */
+  reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh' | 'none';
+  /** 输出冗长度（OpenAI verbosity：low/medium/high），与推理深度解耦（R2.9）。 */
+  verbosity?: 'low' | 'medium' | 'high';
+  /**
+   * 思考模式（R2.9）：adaptive 自适应思考替代固定 token 预算；
+   * enabled 可配预算 token；disabled 关闭思考。对齐三大实验室收敛趋势。
+   */
+  thinking?:
+    { type: 'adaptive' } | { type: 'enabled'; budgetTokens?: number } | { type: 'disabled' };
+  /**
+   * 推测执行（R2.7 / R2.8）：草稿模型并行预测下一步工具调用，对只读/幂等工具预执行；
+   * 预测未命中时无损回退到标准顺序路径。
+   */
+  speculative?: {
+    /** 显式启用推测执行（忽略命中率门槛）。 */
+    enabled?: boolean;
+    /** 草稿模型名（轻量/廉价）；缺省复用主模型。 */
+    draftModel?: string;
+    /** 自动模式：命中率达标后由 PASTE 模式挖掘（R2.8）驱动启用。 */
+    auto?: boolean;
+    /** 自动启用所需最低命中率（默认 0.8）。 */
+    confidenceThreshold?: number;
+    /** 自动启用所需最少样本数（默认 5）。 */
+    minSamples?: number;
+  };
   /** 是否启用 LLM 分级摘要压缩历史（R3.2）。默认开启；关闭则回退朴素摘要（离线/省成本）。 */
   compressionSummary?: boolean;
 }
