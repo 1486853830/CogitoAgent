@@ -88,14 +88,17 @@ describe('Agent Full Flow E2E', () => {
   });
 
   describe('Tool Execution', () => {
-    test('should parse tool call format correctly', async () => {
-      const toolCallStr = '[TOOL] ls("/project/src") [/TOOL]';
-      const regex = /\[TOOL\]\s*(\w+)\s*\(\s*(.*?)\s*\)\s*\[\/TOOL\]/;
-      const match = toolCallStr.match(regex);
+    test('should construct native tool_calls correctly', async () => {
+      const toolCall = {
+        id: 'call_1',
+        type: 'function',
+        function: { name: 'ls', arguments: '{"path": "/project/src"}' },
+      };
+      const parsed = JSON.parse(toolCall.function.arguments);
 
-      expect(match).not.toBeNull();
-      expect(match[1]).toBe('ls');
-      expect(match[2]).toBe('"/project/src"');
+      expect(toolCall.type).toBe('function');
+      expect(toolCall.function.name).toBe('ls');
+      expect(parsed.path).toBe('/project/src');
     });
 
     test('should handle multiple tool calls in sequence', async () => {

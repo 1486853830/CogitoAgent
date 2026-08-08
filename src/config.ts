@@ -35,6 +35,9 @@ const DEFAULT_CONFIG: Config = {
     frequencyPenalty: 0,
     thinkingInterval: 3000,
     language: 'zh',
+    // 单轮工具调用步数上限（安全护栏，防止失控循环；非限制正常工作量）。
+    // 研究/写报告等多步任务可能需要十几到二十几次往返，默认给足余量。
+    budget: { maxSteps: 20 },
   },
   search: {
     enabled: true,
@@ -321,10 +324,6 @@ function loadEnvConfig(): Partial<Config> {
   }
   if (Object.keys(securityConfig).length > 0) {
     envConfig.security = securityConfig as Config['security'];
-  }
-
-  if (process.env.COGITO_PERSONA) {
-    envConfig.persona = process.env.COGITO_PERSONA;
   }
 
   return envConfig;

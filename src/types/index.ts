@@ -13,10 +13,7 @@ export interface ChatConfig {
   frequencyPenalty: number;
   thinkingInterval: number;
   language?: string;
-  /** 是否开启原生工具调用协议（函数调用）。开启时优先走 API 原生 tool_calls，
-   *  文本 [TOOL]...[/TOOL] 作为回退路径保留。默认关闭。 */
-  nativeTools?: boolean;
-  /** 结构化输出（response_format.json_schema），原生模式可用。 */
+  /** 结构化输出（response_format.json_schema），原生工具协议下可用。 */
   structuredOutput?: {
     /** 工具结果注入使用的目标 JSON Schema（可选，默认将结果包成对象字段 result）。 */
     schema?: Record<string, unknown>;
@@ -29,9 +26,13 @@ export interface ChatConfig {
     maxSteps?: number;
     /** 单轮最大输出 token 数。 */
     maxTokens?: number;
+    /** 单轮预估花费上限（美元），按路由表价格换算；达到即强制收敛并通知用户。0 或不设表示不限制。 */
+    costBudget?: number;
   };
   /** 每个助手回合的推理强度（o 系列模型 reasoning_effort）。 */
   reasoningEffort?: 'low' | 'medium' | 'high' | 'none';
+  /** 是否启用 LLM 分级摘要压缩历史（R3.2）。默认开启；关闭则回退朴素摘要（离线/省成本）。 */
+  compressionSummary?: boolean;
 }
 
 export interface SearchConfig {

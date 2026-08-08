@@ -240,16 +240,11 @@ describe('io/terminal.ts', () => {
       expect(calls.some((w) => w.includes('result-data'))).toBe(true);
     });
 
-    it('should extract tool name from [TOOL] content', () => {
-      printToolBlock('[TOOL] search(query)', '工具调用');
+    it('should render content with a custom title', () => {
+      printToolBlock('some-data', '调用');
       const calls = writeSpy.mock.calls.map((c) => String(c[0]));
-      expect(calls.some((w) => w.includes('search'))).toBe(true);
-    });
-
-    it('should show unknown tool name when no [TOOL] match', () => {
-      printToolBlock('plain text', '工具调用');
-      const calls = writeSpy.mock.calls.map((c) => String(c[0]));
-      expect(calls.some((w) => w.includes('未知工具'))).toBe(true);
+      expect(calls.some((w) => w.includes('调用'))).toBe(true);
+      expect(calls.some((w) => w.includes('some-data'))).toBe(true);
     });
   });
 

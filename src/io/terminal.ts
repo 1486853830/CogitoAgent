@@ -190,24 +190,13 @@ function resetContentTag(): void {
 }
 
 /**
- * 打印工具调用块（简洁标签样式）
+ * 打印工具块（工具结果精简标签样式）
  */
-function printToolBlock(content: string, title = '工具调用'): void {
-  if (title === '工具结果') {
-    // 工具结果显示
-    print('\n');
-    println('┌─ 工具结果 ─────────────────────────────', 'green');
-    print(content, 'green');
-    println('\n└──────────────────────────────────────────', 'green');
-  } else {
-    // 工具调用显示
-    const match = content.match(/\[TOOL\]\s*(\w+)/);
-    const toolName = match ? match[1] : '未知工具';
-
-    print('  ');
-    print(`${COLORS.bgCyan}${COLORS.white} 调用：${toolName} ${COLORS.reset}`, 'cyan');
-    print('\n');
-  }
+function printToolBlock(content: string, title = '工具结果'): void {
+  print('\n');
+  println(`┌─ ${title} ─────────────────────────────`, 'green');
+  print(content, 'green');
+  println('\n└──────────────────────────────────────────', 'green');
 }
 
 /**

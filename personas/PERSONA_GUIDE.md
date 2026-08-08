@@ -86,8 +86,8 @@ video.mp4
 
 - 文件放在角色文件夹内（如 `personas/Shaanbei-Youth/video.mp4`）
 - **未声明时**：系统按 `personas/<RoleID>/video.mp4` → `image.jpg/png/...` 的顺序自动查找
-- **默认人设（无人设）**：根目录 `personas/persona.md` 是无人设时的默认人设，其 `## 形象` 声明决定默认形象。声明 `video.mp4` 时统一指向 `electron/shared/video.mp4`
-- 未声明 `## 形象` 且根目录也找不到媒体时，回退显示默认视频 `electron/shared/video.mp4`
+- **默认人设（无人设）**：默认人设是普通文件夹 `personas/cogito/`，与命名人设走同一套按名读取逻辑，不再特殊对待根目录 `personas/persona.md`。其 `persona.md` 不声明 `## 形象` 时直接回退到系统共享默认视频
+- 未声明 `## 形象` 且文件夹内也找不到媒体时，回退显示默认视频 `electron/shared/video.mp4`
 
 ### 内容要点
 

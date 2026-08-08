@@ -9,6 +9,7 @@ import { recordSession } from './stats.ts';
 import { estimateTokens } from '../utils/token.ts';
 import { applyPersona } from './persona.ts';
 import { loadConfig } from '../config.ts';
+import { chatText } from '../api/client.ts';
 
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const SESSIONS_DIR = path.resolve(DATA_DIR, 'data', 'sessions');
@@ -556,33 +557,92 @@ function getCompressionAdvice() {
   return { level: 'ok', usage, message: '上下文充足' };
 }
 
-function compressHistory(): void {
-  const nonSystemMessages = conversationHistory.filter((m) => m.role !== 'system');
+/**
+ * 单次摘要请求承载的目标 token 上限。超过则切块，避免超出模型上下文窗口。
+ */
+const COMPRESS_CHUNK_TOKENS = 3000;
 
-  if (nonSystemMessages.length <= KEEP_RECENT_TURNS) {
-    return;
+/**
+ * 压缩摘要系统提示：要求模型保留目标、决策、关键数据/代码/路径、待办与进度，
+ * 丢弃寒暄与冗余（R3.2 智能压缩）。
+ */
+const COMPRESS_SUMMARY_SYSTEM =
+  '你是 CogitoAgent 的对话历史压缩器。下面是被归档的一段对话（含用户请求、助手回复、' +
+  '工具调用与执行结果）。请生成一份结构化摘要，作为后续对话的上下文。必须保留：' +
+  '1) 用户的总体目标与当前意图；2) 已作出的关键决策与结论；' +
+  '3) 重要的数据、数值、文件绝对路径、关键代码片段（保留关键几行，不要全文）；' +
+  '4) 已创建/修改/删除的文件及其作用；5) 待办事项与未决问题；' +
+  '6) 当前进度状态（已完成/进行中/卡住）。' +
+  '删除寒暄、重复与冗余。用中文分条列出，长度控制在原文的 20% 以内。';
+
+/**
+ * 将待归档消息按 token 估算切块，保证单块不超过 maxTokens（R3.2）。
+ * 纯函数，便于单测。
+ */
+export function splitIntoChunks(
+  messages: Message[],
+  maxTokens = COMPRESS_CHUNK_TOKENS,
+): Message[][] {
+  const chunks: Message[][] = [];
+  let current: Message[] = [];
+  let currentTokens = 0;
+  for (const m of messages) {
+    const t = estimateTokens(m.content || '');
+    if (current.length > 0 && currentTokens + t > maxTokens) {
+      chunks.push(current);
+      current = [];
+      currentTokens = 0;
+    }
+    current.push(m);
+    currentTokens += t;
   }
-
-  const toArchive = nonSystemMessages.slice(0, -KEEP_RECENT_TURNS);
-  if (toArchive.length > 0) {
-    archiveCurrentSession();
-  }
-
-  const recentMessages = nonSystemMessages.slice(-KEEP_RECENT_TURNS);
-  const summary = generateSummary(recentMessages);
-
-  conversationHistory = [
-    { role: 'system', content: buildSystemPrompt() },
-    { role: 'user', content: `[上下文摘要] ${summary}` },
-    ...recentMessages,
-  ];
-
-  turnCount = recentMessages.length;
-  if (currentSessionId) {
-    saveSession(currentSessionId, conversationHistory);
-  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
 }
 
+/**
+ * 用 LLM 对归档消息做分级摘要（R3.2）。多块时逐块摘要后再合并为一份。
+ * 返回空串表示未产出有效摘要（调用方应回退朴素摘要），不会抛错。
+ */
+async function summarizeConversation(messages: Message[]): Promise<string> {
+  const cfg = loadConfig();
+  // 显式关闭时直接不调 LLM，回退朴素摘要（离线 / 省成本场景）
+  if (cfg.chat?.compressionSummary === false) return '';
+
+  const chunks = splitIntoChunks(messages);
+  const parts: string[] = [];
+  for (const chunk of chunks) {
+    const transcript = chunk.map((m) => `【${m.role}】\n${m.content}`).join('\n\n');
+    const text = await chatText(
+      [
+        { role: 'system', content: COMPRESS_SUMMARY_SYSTEM },
+        { role: 'user', content: transcript },
+      ],
+      { maxTokens: 1024, temperature: 0.2 },
+    );
+    if (text) parts.push(text);
+  }
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+
+  // 多块：合并为一份连贯去重的摘要
+  const merged = await chatText(
+    [
+      {
+        role: 'system',
+        content: '将以下多段对话摘要合并为一份连贯、去重的结构化摘要，保留全部关键信息点。',
+      },
+      { role: 'user', content: parts.join('\n\n---\n\n') },
+    ],
+    { maxTokens: 1200, temperature: 0.2 },
+  );
+  return merged || parts.join('\n\n');
+}
+
+/**
+ * 朴素摘要（回退路径）：仅枚举工具名与最近几条用户请求。
+ * 作为 LLM 摘要失败时的兜底，保证压缩不丢「上下文摘要」占位。
+ */
 function generateSummary(messages: Message[]): string {
   const tools = new Set<string>();
   const requests: string[] = [];
@@ -606,6 +666,49 @@ function generateSummary(messages: Message[]): string {
   }
 
   return summary;
+}
+
+/**
+ * 压缩对话历史（R3.2 智能压缩）。
+ * 仅对「真正被丢弃的旧内容」(toArchive) 做 LLM 分级摘要并注入为 [上下文摘要]，
+ * 近期 KEEP_RECENT_TURNS 条消息原样保留。LLM 摘要失败则回退朴素摘要。
+ *
+ * @param summarizer 可选注入的摘要器（测试用）；缺省走 summarizeConversation（真实 LLM）。
+ */
+async function compressHistory(summarizer?: (m: Message[]) => Promise<string>): Promise<void> {
+  const nonSystemMessages = conversationHistory.filter((m) => m.role !== 'system');
+
+  if (nonSystemMessages.length <= KEEP_RECENT_TURNS) {
+    return;
+  }
+
+  const toArchive = nonSystemMessages.slice(0, -KEEP_RECENT_TURNS);
+  if (toArchive.length > 0) {
+    archiveCurrentSession();
+  }
+
+  const recentMessages = nonSystemMessages.slice(-KEEP_RECENT_TURNS);
+
+  // 对将被丢弃的旧内容做摘要；失败/为空则回退朴素摘要
+  let summary = '';
+  try {
+    summary =
+      (summarizer ? await summarizer(toArchive) : await summarizeConversation(toArchive)) || '';
+  } catch (e) {
+    console.error(`[压缩] LLM 摘要失败，回退朴素摘要: ${(e as Error).message}`);
+  }
+  if (!summary) summary = generateSummary(toArchive);
+
+  conversationHistory = [
+    { role: 'system', content: buildSystemPrompt() },
+    { role: 'user', content: `[上下文摘要] ${summary}` },
+    ...recentMessages,
+  ];
+
+  turnCount = recentMessages.length;
+  if (currentSessionId) {
+    saveSession(currentSessionId, conversationHistory);
+  }
 }
 
 function getHistoryLength(): number {

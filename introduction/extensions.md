@@ -220,9 +220,14 @@ npm run cli -- --model claude-3-sonnet --baseURL https://api.anthropic.com/v1 --
 
 ### 5.3 使用示例
 
-```javascript
-[TOOL] search("2026年科技趋势") [/TOOL]
-[TOOL] fetchPage("https://nodejs.org/") [/TOOL]
+联网搜索能力通过原生工具调用接入：
+
+```
+工具: search
+参数: { "query": "2026年科技趋势" }
+
+工具: fetchPage
+参数: { "url": "https://nodejs.org/" }
 ```
 
 ---

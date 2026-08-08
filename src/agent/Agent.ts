@@ -1,4 +1,4 @@
-import { streamChat, streamChatNative } from '../api/client.ts';
+import { streamChatNative } from '../api/client.ts';
 import type { NativeStreamReturn } from '../api/client.ts';
 import { safeParseJSON } from '../utils/llm-validator.ts';
 import { createRequire } from 'module';
@@ -46,14 +46,7 @@ import {
   printToolBlock,
   exit,
 } from '../io/terminal.ts';
-import {
-  setReplyCallback,
-  deliverReply,
-  extractCleanReply,
-  parseAndPrintResponse,
-  setCurrentReplyKey,
-  getCurrentReplyKey,
-} from './reply.ts';
+import { setReplyCallback, deliverReply, setCurrentReplyKey, getCurrentReplyKey } from './reply.ts';
 import { loadConfig } from '../config.ts';
 import {
   startWsServer,
@@ -108,7 +101,6 @@ import {
 } from './commands.ts';
 import { orchestrator } from './orchestrator.ts';
 import { initWechatChannel } from './wechat-manager.ts';
-import { parseArgs, parseToolCall, parseAllToolCalls } from './tool-parser.ts';
 import {
   TOOL_OUTPUT_LIMITS,
   formatToolResult,
@@ -116,7 +108,7 @@ import {
   formatToolError,
 } from './tool-utils.ts';
 import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from './thought-trace.ts';
-import { applyPersona, getCurrentPersonaTitle } from './persona.ts';
+import { getCurrentPersonaTitle, applyPersona } from './persona.ts';
 import { loadPlugins } from './plugin.ts';
 import {
   buildOpenAITools,
@@ -125,6 +117,8 @@ import {
   toRichError,
 } from './tool-schema.ts';
 import { getEnabledToolNames } from './registry.ts';
+import { formatCost, getModelPricing } from '../api/router.ts';
+import { evaluateBudget } from './budget.ts';
 import type { Message, NativeToolInvocation } from '../types/index.ts';
 
 let thinkingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -137,10 +131,6 @@ let cycleSeq = 0;
 // 当前工具执行的 AbortController：/stop 时 abort，让 executeTool 通过 Promise.race
 // 立即返回中断结果，而不必等待单个工具（如 executeCode 跑 30s）执行完毕。
 let toolAbortController: AbortController | null = null;
-let consecutiveCycleCount = 0;
-let thoughtInterval = 3000;
-
-const MAX_CONSECUTIVE_CYCLES = 8;
 
 interface ToolExecutionResult {
   success: boolean;
@@ -262,8 +252,6 @@ async function executeTool(
 }
 
 function handleUserInput(input: string, replyKey?: string): void {
-  consecutiveCycleCount = 0;
-
   // 记录本轮回复目标：调用方传入 replyKey 时按来源隔离回调（微信通道）；
   // 未传入时一律清空，回复走终端而非微信通道——不依赖输入格式判断，
   // 避免微信格式消息漏传 replyKey 时 _currentReplyKey 保留旧值导致回复错发。
@@ -370,17 +358,8 @@ function handleUserInput(input: string, replyKey?: string): void {
 
   if (state.current === STATE.AWAITING_INPUT) {
     if (input) {
-      const messages = getMessages();
-      const hasUserMessage = messages.some((m) => m.role === 'user');
-      let processedInput = input;
-      if (!hasUserMessage) {
-        processedInput = `${input}\n\n[WAIT]你需要学会使用这个标签，如果你说完了，需要等待用户回复就用这个标签`;
-        println(`[消息] ${input}`, 'yellow');
-        println('[系统] 已自动添加标签提示（首次消息）', 'gray');
-      } else {
-        println(`[消息] ${input}`, 'yellow');
-      }
-      addUserMessage(processedInput);
+      println(`[消息] ${input}`, 'yellow');
+      addUserMessage(input);
       state.current = STATE.THINKING;
       broadcast('agent-state', { state: 'thinking' });
       scheduleNextCycle();
@@ -392,14 +371,9 @@ function handleUserInput(input: string, replyKey?: string): void {
   }
 }
 
-interface StreamChunk {
-  reasoning?: string;
-  content?: string;
-}
-
 // =============================================================
 // 原生函数调用协议（R1.2 / R1.6 / R1.9 / R2.x）
-// 开启 nativeTools 后，模型直接调用 JSON Schema 描述的工具，不再依赖文本 [TOOL]。
+// 模型通过原生 function calling 调用 JSON Schema 描述的工具，不使用任何文本标记。
 // =============================================================
 
 function buildNativeApiMessages(): Array<Record<string, unknown>> {
@@ -490,13 +464,14 @@ async function executeNativeInvocation(
  * 事件中断时所有在途工具经共享 AbortController 尽快返回。
  */
 async function executeNativeToolCallsServer(invocations: NativeToolInvocation[]): Promise<void> {
-  broadcast('agent-reply', { type: 'tool-start', count: invocations.length });
-
   const controller = new AbortController();
   toolAbortController = controller;
 
   const settled = await Promise.allSettled(
     invocations.map(async (call) => {
+      // 每个工具调用单独广播 tool-start 并携带真实 tool/args，
+      // 否则渲染端 addToolCall(undefined, undefined) 会显示 `undefined(undefined)`。
+      broadcast('agent-reply', { type: 'tool-start', tool: call.name, args: call.args });
       const toolStep = traceStep(`执行工具: ${call.name}`, { args: call.args }, 'running');
       const outcome = await executeNativeInvocation(call, controller.signal);
       if (outcome.success) {
@@ -536,8 +511,23 @@ async function executeNativeToolCallsServer(invocations: NativeToolInvocation[])
 async function runNativeTurnLoop(): Promise<void> {
   const cfg = loadConfig();
   const budget = cfg.chat?.budget || {};
-  const maxSteps = budget.maxSteps ?? 6;
+  // 单轮工具步数安全上限；与 DEFAULT_CONFIG.chat.budget.maxSteps 保持一致。
+  // 仅作兜底，正常情况由配置（含用户覆盖）提供。
+  const DEFAULT_MAX_STEPS = 20;
+  const maxSteps = budget.maxSteps ?? DEFAULT_MAX_STEPS;
   const tokenBudget = budget.maxTokens || 0;
+  const costBudget = budget.costBudget || 0;
+
+  // 若配置了花费预算但当前模型无价格数据，提前告警一次（否则预算恒不触发）。
+  if (costBudget > 0) {
+    const pricing = getModelPricing();
+    if (pricing.inputPerMillion === 0 && pricing.outputPerMillion === 0) {
+      console.warn(
+        '[预算] 已配置 costBudget，但当前模型不在价格表且无 COGITO_MODEL_PRICE_IN/OUT 覆盖，' +
+          '花费估算恒为 $0，预算不会触发。请在价格表或环境变量补充该模型单价。',
+      );
+    }
+  }
 
   const tools = buildOpenAITools(getEnabledToolNames(), {
     strict: cfg.chat?.structuredOutput?.strict === true,
@@ -546,6 +536,7 @@ async function runNativeTurnLoop(): Promise<void> {
 
   let step = 0;
   let tokensUsed = 0;
+  let costUsed = 0;
 
   while (state.current === STATE.THINKING) {
     const cycleStep = traceStep(
@@ -595,8 +586,9 @@ async function runNativeTurnLoop(): Promise<void> {
     }
 
     const usage = { input: result.input, output: result.output };
-    recordAndBroadcastUsage(usage, getMessages(), content);
+    const turnCost = recordAndBroadcastUsage(usage, getMessages(), content);
     tokensUsed += result.output || 0;
+    costUsed += turnCost;
     closeReasoning();
     resetContentTag();
 
@@ -616,14 +608,21 @@ async function runNativeTurnLoop(): Promise<void> {
 
     if (invocations.length > 0) {
       step++;
-      if (step > maxSteps) {
-        println(`[预算] 单轮工具步数已达上限 ${maxSteps}，强制暂停，等你指示`, 'yellow');
-        if (finalAssistantText) addAssistantMessage(finalAssistantText);
-        finishNativeTurn('budget');
-        break;
-      }
-      if (tokenBudget > 0 && tokensUsed >= tokenBudget) {
-        println(`[预算] 本轮输出 token 已达上限，强制暂停，等你指示`, 'yellow');
+      const tripped = evaluateBudget({
+        step,
+        maxSteps,
+        tokensUsed,
+        tokenBudget,
+        costUsed,
+        costBudget,
+      });
+      if (tripped) {
+        const budgetMsg: Record<'steps' | 'tokens' | 'cost', string> = {
+          steps: `单轮工具步数已达上限 ${maxSteps}`,
+          tokens: `本轮输出 token 已达上限 ${tokenBudget}`,
+          cost: `本轮预估花费已达上限 ${formatCost(costBudget)}（本轮已用 ${formatCost(costUsed)}）`,
+        };
+        println(`[预算] ${budgetMsg[tripped]}，强制暂停，等你指示`, 'yellow');
         if (finalAssistantText) addAssistantMessage(finalAssistantText);
         finishNativeTurn('budget');
         break;
@@ -641,7 +640,7 @@ async function runNativeTurnLoop(): Promise<void> {
 
       if (shouldCompress()) {
         const cp = traceStep('压缩对话历史', {}, 'running');
-        compressHistory();
+        await compressHistory();
         updateTraceStep(cp.id, { status: 'completed' });
       }
 
@@ -677,92 +676,27 @@ function rawToolCallMessages(
 }
 
 function finishNativeTurn(nextAction: 'wait' | 'budget', reply?: string): void {
-  consecutiveCycleCount = 0;
   state.current = STATE.AWAITING_INPUT;
   if (getCurrentReplyKey()) {
-    const cleanReply = reply?.replace(/\[WAIT\]/g, '').trim();
+    const cleanReply = reply?.trim();
     if (cleanReply) deliverReply(cleanReply);
   }
   broadcast('agent-reply', { type: 'end', nextAction });
   broadcast('agent-state', { state: 'idle' });
 }
 
-// ---- thinkCycle 子函数（按职责拆分，避免 300 行 god function 难以维护）----
-
-interface StreamResult {
-  fullResponse: string;
-  usage: { input: number; output: number } | null;
-  stopped: boolean;
-}
+// ---- 辅助函数（记录 token / 原生循环支持）----
 
 /**
- * 流式获取 AI 回复并累积内容。
- * 处理 streaming chunk 的 reasoning/content，过滤工具结果行，广播 chunk。
- * 若 /stop 在流式过程中触发，返回 stopped=true 让调用方提前退出。
- */
-async function streamAndAccumulateResponse(messages: Message[]): Promise<StreamResult> {
-  let fullResponse = '';
-  let cleanFullResponse = '';
-  let usage: { input: number; output: number } | null = null;
-
-  resetReasoningTag();
-  resetContentTag();
-
-  const requestStep = traceStep('发送请求到 AI', { messageCount: messages.length }, 'running');
-  const stream = streamChat(messages);
-
-  while (true) {
-    const iterResult = await stream.next();
-    if (iterResult.done) {
-      usage = iterResult.value;
-      break;
-    }
-    const chunk = iterResult.value as StreamChunk;
-    if (shouldStop) {
-      // /stop 中断：复位 shouldStop，避免下次思考周期仍被标记为"应停止"，
-      // 否则 AI 被打断后将永远无法再次回复（streamAndAccumulateResponse 一进入就 stopped）。
-      shouldStop = false;
-      printBlank();
-      return { fullResponse, usage, stopped: true };
-    }
-    if (chunk.reasoning) {
-      printReasoning(chunk.reasoning);
-    }
-    if (chunk.content) {
-      const cleanChunk = chunk.content
-        .split('\n')
-        .filter(
-          (line) =>
-            !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
-        )
-        .join('\n');
-
-      fullResponse += chunk.content;
-      cleanFullResponse += cleanChunk;
-
-      if (cleanChunk.trim()) {
-        broadcast('agent-reply', { type: 'chunk', content: cleanChunk, full: cleanFullResponse });
-      }
-    }
-  }
-
-  updateTraceStep(requestStep.id, {
-    status: 'completed',
-    details: { responseLength: fullResponse.length },
-  });
-
-  return { fullResponse, usage, stopped: false };
-}
-
-/**
- * 记录并广播 token 使用量。
+ * 记录并广播 token 使用量，返回本轮预估花费（美元）。
  * 若流式未返回 usage，则基于消息文本与回复文本估算。
  */
 function recordAndBroadcastUsage(
   usage: { input: number; output: number } | null,
   messages: Message[],
   fullResponse: string,
-): void {
+): number {
+  let cost = 0;
   try {
     if (!usage) {
       const inputText = messages.map((m) => m.content || '').join('');
@@ -773,192 +707,31 @@ function recordAndBroadcastUsage(
     } else if (!usage.output) {
       usage.output = estimateTokens(fullResponse);
     }
+    const pricing = getModelPricing();
+    cost =
+      (usage.input / 1_000_000) * pricing.inputPerMillion +
+      (usage.output / 1_000_000) * pricing.outputPerMillion;
     recordTokenUsage(usage.input, usage.output);
     println(
-      `[Token] 输入:${usage.input} 输出:${usage.output} 总计:${usage.input + usage.output}`,
+      `[Token] 输入:${usage.input} 输出:${usage.output} 总计:${usage.input + usage.output}` +
+        (cost > 0 ? ` 花费:约${cost.toFixed(6)}` : ''),
       'gray',
     );
     broadcast('token-usage', {
       input: usage.input,
       output: usage.output,
       total: usage.input + usage.output,
+      cost,
       session: getSessionStats(),
     });
   } catch (e) {
     console.error('[Token] 统计失败:', (e as Error).message);
   }
+  return cost;
 }
 
 /**
- * 顺序执行工具调用列表，收集结果文本。
- * 每次工具执行前建立独立 AbortController，/stop 可通过 abort 中断。
- * shouldStop 在循环开头和结尾均检查，确保中断及时生效。
- */
-async function executeAllToolCalls(
-  toolCalls: ReturnType<typeof parseAllToolCalls>,
-): Promise<string[]> {
-  const toolResults: string[] = [];
-
-  if (toolCalls.length === 0) {
-    return toolResults;
-  }
-
-  for (const toolCall of toolCalls) {
-    if (shouldStop) {
-      println('[中断] 工具执行已停止', 'yellow');
-      break;
-    }
-
-    broadcast('agent-reply', { type: 'tool-start', tool: toolCall.tool, args: toolCall.args });
-
-    const toolStep = traceStep(`执行工具: ${toolCall.tool}`, { args: toolCall.args }, 'running');
-
-    toolAbortController = new AbortController();
-    const result = await executeTool(toolCall.tool, toolCall.args, toolAbortController.signal);
-    toolAbortController = null;
-
-    if (result.success) {
-      const isEmpty =
-        result.data === undefined ||
-        result.data === null ||
-        (typeof result.data === 'string' && result.data.trim() === '') ||
-        (Array.isArray(result.data) && result.data.length === 0) ||
-        (typeof result.data === 'object' && Object.keys(result.data).length === 0);
-
-      if (isEmpty) {
-        println(`[空结果] ${toolCall.tool} 返回空结果`, 'yellow');
-        toolResults.push(`[工具结果]: [空结果] ${toolCall.tool} 返回空结果，未找到相关信息。`);
-        broadcast('agent-reply', {
-          type: 'tool-result',
-          tool: toolCall.tool,
-          success: true,
-          data: '[空结果] 未找到相关信息',
-          isEmpty: true,
-        });
-        updateTraceStep(toolStep.id, {
-          status: 'completed',
-          details: { success: true, isEmpty: true },
-        });
-      } else {
-        const resultText = formatToolResult(toolCall.tool, result.data);
-        printToolBlock(resultText, '工具结果');
-        toolResults.push(`[工具结果]: ${resultText}`);
-        broadcast('agent-reply', {
-          type: 'tool-result',
-          tool: toolCall.tool,
-          success: true,
-          data: resultText,
-        });
-        updateTraceStep(toolStep.id, {
-          status: 'completed',
-          details: { success: true, resultLength: resultText.length },
-        });
-      }
-    } else {
-      println(`[失败] ${result.error}`, 'red');
-      toolResults.push(`[工具错误]: ${result.error}`);
-      broadcast('agent-reply', {
-        type: 'tool-result',
-        tool: toolCall.tool,
-        success: false,
-        data: result.error,
-      });
-      updateTraceStep(toolStep.id, {
-        status: 'failed',
-        details: { success: false, error: result.errorType },
-      });
-    }
-
-    if (shouldStop) {
-      println('[中断] 工具执行已停止', 'yellow');
-      break;
-    }
-  }
-
-  return toolResults;
-}
-
-/**
- * 将 AI 回复与工具执行结果整合到对话历史。
- * 若历史过长则触发压缩。
- */
-function integrateResults(finalResponse: string, toolResults: string[]): void {
-  addAssistantMessage(finalResponse);
-
-  if (toolResults.length > 0) {
-    const toolResultMessage = `[系统返回的工具执行结果]\n${toolResults.join('\n\n')}\n[系统] 请基于以上工具执行结果继续回复，不要编造或猜测结果。`;
-    addToolResultMessage(toolResultMessage);
-  }
-
-  if (shouldCompress()) {
-    const compressStep = traceStep('压缩对话历史', {}, 'running');
-    println('[系统] 正在压缩对话历史...', 'gray');
-    compressHistory();
-    println('[系统] 压缩完成', 'gray');
-    updateTraceStep(compressStep.id, { status: 'completed' });
-  }
-}
-
-/**
- * 周期结束后的状态转换。
- * 根据 wantsToWait / 是否有工具调用 / 回复是否有实质内容，决定：
- *   - 进入 AWAITING_INPUT 等待用户
- *   - 调度下一轮 thinkCycle（有工具调用或无实质回复）
- *   - 达到连续思考上限时强制等待用户
- */
-function transitionAfterCycle(
-  wantsToWait: boolean,
-  toolCalls: ReturnType<typeof parseAllToolCalls>,
-  finalResponse: string,
-): void {
-  if (wantsToWait || state.current !== STATE.THINKING) {
-    state.current = STATE.AWAITING_INPUT;
-    const nextAction = wantsToWait ? 'wait' : 'continue';
-    if (getCurrentReplyKey()) {
-      const cleanReply = extractCleanReply(finalResponse);
-      if (cleanReply) deliverReply(cleanReply);
-    }
-    broadcast('agent-reply', { type: 'end', nextAction });
-    broadcast('agent-state', { state: 'idle' });
-    consecutiveCycleCount = 0;
-  } else if (toolCalls.length > 0) {
-    broadcast('agent-reply', { type: 'end', nextAction: 'tools' });
-    consecutiveCycleCount = 0;
-    scheduleNextCycle();
-  } else {
-    // AI 回复没有 [WAIT] 也没有工具调用
-    // 如果回复有实质内容，自动视为等待用户（兜底 [WAIT] 遗漏）
-    const cleanReply = extractCleanReply(finalResponse);
-    if (cleanReply && cleanReply.length > 0) {
-      consecutiveCycleCount = 0;
-      state.current = STATE.AWAITING_INPUT;
-      if (getCurrentReplyKey()) {
-        deliverReply(cleanReply);
-      }
-      broadcast('agent-reply', { type: 'end', nextAction: 'wait' });
-      broadcast('agent-state', { state: 'idle' });
-    } else {
-      consecutiveCycleCount++;
-      if (consecutiveCycleCount >= MAX_CONSECUTIVE_CYCLES) {
-        consecutiveCycleCount = 0;
-        state.current = STATE.AWAITING_INPUT;
-        if (getCurrentReplyKey()) {
-          const reply = extractCleanReply(finalResponse);
-          if (reply) deliverReply(reply);
-        }
-        broadcast('agent-reply', { type: 'end', nextAction: 'wait' });
-        broadcast('agent-state', { state: 'idle' });
-        println('[系统] 已连续思考多轮，先听你说～', 'gray');
-      } else {
-        scheduleNextCycle();
-      }
-    }
-  }
-}
-
-/**
- * 思考周期主流程：流式获取回复 → 记录 token → 解析工具调用 → 执行工具 → 整合结果 → 状态转换。
- * 具体逻辑拆分到上方命名子函数，此处仅做编排与异常处理。
+ * 思考周期主流程：调用原生 function calling 循环（runNativeTurnLoop）直至结束或等待用户。
  */
 async function thinkCycle(): Promise<void> {
   if (isProcessing) return;
@@ -972,81 +745,7 @@ async function thinkCycle(): Promise<void> {
   const cycleStep = traceStep('思考周期开始', { messageCount: getMessages().length }, 'running');
 
   try {
-    // 原生工具调用模式（R1.2）：启用后整个思考循环走事件驱动的原生协议。
-    if (loadConfig().chat?.nativeTools === true) {
-      await runNativeTurnLoop();
-      return;
-    }
-
-    const messages = getMessages();
-
-    // 1. 流式获取回复
-    const streamResult = await streamAndAccumulateResponse(messages);
-    if (streamResult.stopped) return;
-
-    const { fullResponse, usage } = streamResult;
-
-    // 2. 记录 token 使用量
-    recordAndBroadcastUsage(usage, messages, fullResponse);
-
-    closeReasoning();
-    resetContentTag();
-
-    if (shouldStop) {
-      shouldStop = false;
-      printBlank();
-      return;
-    }
-
-    parseAndPrintResponse(fullResponse);
-    printBlank();
-
-    const wantsToWait = fullResponse.includes('[WAIT]');
-    if (wantsToWait) {
-      println('[等待] 我先不说了，等你说～', 'gray');
-    }
-
-    // 3. 解析工具调用
-    const parseStep = traceStep('解析工具调用', {}, 'running');
-    const toolCalls = parseAllToolCalls(fullResponse);
-    updateTraceStep(parseStep.id, {
-      status: 'completed',
-      details: { toolCallCount: toolCalls.length },
-    });
-
-    const finalResponse = fullResponse
-      .split('\n')
-      .filter(
-        (line) => !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
-      )
-      .join('\n');
-
-    // 4. 执行工具调用
-    const toolResults = await executeAllToolCalls(toolCalls);
-
-    // 工具执行期间可能被中断（executeAllToolCalls 已检查 shouldStop 提前退出）。
-    // 中断时不再整合部分结果、不再交付回复，直接退出让 finally 复位 isProcessing，
-    // 避免把中断时刻的半截工具结果写入历史并被当成完整回复交付给用户。
-    if (shouldStop) {
-      shouldStop = false;
-      printBlank();
-      return;
-    }
-
-    // 5. 整合结果到对话历史
-    const integrateStep = traceStep('整合结果', { toolResultCount: toolResults.length }, 'running');
-    integrateResults(finalResponse, toolResults);
-    updateTraceStep(integrateStep.id, { status: 'completed' });
-
-    updateTraceStep(cycleStep.id, {
-      status: 'completed',
-      details: {
-        nextAction: wantsToWait ? 'wait' : toolCalls.length > 0 ? 'tools' : 'continue',
-      },
-    });
-
-    // 6. 状态转换
-    transitionAfterCycle(wantsToWait, toolCalls, finalResponse);
+    await runNativeTurnLoop();
   } catch (error) {
     updateTraceStep(cycleStep.id, {
       status: 'failed',
@@ -1075,19 +774,23 @@ async function thinkCycle(): Promise<void> {
 
 function scheduleNextCycle(): void {
   if (thinkingTimer) clearTimeout(thinkingTimer);
+  // R2.1/R2.2：原生 function calling 路径事件驱动——工具完成后由 runNativeTurnLoop
+  // 自身 continue 立即推进，首轮用户消息也无需等待。此处仅负责把 thinkCycle 推到
+  // 下一 tick 启动（避免在 handleUserInput 调用栈内重入），延迟为 0。
+  // isProcessing 守卫防止旧周期未退出时并发；thinkingTimer 保留供 /stop 取消挂起调度。
   thinkingTimer = setTimeout(async () => {
+    thinkingTimer = null;
     if (state.current === STATE.THINKING) {
       // 若另一周期仍在处理（例如中断后旧周期尚未退出），本次调用会因
-      // isProcessing 守卫立即返回。此时不重复自旋调度，避免 3 秒轮询空转：
-      // 旧周期的 finally 会在退出后复位 isProcessing，而下一条用户消息会
-      // 再次触发 scheduleNextCycle，保证后续周期不会丢失。
+      // isProcessing 守卫立即返回。旧周期的 finally 会在退出后复位 isProcessing，
+      // 而下一条用户消息会再次触发 scheduleNextCycle，保证后续周期不会丢失。
       const wasBlocked = isProcessing;
       await thinkCycle();
       if (!wasBlocked) {
         scheduleNextCycle();
       }
     }
-  }, thoughtInterval);
+  }, 0);
 }
 
 /**
@@ -1111,22 +814,14 @@ function buildPresenceSnapshot(): Record<string, unknown> {
 
 async function start(): Promise<void> {
   const cfg = loadConfig();
-  thoughtInterval = cfg.chat?.thinkingInterval || 3000;
 
   initializeSession();
 
-  const envPersona = process.env.COGITO_PERSONA;
-  if (envPersona) {
-    // 仅复制 persona 文件，不重置对话（避免清空已有会话历史）
-    if (applyPersona(envPersona)) {
-      console.log(`[Agent] Persona 文件已复制: ${envPersona}`);
-    } else {
-      console.warn(`[Agent] Persona 文件复制失败或不存在: ${envPersona}`);
-    }
-  } else {
-    // 无人设：不复制文件，system-prompt 构建时会自动回退读取
-    // 人设根目录 personas/persona.md 作为默认人设（避免污染项目根目录）
-    console.log('[Agent] 无人设，使用默认人设 personas/persona.md');
+  // 启动时按 config.json 的 persona（如有）设定活动人设；否则默认 Cogito（personas/cogito/）。
+  // 人设直接按名称读取 personas/ 文件夹，不再复制文件到数据目录（避免残留文件顶替默认人设）。
+  const startupPersona = cfg.persona || null;
+  if (applyPersona(startupPersona)) {
+    console.log(`[Agent] 活动人设: ${startupPersona ? startupPersona : '默认(Cogito)'}`);
   }
 
   // 自动加载科学插件
@@ -1212,12 +907,7 @@ async function start(): Promise<void> {
     mode: process.env.CLI_MODE ? 'CLI' : process.env.ELECTRON_MODE ? 'Electron' : 'CLI',
   });
   printDivider('─', 'cyan');
-  println(
-    '  活动范围: ' +
-      printTag(tools.getBasePath(), 'bgBlue') +
-      '  思考间隔: ' +
-      printTag(`${thoughtInterval / 1000}秒`, 'bgCyan'),
-  );
+  println('  活动范围: ' + printTag(tools.getBasePath(), 'bgBlue'));
   println(
     '  输入 ' +
       printTag('/sessions', 'bgBlue') +
@@ -1278,9 +968,6 @@ async function start(): Promise<void> {
 
 export {
   start,
-  parseArgs,
-  parseToolCall,
-  parseAllToolCalls,
   formatToolResult,
   classifyToolError,
   formatToolError,

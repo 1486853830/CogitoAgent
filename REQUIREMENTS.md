@@ -15,24 +15,24 @@
 
 ### 1.1 现状问题（诊断摘要）
 
-CogitoAgent 当前本质是 **"文本标记 + 正则解析"的自助式智能体**（`[TOOL]...[/TOOL]` + `[WAIT]`），而主流智能体（Codex、OpenClaw、Trae SOLO）均为 **结构化工具调用 + 事件驱动循环**。2026 年行业共识已从"模型能力决定一切"转变为 **"脚手架（Harness）即是产品"**——同一模型在不同脚手架下性能差异可达 6 倍，Anthropic 多 Agent 编排仅通过改变架构就比单 Agent 基线提升 90.2%。主要代差：
+CogitoAgent 早期本质是 **"文本标记 + 正则解析"的自助式智能体**（`[TOOL]...[/TOOL]` + `[WAIT]`），而主流智能体（Codex、OpenClaw、Trae SOLO）均为 **结构化工具调用 + 事件驱动循环**。本版本已完成迁移：文本标记协议的残余已全面清除，工具调用统一走原生 function calling。2026 年行业共识已从"模型能力决定一切"转变为 **"脚手架（Harness）即是产品"**——同一模型在不同脚手架下性能差异可达 6 倍，Anthropic 多 Agent 编排仅通过改变架构就比单 Agent 基线提升 90.2%。主要代差（本次已收口）：
 
-| 维度     | 现状                                          | 目标（行业顶尖）                                                                                          |
-| -------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| 工具调用 | 模型口述 `[TOOL]` 标记，正则解析位置参数      | 原生 function calling / JSON Schema / 流式 tool_calls / MCP + 工具注解（readOnly/destructive/idempotent） |
-| 循环控制 | 固定 3s `setTimeout` 轮询 + `[WAIT]` 文本标记 | 事件驱动循环 + 预算控制 + 推测执行（PASTE）+ 并行工具调用                                                 |
-| 上下文   | 10 万 token 启发式截断，丢弃而非摘要          | 可组合上下文工程栈：JIT 加载 + 压缩（Compaction）+ 结构化笔记 + 多 Agent 隔离上下文                       |
-| 记忆     | JSON 文件 + 关键词 `includes` 打分            | embedding 语义检索 + 分级记忆 + Dreaming 跨会话精炼 + REMem 混合记忆图                                    |
-| 沙箱     | JS `isolated-vm` + Python 仅环境变量清理      | 硬件级隔离（Firecracker/Kata/WASM），信任交接防御，Kubernetes Agent Sandbox                               |
-| 多智能体 | 单进程共享注册表的重复循环实现                | 统一 runtime runner + A2A 协议 + 嵌套子 Agent（5 层深）+ 检查点/时间旅行/分支                             |
-| 插件     | 动态 import 但工具对模型不可见                | Agent Skills 标准（三级渐进式披露）+ 插件 schema 注入 + 权限声明 + Code Mode                              |
-| MCP      | 仅文档宣称                                    | 真实 MCP 客户端 + 服务端 + Elicitation + Sampling + 工具注解                                              |
-| 协议     | 仅 WebSocket 内部通信                         | MCP（工具）+ A2A（Agent 间协调）+ 身份信任层（OAuth 2.1 / Agent Cards）三层协议栈                         |
-| 编码能力 | git 工具窄，无 AGENTS.md / DiffView           | Tree-sitter 知识图谱索引 + AGENTS.md + Plan-then-Execute + 验证循环 + 变更影响分析                        |
-| 评测     | 无 benchmark                                  | 自建 eval suite + SWE-bench 风格 + OpenTelemetry GenAI 可观测性 + Shadow Mode CI                          |
-| 安全     | 危险操作全局开关                              | Guardrails（输入/输出护栏）+ 分级许可 + 审计台账 + 沙箱逃逸防御                                           |
-| 多模态   | 仅 OCR/Vision 工具                            | 三车道架构（Vision+Tools / Realtime Audio / Video Understanding）+ Computer Use                           |
-| 长程任务 | 无                                            | METR 16 小时时间前沿对齐 + 验证前置引用 + 确定性检查点恢复                                                |
+| 维度     | 现状                                        | 目标（行业顶尖）                                                                                          |
+| -------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 工具调用 | 已迁移原生 function calling：不依赖文本标记 | 原生 function calling / JSON Schema / 流式 tool_calls / MCP + 工具注解（readOnly/destructive/idempotent） |
+| 循环控制 | 已迁移事件驱动 + 结构化 stop（无 `[WAIT]`） | 事件驱动循环 + 预算控制 + 推测执行（PASTE）+ 并行工具调用                                                 |
+| 上下文   | 10 万 token 启发式截断，丢弃而非摘要        | 可组合上下文工程栈：JIT 加载 + 压缩（Compaction）+ 结构化笔记 + 多 Agent 隔离上下文                       |
+| 记忆     | JSON 文件 + 关键词 `includes` 打分          | embedding 语义检索 + 分级记忆 + Dreaming 跨会话精炼 + REMem 混合记忆图                                    |
+| 沙箱     | JS `isolated-vm` + Python 仅环境变量清理    | 硬件级隔离（Firecracker/Kata/WASM），信任交接防御，Kubernetes Agent Sandbox                               |
+| 多智能体 | 单进程共享注册表的重复循环实现              | 统一 runtime runner + A2A 协议 + 嵌套子 Agent（5 层深）+ 检查点/时间旅行/分支                             |
+| 插件     | 动态 import 但工具对模型不可见              | Agent Skills 标准（三级渐进式披露）+ 插件 schema 注入 + 权限声明 + Code Mode                              |
+| MCP      | 仅文档宣称                                  | 真实 MCP 客户端 + 服务端 + Elicitation + Sampling + 工具注解                                              |
+| 协议     | 仅 WebSocket 内部通信                       | MCP（工具）+ A2A（Agent 间协调）+ 身份信任层（OAuth 2.1 / Agent Cards）三层协议栈                         |
+| 编码能力 | git 工具窄，无 AGENTS.md / DiffView         | Tree-sitter 知识图谱索引 + AGENTS.md + Plan-then-Execute + 验证循环 + 变更影响分析                        |
+| 评测     | 无 benchmark                                | 自建 eval suite + SWE-bench 风格 + OpenTelemetry GenAI 可观测性 + Shadow Mode CI                          |
+| 安全     | 危险操作全局开关                            | Guardrails（输入/输出护栏）+ 分级许可 + 审计台账 + 沙箱逃逸防御                                           |
+| 多模态   | 仅 OCR/Vision 工具                          | 三车道架构（Vision+Tools / Realtime Audio / Video Understanding）+ Computer Use                           |
+| 长程任务 | 无                                          | METR 16 小时时间前沿对齐 + 验证前置引用 + 确定性检查点恢复                                                |
 
 ### 1.2 目标
 
@@ -58,7 +58,7 @@ CogitoAgent 当前本质是 **"文本标记 + 正则解析"的自助式智能体
 - [x] **R1.1 工具 JSON Schema**：为 `registry.ts` 每个内置工具补充 JSON Schema（参数名 / 类型 / 必填 / 描述 / 枚举），废弃仅 `argCount` 的无类型注册
 - [x] **R1.2 接入原生 function calling**：`api/client.ts` 请求携带 `tools` + `tool_choice`，解析流式 `delta.tool_calls`，支持并行工具调用
 - [x] **R1.3 结构化 tool 结果**：工具结果以 `role: 'tool'` + `tool_call_id` 注入会话（对齐 OpenAI / Azure / Anthropic 兼容接口），替代现有 `role: 'user'` 文本注入
-- [x] **R1.4 兼容 fallback**：保留 `[TOOL]` 文本解析作为不支持原生协议模型的纯文本降级层
+- [x] **R1.4 移除文本 fallback**：删除 `[TOOL]`/`[WAIT]` 纯文本降级层（system prompt、主循环、子代理编排、tool-parser 全部清除），工具调用统一走原生 function calling 单一路径
 - [x] **R1.5 清单单一来源**：`system-prompt.ts` 的工具目录改由 registry/schema 自动生成，删除手写 `buildToolList()` 散文（消除与 registry 的漂移）
 - [x] **R1.6 参数强制校验**：工具执行前按 Schema 校验实参，失败返回结构化错误而非静默跳过；`argCount` 由装饰性元数据变为强制校验
 - [~] **R1.7 工具注解（Tool Annotations）**：为每个工具声明行为注解——`readOnly`（不修改外部状态）、`destructive`（修改/删除数据）、`idempotent`（重复调用效果相同）、`openWorld`（在 Agent 环境外产生可见效果）；注解已声明并随 OpenAI tools / MCP 暴露，自动批准/确认仍以 registry `DANGEROUS_OPERATIONS` 为准
@@ -69,11 +69,11 @@ CogitoAgent 当前本质是 **"文本标记 + 正则解析"的自助式智能体
 
 ### R2. 事件驱动循环
 
-- [~] **R2.1 移除固定 3s 轮询**：循环改为事件驱动，工具执行完成 / 用户消息 / 定时任务到达时立即推进，而非 `setTimeout(3000)` 等待（原生协议路径；文本 fallback 路径仍保留 polling 兜底）
-- [~] **R2.2 消除首轮延迟**：首轮回复不再被 3s 定时器拖慢（原生路径已恢复，fallback 路径待统一）
-- [~] **R2.3 预算控制**：引入 `sessionBudget`（每任务最大往返次数）、`tokenBudget`、`costBudget`（按路由表换算费用），达到即强制收敛并通知用户（`maxSteps` / `maxTokens` 已实现，`costBudget` 待实现）
+- [x] **R2.1 移除固定 3s 轮询**：循环改为事件驱动，工具执行完成 / 用户消息 / 定时任务到达时立即推进，而非 `setTimeout(3000)` 等待
+- [x] **R2.2 消除首轮延迟**：首轮回复不再被定时器拖慢
+- [x] **R2.3 预算控制**：引入 `maxSteps`（单轮最大工具步数）、`tokenBudget`（`maxTokens`，单轮最大输出 token）、`costBudget`（按路由表价格换算的预估花费，美元），达到即强制收敛并通知用户（`evaluateBudget` 统一判定 steps/tokens/cost 三类上限；未知模型价格时给一次告警，预算不生效）
 - [x] **R2.4 结构化停信号**：模型"说完"改为结构化 `stop` 泛化（原生输出 / 内容为最终 / 预算耗尽），不再依赖模型记得写 `[WAIT]`
-- [~] **R2.5 移除 `[WAIT]` 依赖**：`[WAIT]` 仅作纯文本兼容提示保留，原生路径不再以 `[WAIT]` 决定状态转移（fallback 路径仍依赖）
+- [x] **R2.5 彻底移除 `[WAIT]`**：system prompt / 首轮引导 / 循环判定的 `[WAIT]` 依赖全部清除（含 `nativeTools` 配置项），文本标记协议整体删除，结束一律由结构化 `stop` 信号驱动
 - [x] **R2.6 并行工具调用**：当模型返回多个独立工具调用时，使用 `Promise.allSettled` 并行执行而非顺序执行；独立操作从串行 N×延迟 降至 max(延迟)，加速最高 3.7 倍
 - [ ] **R2.7 推测执行（Speculative Execution）**：借鉴 CPU 架构推测执行思路，在主模型仍在思考时用轻量"草稿"模型预测下一步工具调用并预先执行；预测错误时无损回退到标准顺序路径；加速最高 30%
 - [ ] **R2.8 PASTE 模式挖掘**：从 Agent 执行轨迹中挖掘"模式元组"（上下文 → 预测工具 + 参数推导函数 + 经验成功率），预测命中率达标后自动启用推测执行；策略系统将工具分类为完全可推测 / dry-run 可行 / 禁止推测
@@ -82,7 +82,7 @@ CogitoAgent 当前本质是 **"文本标记 + 正则解析"的自助式智能体
 ### R3. 会话与上下文
 
 - [~] **R3.1 会话存储异步化**：去掉热路径 `writeFileSync`（`session.ts` 每次增消息同步落盘），改异步 + 批量/节流 + 原子写（新增 `saveSessionAsync` 异步写路径，`addUserMessage`/`addAssistantMessage` 同步写暂保留）
-- [ ] **R3.2 智能压缩**：`compressHistory()` 从"丢弃 + 枚举工具名"升级为 LLM 分级摘要（保留关键数据、代码片段、目标状态），触发阈值按模型动态设置
+- [x] **R3.2 智能压缩**：`compressHistory()` 从"丢弃 + 枚举工具名"升级为 LLM 分级摘要（保留关键数据、代码片段、目标状态），触发阈值按模型动态设置；修复原实现摘要的是「保留的近期消息」而非「被丢弃的旧内容」的 bug，新增分块 + 失败回退朴素摘要 + `compressionSummary` 开关
 - [x] **R3.3 上下文对齐模型**：`max_tokens` 与压缩阈值根据 `api.model` 真实 context window 自动设置，80% 时提前预警
 - [x] **R3.4 tool 计数修复**：`turnCount` 与压缩触发正确计入 `tool` 角色消息（修复现有计数不一致 bug）
 - [~] **R3.5 JIT 上下文策略**：从"预推理嵌入检索"升级为即时上下文加载——已实现 JIT 标记注入（`[上下文补充]` 标记随对话持久化），运行时按需工具加载数据仍待深化
@@ -96,7 +96,7 @@ CogitoAgent 当前本质是 **"文本标记 + 正则解析"的自助式智能体
 - [x] **R4.1 MCP 服务端**：将 `TOOL_REGISTRY` 自动导出为 `tools/list` / `tools/call` / `resources/list`（基于 `@modelcontextprotocol/sdk`）
 - [x] **R4.2 MCP 客户端**：可连接外部 MCP server，动态拉取其工具 schema 并入上下文
 - [~] **R4.3 MCP 配置面**：Dashboard / 配置文件中管理接入的 MCP server（启停、鉴权、别名）（config 新增 `mcp` 段支持 `servers`，Dashboard 待做）
-- [ ] **R4.4 MCP 文案修正**：README / CHANGELOG 中"已支持 MCP"的文案与实际能力一致，去掉虚假宣传
+- [x] **R4.4 MCP 文案修正**：README / CHANGELOG 中"已支持 MCP"的文案与实际能力一致，去掉虚假宣传
 - [ ] **R4.5 MCP Elicitation**：MCP 服务端可通过客户端向用户请求结构化输入，实现更丰富的人机交互（如运行时确认参数、收集缺失信息）
 - [ ] **R4.6 MCP Sampling**：MCP 服务端可从客户端请求 LLM 补全（含工具调用），使服务端从被动工具提供者升级为可编排多步推理流的协调者
 - [x] **R4.7 MCP 工具注解传播**：将 R1.7 的工具注解通过 MCP `toolAnnotations` 字段传播给外部客户端，实现跨客户端的统一策略执行
@@ -179,8 +179,8 @@ CogitoAgent 当前本质是 **"文本标记 + 正则解析"的自助式智能体
 - [ ] **R10.1 eval harness**：`evals/` 目录 + 任务集（自然语言 → 期望步骤 / 期望 / 期望），输出工具成功率、循环成本、回归量
 - [ ] **R10.2 回归基准**：CI 定期全量跑 eval，输出趋势曲线防止性能退化
 - [ ] **R10.3 覆盖率门槛**：补齐 `/tests` 遗漏面（Agent 循环、api/client、session 压缩、orchestrator 并行）并加覆盖率卡口（> 80%）
-- [ ] **R10.4 死代码清理**：删除 `llm-validator.ts` JSON-action 遗留、未引用的 `registry.getToolsForPrompt`、未生效的 `tool-utils.TOOL_OUTPUT_LIMITS`（先转为强制执行）、`stats.recordThinkingTime`、`api/models.ts`（DEPRECATED）
-- [ ] **R10.5 已知 bug 修复**：setup 中 `thinkingInterval` 与 `Config.chat.thinkingInterval` 对齐；`TOOL_DEVELOPMENT.md` 过时路径修正；file.ts `read_excel` → `readExcel`
+- [x] **R10.4 死代码清理**：删除 `llm-validator.ts` JSON-action 遗留、未引用的 `registry.getToolsForPrompt`、未生效的 `tool-utils.TOOL_OUTPUT_LIMITS`（先转为强制执行）、`stats.recordThinkingTime`、`api/models.ts`（DEPRECATED）
+- [x] **R10.5 已知 bug 修复**：setup 中 `thinkingInterval` 与 `Config.chat.thinkingInterval` 对齐；`TOOL_DEVELOPMENT.md` 过时路径修正；file.ts `read_excel` → `readExcel`
 - [ ] **R10.6 OpenTelemetry GenAI 可观测性**：实现 OTel GenAI 语义约定——`gen_ai.system`、`gen_ai.request.model`、`gen_ai.usage.input_tokens`、`gen_ai.usage.output_tokens` 等标准属性；`invoke_agent` / `create_agent` / `execute_tool` span 类型；`gen_ai.client.token.usage` / `gen_ai.client.operation.duration` 标准指标
 - [ ] **R10.7 Agent 专属 eval 指标**：对齐 DeepEval 一阶指标——Task Completion（任务完成度）、Tool Correctness（工具正确性）、Argument Correctness（参数正确性）、Step Efficiency（步骤效率）、Plan Adherence（计划遵循度）、Plan Quality（计划质量）
 - [ ] **R10.8 Trace 层次结构**：实现 `invoke_agent → chat(LLM) → execute_tool → chat → ...` 的嵌套 span 层次；通过 W3C TraceContext header（`traceparent`/`tracestate`）在 Agent 间传播，使多 Agent 工作显示为单一分布式 trace
@@ -388,195 +388,195 @@ CogitoAgent 当前本质是 **"文本标记 + 正则解析"的自助式智能体
 
 > 每次推进会先更新此表。完成一项即把 `[ ]` 改为 `[x]`，并填完成版本与日期。
 
-| 编号   | 需求                   | 状态 | 完成版本 | 完成日期   | 备注                                                |
-| ------ | ---------------------- | ---- | -------- | ---------- | --------------------------------------------------- |
-| R1.1   | 工具 JSON Schema       | [x]  | v2.4.0   | 2026-08-08 | tool-schema.ts + TOOL_DOCS 单一来源                 |
-| R1.2   | 原生 function calling  | [x]  | v2.4.0   | 2026-08-08 | streamChatNative + delta.tool_calls                 |
-| R1.3   | 结构化 tool result     | [x]  | v2.4.0   | 2026-08-08 | role:tool + tool_call_id                            |
-| R1.4   | 兼容 fallback          | [x]  | v2.4.0   | 2026-08-08 | [TOOL] 文本解析保留                                 |
-| R1.5   | 清单单一来源           | [x]  | v2.4.0   | 2026-08-08 | buildToolList 由 registry 派生                      |
-| R1.6   | 参数强制校验           | [x]  | v2.4.0   | 2026-08-08 | validateArgsAgainstSchema                           |
-| R1.7   | 工具注解               | [~]  | —        | —          | 注解已声明并暴露；自动批准仍走 DANGEROUS_OPERATIONS |
-| R1.8   | 结构化输出强制模式     | [~]  | —        | —          | 工具 strict schema 完成；输出模式待接               |
-| R1.9   | Rich Errors            | [x]  | v2.4.0   | 2026-08-08 | toRichError + RICH_ERROR_HINTS                      |
-| R2.1   | 移除固定轮询           | [~]  | —        | —          | 原生路径事件驱动；fallback 保留轮询                 |
-| R2.2   | 消除首轮延迟           | [~]  | —        | —          | 原生路径已恢复                                      |
-| R2.3   | 预算控制               | [~]  | —        | —          | maxSteps/maxTokens；costBudget 待做                 |
-| R2.4   | 结构化停信号           | [x]  | v2.4.0   | 2026-08-08 | stop_reason 驱动                                    |
-| R2.5   | 移除 [WAIT] 依赖       | [~]  | —        | —          | 原生路径已去依赖，fallback 保留                     |
-| R2.6   | 并行工具调用           | [x]  | v2.4.0   | 2026-08-08 | Promise.allSettled                                  |
-| R2.7   | 推测执行               | [ ]  | —        | —          |                                                     |
-| R2.8   | PASTE 模式挖掘         | [ ]  | —        | —          |                                                     |
-| R2.9   | 推理深度可调旋钮       | [ ]  | —        | —          |                                                     |
-| R3.1   | 会话存储异步化         | [~]  | —        | —          | saveSessionAsync；热路径暂保留同步                  |
-| R3.2   | 智能压缩               | [ ]  | —        | —          |                                                     |
-| R3.3   | 上下文对齐             | [x]  | v2.4.0   | 2026-08-08 | 按 api.model context window 取 80%                  |
-| R3.4   | tool 计数修复          | [x]  | v2.4.0   | 2026-08-08 | 原生 tool 结果不再膨胀 user 计数                    |
-| R3.5   | JIT 上下文策略         | [~]  | —        | —          | JIT 标记注入；按需工具加载待跟进                    |
-| R3.6   | 结构化笔记             | [x]  | v2.4.0   | 2026-08-08 | saveSessionNote / listSessionNotes                  |
-| R3.7   | 上下文腐烂防御         | [~]  | —        | —          | getPartitionedMessages 分区完成                     |
-| R3.8   | 多 Agent 隔离上下文    | [ ]  | —        | —          |                                                     |
-| R3.9   | 会话中途系统消息       | [ ]  | —        | —          |                                                     |
-| R4.1   | MCP 服务端             | [x]  | v2.4.0   | 2026-08-08 | createLocalMcpServer (stdio)                        |
-| R4.2   | MCP 客户端             | [x]  | v2.4.0   | 2026-08-08 | registerExternalMcpServers                          |
-| R4.3   | MCP 配置面             | [~]  | —        | —          | config.mcp.servers 已支持；Dashboard 待做           |
-| R4.4   | MCP 文案修正           | [ ]  | —        | —          |                                                     |
-| R4.5   | MCP Elicitation        | [ ]  | —        | —          |                                                     |
-| R4.6   | MCP Sampling           | [ ]  | —        | —          |                                                     |
-| R4.7   | MCP 工具注解传播       | [x]  | v2.4.0   | 2026-08-08 | annotations → MCP toolAnnotations                   |
-| R4.8   | MCP 无状态重构对齐     | [ ]  | —        | —          |                                                     |
-| R5.1   | 插件工具注入           | [x]  | v2.4.0   | 2026-08-08 | schema/param/annotations 随注册注入                 |
-| R5.2   | 插件权限模型           | [~]  | —        | —          | config permissions + 门禁；plugin.yaml 待接         |
-| R5.3   | 插件热加载             | [x]  | v2.4.0   | 2026-08-08 | unloadPlugin + reloadPlugins                        |
-| R5.4   | 插件安全               | [ ]  | —        | —          |                                                     |
-| R5.5   | Agent Skills 标准      | [x]  | v2.4.0   | 2026-08-08 | SKILL.md front-matter 扫描                          |
-| R5.6   | Skills 目录约定        | [~]  | —        | —          | skills/ 目录注入；.cogito/skills 约定待统一         |
-| R5.7   | Code Mode 工具范式     | [ ]  | —        | —          |                                                     |
-| R5.8   | 配置坏味道防御         | [ ]  | —        | —          |                                                     |
-| R6.1   | 向量记忆               | [ ]  | —        | —          |                                                     |
-| R6.2   | 分级记忆               | [ ]  | —        | —          |                                                     |
-| R6.3   | 记忆自动写入           | [ ]  | —        | —          |                                                     |
-| R6.4   | 记忆持久化             | [ ]  | —        | —          |                                                     |
-| R6.5   | 记忆 UI                | [ ]  | —        | —          |                                                     |
-| R6.6   | Dreaming 跨会话精炼    | [ ]  | —        | —          |                                                     |
-| R6.7   | REMem 混合记忆图       | [ ]  | —        | —          |                                                     |
-| R6.8   | 双过程记忆架构         | [ ]  | —        | —          |                                                     |
-| R6.9   | 组织上下文记忆         | [ ]  | —        | —          |                                                     |
-| R6.10  | 生成式语义工作空间     | [ ]  | —        | —          |                                                     |
-| R7.1   | 统一 runner            | [ ]  | —        | —          |                                                     |
-| R7.2   | agent 线程管理         | [ ]  | —        | —          |                                                     |
-| R7.3   | 真并行                 | [ ]  | —        | —          |                                                     |
-| R7.4   | 通道抽象打通           | [ ]  | —        | —          |                                                     |
-| R7.5   | 子代理安全             | [ ]  | —        | —          |                                                     |
-| R7.6   | A2A 协议集成           | [ ]  | —        | —          |                                                     |
-| R7.7   | 嵌套子 Agent           | [ ]  | —        | —          |                                                     |
-| R7.8   | 检查点/时间旅行/分支   | [ ]  | —        | —          |                                                     |
-| R7.9   | Guardrails 护栏        | [ ]  | —        | —          |                                                     |
-| R7.10  | Generator-Evaluator    | [ ]  | —        | —          |                                                     |
-| R7.11  | AggAgent 并行聚合      | [ ]  | —        | —          |                                                     |
-| R8.1   | AGENTS.md 支持         | [ ]  | —        | —          |                                                     |
-| R8.2   | 全仓索引               | [ ]  | —        | —          |                                                     |
-| R8.3   | Plan 模式              | [ ]  | —        | —          |                                                     |
-| R8.4   | Diff 审查回滚          | [ ]  | —        | —          |                                                     |
-| R8.5   | 任务清单源             | [ ]  | —        | —          |                                                     |
-| R8.6   | Tree-sitter 知识图谱   | [ ]  | —        | —          |                                                     |
-| R8.7   | 混合 LSP 语义解析      | [ ]  | —        | —          |                                                     |
-| R8.8   | 语义代码搜索           | [ ]  | —        | —          |                                                     |
-| R8.9   | 变更影响分析           | [ ]  | —        | —          |                                                     |
-| R8.10  | 验证前置引用           | [ ]  | —        | —          |                                                     |
-| R8.11  | 测试驱动 Agent 循环    | [ ]  | —        | —          |                                                     |
-| R8.12  | 增量索引团队共享       | [ ]  | —        | —          |                                                     |
-| R8.13  | 多信号融合排序         | [ ]  | —        | —          |                                                     |
-| R8.14  | 调用图/死代码检测      | [ ]  | —        | —          |                                                     |
-| R9.1   | Python 容器隔离        | [ ]  | —        | —          |                                                     |
-| R9.2   | 移除 vm 降级           | [ ]  | —        | —          |                                                     |
-| R9.3   | Hooks 事件模型         | [ ]  | —        | —          |                                                     |
-| R9.4   | 凭证管理               | [ ]  | —        | —          |                                                     |
-| R9.5   | 分级许可策略           | [ ]  | —        | —          |                                                     |
-| R9.6   | 硬件级隔离升级         | [ ]  | —        | —          |                                                     |
-| R9.7   | 信任交接防御           | [ ]  | —        | —          |                                                     |
-| R9.8   | K8s Agent Sandbox      | [ ]  | —        | —          |                                                     |
-| R9.9   | Prompt Injection 防御  | [ ]  | —        | —          |                                                     |
-| R9.10  | 长程模型安全约束       | [ ]  | —        | —          |                                                     |
-| R10.1  | eval harness           | [ ]  | —        | —          |                                                     |
-| R10.2  | 回归基准               | [ ]  | —        | —          |                                                     |
-| R10.3  | 覆盖率门槛             | [ ]  | —        | —          |                                                     |
-| R10.4  | 死代码清理             | [ ]  | —        | —          |                                                     |
-| R10.5  | 已知 bug 修复          | [ ]  | —        | —          |                                                     |
-| R10.6  | OTel GenAI 可观测性    | [ ]  | —        | —          |                                                     |
-| R10.7  | Agent 专属 eval 指标   | [ ]  | —        | —          |                                                     |
-| R10.8  | Trace 层次结构         | [ ]  | —        | —          |                                                     |
-| R10.9  | Shadow Mode CI         | [ ]  | —        | —          |                                                     |
-| R10.10 | 成本-结果指标          | [ ]  | —        | —          |                                                     |
-| R10.11 | 确定性可复现 eval      | [ ]  | —        | —          |                                                     |
-| R11.1  | Web UI                 | [ ]  | —        | —          |                                                     |
-| R11.2  | 前端技术栈             | [ ]  | —        | —          |                                                     |
-| R11.3  | 多模态入口             | [ ]  | —        | —          |                                                     |
-| R11.4  | 移动端同步             | [ ]  | —        | —          |                                                     |
-| R11.5  | 三车道多模态架构       | [ ]  | —        | —          |                                                     |
-| R11.6  | 双向流式交互           | [ ]  | —        | —          |                                                     |
-| R11.7  | 视觉反馈循环           | [ ]  | —        | —          |                                                     |
-| R11.8  | 团队协作模式           | [ ]  | —        | —          |                                                     |
-| R12.1  | 插件市场               | [ ]  | —        | —          |                                                     |
-| R12.2  | Skill 机制             | [ ]  | —        | —          |                                                     |
-| R12.3  | 通道扩展               | [ ]  | —        | —          |                                                     |
-| R12.4  | 云任务分发             | [ ]  | —        | —          |                                                     |
-| R12.5  | MCP 生态市场           | [ ]  | —        | —          |                                                     |
-| R12.6  | A2A Agent 发现         | [ ]  | —        | —          |                                                     |
-| R12.7  | 多客户端自动配置       | [ ]  | —        | —          |                                                     |
-| R12.8  | 云沙箱化执行           | [ ]  | —        | —          |                                                     |
-| R13.1  | 多平台构建             | [ ]  | —        | —          |                                                     |
-| R13.2  | 发布自动化             | [ ]  | —        | —          |                                                     |
-| R13.3  | 性能基线               | [ ]  | —        | —          |                                                     |
-| X1.1   | 工具自举               | [ ]  | —        | —          |                                                     |
-| X1.2   | 技能自编译             | [ ]  | —        | —          |                                                     |
-| X1.3   | 提示词自优化           | [ ]  | —        | —          |                                                     |
-| X1.4   | 失败反向学习           | [ ]  | —        | —          |                                                     |
-| X1.5   | Outcomes 自动评估      | [ ]  | —        | —          |                                                     |
-| X1.6   | AlphaEvolve 循环       | [ ]  | —        | —          |                                                     |
-| X1.7   | Dreaming+Outcomes 闭环 | [ ]  | —        | —          |                                                     |
-| X1.8   | 有监督自我精炼         | [ ]  | —        | —          |                                                     |
-| X2.1   | 计划彩排               | [ ]  | —        | —          |                                                     |
-| X2.2   | 会话时间旅行           | [ ]  | —        | —          |                                                     |
-| X2.3   | 全量审计台账           | [ ]  | —        | —          |                                                     |
-| X2.4   | 确定性验收台           | [ ]  | —        | —          |                                                     |
-| X3.1   | 工作区感知             | [ ]  | —        | —          |                                                     |
-| X3.2   | 外部上下文订阅         | [ ]  | —        | —          |                                                     |
-| X3.3   | 自动简报               | [ ]  | —        | —          |                                                     |
-| X3.4   | 常驻守护进程           | [ ]  | —        | —          |                                                     |
-| X4.1   | 混合模型路由           | [ ]  | —        | —          |                                                     |
-| X4.2   | 实时成本面板           | [ ]  | —        | —          |                                                     |
-| X4.3   | 本地优先管线           | [ ]  | —        | —          |                                                     |
-| X4.4   | 熔断器模式             | [ ]  | —        | —          |                                                     |
-| X4.5   | 优雅降级               | [ ]  | —        | —          |                                                     |
-| X4.6   | 健康感知路由           | [ ]  | —        | —          |                                                     |
-| X4.7   | 加权路由策略           | [ ]  | —        | —          |                                                     |
-| X4.8   | KV Cache 复用          | [ ]  | —        | —          |                                                     |
-| X5.1   | 多设备共享记忆         | [ ]  | —        | —          |                                                     |
-| X5.2   | 加密同步               | [ ]  | —        | —          |                                                     |
-| X5.3   | 偏好画像               | [ ]  | —        | —          |                                                     |
-| X6.1   | 回答可溯源             | [ ]  | —        | —          |                                                     |
-| X6.2   | 数据可携清账           | [ ]  | —        | —          |                                                     |
-| X6.3   | 行为策略面板           | [ ]  | —        | —          |                                                     |
-| X6.4   | KGoT 知识图谱推理      | [ ]  | —        | —          |                                                     |
-| X6.5   | 不可变审计追踪         | [ ]  | —        | —          |                                                     |
-| X6.6   | 异常与漂移检测         | [ ]  | —        | —          |                                                     |
-| X7.1   | 桌面截图循环           | [ ]  | —        | —          |                                                     |
-| X7.2   | 分层安全访问           | [ ]  | —        | —          |                                                     |
-| X7.3   | 跨应用端到端工作流     | [ ]  | —        | —          |                                                     |
-| X7.4   | 浏览器原生自动化       | [ ]  | —        | —          |                                                     |
-| X7.5   | OSWorld 对标评测       | [ ]  | —        | —          |                                                     |
-| X8.1   | Elo 锦标赛假说竞争     | [ ]  | —        | —          |                                                     |
-| X8.2   | Generator/Verifier     | [ ]  | —        | —          |                                                     |
-| X8.3   | 可编程评估器约束       | [ ]  | —        | —          |                                                     |
-| X8.4   | 多模型广度-深度集成    | [ ]  | —        | —          |                                                     |
-| X9.1   | 16 小时时间前沿对齐    | [ ]  | —        | —          |                                                     |
-| X9.2   | 并行 TTC 弥合退化      | [ ]  | —        | —          |                                                     |
-| X9.3   | Retained Reasoning     | [ ]  | —        | —          |                                                     |
-| X9.4   | 嵌套子 Agent 深度编排  | [ ]  | —        | —          |                                                     |
-| X9.5   | 大规模编排验证         | [ ]  | —        | —          |                                                     |
-| X10.1  | 三层协议栈实现         | [ ]  | —        | —          |                                                     |
-| X10.2  | Agent Cards 发布       | [ ]  | —        | —          |                                                     |
-| X10.3  | ACP 原生兼容           | [ ]  | —        | —          |                                                     |
-| X10.4  | 去中心化 Agent 网络    | [ ]  | —        | —          |                                                     |
-| X10.5  | 治理对齐               | [ ]  | —        | —          |                                                     |
-| X11.1  | 对齐悖论防御           | [ ]  | —        | —          |                                                     |
-| X11.2  | 停止准则理论解         | [ ]  | —        | —          |                                                     |
-| X11.3  | 沙箱逃逸检测           | [ ]  | —        | —          |                                                     |
-| X11.4  | 信任交接完整性         | [ ]  | —        | —          |                                                     |
-| X11.5  | 长程模型持久性风险     | [ ]  | —        | —          |                                                     |
-| X12.1  | 代码执行+MCP 原语      | [ ]  | —        | —          |                                                     |
-| X12.2  | ToolSearch 原语        | [ ]  | —        | —          |                                                     |
-| X12.3  | 滑动多断点缓存         | [ ]  | —        | —          |                                                     |
-| X12.4  | Skills 渐进式披露      | [ ]  | —        | —          |                                                     |
-| X12.5  | 原语堆叠策略           | [ ]  | —        | —          |                                                     |
-| X12.6  | 上下文工程 vs 提示工程 | [ ]  | —        | —          |                                                     |
-| X13.1  | Me-Agent 双级学习      | [ ]  | —        | —          |                                                     |
-| X13.2  | PersonaAgent 框架      | [ ]  | —        | —          |                                                     |
-| X13.3  | 持久化用户记忆         | [ ]  | —        | —          |                                                     |
-| X13.4  | 自进化数字伙伴         | [ ]  | —        | —          |                                                     |
-| X14.1  | DyLAN 动态网络         | [ ]  | —        | —          |                                                     |
-| X14.2  | GraphPlanner 异构路由  | [ ]  | —        | —          |                                                     |
-| X14.3  | AgentConductor 拓扑    | [ ]  | —        | —          |                                                     |
-| X14.4  | VCG 拍卖通信市场       | [ ]  | —        | —          |                                                     |
-| X14.5  | Pyramid MoA 轻量路由   | [ ]  | —        | —          |                                                     |
+| 编号   | 需求                   | 状态 | 完成版本 | 完成日期   | 备注                                                                                                                                               |
+| ------ | ---------------------- | ---- | -------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1.1   | 工具 JSON Schema       | [x]  | v2.4.0   | 2026-08-08 | tool-schema.ts + TOOL_DOCS 单一来源                                                                                                                |
+| R1.2   | 原生 function calling  | [x]  | v2.4.0   | 2026-08-08 | streamChatNative + delta.tool_calls                                                                                                                |
+| R1.3   | 结构化 tool result     | [x]  | v2.4.0   | 2026-08-08 | role:tool + tool_call_id                                                                                                                           |
+| R1.4   | 移除文本 fallback      | [x]  | v2.4.x   | 2026-08-08 | [TOOL]/[WAIT] 与 tool-parser 整体删除，原生单一路径                                                                                                |
+| R1.5   | 清单单一来源           | [x]  | v2.4.0   | 2026-08-08 | buildToolList 由 registry 派生                                                                                                                     |
+| R1.6   | 参数强制校验           | [x]  | v2.4.0   | 2026-08-08 | validateArgsAgainstSchema                                                                                                                          |
+| R1.7   | 工具注解               | [~]  | —        | —          | 注解已声明并暴露；自动批准仍走 DANGEROUS_OPERATIONS                                                                                                |
+| R1.8   | 结构化输出强制模式     | [~]  | —        | —          | 工具 strict schema 完成；输出模式待接                                                                                                              |
+| R1.9   | Rich Errors            | [x]  | v2.4.0   | 2026-08-08 | toRichError + RICH_ERROR_HINTS                                                                                                                     |
+| R2.1   | 移除固定轮询           | [x]  | v2.4.1   | 2026-08-08 | scheduleNextCycle 改 setTimeout(0) 立即推进；runNativeTurnLoop 工具完成 continue 即时下一轮                                                        |
+| R2.2   | 消除首轮延迟           | [x]  | v2.4.1   | 2026-08-08 | 首轮不再经 thoughtInterval 延迟；移除 thoughtInterval 变量与 UI 标签                                                                               |
+| R2.3   | 预算控制               | [x]  | v2.4.1   | 2026-08-08 | maxSteps/tokenBudget/costBudget 三件套均接入 evaluateBudget；未知价格告警                                                                          |
+| R2.4   | 结构化停信号           | [x]  | v2.4.0   | 2026-08-08 | stop_reason 驱动                                                                                                                                   |
+| R2.5   | 彻底移除 [WAIT]        | [x]  | v2.4.x   | 2026-08-08 | system prompt、主循环、子代理、首轮引导全部删除 [TOOL]/[WAIT] 与 nativeTools 配置                                                                  |
+| R2.6   | 并行工具调用           | [x]  | v2.4.0   | 2026-08-08 | Promise.allSettled                                                                                                                                 |
+| R2.7   | 推测执行               | [ ]  | —        | —          |                                                                                                                                                    |
+| R2.8   | PASTE 模式挖掘         | [ ]  | —        | —          |                                                                                                                                                    |
+| R2.9   | 推理深度可调旋钮       | [ ]  | —        | —          |                                                                                                                                                    |
+| R3.1   | 会话存储异步化         | [~]  | —        | —          | saveSessionAsync；热路径暂保留同步                                                                                                                 |
+| R3.2   | 智能压缩               | [x]  | v2.4.1   | 2026-08-08 | LLM 分级摘要 + 分块 + 失败回退朴素摘要；修复摘要对象错误（原摘要近期消息而非归档内容）；新增 compressionSummary 开关                               |
+| R3.3   | 上下文对齐             | [x]  | v2.4.0   | 2026-08-08 | 按 api.model context window 取 80%                                                                                                                 |
+| R3.4   | tool 计数修复          | [x]  | v2.4.0   | 2026-08-08 | 原生 tool 结果不再膨胀 user 计数                                                                                                                   |
+| R3.5   | JIT 上下文策略         | [~]  | —        | —          | JIT 标记注入；按需工具加载待跟进                                                                                                                   |
+| R3.6   | 结构化笔记             | [x]  | v2.4.0   | 2026-08-08 | saveSessionNote / listSessionNotes                                                                                                                 |
+| R3.7   | 上下文腐烂防御         | [~]  | —        | —          | getPartitionedMessages 分区完成                                                                                                                    |
+| R3.8   | 多 Agent 隔离上下文    | [ ]  | —        | —          |                                                                                                                                                    |
+| R3.9   | 会话中途系统消息       | [ ]  | —        | —          |                                                                                                                                                    |
+| R4.1   | MCP 服务端             | [x]  | v2.4.0   | 2026-08-08 | createLocalMcpServer (stdio)                                                                                                                       |
+| R4.2   | MCP 客户端             | [x]  | v2.4.0   | 2026-08-08 | registerExternalMcpServers                                                                                                                         |
+| R4.3   | MCP 配置面             | [~]  | —        | —          | config.mcp.servers 已支持；Dashboard 待做                                                                                                          |
+| R4.4   | MCP 文案修正           | [x]  | v2.4.1   | 2026-08-08 | README/CHANGELOG/introduction 均无 MCP 虚假宣传文案，与实际能力一致                                                                                |
+| R4.5   | MCP Elicitation        | [ ]  | —        | —          |                                                                                                                                                    |
+| R4.6   | MCP Sampling           | [ ]  | —        | —          |                                                                                                                                                    |
+| R4.7   | MCP 工具注解传播       | [x]  | v2.4.0   | 2026-08-08 | annotations → MCP toolAnnotations                                                                                                                  |
+| R4.8   | MCP 无状态重构对齐     | [ ]  | —        | —          |                                                                                                                                                    |
+| R5.1   | 插件工具注入           | [x]  | v2.4.0   | 2026-08-08 | schema/param/annotations 随注册注入                                                                                                                |
+| R5.2   | 插件权限模型           | [~]  | —        | —          | config permissions + 门禁；plugin.yaml 待接                                                                                                        |
+| R5.3   | 插件热加载             | [x]  | v2.4.0   | 2026-08-08 | unloadPlugin + reloadPlugins                                                                                                                       |
+| R5.4   | 插件安全               | [ ]  | —        | —          |                                                                                                                                                    |
+| R5.5   | Agent Skills 标准      | [x]  | v2.4.0   | 2026-08-08 | SKILL.md front-matter 扫描                                                                                                                         |
+| R5.6   | Skills 目录约定        | [~]  | —        | —          | skills/ 目录注入；.cogito/skills 约定待统一                                                                                                        |
+| R5.7   | Code Mode 工具范式     | [ ]  | —        | —          |                                                                                                                                                    |
+| R5.8   | 配置坏味道防御         | [ ]  | —        | —          |                                                                                                                                                    |
+| R6.1   | 向量记忆               | [ ]  | —        | —          |                                                                                                                                                    |
+| R6.2   | 分级记忆               | [ ]  | —        | —          |                                                                                                                                                    |
+| R6.3   | 记忆自动写入           | [ ]  | —        | —          |                                                                                                                                                    |
+| R6.4   | 记忆持久化             | [ ]  | —        | —          |                                                                                                                                                    |
+| R6.5   | 记忆 UI                | [ ]  | —        | —          |                                                                                                                                                    |
+| R6.6   | Dreaming 跨会话精炼    | [ ]  | —        | —          |                                                                                                                                                    |
+| R6.7   | REMem 混合记忆图       | [ ]  | —        | —          |                                                                                                                                                    |
+| R6.8   | 双过程记忆架构         | [ ]  | —        | —          |                                                                                                                                                    |
+| R6.9   | 组织上下文记忆         | [ ]  | —        | —          |                                                                                                                                                    |
+| R6.10  | 生成式语义工作空间     | [ ]  | —        | —          |                                                                                                                                                    |
+| R7.1   | 统一 runner            | [ ]  | —        | —          |                                                                                                                                                    |
+| R7.2   | agent 线程管理         | [ ]  | —        | —          |                                                                                                                                                    |
+| R7.3   | 真并行                 | [ ]  | —        | —          |                                                                                                                                                    |
+| R7.4   | 通道抽象打通           | [ ]  | —        | —          |                                                                                                                                                    |
+| R7.5   | 子代理安全             | [ ]  | —        | —          |                                                                                                                                                    |
+| R7.6   | A2A 协议集成           | [ ]  | —        | —          |                                                                                                                                                    |
+| R7.7   | 嵌套子 Agent           | [ ]  | —        | —          |                                                                                                                                                    |
+| R7.8   | 检查点/时间旅行/分支   | [ ]  | —        | —          |                                                                                                                                                    |
+| R7.9   | Guardrails 护栏        | [ ]  | —        | —          |                                                                                                                                                    |
+| R7.10  | Generator-Evaluator    | [ ]  | —        | —          |                                                                                                                                                    |
+| R7.11  | AggAgent 并行聚合      | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.1   | AGENTS.md 支持         | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.2   | 全仓索引               | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.3   | Plan 模式              | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.4   | Diff 审查回滚          | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.5   | 任务清单源             | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.6   | Tree-sitter 知识图谱   | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.7   | 混合 LSP 语义解析      | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.8   | 语义代码搜索           | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.9   | 变更影响分析           | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.10  | 验证前置引用           | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.11  | 测试驱动 Agent 循环    | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.12  | 增量索引团队共享       | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.13  | 多信号融合排序         | [ ]  | —        | —          |                                                                                                                                                    |
+| R8.14  | 调用图/死代码检测      | [ ]  | —        | —          |                                                                                                                                                    |
+| R9.1   | Python 容器隔离        | [ ]  | —        | —          |                                                                                                                                                    |
+| R9.2   | 移除 vm 降级           | [ ]  | —        | —          |                                                                                                                                                    |
+| R9.3   | Hooks 事件模型         | [ ]  | —        | —          |                                                                                                                                                    |
+| R9.4   | 凭证管理               | [ ]  | —        | —          |                                                                                                                                                    |
+| R9.5   | 分级许可策略           | [ ]  | —        | —          |                                                                                                                                                    |
+| R9.6   | 硬件级隔离升级         | [ ]  | —        | —          |                                                                                                                                                    |
+| R9.7   | 信任交接防御           | [ ]  | —        | —          |                                                                                                                                                    |
+| R9.8   | K8s Agent Sandbox      | [ ]  | —        | —          |                                                                                                                                                    |
+| R9.9   | Prompt Injection 防御  | [ ]  | —        | —          |                                                                                                                                                    |
+| R9.10  | 长程模型安全约束       | [ ]  | —        | —          |                                                                                                                                                    |
+| R10.1  | eval harness           | [ ]  | —        | —          |                                                                                                                                                    |
+| R10.2  | 回归基准               | [ ]  | —        | —          |                                                                                                                                                    |
+| R10.3  | 覆盖率门槛             | [ ]  | —        | —          |                                                                                                                                                    |
+| R10.4  | 死代码清理             | [x]  | v2.4.1   | 2026-08-08 | getToolsForPrompt/recordThinkingTime/api/models.ts 已不存在；llm-validator JSON-action 遗留已删；TOOL_OUTPUT_LIMITS 在 formatToolResult 内强制截断 |
+| R10.5  | 已知 bug 修复          | [x]  | v2.4.0   | 2026-08-08 | thinkingInterval 对齐 chat；TOOL_DEVELOPMENT.md 路径正确；readExcel 已统一                                                                         |
+| R10.6  | OTel GenAI 可观测性    | [ ]  | —        | —          |                                                                                                                                                    |
+| R10.7  | Agent 专属 eval 指标   | [ ]  | —        | —          |                                                                                                                                                    |
+| R10.8  | Trace 层次结构         | [ ]  | —        | —          |                                                                                                                                                    |
+| R10.9  | Shadow Mode CI         | [ ]  | —        | —          |                                                                                                                                                    |
+| R10.10 | 成本-结果指标          | [ ]  | —        | —          |                                                                                                                                                    |
+| R10.11 | 确定性可复现 eval      | [ ]  | —        | —          |                                                                                                                                                    |
+| R11.1  | Web UI                 | [ ]  | —        | —          |                                                                                                                                                    |
+| R11.2  | 前端技术栈             | [ ]  | —        | —          |                                                                                                                                                    |
+| R11.3  | 多模态入口             | [ ]  | —        | —          |                                                                                                                                                    |
+| R11.4  | 移动端同步             | [ ]  | —        | —          |                                                                                                                                                    |
+| R11.5  | 三车道多模态架构       | [ ]  | —        | —          |                                                                                                                                                    |
+| R11.6  | 双向流式交互           | [ ]  | —        | —          |                                                                                                                                                    |
+| R11.7  | 视觉反馈循环           | [ ]  | —        | —          |                                                                                                                                                    |
+| R11.8  | 团队协作模式           | [ ]  | —        | —          |                                                                                                                                                    |
+| R12.1  | 插件市场               | [ ]  | —        | —          |                                                                                                                                                    |
+| R12.2  | Skill 机制             | [ ]  | —        | —          |                                                                                                                                                    |
+| R12.3  | 通道扩展               | [ ]  | —        | —          |                                                                                                                                                    |
+| R12.4  | 云任务分发             | [ ]  | —        | —          |                                                                                                                                                    |
+| R12.5  | MCP 生态市场           | [ ]  | —        | —          |                                                                                                                                                    |
+| R12.6  | A2A Agent 发现         | [ ]  | —        | —          |                                                                                                                                                    |
+| R12.7  | 多客户端自动配置       | [ ]  | —        | —          |                                                                                                                                                    |
+| R12.8  | 云沙箱化执行           | [ ]  | —        | —          |                                                                                                                                                    |
+| R13.1  | 多平台构建             | [ ]  | —        | —          |                                                                                                                                                    |
+| R13.2  | 发布自动化             | [ ]  | —        | —          |                                                                                                                                                    |
+| R13.3  | 性能基线               | [ ]  | —        | —          |                                                                                                                                                    |
+| X1.1   | 工具自举               | [ ]  | —        | —          |                                                                                                                                                    |
+| X1.2   | 技能自编译             | [ ]  | —        | —          |                                                                                                                                                    |
+| X1.3   | 提示词自优化           | [ ]  | —        | —          |                                                                                                                                                    |
+| X1.4   | 失败反向学习           | [ ]  | —        | —          |                                                                                                                                                    |
+| X1.5   | Outcomes 自动评估      | [ ]  | —        | —          |                                                                                                                                                    |
+| X1.6   | AlphaEvolve 循环       | [ ]  | —        | —          |                                                                                                                                                    |
+| X1.7   | Dreaming+Outcomes 闭环 | [ ]  | —        | —          |                                                                                                                                                    |
+| X1.8   | 有监督自我精炼         | [ ]  | —        | —          |                                                                                                                                                    |
+| X2.1   | 计划彩排               | [ ]  | —        | —          |                                                                                                                                                    |
+| X2.2   | 会话时间旅行           | [ ]  | —        | —          |                                                                                                                                                    |
+| X2.3   | 全量审计台账           | [ ]  | —        | —          |                                                                                                                                                    |
+| X2.4   | 确定性验收台           | [ ]  | —        | —          |                                                                                                                                                    |
+| X3.1   | 工作区感知             | [ ]  | —        | —          |                                                                                                                                                    |
+| X3.2   | 外部上下文订阅         | [ ]  | —        | —          |                                                                                                                                                    |
+| X3.3   | 自动简报               | [ ]  | —        | —          |                                                                                                                                                    |
+| X3.4   | 常驻守护进程           | [ ]  | —        | —          |                                                                                                                                                    |
+| X4.1   | 混合模型路由           | [ ]  | —        | —          |                                                                                                                                                    |
+| X4.2   | 实时成本面板           | [ ]  | —        | —          |                                                                                                                                                    |
+| X4.3   | 本地优先管线           | [ ]  | —        | —          |                                                                                                                                                    |
+| X4.4   | 熔断器模式             | [ ]  | —        | —          |                                                                                                                                                    |
+| X4.5   | 优雅降级               | [ ]  | —        | —          |                                                                                                                                                    |
+| X4.6   | 健康感知路由           | [ ]  | —        | —          |                                                                                                                                                    |
+| X4.7   | 加权路由策略           | [ ]  | —        | —          |                                                                                                                                                    |
+| X4.8   | KV Cache 复用          | [ ]  | —        | —          |                                                                                                                                                    |
+| X5.1   | 多设备共享记忆         | [ ]  | —        | —          |                                                                                                                                                    |
+| X5.2   | 加密同步               | [ ]  | —        | —          |                                                                                                                                                    |
+| X5.3   | 偏好画像               | [ ]  | —        | —          |                                                                                                                                                    |
+| X6.1   | 回答可溯源             | [ ]  | —        | —          |                                                                                                                                                    |
+| X6.2   | 数据可携清账           | [ ]  | —        | —          |                                                                                                                                                    |
+| X6.3   | 行为策略面板           | [ ]  | —        | —          |                                                                                                                                                    |
+| X6.4   | KGoT 知识图谱推理      | [ ]  | —        | —          |                                                                                                                                                    |
+| X6.5   | 不可变审计追踪         | [ ]  | —        | —          |                                                                                                                                                    |
+| X6.6   | 异常与漂移检测         | [ ]  | —        | —          |                                                                                                                                                    |
+| X7.1   | 桌面截图循环           | [ ]  | —        | —          |                                                                                                                                                    |
+| X7.2   | 分层安全访问           | [ ]  | —        | —          |                                                                                                                                                    |
+| X7.3   | 跨应用端到端工作流     | [ ]  | —        | —          |                                                                                                                                                    |
+| X7.4   | 浏览器原生自动化       | [ ]  | —        | —          |                                                                                                                                                    |
+| X7.5   | OSWorld 对标评测       | [ ]  | —        | —          |                                                                                                                                                    |
+| X8.1   | Elo 锦标赛假说竞争     | [ ]  | —        | —          |                                                                                                                                                    |
+| X8.2   | Generator/Verifier     | [ ]  | —        | —          |                                                                                                                                                    |
+| X8.3   | 可编程评估器约束       | [ ]  | —        | —          |                                                                                                                                                    |
+| X8.4   | 多模型广度-深度集成    | [ ]  | —        | —          |                                                                                                                                                    |
+| X9.1   | 16 小时时间前沿对齐    | [ ]  | —        | —          |                                                                                                                                                    |
+| X9.2   | 并行 TTC 弥合退化      | [ ]  | —        | —          |                                                                                                                                                    |
+| X9.3   | Retained Reasoning     | [ ]  | —        | —          |                                                                                                                                                    |
+| X9.4   | 嵌套子 Agent 深度编排  | [ ]  | —        | —          |                                                                                                                                                    |
+| X9.5   | 大规模编排验证         | [ ]  | —        | —          |                                                                                                                                                    |
+| X10.1  | 三层协议栈实现         | [ ]  | —        | —          |                                                                                                                                                    |
+| X10.2  | Agent Cards 发布       | [ ]  | —        | —          |                                                                                                                                                    |
+| X10.3  | ACP 原生兼容           | [ ]  | —        | —          |                                                                                                                                                    |
+| X10.4  | 去中心化 Agent 网络    | [ ]  | —        | —          |                                                                                                                                                    |
+| X10.5  | 治理对齐               | [ ]  | —        | —          |                                                                                                                                                    |
+| X11.1  | 对齐悖论防御           | [ ]  | —        | —          |                                                                                                                                                    |
+| X11.2  | 停止准则理论解         | [ ]  | —        | —          |                                                                                                                                                    |
+| X11.3  | 沙箱逃逸检测           | [ ]  | —        | —          |                                                                                                                                                    |
+| X11.4  | 信任交接完整性         | [ ]  | —        | —          |                                                                                                                                                    |
+| X11.5  | 长程模型持久性风险     | [ ]  | —        | —          |                                                                                                                                                    |
+| X12.1  | 代码执行+MCP 原语      | [ ]  | —        | —          |                                                                                                                                                    |
+| X12.2  | ToolSearch 原语        | [ ]  | —        | —          |                                                                                                                                                    |
+| X12.3  | 滑动多断点缓存         | [ ]  | —        | —          |                                                                                                                                                    |
+| X12.4  | Skills 渐进式披露      | [ ]  | —        | —          |                                                                                                                                                    |
+| X12.5  | 原语堆叠策略           | [ ]  | —        | —          |                                                                                                                                                    |
+| X12.6  | 上下文工程 vs 提示工程 | [ ]  | —        | —          |                                                                                                                                                    |
+| X13.1  | Me-Agent 双级学习      | [ ]  | —        | —          |                                                                                                                                                    |
+| X13.2  | PersonaAgent 框架      | [ ]  | —        | —          |                                                                                                                                                    |
+| X13.3  | 持久化用户记忆         | [ ]  | —        | —          |                                                                                                                                                    |
+| X13.4  | 自进化数字伙伴         | [ ]  | —        | —          |                                                                                                                                                    |
+| X14.1  | DyLAN 动态网络         | [ ]  | —        | —          |                                                                                                                                                    |
+| X14.2  | GraphPlanner 异构路由  | [ ]  | —        | —          |                                                                                                                                                    |
+| X14.3  | AgentConductor 拓扑    | [ ]  | —        | —          |                                                                                                                                                    |
+| X14.4  | VCG 拍卖通信市场       | [ ]  | —        | —          |                                                                                                                                                    |
+| X14.5  | Pyramid MoA 轻量路由   | [ ]  | —        | —          |                                                                                                                                                    |

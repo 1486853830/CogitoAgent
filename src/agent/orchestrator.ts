@@ -5,10 +5,12 @@
 
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
-import { streamChat } from '../api/client.ts';
-import { TOOL_REGISTRY, isDangerousOperation, preprocessToolArgs } from './registry.ts';
+import { streamChatNative } from '../api/client.ts';
+import type { NativeStreamReturn, NativeStreamChunk } from '../api/client.ts';
+import { TOOL_REGISTRY, isDangerousOperation, getEnabledToolNames } from './registry.ts';
 import { broadcast } from '../io/ws-server.ts';
-import { parseAllToolCalls } from './tool-parser.ts';
+import { buildOpenAITools, objectArgsToPositional } from './tool-schema.ts';
+import { safeParseJSON } from '../utils/llm-validator.ts';
 import { isValidPersonaName } from './persona.ts';
 
 // ============================================
@@ -529,11 +531,11 @@ class AgentOrchestrator {
   }
 
   /**
-   * 智能体思考-行动循环
+   * 智能体思考-行动循环（原生 function calling 协议）
    */
   async _executeAgentLoop(
     agent: SubAgent,
-    messages: Array<{ role: string; content: string }>,
+    messages: Array<Record<string, unknown>>,
   ): Promise<string> {
     let fullResponse = '';
     // 连续两轮调用「相同方法签名」的工具说明模型在截断的工具输出下无法取得进展，
@@ -545,27 +547,34 @@ class AgentOrchestrator {
     // 否则任务会被标记为 done 却没有拿到最终结果。
     let hasFinalAnswer = false;
 
+    const tools = buildOpenAITools(getEnabledToolNames(), { strict: false });
+
     for (let i = 0; i < this.maxIterations; i++) {
       agent.iterationCount = i + 1;
       agent.state = 'thinking';
       this._broadcastClusterState();
 
-      // 调用 LLM
-      let response = '';
+      // 调用 LLM（原生工具协议）
+      let content = '';
+      let toolCalls: Array<{ id: string; name: string; arguments: string }>;
+      let result!: NativeStreamReturn;
       try {
-        for await (const chunk of streamChat(messages)) {
-          if (chunk.content) {
-            response += chunk.content;
+        const stream = streamChatNative(messages, { tools });
+        while (true) {
+          const iterResult = await stream.next();
+          if (iterResult.done) {
+            result = iterResult.value;
+            break;
           }
+          const chunk = iterResult.value as NativeStreamChunk;
+          if (chunk.content) content += chunk.content;
         }
+        toolCalls = result.toolCalls || [];
       } catch (error: unknown) {
         throw new Error(`LLM 调用失败: ${(error as Error).message}`, { cause: error });
       }
 
-      fullResponse += response;
-
-      // 解析工具调用（复用 tool-parser.js）
-      const toolCalls = parseAllToolCalls(response);
+      fullResponse += content;
 
       if (toolCalls.length === 0) {
         // 没有工具调用，这就是最终回复
@@ -574,7 +583,7 @@ class AgentOrchestrator {
       }
 
       const signatures = toolCalls
-        .map((tc) => `${tc.tool}(${JSON.stringify(tc.args)})`)
+        .map((tc) => `${tc.name}(${tc.arguments})`)
         .sort()
         .join('|');
       if (previousToolSignatures !== '' && signatures === previousToolSignatures) {
@@ -583,50 +592,71 @@ class AgentOrchestrator {
       }
       previousToolSignatures = signatures;
 
-      // 添加助手回复到消息历史
-      messages.push({ role: 'assistant', content: response });
+      // 添加带 tool_calls 的助手回复到消息历史
+      messages.push({
+        role: 'assistant',
+        content: content || null,
+        tool_calls: toolCalls.map((tc) => ({
+          id: tc.id,
+          type: 'function' as const,
+          function: { name: tc.name, arguments: tc.arguments },
+        })),
+      });
 
-      // 执行工具并收集结果
+      // 执行工具并把结果以 role=tool 消息注入
       agent.state = 'tool_executing';
-      const toolResults: string[] = [];
 
       for (const tc of toolCalls) {
         agent.toolCalls++;
-        const registry = TOOL_REGISTRY[tc.tool];
+        const registry = TOOL_REGISTRY[tc.name];
 
         if (!registry) {
-          toolResults.push(`[工具错误 - ${agent.name}]: 未知工具 "${tc.tool}"`);
+          messages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: `[工具错误 - ${agent.name}]: 未知工具 "${tc.name}"`,
+          });
           continue;
         }
 
-        if (isDangerousOperation(tc.tool)) {
-          toolResults.push(`[工具错误 - ${agent.name}]: 子智能体不允许执行危险操作`);
+        if (isDangerousOperation(tc.name)) {
+          messages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: `[工具错误 - ${agent.name}]: 子智能体不允许执行危险操作`,
+          });
           continue;
         }
 
         try {
-          // 复用 Agent.executeTool 的参数预处理（customArgs/parseJson/jsonParams），
-          // 否则依赖 JSON 解析的工具（parallelExecute/pipeline/voting 等）会收到字符串而非对象。
-          const processedArgs = preprocessToolArgs(tc.tool, tc.args);
-          const result: unknown = await registry.fn(
+          const parsed = safeParseJSON<Record<string, unknown>>(tc.arguments);
+          const args = parsed.success && parsed.data ? parsed.data : {};
+          // 与主 Agent 原生路径一致：先做 JSON Schema 顺序换算为位置参数，
+          // 再交给工具执行，避免依赖 JSON 解析的工具收到字符串而非对象。
+          const processedArgs = objectArgsToPositional(tc.name, args);
+          const resultValue: unknown = await registry.fn(
             ...(Array.isArray(processedArgs) ? processedArgs : [processedArgs]),
           );
           const data =
-            (result as Record<string, unknown>)?.data ?? result ?? '执行完成（无返回值）';
+            (resultValue as Record<string, unknown>)?.data ?? resultValue ?? '执行完成（无返回值）';
           const text = typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data);
           const truncated =
             text.length > this.maxToolOutput
               ? text.slice(0, this.maxToolOutput) + '\n\n... [输出过长，已截断]'
               : text;
-          toolResults.push(`[工具结果 - ${agent.name}]: ${truncated}`);
+          messages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: `[工具结果 - ${agent.name}]: ${truncated}`,
+          });
         } catch (error: unknown) {
-          toolResults.push(`[工具错误 - ${agent.name}]: ${(error as Error).message}`);
+          messages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: `[工具错误 - ${agent.name}]: ${(error as Error).message}`,
+          });
         }
       }
-
-      // 将工具结果作为 user 消息注入
-      const resultMessage = `[系统返回的工具执行结果]\n${toolResults.join('\n\n')}\n\n[系统] 请基于以上工具执行结果继续回复。`;
-      messages.push({ role: 'user', content: resultMessage });
 
       this._broadcastClusterState();
     }
@@ -643,10 +673,12 @@ class AgentOrchestrator {
           '[系统] 你已用尽本次任务的思考迭代次数。请基于上面已经取得的工具结果，立刻给出你的最终结果和结论，不要再调用任何工具。',
       });
       try {
-        for await (const chunk of streamChat(messages)) {
-          if (chunk.content) {
-            fullResponse += chunk.content;
-          }
+        const stream = streamChatNative(messages);
+        while (true) {
+          const iterResult = await stream.next();
+          if (iterResult.done) break;
+          const chunk = iterResult.value as NativeStreamChunk;
+          if (chunk.content) fullResponse += chunk.content;
         }
       } catch (error: unknown) {
         throw new Error(`LLM 调用失败: ${(error as Error).message}`, { cause: error });
@@ -689,8 +721,8 @@ ${agent.instruction ? `## 角色指令\n${agent.instruction}\n` : ''}
 ${toolNames.map((t) => `  - \`${t}\``).join('\n')}
 
 ## 工作方式
-1. 使用 [TOOL] 语法调用工具，例如：\`[TOOL] read(file.txt) [/TOOL]\`
-2. 工具执行结果会自动返回给你，你可以基于结果继续思考
+1. 通过原生 function calling 发送 tool_calls 来调用工具（工具名与参数以系统提供的 JSON Schema 为准）
+2. 工具执行结果会自动以 role: tool 消息返回，你可以基于结果继续思考
 3. 完成任务后直接回复最终答案，无需再调用工具
 4. 如果工具执行出错，尝试其他方法解决
 

@@ -4,7 +4,7 @@
 
 ## 工具系统
 
-工具系统由 `registry.ts` 统一管理，所有工具函数通过 `[TOOL] functionName(args) [/TOOL]` 格式调用。
+工具系统由 `registry.ts` 统一管理。模型通过**原生 function calling**（`tool_calls`）按 `tools` 里的 JSON Schema 直接调用工具，参数为合法 JSON，不再使用任何文本标记。
 
 ### 工具分类
 
@@ -48,11 +48,15 @@
 
 ### 工具调用示例
 
+调用走原生 `tool_calls`（参数为 JSON 对象），示例：
+
 ```
-AI: [TOOL] ls("/project/src") [/TOOL]
+工具: ls
+参数: { "path": "/project/src" }
 → 返回目录文件列表
 
-AI: [TOOL] runPython("print('hello')") [/TOOL]
+工具: runPython
+参数: { "code": "print('hello')", "language": "python" }
 → 执行 Python 代码，返回输出
 ```
 
@@ -78,12 +82,12 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] ls("./src") [/TOOL]
-[TOOL] read("./src/config.js") [/TOOL]
-[TOOL] create("notes.txt", "Hello World") [/TOOL]
-[TOOL] append("notes.txt", "\nNew line") [/TOOL]
-[TOOL] copy("notes.txt", "notes_backup.txt") [/TOOL]
-[TOOL] mkdir("./data") [/TOOL]
+ls('./src');
+read('./src/config.js');
+create('notes.txt', 'Hello World');
+append('notes.txt', '\nNew line');
+copy('notes.txt', 'notes_backup.txt');
+mkdir('./data');
 ```
 
 ---
@@ -105,10 +109,10 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] getBasePath() [/TOOL]
-[TOOL] joinPath("src", "agent", "tools") [/TOOL]
-[TOOL] getExtension("document.pdf") [/TOOL]
-[TOOL] getFileName("/path/to/file.txt") [/TOOL]
+getBasePath();
+joinPath('src', 'agent', 'tools');
+getExtension('document.pdf');
+getFileName('/path/to/file.txt');
 ```
 
 ---
@@ -137,13 +141,13 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] initBrowser() [/TOOL]
-[TOOL] clickElement("#login-btn") [/TOOL]
-[TOOL] fillField("#username", "user") [/TOOL]
-[TOOL] selectOption("#country", "China") [/TOOL]
-[TOOL] takeScreenshot() [/TOOL]
-[TOOL] getPageContent() [/TOOL]
-[TOOL] closeBrowser() [/TOOL]
+initBrowser();
+clickElement('#login-btn');
+fillField('#username', 'user');
+selectOption('#country', 'China');
+takeScreenshot();
+getPageContent();
+closeBrowser();
 ```
 
 ### 浏览器配置
@@ -182,10 +186,10 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] runJavaScript("console.log('Hello')") [/TOOL]
-[TOOL] runPython("print(1+2)") [/TOOL]
-[TOOL] executeFile("./script.py") [/TOOL]
-[TOOL] formatCode("function test(){return 1}", "javascript") [/TOOL]
+runJavaScript("console.log('Hello')");
+runPython('print(1+2)');
+executeFile('./script.py');
+formatCode('function test(){return 1}', 'javascript');
 ```
 
 ---
@@ -244,11 +248,11 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] gitInit() [/TOOL]
-[TOOL] gitAdd(".") [/TOOL]
-[TOOL] gitCommit("feat: add new feature") [/TOOL]
-[TOOL] gitPush("origin", "main") [/TOOL]
-[TOOL] gitStatus() [/TOOL]
+gitInit();
+gitAdd('.');
+gitCommit('feat: add new feature');
+gitPush('origin', 'main');
+gitStatus();
 ```
 
 ---
@@ -272,10 +276,10 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] createTask("完成项目文档", "编写 README 和架构文档", "high") [/TOOL]
-[TOOL] getTasks("pending") [/TOOL]
-[TOOL] completeTask("task-id-1") [/TOOL]
-[TOOL] getTaskStats() [/TOOL]
+createTask('完成项目文档', '编写 README 和架构文档', 'high');
+getTasks('pending');
+completeTask('task-id-1');
+getTaskStats();
 ```
 
 ---
@@ -299,9 +303,9 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] addMemory("用户偏好：喜欢简洁的界面设计", ["user", "preference"]) [/TOOL]
-[TOOL] searchMemory("界面设计") [/TOOL]
-[TOOL] getRelatedMemories("memory-id") [/TOOL]
+addMemory('用户偏好：喜欢简洁的界面设计', ['user', 'preference']);
+searchMemory('界面设计');
+getRelatedMemories('memory-id');
 ```
 
 ---
@@ -328,10 +332,10 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] readCSV("data.csv") [/TOOL]
-[TOOL] writeJSON("output.json", { key: "value" }) [/TOOL]
-[TOOL] sortData(data, "date", "desc") [/TOOL]
-[TOOL] filterData(data, { status: "active" }) [/TOOL]
+readCSV('data.csv');
+writeJSON('output.json', { key: 'value' });
+sortData(data, 'date', 'desc');
+filterData(data, { status: 'active' });
 ```
 
 ---
@@ -359,17 +363,17 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] createTable("users", { id: "INTEGER PRIMARY KEY", name: "TEXT" }) [/TOOL]
-[TOOL] insert("users", { name: "张三" }) [/TOOL]
-[TOOL] query("SELECT * FROM users") [/TOOL]
-[TOOL] update("users", { name: "李四" }, { id: 1 }) [/TOOL]
-[TOOL] deleteData("users", { id: 1 }) [/TOOL]
-[TOOL] getTables() [/TOOL]
-[TOOL] getTableSchema("users") [/TOOL]
-[TOOL] executeTransaction([
-  { sql: "UPDATE accounts SET balance = balance - 100 WHERE id = 1" },
-  { sql: "UPDATE accounts SET balance = balance + 100 WHERE id = 2" }
-]) [/TOOL]
+createTable('users', { id: 'INTEGER PRIMARY KEY', name: 'TEXT' });
+insert('users', { name: '张三' });
+query('SELECT * FROM users');
+update('users', { name: '李四' }, { id: 1 });
+deleteData('users', { id: 1 });
+getTables();
+getTableSchema('users');
+executeTransaction([
+  { sql: 'UPDATE accounts SET balance = balance - 100 WHERE id = 1' },
+  { sql: 'UPDATE accounts SET balance = balance + 100 WHERE id = 2' },
+]);
 ```
 
 ### 数据库配置
@@ -408,8 +412,8 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] sendTextEmail("user@example.com", "测试邮件", "Hello") [/TOOL]
-[TOOL] sendHtmlEmail("user@example.com", "HTML 邮件", "<h1>Hello</h1>") [/TOOL]
+sendTextEmail('user@example.com', '测试邮件', 'Hello');
+sendHtmlEmail('user@example.com', 'HTML 邮件', '<h1>Hello</h1>');
 ```
 
 ---
@@ -433,9 +437,9 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] getCPUInfo() [/TOOL]
-[TOOL] getMemoryInfo() [/TOOL]
-[TOOL] getSystemInfo() [/TOOL]
+getCPUInfo();
+getMemoryInfo();
+getSystemInfo();
 ```
 
 ---
@@ -458,9 +462,9 @@ AI: [TOOL] runPython("print('hello')") [/TOOL]
 ### 使用示例
 
 ```javascript
-[TOOL] addScheduleTask("daily-report", "0 9 * * *", "generateReport()") [/TOOL]
-[TOOL] getScheduleTasks() [/TOOL]
-[TOOL] toggleScheduleTask("task-id") [/TOOL]
+addScheduleTask('daily-report', '0 9 * * *', 'generateReport()');
+getScheduleTasks();
+toggleScheduleTask('task-id');
 ```
 
 ---
@@ -483,8 +487,8 @@ JPEG、PNG、WebP、BMP、GIF
 ### 使用示例
 
 ```javascript
-[TOOL] ocr("/path/to/screenshot.png") [/TOOL]
-[TOOL] ocrBatch("img1.jpg, img2.png, img3.webp") [/TOOL]
+ocr('/path/to/screenshot.png');
+ocrBatch('img1.jpg, img2.png, img3.webp');
 ```
 
 ### OCR 配置
@@ -516,9 +520,9 @@ JPEG、PNG、WebP、BMP、GIF
 ### 使用示例
 
 ```javascript
-[TOOL] vision("/path/to/photo.jpg") [/TOOL]
-[TOOL] vision("ui.png", "请描述这个界面的布局") [/TOOL]
-[TOOL] visionFromUrl("https://example.com/image.jpg") [/TOOL]
+vision('/path/to/photo.jpg');
+vision('ui.png', '请描述这个界面的布局');
+visionFromUrl('https://example.com/image.jpg');
 ```
 
 ### Vision 配置
@@ -551,10 +555,10 @@ Office 文档工具支持创建 PPT 演示文稿、Word 文档和 Excel 表格�
 ### 使用示例
 
 ```javascript
-[TOOL] createPpt("data/presentation.pptx", "项目报告", "内容") [/TOOL]
-[TOOL] createWord({ outputPath: "doc.docx", paragraphs: [...] }) [/TOOL]
-[TOOL] createExcel({ outputPath: "data.xlsx", sheets: [...] }) [/TOOL]
-[TOOL] readExcel("data.xlsx") [/TOOL]
+createPpt("data/presentation.pptx", "项目报告", "内容")
+createWord({ outputPath: "doc.docx", paragraphs: [...] })
+createExcel({ outputPath: "data.xlsx", sheets: [...] })
+readExcel("data.xlsx")
 ```
 
 ---
@@ -564,51 +568,51 @@ Office 文档工具支持创建 PPT 演示文稿、Word 文档和 Excel 表格�
 ### 文件探索
 
 ```javascript
-[TOOL] ls("./src") [/TOOL]
-[TOOL] read("./src/agent/Agent.ts") [/TOOL]
+ls('./src');
+read('./src/agent/Agent.ts');
 ```
 
 ### 代码执行
 
 ```javascript
-[TOOL] runPython("print('Hello')") [/TOOL]
-[TOOL] runJavaScript("console.log([1,2,3].reduce((a,b)=>a+b,0))") [/TOOL]
-[TOOL] executeFile("./script.py") [/TOOL]
+runPython("print('Hello')");
+runJavaScript('console.log([1,2,3].reduce((a,b)=>a+b,0))');
+executeFile('./script.py');
 ```
 
 ### Git 版本控制
 
 ```javascript
-[TOOL] gitStatus() [/TOOL]
-[TOOL] gitAdd(".") [/TOOL]
-[TOOL] gitCommit("feat: add feature") [/TOOL]
-[TOOL] gitPush("origin", "main") [/TOOL]
+gitStatus();
+gitAdd('.');
+gitCommit('feat: add feature');
+gitPush('origin', 'main');
 ```
 
 ### 数据库操作
 
 ```javascript
-[TOOL] executeSQL("SELECT * FROM tasks") [/TOOL]
-[TOOL] insert("tasks", { title: "新任务" }) [/TOOL]
+executeSQL('SELECT * FROM tasks');
+insert('tasks', { title: '新任务' });
 ```
 
 ### 联网搜索
 
 ```javascript
-[TOOL] search("Node.js features") [/TOOL]
-[TOOL] fetchPage("https://nodejs.org/") [/TOOL]
+search('Node.js features');
+fetchPage('https://nodejs.org/');
 ```
 
 ### 图像识别与视觉分析
 
 ```javascript
-[TOOL] ocr("screenshot.png") [/TOOL]
-[TOOL] vision("photo.jpg", "请描述这张图片") [/TOOL]
+ocr('screenshot.png');
+vision('photo.jpg', '请描述这张图片');
 ```
 
 ### Office 文档生成
 
 ```javascript
-[TOOL] createPpt("data/presentation.pptx", "项目汇报", "内容") [/TOOL]
-[TOOL] createExcel("data/sales.xlsx", "销售", [["产品", "销量"]]) [/TOOL]
+createPpt('data/presentation.pptx', '项目汇报', '内容');
+createExcel('data/sales.xlsx', '销售', [['产品', '销量']]);
 ```

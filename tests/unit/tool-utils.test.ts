@@ -92,6 +92,37 @@ describe('tool-utils.ts', () => {
       const result = formatToolResult('otherTool', { data: 'unwrapped string' });
       expect(result).toBe('unwrapped string');
     });
+
+    it('should truncate output exceeding the tool-specific limit', () => {
+      // ls limit = 5000
+      const longText = 'x'.repeat(6000);
+      const result = formatToolResult('ls', longText);
+      expect(result.length).toBeLessThan(longText.length);
+      expect(result).toContain('输出已截断');
+      expect(result).toContain('原始 6000 字符');
+      expect(result.startsWith('x'.repeat(5000))).toBe(true);
+    });
+
+    it('should truncate output exceeding the default limit for unknown tools', () => {
+      // default limit = 10000
+      const longText = 'y'.repeat(12000);
+      const result = formatToolResult('unknownTool', longText);
+      expect(result).toContain('输出已截断');
+      expect(result).toContain('原始 12000 字符');
+      expect(result.startsWith('y'.repeat(10000))).toBe(true);
+    });
+
+    it('should not truncate when limit is negative (e.g. browser tools)', () => {
+      // clickElement limit = -1，表示不截断
+      const longText = 'z'.repeat(50000);
+      const result = formatToolResult('clickElement', longText);
+      expect(result).toBe(longText);
+    });
+
+    it('should not truncate output shorter than the limit', () => {
+      const result = formatToolResult('ls', 'short');
+      expect(result).toBe('short');
+    });
   });
 
   describe('classifyToolError', () => {

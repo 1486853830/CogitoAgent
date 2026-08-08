@@ -33,7 +33,6 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 const USER_DATA_DIR = app.getPath('userData');
 const CONFIG_FILE = path.join(USER_DATA_DIR, 'config.json');
 setUserDataDir(USER_DATA_DIR);
-const PERSONA_FILE = path.join(USER_DATA_DIR, 'persona.md');
 
 // CSP: script-src 不再允许 unsafe-inline（内联脚本已全部外迁到 .js 文件），
 // style-src 保留 unsafe-inline 以支持动态样式（粒子动画等运行时设的 style 属性）。
@@ -893,6 +892,8 @@ app.whenReady().then(async () => {
   ipcMain.handle('get-personas', () => {
     const personasDir = path.join(PROJECT_ROOT, 'personas');
     const personas = [];
+    // 默认人设（Cogito）由前端"默认"选项表示，不重复列入列表
+    const DEFAULT_PERSONA = 'cogito';
 
     try {
       const dirs = fs
@@ -901,6 +902,7 @@ app.whenReady().then(async () => {
         .map((dir) => dir.name);
 
       for (const dir of dirs) {
+        if (dir === DEFAULT_PERSONA) continue;
         const personaPath = path.join(personasDir, dir, 'persona.md');
         if (fs.existsSync(personaPath)) {
           const content = fs.readFileSync(personaPath, 'utf-8');
@@ -921,94 +923,61 @@ app.whenReady().then(async () => {
   });
 
   // 获取当前 persona 的媒体资源（优先视频，其次图片）
+  // 直接按名称读取 personas/ 文件夹，不再依赖数据目录拷贝的 PERSONA_FILE。
   ipcMain.handle('get-persona-media', () => {
-    // 从 persona.md 文件实时读取，保证与 Agent 侧同步
-    let persona = '';
+    // 默认人设文件夹（Cogito）
+    const DEFAULT_PERSONA = 'cogito';
+
+    // 当前人设：优先用渲染进程同步过来的 currentPersona（Agent 侧切换人设时广播）
+    const persona = currentPersona || '';
+
+    // 确定人设文件夹名：空 -> 默认文件夹
+    const personaDir = persona ? persona : DEFAULT_PERSONA;
+    const personaDirPath = path.join(PROJECT_ROOT, 'personas', personaDir);
+
     let personaContent = '';
     try {
-      if (fs.existsSync(PERSONA_FILE)) {
-        personaContent = fs.readFileSync(PERSONA_FILE, 'utf-8');
-        const firstLine = personaContent
-          .split('\n')[0]
-          .replace(/^#+\s*/, '')
-          .trim();
-        const match = firstLine.match(/\(([^)]+)\)$/);
-        if (match) {
-          // 将空格替换为连字符，匹配目录名（如 "Shaanbei Youth" → "Shaanbei-Youth"）
-          persona = match[1].trim().replace(/\s+/g, '-');
-        }
+      const personaFile = path.join(personaDirPath, 'persona.md');
+      if (fs.existsSync(personaFile)) {
+        personaContent = fs.readFileSync(personaFile, 'utf-8');
       }
     } catch (e) {
       console.error('[主进程] 读取 persona.md 失败:', e.message);
     }
 
-    // 回退到 .env 配置
-    if (!persona) {
-      try {
-        const envConfig = loadEnvFile();
-        if (envConfig['COGITO_PERSONA']) {
-          persona = envConfig['COGITO_PERSONA'];
-        }
-      } catch {
-        // 忽略 .env 读取失败
-      }
-    }
-
-    // 回退到内存缓存
-    if (!persona) {
-      persona = currentPersona;
-    }
-
-    // 无人设时，自动调用人设文件夹根目录的默认 persona.md（如 personas/persona.md），
-    // 其"## 形象"声明决定默认形象（默认为 electron/shared/video.mp4）。
-    if (!persona) {
-      const defaultPersonaFile = path.join(PROJECT_ROOT, 'personas', 'persona.md');
-      try {
-        if (fs.existsSync(defaultPersonaFile)) {
-          personaContent = fs.readFileSync(defaultPersonaFile, 'utf-8');
-        }
-      } catch (e) {
-        console.error('[主进程] 读取默认 persona.md 失败:', e.message);
-      }
-    }
-
-    // 解析 persona.md 中"## 形象"声明的媒体文件（如 video.mp4 / image.jpg）
+    // 1) persona.md 显式声明了"## 形象"媒体文件且存在 -> 优先使用
     if (personaContent) {
       const mediaDecl = parsePersonaMedia(personaContent);
       if (mediaDecl) {
-        if (mediaDecl.name === 'video.mp4') {
-          // 默认形象统一指向 electron/shared/video.mp4
-          return { type: 'video', path: '../shared/video.mp4' };
-        }
-        if (persona) {
-          const personaDir = path.join(PROJECT_ROOT, 'personas', persona);
-          const mediaPath = path.join(personaDir, mediaDecl.name);
-          if (fs.existsSync(mediaPath)) {
-            return { type: mediaDecl.type, path: `../../personas/${persona}/${mediaDecl.name}` };
-          }
+        const mediaPath = path.join(personaDirPath, mediaDecl.name);
+        if (fs.existsSync(mediaPath)) {
+          return { type: mediaDecl.type, path: `../../personas/${personaDir}/${mediaDecl.name}` };
         }
       }
     }
 
-    if (!persona) {
-      return { type: 'video', path: 'default' };
-    }
-
-    const personaDir = path.join(PROJECT_ROOT, 'personas', persona);
-
-    const videoPath = path.join(personaDir, 'video.mp4');
-    if (fs.existsSync(videoPath)) {
-      return { type: 'video', path: `../../personas/${persona}/video.mp4` };
-    }
-
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    for (const ext of imageExtensions) {
-      const imagePath = path.join(personaDir, `image.${ext}`);
-      if (fs.existsSync(imagePath)) {
-        return { type: 'image', path: `../../personas/${persona}/image.${ext}` };
+    // 2) 文件夹下存在图或视频 -> 直接用那个（优先视频，其次图片）
+    const VIDEO_EXT = /\.(mp4|webm|mov|m4v)$/i;
+    const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|bmp)$/i;
+    let mediaCandidates = [];
+    try {
+      if (fs.existsSync(personaDirPath)) {
+        mediaCandidates = fs
+          .readdirSync(personaDirPath)
+          .filter((f) => VIDEO_EXT.test(f) || IMAGE_EXT.test(f));
       }
+    } catch (e) {
+      console.error('[主进程] 读取人设文件夹媒体失败:', e.message);
+    }
+    if (mediaCandidates.length > 0) {
+      const mediaName =
+        mediaCandidates.find((f) => VIDEO_EXT.test(f)) ||
+        mediaCandidates.find((f) => IMAGE_EXT.test(f));
+      const mediaType = VIDEO_EXT.test(mediaName) ? 'video' : 'image';
+      return { type: mediaType, path: `../../personas/${personaDir}/${mediaName}` };
     }
 
+    // 3) 都没有 -> 回退到系统共享默认视频（electron/shared/video.mp4）
     return { type: 'video', path: 'default' };
   });
 
@@ -1259,29 +1228,6 @@ app.whenReady().then(async () => {
 });
 
 /**
- * 从 persona.md 内容解析 persona ID。
- * 约定：第一行格式为 "# Name (persona-id)"，取括号内 ID 并将空格替换为连字符
- * （与 personas 目录名一致，如 "Shaanbei Youth" → "Shaanbei-Youth"）。
- * 此前此处直接调用未定义的 parsePersonaName 导致 ReferenceError 被外层 try/catch 吞掉，
- * persona.md 回退解析彻底失效。实现参照 get-persona-media handler 中的同类逻辑。
- */
-function parsePersonaName(content) {
-  try {
-    const firstLine = content
-      .split('\n')[0]
-      .replace(/^#+\s*/, '')
-      .trim();
-    const match = firstLine.match(/\(([^)]+)\)$/);
-    if (match) {
-      return match[1].trim().replace(/\s+/g, '-');
-    }
-  } catch (e) {
-    console.error('[主进程] 解析 persona 名称失败:', e.message);
-  }
-  return '';
-}
-
-/**
  * 从 persona.md 内容解析"## 形象"声明的媒体文件。
  * 约定：`## 形象` 段落下第一行为媒体文件名，如 `video.mp4` / `image.jpg`。
  * @returns {{ type: 'video'|'image', name: string } | null}
@@ -1312,33 +1258,10 @@ function parsePersonaMedia(content) {
 }
 
 /**
- * 获取当前 persona ID（优先从 .env 读取）
+ * 获取当前 persona ID（默认 Cogito，不读取环境变量 / 数据目录拷贝）
  */
 function getCurrentPersona() {
-  if (currentPersona) return currentPersona;
-
-  // 优先从 .env 文件读取
-  try {
-    const envConfig = loadEnvFile();
-    if (envConfig['COGITO_PERSONA']) {
-      currentPersona = envConfig['COGITO_PERSONA'];
-      return currentPersona;
-    }
-  } catch (e) {
-    console.error('[主进程] 从 .env 读取 persona 失败:', e.message);
-  }
-
-  // 回退到从 persona.md 获取
-  try {
-    if (fs.existsSync(PERSONA_FILE)) {
-      currentPersona = parsePersonaName(fs.readFileSync(PERSONA_FILE, 'utf-8'));
-      if (currentPersona) return currentPersona;
-    }
-  } catch (e) {
-    console.error('[主进程] 读取 persona.md 失败:', e.message);
-  }
-
-  return '';
+  return currentPersona || '';
 }
 
 /**

@@ -71,7 +71,7 @@ async function browse(url: string): Promise<{ success: boolean; data?: string; e
     // 仅拒绝控制字符、空白与引号：
     // 全程通过 execFile 直接启动可执行文件（不经过 shell），
     // URL 中的 & | ^ < > % ( ) 等字符不会被二次解析，合法 URL（如含 @ & 的查询串）允许放行
-    if (/[\x00-\x20\x7f"']/.test(cleanedUrl)) {
+    if (/[\p{Cc}\s"']/u.test(cleanedUrl)) {
       resolve({ success: false, error: 'URL 包含不允许的字符，已拒绝打开' });
       return;
     }

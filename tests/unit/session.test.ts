@@ -27,6 +27,7 @@ const {
   addToolResultMessage,
   shouldCompress,
   compressHistory,
+  splitIntoChunks,
   getHistoryLength,
   resetConversation,
   updateSystemPrompt,
@@ -460,42 +461,119 @@ describe('session.ts', () => {
   });
 
   describe('compressHistory', () => {
-    it('should not compress when there are few messages', () => {
+    it('should not compress when there are few messages', async () => {
       createNewSession('Few Messages');
       addUserMessage('one');
       addAssistantMessage('two');
       const before = getMessages().length;
-      compressHistory();
+      await compressHistory();
       // Should not change since non-system messages <= KEEP_RECENT_TURNS
       const after = getMessages().length;
       expect(after).toBe(before);
     });
 
-    it('should compress when there are more messages than KEEP_RECENT_TURNS', () => {
+    it('should compress when there are more messages than KEEP_RECENT_TURNS', async () => {
       createNewSession('Many Messages');
       // Add more than KEEP_RECENT_TURNS (10) messages
       for (let i = 0; i < 15; i++) {
         addUserMessage(`user msg ${i}`);
         addAssistantMessage(`assistant msg ${i}`);
       }
-      compressHistory();
+      await compressHistory();
       const messages = getMessages();
       // After compression: system + summary + up to KEEP_RECENT_TURNS recent messages
       expect(messages[0].role).toBe('system');
       expect(messages.length).toBeLessThan(35);
     });
 
-    it('should include a summary message after compression', () => {
+    it('should include a summary message after compression', async () => {
       createNewSession('Summary Test');
       for (let i = 0; i < 15; i++) {
         addUserMessage(`request ${i}`);
       }
-      compressHistory();
+      await compressHistory();
       const messages = getMessages();
       const summary = messages.find(
         (m) => m.role === 'user' && m.content.startsWith('[上下文摘要]'),
       );
       expect(summary).toBeDefined();
+    });
+  });
+
+  describe('splitIntoChunks (R3.2)', () => {
+    it('should keep each chunk under the token budget', () => {
+      const msgs = Array.from({ length: 20 }, (_, i) => ({
+        role: 'user' as const,
+        content: `用户请求 ${i} `.repeat(50), // ~ 足够大以触发分块
+      }));
+      const chunks = splitIntoChunks(msgs, 200);
+      expect(chunks.length).toBeGreaterThan(1);
+      for (const chunk of chunks) {
+        const tokens = chunk.reduce((acc, m) => acc + estimateTokens(m.content), 0);
+        expect(tokens).toBeLessThanOrEqual(200);
+      }
+    });
+
+    it('should not split a single small message', () => {
+      const msgs = [{ role: 'user' as const, content: 'short' }];
+      const chunks = splitIntoChunks(msgs, 200);
+      expect(chunks.length).toBe(1);
+      expect(chunks[0].length).toBe(1);
+    });
+  });
+
+  describe('compressHistory with summarizer injection (R3.2)', () => {
+    it('should inject the LLM summary for archived (discarded) content', async () => {
+      createNewSession('LLM Summary');
+      for (let i = 0; i < 15; i++) {
+        addUserMessage(`重要指示 ${i}`);
+        addAssistantMessage(`回复 ${i}`);
+      }
+      // 注入一个返回富摘要的 summarizer，避免真实网络调用
+      const rich = '【目标】完成数据迁移\n【决策】使用 PostgreSQL\n【待办】校验索引';
+      await compressHistory(async () => rich);
+      const messages = getMessages();
+      const summary = messages.find(
+        (m) => m.role === 'user' && m.content.startsWith('[上下文摘要]'),
+      );
+      expect(summary).toBeDefined();
+      expect(summary!.content).toContain(rich);
+      // 被丢弃的旧内容不应再以原文形式存在
+      expect(messages.some((m) => m.content.includes('重要指示 0'))).toBe(false);
+      // 近期 KEEP_RECENT_TURNS 条应保留
+      expect(messages.some((m) => m.content.includes('重要指示 14'))).toBe(true);
+    });
+
+    it('should fall back to naive summary when summarizer throws', async () => {
+      createNewSession('Fallback');
+      for (let i = 0; i < 15; i++) {
+        addUserMessage(`request ${i}`);
+        addAssistantMessage(`[TOOL] search(${i})`);
+      }
+      await compressHistory(async () => {
+        throw new Error('llm down');
+      });
+      const messages = getMessages();
+      const summary = messages.find(
+        (m) => m.role === 'user' && m.content.startsWith('[上下文摘要]'),
+      );
+      expect(summary).toBeDefined();
+      // 朴素回退应保留工具名
+      expect(summary!.content).toContain('search');
+    });
+
+    it('should fall back to naive summary when summarizer returns empty', async () => {
+      createNewSession('EmptyFallback');
+      for (let i = 0; i < 15; i++) {
+        addUserMessage(`request ${i}`);
+      }
+      await compressHistory(async () => '');
+      const messages = getMessages();
+      const summary = messages.find(
+        (m) => m.role === 'user' && m.content.startsWith('[上下文摘要]'),
+      );
+      expect(summary).toBeDefined();
+      expect(summary!.content).toContain('request');
     });
   });
 

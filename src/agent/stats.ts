@@ -314,7 +314,7 @@ function recordMessage(): void {
   saveStats();
 }
 
-function recordTokenUsage(inputTokens: number, outputTokens: number): void {
+function recordTokenUsage(inputTokens: number, outputTokens: number): number {
   const input = Number(inputTokens) || 0;
   const output = Number(outputTokens) || 0;
   const total = input + output;
@@ -334,6 +334,7 @@ function recordTokenUsage(inputTokens: number, outputTokens: number): void {
   sessionStats.todayCost += cost;
 
   saveStats();
+  return cost;
 }
 
 function getToolStats(): Record<string, ToolCategoryStats> {

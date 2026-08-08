@@ -44,6 +44,22 @@ function formatLsResult(data: LsItem[]): string {
   return lines.join('\n');
 }
 
+/**
+ * 按 TOOL_OUTPUT_LIMITS 强制截断工具输出。
+ * limit < 0 表示该工具结果不截断（如浏览器类工具，结果另行处理）；
+ * limit === 0 表示禁止任何输出；其余按字符数截断并附加截断提示。
+ */
+function truncateOutput(tool: string, output: string): string {
+  const limit = TOOL_OUTPUT_LIMITS[tool] ?? TOOL_OUTPUT_LIMITS.default;
+  if (limit < 0 || output.length <= limit) {
+    return output;
+  }
+  if (limit === 0) {
+    return `[输出已屏蔽：原始 ${output.length} 字符]`;
+  }
+  return `${output.slice(0, limit)}\n...[输出已截断：原始 ${output.length} 字符，显示前 ${limit} 字符]`;
+}
+
 function formatToolResult(tool: string, data: unknown): string {
   let result: string;
 
@@ -59,7 +75,7 @@ function formatToolResult(tool: string, data: unknown): string {
     result = String(data);
   }
 
-  return result;
+  return truncateOutput(tool, result);
 }
 
 function classifyToolError(error: Error & { code?: string }): string {

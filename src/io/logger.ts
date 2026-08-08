@@ -34,7 +34,7 @@ const PREFIX: Record<string, string> = {
   INFO: '[INFO]',
   WARN: '[WARN]',
   ERROR: '[ERROR]',
-  TOOL: '[TOOL]',
+  TOOL: '[工具]',
   AGENT: '[AGENT]',
   SYSTEM: '[SYSTEM]',
 };

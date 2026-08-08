@@ -1,9 +1,9 @@
 import { jest } from '@jest/globals';
 
-// --- Mock LLM API client (streamChat) ---
-const mockStreamChat = jest.fn();
+// --- Mock LLM API client (streamChatNative) ---
+const mockStreamChatNative = jest.fn();
 jest.unstable_mockModule('../../src/api/client.ts', () => ({
-  streamChat: mockStreamChat,
+  streamChatNative: mockStreamChatNative,
 }));
 
 // --- Mock WebSocket broadcast ---
@@ -12,21 +12,15 @@ jest.unstable_mockModule('../../src/io/ws-server.ts', () => ({
   broadcast: mockBroadcast,
 }));
 
-// --- Mock tool parser (no tool calls by default) ---
-const mockParseAllToolCalls = jest.fn(() => []);
-jest.unstable_mockModule('../../src/agent/tool-parser.ts', () => ({
-  parseAllToolCalls: mockParseAllToolCalls,
-}));
-
 const { orchestrator, AgentOrchestrator, SubAgent } =
   await import('../../src/agent/orchestrator.ts');
 
 describe('orchestrator.ts', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockParseAllToolCalls.mockReturnValue([]);
-    mockStreamChat.mockImplementation(async function* () {
+    mockStreamChatNative.mockImplementation(async function* () {
       yield { content: 'mock response' };
+      return { input: 0, output: 0, stopReason: 'stop', toolCalls: [] };
     });
     orchestrator.stopAllAgents();
   });
@@ -197,7 +191,7 @@ describe('orchestrator.ts', () => {
 
     it('should handle LLM errors gracefully', async () => {
       const spawnResult = await orchestrator.spawnAgent('Assistant', 'TestAgent', 'instruction');
-      mockStreamChat.mockImplementation(async function* () {
+      mockStreamChatNative.mockImplementation(async function* () {
         throw new Error('LLM connection failed');
       });
 
@@ -218,20 +212,25 @@ describe('orchestrator.ts', () => {
       try {
         // 每次返回不同签名的工具调用，避免触发「重复工具」提前终止，确保走迭代上限路径
         let n = 0;
-        mockParseAllToolCalls.mockImplementation(() => [
-          { tool: 'missing_tool', args: [`arg${n++}`] },
-        ]);
+        mockStreamChatNative.mockImplementation(async function* () {
+          yield { content: 'mock response' };
+          return {
+            input: 0,
+            output: 0,
+            stopReason: 'tool_calls',
+            toolCalls: [{ id: `c${n}`, name: 'missing_tool', arguments: `{"arg":"arg${n++}"}` }],
+          };
+        });
 
         const result = await orchestrator.delegateTask(spawnResult.data.id, 'do something');
 
         expect(result.success).toBe(true);
         // 2 次循环迭代 + 1 次收尾调用 = 3 次 LLM 调用
-        expect(mockStreamChat).toHaveBeenCalledTimes(3);
+        expect(mockStreamChatNative).toHaveBeenCalledTimes(3);
 
-        const lastMessages = mockStreamChat.mock.calls[2][0] as Array<{
-          role: string;
-          content: string;
-        }>;
+        const lastMessages = mockStreamChatNative.mock.calls[2][0] as Array<
+          Record<string, unknown>
+        >;
         const lastUser = lastMessages[lastMessages.length - 1];
         expect(lastUser.content).toContain('最终结果');
 
@@ -245,13 +244,21 @@ describe('orchestrator.ts', () => {
 
     it('should force a final answer when duplicate tool calls stop the loop', async () => {
       const spawnResult = await orchestrator.spawnAgent('Assistant', 'TestAgent', '');
-      mockParseAllToolCalls.mockReturnValue([{ tool: 'missing_tool', args: [] }]);
+      mockStreamChatNative.mockImplementation(async function* () {
+        yield { content: 'mock response' };
+        return {
+          input: 0,
+          output: 0,
+          stopReason: 'tool_calls',
+          toolCalls: [{ id: 'c1', name: 'missing_tool', arguments: '{}' }],
+        };
+      });
 
       const result = await orchestrator.delegateTask(spawnResult.data.id, 'do something');
 
       expect(result.success).toBe(true);
       // 第 1 次循环 + 第 2 次循环（触发重复检测提前终止）+ 1 次收尾
-      expect(mockStreamChat).toHaveBeenCalledTimes(3);
+      expect(mockStreamChatNative).toHaveBeenCalledTimes(3);
       expect(result.data).toContain('重复调用相同工具');
       expect(result.data).toContain('mock response');
 
@@ -442,7 +449,7 @@ describe('orchestrator.ts', () => {
       const spawn2 = await orchestrator.spawnAgent('Assistant', 'Agent2', '');
 
       // Make first agent fail
-      mockStreamChat.mockImplementationOnce(async function* () {
+      mockStreamChatNative.mockImplementationOnce(async function* () {
         throw new Error('step failed');
       });
 

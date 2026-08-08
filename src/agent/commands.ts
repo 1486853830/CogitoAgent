@@ -371,7 +371,7 @@ function printClearConfirm(): void {
 }
 
 /**
- * 切换 Persona（将 persona 文件复制为 persona.md 并重置对话）
+ * 切换 Persona（按名称直接读取 personas/<name>/persona.md，不复制文件）
  */
 function switchPersona(personaName: string): void {
   if (!applyPersona(personaName)) {

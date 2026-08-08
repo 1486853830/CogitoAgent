@@ -127,15 +127,15 @@ npm start
 
 ## Tool System
 
-All tools are managed by `registry.ts` and invoked via `[TOOL] functionName(args) [/TOOL]`.
+All tools are managed by `registry.ts` (with JSON Schema from `tool-schema.ts`) and invoked by the model via **native function calling** (streaming `tool_calls`), not text markers.
 
 ```mermaid
 %%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10", "secondaryColor": "#161b28", "tertiaryColor": "#1c2230"}}}%%
 flowchart LR
     subgraph INVOCATION["Invocation Layer"]
-        LLM["LLM Response<br/>[TOOL] fn(args) [/TOOL]"]
-        PARSER["tool-parser.ts<br/>parseAllToolCalls()"]
-        EXECUTOR["Agent.ts<br/>executeTool()"]
+        LLM["LLM Response<br/>tool_calls (JSON)"]
+        SCHEMA["tool-schema.ts<br/>buildOpenAITools()"]
+        EXECUTOR["Agent.ts<br/>executeNativeToolCallsServer()"]
     end
 
     subgraph REGISTRY["Registry"]
@@ -234,7 +234,7 @@ flowchart TB
     subgraph INPUT["Input Processing"]
         direction LR
         CMDS["commands.ts<br/>/help /status /sessions"]
-        PARSER["tool-parser.ts<br/>[TOOL] extraction"]
+        SCHEMA["tool-schema.ts<br/>JSON Schema"]
         PROMPT["system-prompt.ts<br/>Persona Loading"]
     end
 

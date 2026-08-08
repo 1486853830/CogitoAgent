@@ -401,8 +401,12 @@ const PersonaSelectModal = {
     try {
       const personas = await window.electronAPI.getPersonas();
 
-      // 默认选项
-      const defaultCard = this._createCard('', T('common.default'), T('dashboard.noPersonality'));
+      // 默认选项（映射到默认人设文件夹 personas/cogito）
+      const defaultCard = this._createCard(
+        'cogito',
+        T('common.default'),
+        T('dashboard.noPersonality'),
+      );
       grid.appendChild(defaultCard);
 
       for (const p of personas) {

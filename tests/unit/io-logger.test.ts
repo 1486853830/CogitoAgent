@@ -153,10 +153,10 @@ describe('io/logger.ts', () => {
       expect(logSpy.mock.calls[0][0]).toContain('[SYSTEM]');
     });
 
-    it('tool should log with [TOOL] prefix', () => {
+    it('tool should log with [工具] prefix', () => {
       tool('called');
       expect(logSpy).toHaveBeenCalledTimes(1);
-      expect(logSpy.mock.calls[0][0]).toContain('[TOOL]');
+      expect(logSpy.mock.calls[0][0]).toContain('[工具]');
     });
 
     it('agentDebug should only output in DEBUG level', () => {
@@ -178,7 +178,7 @@ describe('io/logger.ts', () => {
       setLevel('DEBUG');
       toolDebug('shown');
       expect(logSpy).toHaveBeenCalledTimes(1);
-      expect(logSpy.mock.calls[0][0]).toContain('[TOOL]');
+      expect(logSpy.mock.calls[0][0]).toContain('[工具]');
     });
   });
 

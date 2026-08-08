@@ -251,6 +251,88 @@ async function* streamChat(
   throw new Error('unreachable');
 }
 
+/**
+ * 非流式一次请求，返回模型文本（R3.2 智能压缩等内部场景用）。
+ * 复用 streamChat 的鉴权 / 超时 / 连接释放 / 重试策略，但不走 SSE。
+ * 失败时按网络错误、429、5xx、超时重试；全部失败后抛出。
+ */
+async function chatText(
+  messages: Array<{ role: string; content: string }>,
+  opts: { maxTokens?: number; temperature?: number } = {},
+): Promise<string> {
+  const maxTokens = opts.maxTokens ?? 1024;
+  const temperature = opts.temperature ?? 0.2;
+  let retryCount = 0;
+
+  while (retryCount < MAX_RETRIES) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const cfg = loadConfig();
+      const baseURL = (cfg.api.baseURL || '').replace(/\/+$/, '');
+      if (!baseURL) {
+        throw new Error('API baseURL 未配置，请先运行 setup 或设置 COGITO_API_BASE_URL');
+      }
+      const response = await fetch(`${baseURL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cfg.api.apiKey}`,
+        },
+        body: JSON.stringify({
+          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          model: cfg.api.model,
+          stream: false,
+          max_tokens: maxTokens,
+          temperature,
+          top_p: cfg.chat?.topP ?? 0.7,
+          // top_k 仅对 Moark/DeepSeek 等供应商有效
+          ...(supportsTopK(cfg) ? { top_k: cfg.chat?.topK ?? 50 } : {}),
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        const err = new Error(`API ${response.status}: ${text.slice(0, 200)}`) as Error & {
+          status?: number;
+          retryAfter?: string | null;
+        };
+        err.status = response.status;
+        err.retryAfter = response.headers?.get('Retry-After') ?? null;
+        throw err;
+      }
+
+      const data = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const text = data?.choices?.[0]?.message?.content ?? '';
+      return text.trim();
+    } catch (error: unknown) {
+      const e = error as { status?: number; name?: string; retryAfter?: unknown };
+      const status = e.status;
+      const isAbort = e.name === 'AbortError';
+      const isHTTPRetryable =
+        status === 429 || (typeof status === 'number' && status >= 500 && status < 600);
+      if ((isNetworkError(error) || isHTTPRetryable || isAbort) && retryCount < MAX_RETRIES - 1) {
+        const delay =
+          status === 429 && e.retryAfter != null
+            ? Math.max(parseInt(String(e.retryAfter), 10) || 1, 1) * 1000
+            : Math.pow(2, retryCount) * RETRY_DELAY_BASE;
+        const reason = isAbort ? '请求超时' : isHTTPRetryable ? `HTTP ${status}` : '网络错误';
+        console.error(`[API] 摘要请求${reason}，重试（第${retryCount + 1}次）`);
+        await sleep(delay);
+        retryCount++;
+        continue;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+  return '';
+}
+
 // =============================================================
 // 原生函数调用（R1.2）
 // =============================================================
@@ -494,4 +576,4 @@ async function* streamChatNative(
   throw new Error('unreachable');
 }
 
-export { streamChat, streamChatNative, estimateTokens };
+export { streamChat, streamChatNative, chatText, estimateTokens };

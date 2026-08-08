@@ -97,15 +97,15 @@ npm start
 
 ## 工具系统
 
-所有工具由 `registry.ts` 管理，通过 `[TOOL] functionName(args) [/TOOL]` 格式调用。
+所有工具由 `registry.ts` 管理（配 JSON Schema，见 `tool-schema.ts`），由模型通过**原生 function calling**（流式 `tool_calls`）调用，而非文本标记。
 
 ```mermaid
 %%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10", "secondaryColor": "#161b28", "tertiaryColor": "#1c2230"}}}%%
 flowchart LR
     subgraph INVOCATION["调用层"]
-        LLM["LLM 响应<br/>[TOOL] fn(args) [/TOOL]"]
-        PARSER["tool-parser.ts<br/>parseAllToolCalls()"]
-        EXECUTOR["Agent.ts<br/>executeTool()"]
+        LLM["LLM 响应<br/>tool_calls (增量)"]
+        SCHEMA["tool-schema.ts<br/>buildOpenAITools()"]
+        EXECUTOR["Agent.ts<br/>executeToolCallsServer()"]
     end
 
     subgraph REGISTRY["注册表"]
@@ -204,7 +204,7 @@ flowchart TB
     subgraph INPUT["输入处理"]
         direction LR
         CMDS["commands.ts<br/>/help /status /sessions"]
-        PARSER["tool-parser.ts<br/>[TOOL] 提取"]
+        SCHEMA["tool-schema.ts<br/>JSON Schema"]
         PROMPT["system-prompt.ts<br/>角色加载"]
     end
 

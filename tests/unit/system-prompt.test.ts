@@ -7,8 +7,13 @@ const mockGetEnabledCategories = jest.fn();
 const mockGetToolsByCategory = jest.fn();
 const mockGetAllCategories = jest.fn();
 let mockLanguage = 'zh';
+const mockLoadConfig = jest.fn();
 
 const testConfigDir = path.join(os.tmpdir(), 'cogito-prompt-test-' + Date.now());
+
+jest.unstable_mockModule('../../src/config.ts', () => ({
+  loadConfig: mockLoadConfig,
+}));
 
 jest.unstable_mockModule('../../src/agent/registry.ts', () => ({
   getEnabledCategories: mockGetEnabledCategories,
@@ -77,6 +82,7 @@ function setTestLanguage(lang: string) {
 describe('system-prompt.ts', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLoadConfig.mockReturnValue({ chat: {} });
     mockGetAllCategories.mockReturnValue({
       file: '文件操作',
       web: '网络工具',
@@ -157,25 +163,32 @@ describe('system-prompt.ts', () => {
       expect(result).toContain('活动范围');
     });
 
-    it('should include two golden rules', () => {
+    it('should use native function-calling rules', () => {
       mockGetEnabledCategories.mockReturnValue(['file']);
       const result = buildSystemPrompt();
-      expect(result).toContain('两项黄金规则');
-      expect(result).toContain('规则一：用 [TOOL] 调用工具');
-      expect(result).toContain('规则二：用 [WAIT] 控制思考节奏');
+      expect(result).toContain('工具调用规则（原生 function calling）');
+      expect(result).toContain('用原生 function calling 调用工具');
+      expect(result).toContain('role: tool');
+      expect(result).toContain('tool_calls');
+      // 不注入任何文本标记残留
+      expect(result).not.toContain('[TOOL]');
+      expect(result).not.toContain('[WAIT]');
+      expect(result).not.toContain('[/TOOL]');
     });
 
     it('should include tool usage format', () => {
       mockGetEnabledCategories.mockReturnValue(['file']);
       const result = buildSystemPrompt();
-      expect(result).toContain('[TOOL] toolName("参数1", "参数2") [/TOOL]');
+      expect(result).toContain('输出格式');
+      expect(result).toContain('function calling');
+      expect(result).toContain('tool_calls');
     });
 
-    it('should include WAIT rules', () => {
+    it('should not include text markers', () => {
       mockGetEnabledCategories.mockReturnValue(['file']);
       const result = buildSystemPrompt();
-      expect(result).toContain('[WAIT]');
-      expect(result).toContain('每次你向用户输出文字回复时，必须在末尾加上 [WAIT]');
+      expect(result).not.toContain('[WAIT]');
+      expect(result).not.toContain('[TOOL]');
     });
 
     it('should include tool statistics', () => {
