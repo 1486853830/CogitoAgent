@@ -52,6 +52,16 @@ function makeClient(readyState = 1): MockClient {
   return c;
 }
 
+/** 从 mock 已发送的消息中按 type 找到第一条（连接时会先推 hello-ok 握手消息） */
+function findSentByType(client: MockClient, type: string): Record<string, unknown> | undefined {
+  const calls = (client.send as jest.Mock).mock.calls as [string][];
+  for (const call of calls) {
+    const parsed = JSON.parse(call[0]) as Record<string, unknown>;
+    if (parsed.type === type) return parsed;
+  }
+  return undefined;
+}
+
 function flushMicrotasks() {
   return new Promise((r) => setImmediate(r));
 }
@@ -243,9 +253,7 @@ describe('io/ws-server.ts', () => {
       client.emit('message', Buffer.from(JSON.stringify({ type: 'stats-request', payload: {} })));
 
       expect(statsHandler).toHaveBeenCalledTimes(1);
-      expect(client.send).toHaveBeenCalledTimes(1);
-      const sent = JSON.parse(client.send.mock.calls[0][0] as string);
-      expect(sent.type).toBe('stats-response');
+      const sent = findSentByType(client, 'stats-response') as { count: number };
       expect(sent.count).toBe(5);
       stopWsServer();
     });
@@ -263,9 +271,7 @@ describe('io/ws-server.ts', () => {
       await flushMicrotasks();
 
       expect(statsHandler).toHaveBeenCalledTimes(1);
-      expect(client.send).toHaveBeenCalledTimes(1);
-      const sent = JSON.parse(client.send.mock.calls[0][0] as string);
-      expect(sent.type).toBe('stats-response');
+      const sent = findSentByType(client, 'stats-response') as { total: number };
       expect(sent.total).toBe(10);
       stopWsServer();
     });
@@ -281,7 +287,7 @@ describe('io/ws-server.ts', () => {
       client.emit('message', Buffer.from(JSON.stringify({ type: 'stats-request', payload: {} })));
 
       expect(statsHandler).toHaveBeenCalledTimes(1);
-      expect(client.send).not.toHaveBeenCalled();
+      expect(findSentByType(client, 'stats-response')).toBeUndefined();
       stopWsServer();
     });
 

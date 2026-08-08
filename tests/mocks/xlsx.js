@@ -1,4 +1,8 @@
 export default {
+  read: () => ({
+    Sheets: {},
+    SheetNames: [],
+  }),
   readFile: () => ({
     Sheets: {},
     SheetNames: [],
