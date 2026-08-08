@@ -6,7 +6,7 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
-  { ignores: ["dist/", "node_modules/", "coverage/"] },
+  { ignores: ["dist/", "node_modules/", "coverage/", "vendor/"] },
   {
     languageOptions: {
       globals: {
@@ -119,6 +119,17 @@ export default [
   },
   {
     files: ["tests/**/*.{ts,js}"],
+    languageOptions: {
+      globals: {
+        TextEncoder: "readonly",
+        TextDecoder: "readonly",
+        Response: "readonly",
+        Request: "readonly",
+        Headers: "readonly",
+        AbortController: "readonly",
+        AbortSignal: "readonly"
+      }
+    },
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
