@@ -1,16 +1,37 @@
 /**
  * 系统提示词构建模块
  * 根据启用的工具分类动态生成 AI 系统提示词
+ *
+ * 工具列表由 TOOL_DOCS（单一来源，R1.5）渲染，参数名 / 描述与 JSON Schema 同源，
+ * 避免提示词与工具定义分叉。
  */
 
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import { getBasePath } from './tools/index.ts';
 import { getMemoryContextHint } from './tools/memory.ts';
-import { getEnabledCategories, getAllCategories } from './registry.ts';
+import { getEnabledCategories, getAllCategories, getToolsByCategory } from './registry.ts';
+import { getToolParamDocs } from './tool-schema.ts';
+import { TOOL_DOCS } from './tool-docs.ts';
 
 /**
- * 动态生成工具列表
+ * 分类级安全警告文案：属于策略提示，不属于工具 schema，因此保留静态维护。
+ * 与 schema/工具描述（TOOL_DOCS）解耦，但工具列表本身单一来源于 TOOL_DOCS。
+ */
+const CATEGORY_SECURITY_WARNINGS: Record<string, string> = {
+  code: '【⚠️ 安全警告】以上代码执行工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：\n```\nCOGITO_CONFIRM_DANGEROUS=false\n```',
+  git: '【⚠️ 安全警告】gitPush、gitReset、gitBranchDelete 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：\n```\nCOGITO_CONFIRM_DANGEROUS=false\n```',
+  task: '【⚠️ 安全警告】clearTasks 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：\n```\nCOGITO_CONFIRM_DANGEROUS=false\n```',
+  memory:
+    '【⚠️ 安全警告】clearMemory 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：\n```\nCOGITO_CONFIRM_DANGEROUS=false\n```',
+  db: '【⚠️ 安全警告】deleteData、dropTable 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：\n```\nCOGITO_CONFIRM_DANGEROUS=false\n```',
+  scheduler:
+    '【⚠️ 安全警告】removeScheduleTask 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：\n```\nCOGITO_CONFIRM_DANGEROUS=false\n```',
+};
+
+/**
+ * 动态生成工具列表（R1.5：单一来源）。
+ * 每个分类的工单名取自 getToolsByCategory（动态派生），参数名与描述取自 TOOL_DOCS。
  */
 function buildToolList(): string {
   const enabledCategories = getEnabledCategories();
@@ -18,297 +39,23 @@ function buildToolList(): string {
   let toolList = '';
 
   for (const cat of enabledCategories) {
-    // 根据分类生成工具列表
-    switch (cat) {
-      case 'file':
-        toolList += `### 文件操作工具
-- ls(path) - 列出目录内容
-- read(path) - 读取文件内容
-- copy(src, dest) - 复制文件
-- mkdir(path) - 创建文件夹
-- create(path, content) - 创建文件
+    const names = getToolsByCategory()[cat] || [];
+    if (names.length === 0) continue;
 
-`;
-        break;
-      case 'web':
-        toolList += `### 网络工具
-- search(query) - 联网搜索
-- browse(url) - 在默认浏览器中打开网址
-- fetchPage(url) - 抓取网页正文内容
+    const catName = getAllCategories()[cat] || cat;
+    toolList += `### ${catName}工具\n`;
 
-`;
-        break;
-      case 'browser':
-        toolList += `### 浏览器自动化工具
-- initBrowser(url) - 初始化浏览器
-- clickElement(selector, description) - 点击网页元素
-- fillField(selector, value, description) - 填写表单
-- getPageContent() - 获取页面内容
-- takeScreenshot(name) - 截图
-- closeBrowser() - 关闭浏览器
-
-`;
-        break;
-      case 'system':
-        toolList += `### 系统工具
-- listApps() - 列出已安装软件
-- openApp(name) - 打开软件
-- closeApp(name) - 关闭软件
-
-`;
-        break;
-      case 'code':
-        toolList += `### 代码执行工具
-- executeCode(code, language) - 执行代码（JavaScript/Python）
-- runJavaScript(code) - 执行 JavaScript
-- runPython(code) - 执行 Python
-
-【⚠️ 安全警告】以上代码执行工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
-\`\`\`
-COGITO_CONFIRM_DANGEROUS=false
-\`\`\`
-
-`;
-        break;
-      case 'git':
-        toolList += `### Git 工具
-- gitInit(cwd) - 初始化仓库
-- gitClone(url, dest, cwd) - 克隆仓库
-- gitStatus(cwd) - 查看状态
-- gitLog(options, cwd) - 查看日志
-- gitDiff(options, cwd) - 查看差异
-- gitAdd(files, cwd) - 添加文件
-- gitCommit(message, cwd) - 提交
-- gitPush(remote, branch, cwd) - 推送
-- gitPull(remote, branch, cwd) - 拉取
-- gitBranchList(cwd) - 列出分支
-- gitCheckout(branch, cwd) - 切换分支
-
-【⚠️ 安全警告】gitPush、gitReset、gitBranchDelete 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
-\`\`\`
-COGITO_CONFIRM_DANGEROUS=false
-\`\`\`
-
-`;
-        break;
-      case 'task':
-        toolList += `### 任务管理工具
-- createTask(title, description, priority, parentId) - 创建任务
-- getTasks(filter) - 获取任务列表
-- updateTask(id, updates) - 更新任务
-- completeTask(id) - 完成任务
-- splitTask(id, subtasks) - 分解任务
-- getTaskStats() - 任务统计
-
-【⚠️ 安全警告】clearTasks 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
-\`\`\`
-COGITO_CONFIRM_DANGEROUS=false
-\`\`\`
-
-`;
-        break;
-      case 'memory':
-        toolList += `### 记忆系统工具
-- addMemory(content, tags, category) - 添加记忆
-- searchMemory(query, limit) - 搜索记忆
-- getAllMemories(category) - 获取所有记忆
-- updateMemory(id, updates) - 更新记忆
-- deleteMemory(id) - 删除记忆
-- getMemoryStats() - 记忆统计
-
-【⚠️ 安全警告】clearMemory 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
-\`\`\`
-COGITO_CONFIRM_DANGEROUS=false
-\`\`\`
-
-`;
-        break;
-      case 'data':
-        toolList += `### 数据处理工具
-- readCSV(filePath) - 读取 CSV
-- writeCSV(filePath, headers, rows) - 写入 CSV
-- readJSON(filePath) - 读取 JSON
-- writeJSON(filePath, data) - 写入 JSON
-- csvToJSON(csvPath, jsonPath) - CSV 转 JSON
-- jsonToCSV(jsonPath, csvPath) - JSON 转 CSV
-
-`;
-        break;
-      case 'db':
-        toolList += `### 数据库工具
-- executeSQL(sql, params) - 执行 SQL
-- query(table, conditions, options) - 查询数据
-- insert(table, data) - 插入数据
-- update(table, data, conditions) - 更新数据
-- deleteData(table, conditions) - 删除数据
-- getTables() - 获取表列表
-
-【⚠️ 安全警告】deleteData、dropTable 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
-\`\`\`
-COGITO_CONFIRM_DANGEROUS=false
-\`\`\`
-
-`;
-        break;
-      case 'email':
-        toolList += `### 邮件工具
-- sendEmail(to, subject, body, options) - 发送邮件
-- sendTextEmail(to, subject, body) - 发送文本邮件
-- checkEmailConfig() - 检查邮件配置
-
-`;
-        break;
-      case 'monitor':
-        toolList += `### 系统监控工具
-- getCPUInfo() - 获取 CPU 信息
-- getMemoryInfo() - 获取内存信息
-- getDiskInfo() - 获取磁盘信息
-- getProcesses() - 获取进程列表
-- monitorSystem() - 监控系统资源
-
-`;
-        break;
-      case 'scheduler':
-        toolList += `### 定时任务工具
-- addScheduleTask(name, cronExpr, action, params) - 添加定时任务
-- getScheduleTasks() - 获取定时任务列表
-- toggleScheduleTask(id) - 启用/禁用任务
-- removeScheduleTask(id) - 删除任务
-
-【⚠️ 安全警告】removeScheduleTask 工具默认需要用户手动确认。如需自动执行，请在配置文件中添加：
-\`\`\`
-COGITO_CONFIRM_DANGEROUS=false
-\`\`\`
-
-`;
-        break;
-      case 'ocr':
-        toolList += `### 图像文字识别工具（OCR）
-- ocr(imagePath, prompt) - 识别图片中的文字，支持 jpg/png/webp/bmp/gif 格式，可自定义提示词
-- ocrBatch(images) - 批量识别多张图片的文字，路径用英文逗号分隔
-
-【重要】使用 OCR 工具时必须：
-1. 严格忠实于识别结果，不得编造、添加或美化内容
-2. 如果识别结果为空或失败，必须如实告知用户"未能识别出文字"
-3. 不要根据图片内容进行猜测或推断，只报告 OCR 实际返回的文字
-
-`;
-        break;
-      case 'vision':
-        toolList += `### 视觉分析工具（Vision）
-- vision(imagePath, prompt) - 分析本地图片内容，支持流式返回思考过程和最终分析结果。支持 jpg/png/webp/bmp/gif 格式，可自定义提示词（如"请详细描述这张图片"、"图中有什么文字？"）
-- visionFromUrl(imageUrl, prompt) - 分析网络图片 URL 的内容，支持流式返回思考过程和最终分析结果
-
-【重要】使用 Vision 工具时必须：
-1. 详细描述图片中的内容，包括物体、场景、文字、颜色、布局等
-2. 如果图片包含文字，需准确读取并输出
-3. 分析结果应包含 reasoning（思考过程）和 content（最终结论）两部分
-
-`;
-        break;
-      case 'office':
-        toolList += `### Office 文档工具
-- createPpt(options) - 创建 PPT 文件，参数包含 outputPath(输出路径)、slides(幻灯片数组，每项含 title/content/image/bullets)、title(标题)、author(作者)
-- createWord(options) - 创建 Word 文档，参数包含 outputPath(输出路径)、paragraphs(段落数组，每项含 type/text/level/items/rows/src 等)、title(标题)、author(作者)
-- createExcel(options) - 创建 Excel 文件，参数包含 outputPath(输出路径)、sheets(工作表数组，每项含 name/data，data为二维数组)
-- readExcel(filePath) - 读取 Excel 文件，返回各工作表数据的二维数组
-- readWord(filePath) - 读取 Word(.docx) 文件，返回 headings(标题)、paragraphs(段落)、tables(表格)
-- readPpt(filePath) - 读取 PPT(.pptx) 文件，返回按页码排列的 slides(每页的 paragraphs 段落文本)
-
-【重要】使用 Office 工具时：
-1. 确保 outputPath 以正确的扩展名结尾（.pptx/.docx/.xlsx）
-2. PPT 的 slides 每项支持：title(标题)、content(正文)、bullets(要点数组)、image(图片路径)
-3. Word 的 paragraphs 支持 type：heading(标题，带level)、text(正文)、list(列表，带items)、table(表格，带rows)、image(图片，带src/width/height)
-4. Excel 的 sheets 每项含 name(表名) 和 data(二维数组数据)
-5. 需要读取 .xlsx/.docx/.pptx 文件内容时，请优先使用 readExcel/readWord/readPpt，而非自行调用 Python
-6. 图片路径必须是有效的本地文件路径
-
-`;
-        break;
-      case 'cluster':
-        toolList += `### 智能体集群工具
-你可以生成子智能体并委托任务给它们，实现多智能体协作。
-
-**重要：用户要求你创建子智能体时，你必须主动使用这些工具，无需等待用户手动操作。**
-
-- spawnAgent(persona, name, instruction) - 生成一个新的子智能体
-  - persona: 角色名称（如 "Critic"、"Programmer"、"Explorer"、"Analyst"）
-  - name: 智能体名称
-  - instruction: 角色指令/职责描述
-- delegateTask(agentId, task) - 委托任务给子智能体
-  - agentId: 智能体 ID（spawnAgent 返回的 id）
-  - task: 任务描述
-- getClusterStatus() - 获取所有子智能体状态
-- getAgent(agentId) - 获取单个智能体详情
-- stopAgent(agentId) - 停止/销毁子智能体
--- stopAllAgents() - 停止所有子智能体
--- parallelExecute(tasks) - 并行执行多个任务（tasks 为 JSON 数组，每项含 agentId 和 task）
--- panelDiscussion(topic, agentIds, moderatorInstruction) - 多智能体就同一主题讨论
-  - agentIds: 数组，如 ["agent_1","agent_2"]
-  - 会依次采集每个智能体的观点
--- pipeline(steps) - 智能体流水线，前一步结果自动传给下一步
-  - steps: 数组，每项含 agentId 和 task
-  - 例如：A 写代码 → B 审查 → C 测试
--- voting(question, agentIds, options) - 多智能体投票表决
-  - options: 选项数组（可选）
-  - 返回每个智能体的投票和理由
-
-【使用场景举例】
-- 用户说"帮我创建一个智能体" → 使用 spawnAgent
-- 用户说"让智能体 XX 做 YY" → 使用 delegateTask
-- 用户说"让它们讨论 XX 话题" → 使用 panelDiscussion
-- 用户说"做个流水线" → 使用 pipeline
-- 用户说"让它们投票" → 使用 voting
-
-`;
-        break;
-      case 'chemistry':
-        toolList += `### 化学信息学工具（Cheminformatics）
-- molInfo(smiles) - 分析分子的基本化学信息（分子式、分子量、LogP、氢键供体/受体、TPSA 等）
-- molDraw(smiles, outputPath) - 生成分子的 2D 结构图，保存为 PNG 文件
-- molFingerprint(smiles, radius, nBits) - 计算分子的 Morgan 指纹（ECFP 类似物），用于分子相似性搜索
-- molSubstruct(smiles, substructure) - 子结构搜索，检测分子中是否包含指定片段
-- molSimilarity(smiles1, smiles2) - 计算两个分子的 Tanimoto 相似度
-
-【重要】
-1. 以上工具需要启用科学模式（COGITO_CODE_SCIENTIFIC_MODE=true）并安装 Python 库：pip install rdkit
-2. 文件路径参数（如 outputPath）必须使用【相对工作区的相对路径】，不要传绝对路径（如 C:\\\\... 或 /home/...），否则会被拒绝
-
-`;
-        break;
-      case 'bioinformatics':
-        toolList += `### 生物信息学工具（Bioinformatics）
-- bioAlign(seq1, seq2, matchScore, mismatchScore, gapScore) - 双序列全局比对（Needleman-Wunsch 算法）
-- bioBlast(sequence, program, database) - NCBI BLAST 相似性搜索（需要网络）
-- bioConvert(inputPath, outputPath, inputFormat, outputFormat) - 序列格式转换（FASTA/GenBank/EMBL 互转）
-- bioFetchGenbank(accession) - 从 GenBank 获取序列信息（需要网络）
-- bioPdbInfo(pdbPath) - 分析 PDB 蛋白质结构文件（链、残基、原子、质心）
-- bioFastaStats(fastaPath) - FASTA 文件序列统计（长度、GC含量、序列数量）
-- bioMsa(inputFasta, outputAln) - 多序列比对（需要安装 clustalw）
-
-【重要】
-1. 以上工具需要启用科学模式（COGITO_CODE_SCIENTIFIC_MODE=true）并安装 Python 库：pip install biopython
-2. 文件路径参数（inputPath/outputPath/pdbPath/fastaPath 等）必须使用【相对工作区的相对路径】，不要传绝对路径（如 C:\\\\... 或 /home/...），否则会被拒绝
-3. bioConvert 从 FASTA 转 GenBank/EMBL 时会自动补 DNA 分子类型注释
-
-`;
-        break;
-      case 'literature':
-        toolList += `### 文献检索工具（Literature）
-- pubmedSearch(query, maxResults) - 在 PubMed 中搜索文献，返回标题、作者、期刊、摘要
-- pubmedFetch(pmid) - 通过 PMID 获取单篇文献的完整信息（含完整摘要、关键词、MeSH 术语）
-- pubmedAdvanced(query, field, mindate, maxdate, maxResults) - 高级检索（支持 AND/OR/NOT、字段限定、日期范围）
-- pubmedCite(pmid, format) - 生成标准引用格式（AMA/APA/MLA/NLM）
-
-【使用说明】
-1. 搜索关键词支持布尔运算，如 "cancer AND immunotherapy"
-2. field 可选：title、abstract、author、journal、mesh、keyword
-3. 日期格式：YYYY/MM/DD，如 "2020/01/01"
-4. 以上工具使用 Node.js 内置 https 模块，无需额外依赖
-
-`;
-        break;
+    for (const name of names) {
+      const params = getToolParamDocs(name).map((param) => param.name);
+      const description = TOOL_DOCS[name]?.description || '';
+      toolList += `- ${name}(${params.join(', ')})${description ? ` - ${description}` : ''}\n`;
     }
+
+    const warning = CATEGORY_SECURITY_WARNINGS[cat];
+    if (warning) {
+      toolList += `\n${warning}\n`;
+    }
+    toolList += '\n';
   }
 
   return toolList;

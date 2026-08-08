@@ -1,12 +1,14 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'fs';
+import { promises as fsp } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { buildSystemPrompt } from './system-prompt.ts';
-import type { Message, SessionMeta, SessionInfo } from '../types/index.ts';
+import type { Message, SessionMeta, SessionInfo, SessionNote } from '../types/index.ts';
 import { broadcast } from '../io/ws-server.ts';
 import { recordSession } from './stats.ts';
 import { estimateTokens } from '../utils/token.ts';
 import { applyPersona } from './persona.ts';
+import { loadConfig } from '../config.ts';
 
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const SESSIONS_DIR = path.resolve(DATA_DIR, 'data', 'sessions');
@@ -94,6 +96,29 @@ function saveSession(sessionId: string, messages: Message[]): void {
   }
 }
 
+/**
+ * 非阻塞持久化路径（R3.3）：同一会话的写操作串行排队，不阻塞思考循环。
+ * 与同步版 saveSession 并存：关键原子操作（创建/切换/清空）仍走同步路径，
+ * 高频的对话流式写入走此队列。
+ */
+let saveQueue: Promise<void> = Promise.resolve();
+
+function saveSessionAsync(sessionId: string, messages: Message[]): Promise<void> {
+  if (!isValidSessionId(sessionId)) {
+    return Promise.resolve();
+  }
+  ensureDir();
+  const filePath = path.join(SESSIONS_DIR, `${sessionId}.json`);
+  const payload = JSON.stringify(messages, null, 2);
+  const task = saveQueue.then(async () => {
+    await fsp.writeFile(filePath, payload, 'utf-8');
+  });
+  saveQueue = task.catch((e: Error) => {
+    console.error(`[会话] 异步保存会话 ${sessionId} 失败: ${e.message}`);
+  });
+  return task;
+}
+
 let currentSessionId: string | null = null;
 let conversationHistory: Message[] = [];
 let turnCount = 0;
@@ -101,8 +126,33 @@ const COMPRESS_TURNS = 150;
 const KEEP_RECENT_TURNS = 10;
 const ARCHIVE_SUFFIX = '_archive';
 
-const MAX_TOKEN_ESTIMATE = 100000;
-const WARN_TOKEN_THRESHOLD = 80000;
+/**
+ * 依据模型上下文窗口推导压缩阈值（R3.4）。
+ * 未识别模型时回退默认 100K / 80K，保证既有行为与测试稳定。
+ */
+const MODEL_CONTEXT_WINDOWS: Array<{ pattern: RegExp; tokens: number }> = [
+  { pattern: /gpt-4\.1|gpt-5/i, tokens: 1000000 },
+  { pattern: /gpt-4o|gpt-4-turbo/i, tokens: 128000 },
+  { pattern: /claude|haiku|opus/i, tokens: 200000 },
+  { pattern: /gemini/i, tokens: 1000000 },
+  { pattern: /deepseek/i, tokens: 65536 },
+  { pattern: /moonshot|kimi/i, tokens: 128000 },
+  { pattern: /moark|qwen|internlm/i, tokens: 100000 },
+];
+
+function getModelContextWindow(): number {
+  const model = loadConfig().api?.model || '';
+  for (const { pattern, tokens } of MODEL_CONTEXT_WINDOWS) {
+    if (pattern.test(model)) return tokens;
+  }
+  return 100000;
+}
+
+/** 上下文上限 / 预警阈值（R3.4）。 */
+function getContextLimits(): { max: number; warn: number } {
+  const max = getModelContextWindow();
+  return { max, warn: Math.round(max * 0.8) };
+}
 
 function initializeSession(sessionId?: string | null): boolean {
   const meta = loadMeta();
@@ -428,13 +478,39 @@ function addAssistantMessage(content: string): void {
   saveSession(currentSessionId!, conversationHistory);
 }
 
-function addToolResultMessage(content: string): void {
+/**
+ * 原生协议：助手消息内嵌 tool_calls（R1.3）。
+ * 下一轮请求时这些 calls 会随 assistant 消息回传，tool 结果以 role=tool 消息续接。
+ */
+function addAssistantNativeMessage(
+  content: string,
+  tool_calls: NonNullable<Message['tool_calls']>,
+): void {
+  if (!currentSessionId) {
+    createNewSession();
+  }
+  conversationHistory.push({ role: 'assistant', content, tool_calls });
+  turnCount++;
+  saveSession(currentSessionId!, conversationHistory);
+}
+
+function addToolResultMessage(
+  content: string,
+  options?: { toolCallId?: string; async?: boolean },
+): void {
   // 无会话时懒创建（工具结果必然发生在会话中，兜底保护）
   if (!currentSessionId) {
     createNewSession();
   }
-  conversationHistory.push({ role: 'user', content });
-  saveSession(currentSessionId!, conversationHistory);
+  const message: Message = options?.toolCallId
+    ? { role: 'tool', content, tool_call_id: options.toolCallId }
+    : { role: 'user', content };
+  conversationHistory.push(message);
+  if (options?.async) {
+    saveSessionAsync(currentSessionId!, conversationHistory);
+  } else {
+    saveSession(currentSessionId!, conversationHistory);
+  }
 }
 
 function getContextTokenEstimate(): number {
@@ -446,12 +522,13 @@ function getContextTokenEstimate(): number {
 }
 
 function shouldCompress(): boolean {
+  const { max } = getContextLimits();
   if (turnCount >= COMPRESS_TURNS) {
     return true;
   }
 
   const tokenEstimate = getContextTokenEstimate();
-  if (tokenEstimate >= MAX_TOKEN_ESTIMATE) {
+  if (tokenEstimate >= max) {
     return true;
   }
 
@@ -459,13 +536,15 @@ function shouldCompress(): boolean {
 }
 
 function isApproachingLimit(): boolean {
+  const { max, warn } = getContextLimits();
   const tokenEstimate = getContextTokenEstimate();
-  return tokenEstimate >= WARN_TOKEN_THRESHOLD && tokenEstimate < MAX_TOKEN_ESTIMATE;
+  return tokenEstimate >= warn && tokenEstimate < max;
 }
 
 function getCompressionAdvice() {
+  const { max } = getContextLimits();
   const tokenEstimate = getContextTokenEstimate();
-  const usage = Math.round((tokenEstimate / MAX_TOKEN_ESTIMATE) * 100);
+  const usage = Math.round((tokenEstimate / max) * 100);
 
   if (usage >= 100) {
     return { level: 'critical', usage, message: '上下文即将爆满，建议压缩' };
@@ -559,6 +638,134 @@ function setConversationHistory(messages: Message[]): void {
   }
 }
 
+// =============================================================
+// 会话笔记（R3.6）：结构化长期记忆，独立于对话历史持久化
+// =============================================================
+
+const NOTES_DIR = path.join(SESSIONS_DIR, 'notes');
+
+function ensureNotesDir(): void {
+  if (!existsSync(NOTES_DIR)) {
+    mkdirSync(NOTES_DIR, { recursive: true });
+  }
+}
+
+function noteFile(id: string): string {
+  return path.join(NOTES_DIR, `${id}.json`);
+}
+
+function loadNotes(): SessionNote[] {
+  ensureNotesDir();
+  const notes: SessionNote[] = [];
+  try {
+    for (const file of readdirSync(NOTES_DIR)) {
+      if (!file.endsWith('.json')) continue;
+      try {
+        const note = JSON.parse(readFileSync(path.join(NOTES_DIR, file), 'utf-8')) as SessionNote;
+        if (note && note.id) notes.push(note);
+      } catch {
+        // 跳过损坏笔记
+      }
+    }
+  } catch {
+    // 目录不存在时忽略
+  }
+  return notes.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+}
+
+function saveSessionNote(note: { title: string; body: string; tags?: string[] }): SessionNote {
+  ensureNotesDir();
+  const now = new Date().toISOString();
+  const existing = loadNotes().find(
+    (n) => n.title.toLowerCase() === note.title.trim().toLowerCase(),
+  );
+  const saved: SessionNote = existing
+    ? { ...existing, body: note.body, tags: note.tags || existing.tags, updatedAt: now }
+    : {
+        id: 'note_' + Date.now().toString(36) + crypto.randomUUID().split('-')[0],
+        title: note.title,
+        body: note.body,
+        tags: note.tags || [],
+        createdAt: now,
+        updatedAt: now,
+      };
+  writeFileSync(noteFile(saved.id), JSON.stringify(saved, null, 2), 'utf-8');
+  return saved;
+}
+
+function listSessionNotes(): SessionNote[] {
+  return loadNotes();
+}
+
+function getSessionNote(id: string): SessionNote | null {
+  const file = noteFile(id);
+  if (!existsSync(file)) return null;
+  try {
+    return JSON.parse(readFileSync(file, 'utf-8')) as SessionNote;
+  } catch {
+    return null;
+  }
+}
+
+function deleteSessionNote(id: string): boolean {
+  const file = noteFile(id);
+  if (!existsSync(file)) return false;
+  try {
+    unlinkSync(file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// =============================================================
+// 上下文分区 / JIT 标记（R3.5 / R3.7）
+// =============================================================
+
+/**
+ * JIT（Just-In-Time）上下文注入：把检索到的记忆/信息以标记消息注入历史，
+ * 无需用户输入，下一轮思考即可感知。内容与对话历史一起持久化。
+ */
+function addContextMarker(content: string): void {
+  if (!currentSessionId) {
+    createNewSession();
+  }
+  const marker = `[上下文补充] ${content}`;
+  conversationHistory.push({ role: 'user', content: marker });
+  saveSession(currentSessionId!, conversationHistory);
+}
+
+/**
+ * 上下文分区（R3.7）：把历史划分为 system / workingMemory / dialogue 三段。
+ * workingMemory 包含摘要、JIT 标记、工具结果等支撑信息；dialogue 为纯对话。
+ * 供按分区剪裁上下文长度或做层级压缩。
+ */
+function getPartitionedMessages(): {
+  system: Message[];
+  workingMemory: Message[];
+  dialogue: Message[];
+} {
+  const system: Message[] = [];
+  const workingMemory: Message[] = [];
+  const dialogue: Message[] = [];
+  for (const msg of conversationHistory) {
+    if (msg.role === 'system') {
+      system.push(msg);
+    } else if (
+      msg.role === 'tool' ||
+      (msg.role === 'user' &&
+        (msg.content.startsWith('[上下文摘要]') ||
+          msg.content.startsWith('[上下文补充]') ||
+          msg.content.startsWith('[系统返回的工具执行结果]')))
+    ) {
+      workingMemory.push(msg);
+    } else {
+      dialogue.push(msg);
+    }
+  }
+  return { system, workingMemory, dialogue };
+}
+
 export {
   initializeSession,
   createNewSession,
@@ -571,7 +778,9 @@ export {
   getMessages,
   addUserMessage,
   addAssistantMessage,
+  addAssistantNativeMessage,
   addToolResultMessage,
+  saveSessionAsync,
   shouldCompress,
   compressHistory,
   getHistoryLength,
@@ -582,4 +791,10 @@ export {
   getContextTokenEstimate,
   isApproachingLimit,
   getCompressionAdvice,
+  saveSessionNote,
+  listSessionNotes,
+  getSessionNote,
+  deleteSessionNote,
+  addContextMarker,
+  getPartitionedMessages,
 };

@@ -77,6 +77,7 @@
     ]
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@pawastation/ilink-bot-sdk": "^0.2.0",
     "cheerio": "^1.0.0",
     "docx": "^9.7.1",

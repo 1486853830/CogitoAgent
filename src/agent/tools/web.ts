@@ -68,10 +68,11 @@ async function browse(url: string): Promise<{ success: boolean; data?: string; e
       resolve({ success: false, error: `无效的 URL: ${url}` });
       return;
     }
-    // 拒绝含 shell 元字符的 URL，避免 cmd.exe 二次解析导致命令注入
-    // （合法 URL 中通常不含这些字符，出现即视为恶意输入）
-    if (/[&|^<>%"()\s]/.test(cleanedUrl)) {
-      resolve({ success: false, error: 'URL 包含不安全字符，已拒绝打开' });
+    // 仅拒绝控制字符、空白与引号：
+    // 全程通过 execFile 直接启动可执行文件（不经过 shell），
+    // URL 中的 & | ^ < > % ( ) 等字符不会被二次解析，合法 URL（如含 @ & 的查询串）允许放行
+    if (/[\x00-\x20\x7f"']/.test(cleanedUrl)) {
+      resolve({ success: false, error: 'URL 包含不允许的字符，已拒绝打开' });
       return;
     }
     const platform = os.platform();
@@ -79,9 +80,12 @@ async function browse(url: string): Promise<{ success: boolean; data?: string; e
     let args: string[];
 
     if (platform === 'win32') {
-      // 使用 explorer.exe 而非 cmd /c start，从根源上避免 shell 二次解析
-      command = 'explorer.exe';
-      args = [cleanedUrl];
+      // explorer.exe 是 GUI 程序：通过 execFile 启动时会派生子进程并立即以
+      // 非零退出码返回，导致浏览器已正常打开但 execFile 仍报 "Command failed"。
+      // 改用 rundll32 的 FileProtocolHandler 交给系统默认程序处理，
+      // 不经过 cmd.exe 二次解析，且退出码稳定为 0。
+      command = 'rundll32';
+      args = ['url.dll,FileProtocolHandler', cleanedUrl];
     } else if (platform === 'darwin') {
       command = 'open';
       args = [cleanedUrl];

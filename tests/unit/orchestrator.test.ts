@@ -209,6 +209,55 @@ describe('orchestrator.ts', () => {
       expect(agent.state).toBe('error');
       expect(agent.error).toContain('LLM');
     });
+
+    it('should produce a final answer when iteration limit is reached', async () => {
+      const spawnResult = await orchestrator.spawnAgent('Assistant', 'TestAgent', '');
+      const originalMaxIterations = orchestrator.maxIterations;
+      orchestrator.maxIterations = 2;
+
+      try {
+        // 每次返回不同签名的工具调用，避免触发「重复工具」提前终止，确保走迭代上限路径
+        let n = 0;
+        mockParseAllToolCalls.mockImplementation(() => [
+          { tool: 'missing_tool', args: [`arg${n++}`] },
+        ]);
+
+        const result = await orchestrator.delegateTask(spawnResult.data.id, 'do something');
+
+        expect(result.success).toBe(true);
+        // 2 次循环迭代 + 1 次收尾调用 = 3 次 LLM 调用
+        expect(mockStreamChat).toHaveBeenCalledTimes(3);
+
+        const lastMessages = mockStreamChat.mock.calls[2][0] as Array<{
+          role: string;
+          content: string;
+        }>;
+        const lastUser = lastMessages[lastMessages.length - 1];
+        expect(lastUser.content).toContain('最终结果');
+
+        const agent = orchestrator.getAgent(spawnResult.data.id);
+        expect(agent.state).toBe('done');
+        expect(agent.result).toBe('mock responsemock responsemock response');
+      } finally {
+        orchestrator.maxIterations = originalMaxIterations;
+      }
+    });
+
+    it('should force a final answer when duplicate tool calls stop the loop', async () => {
+      const spawnResult = await orchestrator.spawnAgent('Assistant', 'TestAgent', '');
+      mockParseAllToolCalls.mockReturnValue([{ tool: 'missing_tool', args: [] }]);
+
+      const result = await orchestrator.delegateTask(spawnResult.data.id, 'do something');
+
+      expect(result.success).toBe(true);
+      // 第 1 次循环 + 第 2 次循环（触发重复检测提前终止）+ 1 次收尾
+      expect(mockStreamChat).toHaveBeenCalledTimes(3);
+      expect(result.data).toContain('重复调用相同工具');
+      expect(result.data).toContain('mock response');
+
+      const agent = orchestrator.getAgent(spawnResult.data.id);
+      expect(agent.state).toBe('done');
+    });
   });
 
   // ============================================

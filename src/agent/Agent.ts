@@ -1,4 +1,6 @@
-import { streamChat } from '../api/client.ts';
+import { streamChat, streamChatNative } from '../api/client.ts';
+import type { NativeStreamReturn } from '../api/client.ts';
+import { safeParseJSON } from '../utils/llm-validator.ts';
 import { createRequire } from 'module';
 import * as tools from './tools/index.ts';
 
@@ -18,6 +20,7 @@ import {
   getMessages,
   addUserMessage,
   addAssistantMessage,
+  addAssistantNativeMessage,
   addToolResultMessage,
   shouldCompress,
   compressHistory,
@@ -115,7 +118,14 @@ import {
 import { traceStep, updateTraceStep, clearThoughtTrace, getThoughtTrace } from './thought-trace.ts';
 import { applyPersona, getCurrentPersonaTitle } from './persona.ts';
 import { loadPlugins } from './plugin.ts';
-import type { Message } from '../types/index.ts';
+import {
+  buildOpenAITools,
+  objectArgsToPositional,
+  validateToolArgs,
+  toRichError,
+} from './tool-schema.ts';
+import { getEnabledToolNames } from './registry.ts';
+import type { Message, NativeToolInvocation } from '../types/index.ts';
 
 let thinkingTimer: ReturnType<typeof setTimeout> | null = null;
 let shouldStop = false;
@@ -385,6 +395,296 @@ function handleUserInput(input: string, replyKey?: string): void {
 interface StreamChunk {
   reasoning?: string;
   content?: string;
+}
+
+// =============================================================
+// 原生函数调用协议（R1.2 / R1.6 / R1.9 / R2.x）
+// 开启 nativeTools 后，模型直接调用 JSON Schema 描述的工具，不再依赖文本 [TOOL]。
+// =============================================================
+
+function buildNativeApiMessages(): Array<Record<string, unknown>> {
+  return getMessages().map((msg) => {
+    if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
+      return {
+        role: 'assistant',
+        content: msg.content || null,
+        tool_calls: msg.tool_calls.map((tc) => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.function.name, arguments: tc.function.arguments },
+        })),
+      };
+    }
+    if (msg.role === 'tool') {
+      return {
+        role: 'tool',
+        content: msg.content,
+        tool_call_id: msg.tool_call_id,
+      };
+    }
+    return { role: msg.role, content: msg.content };
+  });
+}
+
+/**
+ * 执行单个原生工具调用：校验 schema → 转位置参数 → 执行 → 归一化结果。
+ * 校验失败时不执行，返回供模型修正的错误文本（R1.6）；执行错误附富化错误码（R1.9）。
+ */
+async function executeNativeInvocation(
+  call: NativeToolInvocation,
+  signal?: AbortSignal,
+): Promise<{ content: string; success: boolean }> {
+  let parsedArgs: Record<string, unknown>;
+  try {
+    const json = JSON.parse(call.argsJson);
+    if (!json || typeof json !== 'object' || Array.isArray(json)) {
+      throw new Error('arguments 必须是 JSON 对象');
+    }
+    parsedArgs = json as Record<string, unknown>;
+  } catch {
+    return {
+      success: false,
+      content: `[工具错误]: 参数 JSON 解析失败(${call.argsJson.slice(0, 120)})`,
+    };
+  }
+
+  if (!TOOL_REGISTRY[call.name]) {
+    return { success: false, content: `[工具错误]: 未知工具：${call.name}` };
+  }
+
+  const validationErrors = validateToolArgs(call.name, parsedArgs);
+  if (validationErrors.length > 0) {
+    const rich = toRichError(
+      'EINVALID',
+      `工具 ${call.name} 参数校验失败（${validationErrors.join('；')}）`,
+    );
+    return { success: false, content: `[工具错误]: ${rich.message}` };
+  }
+
+  const positional = objectArgsToPositional(call.name, parsedArgs);
+  const result = await executeTool(call.name, positional, signal);
+
+  if (result.success) {
+    const isEmpty =
+      result.data === undefined ||
+      result.data === null ||
+      (typeof result.data === 'string' && result.data.trim() === '');
+    return {
+      success: true,
+      content: isEmpty
+        ? `[工具结果]: [空结果] ${call.name} 返回空结果，未找到相关信息。`
+        : `[工具结果]: ${formatToolResult(call.name, result.data)}`,
+    };
+  }
+
+  const register = TOOL_REGISTRY[call.name];
+  const rich =
+    register?.richErrors?.enabled === false
+      ? result.error || '执行失败'
+      : toRichError(result.errorType || '', result.error || '').message;
+  return { success: false, content: `[工具错误]: ${rich}` };
+}
+
+/**
+ * 并行执行多个原生工具调用（R2.6），并按原始顺序注入 tool 结果消息。
+ * 事件中断时所有在途工具经共享 AbortController 尽快返回。
+ */
+async function executeNativeToolCallsServer(invocations: NativeToolInvocation[]): Promise<void> {
+  broadcast('agent-reply', { type: 'tool-start', count: invocations.length });
+
+  const controller = new AbortController();
+  toolAbortController = controller;
+
+  const settled = await Promise.allSettled(
+    invocations.map(async (call) => {
+      const toolStep = traceStep(`执行工具: ${call.name}`, { args: call.args }, 'running');
+      const outcome = await executeNativeInvocation(call, controller.signal);
+      if (outcome.success) {
+        printToolBlock(outcome.content.replace(/^\[工具结果\]:\s*/, ''), '工具结果');
+        broadcast('agent-reply', {
+          type: 'tool-result',
+          tool: call.name,
+          success: true,
+          data: outcome.content.replace(/^\[工具结果\]:\s*/, ''),
+        });
+        updateTraceStep(toolStep.id, { status: 'completed' });
+      } else {
+        println(`[失败] ${outcome.content.replace(/^\[工具错误\]:\s*/, '')}`, 'red');
+        broadcast('agent-reply', {
+          type: 'tool-result',
+          tool: call.name,
+          success: false,
+          data: outcome.content,
+        });
+        updateTraceStep(toolStep.id, { status: 'failed' });
+      }
+      return outcome;
+    }),
+  );
+
+  toolAbortController = null;
+
+  for (let i = 0; i < invocations.length; i++) {
+    const outcome =
+      settled[i]?.status === 'fulfilled'
+        ? (settled[i] as PromiseFulfilledResult<{ content: string; success: boolean }>).value
+        : { content: '[工具错误]: 工具执行异常中断', success: false };
+    addToolResultMessage(outcome.content, { toolCallId: invocations[i].id, async: true });
+  }
+}
+
+async function runNativeTurnLoop(): Promise<void> {
+  const cfg = loadConfig();
+  const budget = cfg.chat?.budget || {};
+  const maxSteps = budget.maxSteps ?? 6;
+  const tokenBudget = budget.maxTokens || 0;
+
+  const tools = buildOpenAITools(getEnabledToolNames(), {
+    strict: cfg.chat?.structuredOutput?.strict === true,
+  });
+  const reasoningEffort = cfg.chat?.reasoningEffort;
+
+  let step = 0;
+  let tokensUsed = 0;
+
+  while (state.current === STATE.THINKING) {
+    const cycleStep = traceStep(
+      `原生工具调用轮次 ${step + 1}`,
+      { messageCount: getMessages().length },
+      'running',
+    );
+
+    const stream = streamChatNative(buildNativeApiMessages(), {
+      tools,
+      ...(reasoningEffort && reasoningEffort !== 'none' ? { reasoningEffort } : {}),
+    });
+
+    let content = '';
+    let cleanContent = '';
+    resetReasoningTag();
+    resetContentTag();
+
+    let result!: NativeStreamReturn;
+    while (true) {
+      const iterResult = await stream.next();
+      if (iterResult.done) {
+        result = iterResult.value;
+        break;
+      }
+      const chunk = iterResult.value as { content: string | null; reasoning: string | null };
+      if (shouldStop) {
+        shouldStop = false;
+        printBlank();
+        return;
+      }
+      if (chunk.reasoning) printReasoning(chunk.reasoning);
+      if (chunk.content) {
+        const cleanChunk = chunk.content
+          .split('\n')
+          .filter(
+            (line) =>
+              !line.trim().startsWith('[工具结果]:') && !line.trim().startsWith('[工具错误]:'),
+          )
+          .join('\n');
+        content += chunk.content;
+        cleanContent += cleanChunk;
+        if (cleanChunk.trim()) {
+          broadcast('agent-reply', { type: 'chunk', content: cleanChunk, full: cleanContent });
+        }
+      }
+    }
+
+    const usage = { input: result.input, output: result.output };
+    recordAndBroadcastUsage(usage, getMessages(), content);
+    tokensUsed += result.output || 0;
+    closeReasoning();
+    resetContentTag();
+
+    const stopReason = result.stopReason;
+    const rawCalls = result.toolCalls || [];
+    const invocations: NativeToolInvocation[] = rawCalls.map((tc) => {
+      const parsed = safeParseJSON<Record<string, unknown>>(tc.arguments);
+      return {
+        id: tc.id,
+        name: tc.name,
+        argsJson: tc.arguments,
+        args: parsed.success && parsed.data ? parsed.data : {},
+      };
+    });
+
+    const finalAssistantText = cleanContent.trim();
+
+    if (invocations.length > 0) {
+      step++;
+      if (step > maxSteps) {
+        println(`[预算] 单轮工具步数已达上限 ${maxSteps}，强制暂停，等你指示`, 'yellow');
+        if (finalAssistantText) addAssistantMessage(finalAssistantText);
+        finishNativeTurn('budget');
+        break;
+      }
+      if (tokenBudget > 0 && tokensUsed >= tokenBudget) {
+        println(`[预算] 本轮输出 token 已达上限，强制暂停，等你指示`, 'yellow');
+        if (finalAssistantText) addAssistantMessage(finalAssistantText);
+        finishNativeTurn('budget');
+        break;
+      }
+
+      // 记录带 tool_calls 的 assistant 消息，结果将以 role=tool 续接
+      addAssistantNativeMessage(finalAssistantText, rawToolCallMessages(rawCalls));
+      await executeNativeToolCallsServer(invocations);
+
+      if (shouldStop) {
+        shouldStop = false;
+        printBlank();
+        return;
+      }
+
+      if (shouldCompress()) {
+        const cp = traceStep('压缩对话历史', {}, 'running');
+        compressHistory();
+        updateTraceStep(cp.id, { status: 'completed' });
+      }
+
+      updateTraceStep(cycleStep.id, {
+        status: 'completed',
+        details: { toolCallCount: invocations.length, step, stopReason },
+      });
+      // 事件驱动的下一轮：立即继续（不再 3 秒轮询）
+      continue;
+    }
+
+    // 无工具调用：本轮结束，结构化停靠（R2.4：依据 stop_reason 判定而非轮询）
+    updateTraceStep(cycleStep.id, {
+      status: 'completed',
+      details: { stopReason, nextAction: 'wait' },
+    });
+    if (finalAssistantText) {
+      addAssistantMessage(finalAssistantText);
+    }
+    finishNativeTurn('wait', finalAssistantText || undefined);
+    break;
+  }
+}
+
+function rawToolCallMessages(
+  calls: Array<{ id: string; name: string; arguments: string }>,
+): NonNullable<Message['tool_calls']> {
+  return calls.map((c) => ({
+    id: c.id,
+    type: 'function' as const,
+    function: { name: c.name, arguments: c.arguments },
+  }));
+}
+
+function finishNativeTurn(nextAction: 'wait' | 'budget', reply?: string): void {
+  consecutiveCycleCount = 0;
+  state.current = STATE.AWAITING_INPUT;
+  if (getCurrentReplyKey()) {
+    const cleanReply = reply?.replace(/\[WAIT\]/g, '').trim();
+    if (cleanReply) deliverReply(cleanReply);
+  }
+  broadcast('agent-reply', { type: 'end', nextAction });
+  broadcast('agent-state', { state: 'idle' });
 }
 
 // ---- thinkCycle 子函数（按职责拆分，避免 300 行 god function 难以维护）----
@@ -672,6 +972,12 @@ async function thinkCycle(): Promise<void> {
   const cycleStep = traceStep('思考周期开始', { messageCount: getMessages().length }, 'running');
 
   try {
+    // 原生工具调用模式（R1.2）：启用后整个思考循环走事件驱动的原生协议。
+    if (loadConfig().chat?.nativeTools === true) {
+      await runNativeTurnLoop();
+      return;
+    }
+
     const messages = getMessages();
 
     // 1. 流式获取回复

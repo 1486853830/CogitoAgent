@@ -9,18 +9,36 @@
  *     package.json  # 插件配置（可选）
  */
 
-import { readdirSync, statSync, existsSync } from 'fs';
+import { readdirSync, statSync, existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { TOOL_REGISTRY } from './registry.ts';
+import { loadConfig } from '../config.ts';
+import type { JSONSchema, ToolAnnotations, RichErrorSpec, SkillInfo } from '../types/index.ts';
 
 const PLUGINS_DIR = path.resolve(process.cwd(), 'plugins');
+
+function getSkillsDir(): string {
+  return process.env.COGITO_SKILLS_DIR || path.resolve(process.cwd(), 'skills');
+}
 
 interface ToolDef {
   name: string;
   fn: (...args: unknown[]) => unknown;
   description?: string;
   category?: string;
+  /** 插件可直接声明的 JSON Schema / 参数文档 / 注解（R5.1/R5.2）。 */
+  schema?: JSONSchema;
+  param?: ToolParamDoc[];
+  annotations?: ToolAnnotations;
+  richErrors?: RichErrorSpec;
   [key: string]: unknown;
+}
+
+interface ToolParamDoc {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+  description?: string;
+  required?: boolean;
 }
 
 interface PluginInfo {
@@ -167,12 +185,18 @@ class PluginManager {
       plugin: pluginName,
     });
 
-    // 添加到全局注册表
+    // 添加到全局注册表（R5.1：schema / 参数文档 / 注解 / 富错误配置随注册附带）
     TOOL_REGISTRY[name] = {
       fn,
       argCount: fn.length || 1,
       category,
       isCustom: true,
+      plugin: pluginName,
+      description: description || undefined,
+      ...(toolDef.schema ? { schema: toolDef.schema } : {}),
+      ...(toolDef.param ? { params: toolDef.param } : {}),
+      ...(toolDef.annotations ? { annotations: toolDef.annotations } : {}),
+      ...(toolDef.richErrors ? { richErrors: toolDef.richErrors } : {}),
     };
   }
 
@@ -296,6 +320,7 @@ function createPluginTemplate(name: string): Record<string, string> {
   return {
     'index.js': `/**
  * ${name} 插件
+ * 插件工具可声明 schema / param / annotations / richErrors（见 types）。
  */
 
 export default [
@@ -306,6 +331,37 @@ export default [
     fn: async (arg1, arg2) => {
       // 实现逻辑
       return { success: true, result: 'Hello!' };
+    },
+    // 可选：直接声明 JSON Schema，未声明时由系统按参数索引自动生成
+    schema: {
+      type: 'object',
+      properties: {
+        arg1: { type: 'string', description: 'First argument' },
+        arg2: { type: 'number', description: 'Second argument' }
+      },
+      required: ['arg1']
+    },
+    // 可选：参数文档（供 system prompt / validation / 原生工具执行命名参数解析）
+    param: [
+      { name: 'arg1', type: 'string', description: 'First argument', required: true },
+      { name: 'arg2', type: 'number', description: 'Second argument' }
+    ],
+    // 可选：工具注解（readOnlyHint 等，供 UI/权限层使用）
+    annotations: {
+      title: 'My Tool',
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    },
+    // 可选：富错误消息规范（tool_calls 失败时系统按该规范生成可执行修正指令）
+    richErrors: {
+      enabled: true,
+      hints: {
+        'INVALID_ARGS': '请检查参数格式，确保 arg1 为字符串、arg2 为数字',
+        'TOOL_ERROR': '工具执行失败，可尝试换一种参数组合'
+      },
+      retries: 2
     }
   }
 ];
@@ -359,6 +415,119 @@ function createTool(options: { name: string; [key: string]: unknown }) {
   };
 }
 
+/**
+ * 权限策略查询（R5.2）。
+ * 从配置 tools.permissions 读取规则：deny 强拒、ask 走确认、allow 放行。
+ * 未配置规则时返回 'allow'（由工具自身或 Agent 的危险操作确认兜底）。
+ */
+function getToolPermission(name: string): 'allow' | 'deny' | 'ask' {
+  const cfg = loadConfig();
+  const rules = cfg.tools?.permissions;
+  if (!rules || !Array.isArray(rules)) return 'allow';
+  const rule = rules.find((r) => r.name === name);
+  if (!rule) return 'allow';
+  return rule.level;
+}
+
+/**
+ * 权限门禁：返回 null 表示放行，否则返回拒绝原因（R5.2）。
+ * 供协议层在工具执行前调用。
+ */
+function enforceToolPermission(name: string): string | null {
+  const level = getToolPermission(name);
+  if (level === 'deny') return `工具 ${name} 已被权限策略禁用`;
+  return null;
+}
+
+/**
+ * 技能目录加载（R5.5 / R5.6）。
+ * 约定：skills/<skill>/SKILL.md 为一个技能本体，文件内 front-matter 为标准元数据；
+ * tools 字段声明该技能启用的工具名。目录结构：
+ *   skills/
+ *     my-skill/
+ *       SKILL.md
+ */
+function loadSkills(): SkillInfo[] {
+  const skillsDir = getSkillsDir();
+  if (!existsSync(skillsDir)) return [];
+  const skills: SkillInfo[] = [];
+  try {
+    for (const entry of readdirSync(skillsDir)) {
+      const skillPath = path.join(skillsDir, entry);
+      try {
+        const stat = statSync(skillPath);
+        if (!stat.isDirectory()) continue;
+        const skillFile = path.join(skillPath, 'SKILL.md');
+        if (!existsSync(skillFile)) continue;
+
+        const content = readFileSync(skillFile, 'utf-8');
+        const meta = parseSkillMetadata(content);
+        // front-matter 缺失时用文件名兜底
+        const name = String(meta.name ?? entry);
+        const description = String(meta.description ?? '');
+        const tools = Array.isArray(meta.tools) ? meta.tools.map(String) : [];
+
+        skills.push({
+          id: entry,
+          name,
+          description,
+          path: skillPath,
+          version: typeof meta.version === 'string' ? meta.version : undefined,
+          author: typeof meta.author === 'string' ? meta.author : undefined,
+          tools,
+        });
+      } catch {
+        // 单个技能解析失败不阻塞其他技能
+      }
+    }
+  } catch {
+    // skills 目录不存在时忽略
+  }
+  return skills;
+}
+
+/** 解析 SKILL.md 的 YAML-ish front matter（--- 包裹的 key: value / 列表）。 */
+function parseSkillMetadata(content: string): Record<string, unknown> {
+  const meta: Record<string, unknown> = {};
+  const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
+  const block = match ? match[1] : content.split('\n').slice(0, 8).join('\n');
+  for (const rawLine of block.split('\n')) {
+    const line = rawLine.trim();
+    const eqIdx = line.indexOf(':');
+    if (eqIdx === -1 || line.startsWith('#')) continue;
+    const key = line.slice(0, eqIdx).trim();
+    const value = line.slice(eqIdx + 1).trim();
+    if (!key) continue;
+    if (/^\[.*\]$/.test(value)) {
+      meta[key] = value
+        .slice(1, -1)
+        .split(',')
+        .map((v) =>
+          v
+            .trim()
+            .replace(/^"(.*)"$/, '$1')
+            .replace(/^'(.*)'$/, '$1'),
+        )
+        .filter(Boolean);
+    } else {
+      meta[key] = value === '' ? undefined : value;
+    }
+  }
+  return meta;
+}
+
+/**
+ * 热重载插件（R5.3）：卸载全部插件后重新扫描加载。
+ */
+async function reloadPlugins(): Promise<LoadResult> {
+  const pm = getPluginManager();
+  const loaded = Array.from(pm.plugins.keys());
+  for (const name of loaded) {
+    pm.unloadPlugin(name);
+  }
+  return pm.loadAll();
+}
+
 interface RegisterToolOptions {
   description?: string;
   category?: string;
@@ -395,4 +564,8 @@ export {
   createPluginTemplate,
   createTool,
   registerTool,
+  getToolPermission,
+  enforceToolPermission,
+  loadSkills,
+  reloadPlugins,
 };

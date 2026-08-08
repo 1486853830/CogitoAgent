@@ -251,4 +251,247 @@ async function* streamChat(
   throw new Error('unreachable');
 }
 
-export { streamChat, estimateTokens };
+// =============================================================
+// 原生函数调用（R1.2）
+// =============================================================
+
+export interface OpenAITool {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+    strict?: boolean;
+  };
+}
+
+export interface NativeStreamOptions {
+  tools?: OpenAITool[];
+  toolChoice?: string | Record<string, unknown>;
+  responseFormat?: { type: string; [key: string]: unknown };
+  reasoningEffort?: 'low' | 'medium' | 'high';
+}
+
+export interface NativeToolCallChunk {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
+export interface NativeStreamReturn {
+  input: number;
+  output: number;
+  stopReason: string | null;
+  toolCalls: NativeToolCallChunk[];
+}
+
+export interface NativeStreamChunk {
+  content: string | null;
+  reasoning: string | null;
+}
+
+/**
+ * 原生函数调用流式客户端。
+ * 与 streamChat 共用同一套重试 / 超时 / 连接释放策略，但：
+ * - 请求体支持 tools / tool_choice / response_format / reasoning_effort；
+ * - 流式累积 tool_calls delta（id + name + arguments 拼接）；
+ * - 结束时返回 stopReason 与完整 toolCalls 列表（原始 arguments JSON 字符串）。
+ *
+ * yield 的 chunk 为内容增量；generator 的 return value 为 NativeStreamReturn。
+ */
+async function* streamChatNative(
+  messages: Array<Record<string, unknown>>,
+  options: NativeStreamOptions = {},
+): AsyncGenerator<NativeStreamChunk, NativeStreamReturn, unknown> {
+  let retryCount = 0;
+
+  const accumulatedToolCalls = new Map<number, NativeToolCallChunk>();
+  let capturedUsage: { input: number; output: number } | null = null;
+  let stopReason: string | null = null;
+
+  while (retryCount < MAX_RETRIES) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    let streamStarted = false;
+
+    try {
+      const cfg = loadConfig();
+
+      const baseURL = (cfg.api.baseURL || '').replace(/\/+$/, '');
+      if (!baseURL) {
+        throw new Error('API baseURL 未配置，请先运行 setup 或设置 COGITO_API_BASE_URL');
+      }
+
+      const body: Record<string, unknown> = {
+        messages,
+        model: cfg.api.model,
+        stream: true,
+        stream_options: { include_usage: true },
+        max_tokens: cfg.chat?.maxTokens ?? 131072,
+        temperature: cfg.chat?.temperature ?? 0.7,
+        top_p: cfg.chat?.topP ?? 0.7,
+        ...(supportsTopK(cfg) ? { top_k: cfg.chat?.topK ?? 50 } : {}),
+        frequency_penalty: cfg.chat?.frequencyPenalty ?? 0,
+      };
+      if (options.tools && options.tools.length > 0) body.tools = options.tools;
+      if (options.toolChoice) body.tool_choice = options.toolChoice;
+      if (options.responseFormat) body.response_format = options.responseFormat;
+      if (options.reasoningEffort) body.reasoning_effort = options.reasoningEffort;
+
+      const response = await fetch(`${baseURL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cfg.api.apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        const err = new Error(`API ${response.status}: ${text.slice(0, 200)}`) as Error & {
+          status?: number;
+          retryAfter?: string | null;
+        };
+        err.status = response.status;
+        err.retryAfter = response.headers?.get('Retry-After') ?? null;
+        throw err;
+      }
+
+      reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+
+          try {
+            const parsedResult = safeParseJSON<{
+              usage?: { prompt_tokens?: number; completion_tokens?: number };
+              choices?: Array<{
+                delta?: {
+                  content?: string;
+                  reasoning_content?: string;
+                  tool_calls?: Array<{
+                    index?: number;
+                    id?: string;
+                    function?: { name?: string; arguments?: string };
+                  }>;
+                };
+                finish_reason?: string | null;
+              }>;
+            }>(data);
+            if (!parsedResult.success) continue;
+            const parsed = parsedResult.data;
+            if (!parsed) continue;
+
+            if (parsed.usage) {
+              capturedUsage = {
+                input: parsed.usage.prompt_tokens || 0,
+                output: parsed.usage.completion_tokens || 0,
+              };
+            }
+
+            const choices = parsed.choices;
+            if (!choices || choices.length === 0) continue;
+
+            const choice = choices[0];
+            if (choice.finish_reason) stopReason = choice.finish_reason;
+
+            const delta = choice.delta;
+            if (!delta) continue;
+
+            streamStarted = true;
+
+            // 累积原生函数调用 delta
+            if (Array.isArray(delta.tool_calls)) {
+              for (const toolCall of delta.tool_calls) {
+                const index = toolCall.index ?? 0;
+                const existing = accumulatedToolCalls.get(index) || {
+                  id: '',
+                  name: '',
+                  arguments: '',
+                };
+                if (toolCall.id) existing.id = toolCall.id;
+                if (toolCall.function?.name) existing.name += toolCall.function.name;
+                if (toolCall.function?.arguments) existing.arguments += toolCall.function.arguments;
+                accumulatedToolCalls.set(index, existing);
+              }
+            }
+
+            yield {
+              content: delta.content || null,
+              reasoning: delta.reasoning_content || null,
+            };
+          } catch {
+            // 跳过单个 SSE 事件的解析错误
+          }
+        }
+      }
+
+      // 成功完成 - 返回 usage（API 未返回时用启发式估算兜底）
+      if (!capturedUsage) {
+        const inputText = messages.map((m) => String(m.content || '')).join('');
+        capturedUsage = {
+          input: estimateTokens(inputText),
+          output: 0,
+        };
+      }
+      return {
+        ...capturedUsage,
+        stopReason,
+        toolCalls: Array.from(accumulatedToolCalls.values()).filter((tc) => tc.name),
+      };
+    } catch (error: unknown) {
+      if (streamStarted) throw error;
+      retryCount++;
+
+      const e = error as { status?: number; name?: string; retryAfter?: unknown };
+      const status = e.status;
+      const isAbort = e.name === 'AbortError';
+      const isHTTPRetryable =
+        status === 429 || (typeof status === 'number' && status >= 500 && status < 600);
+
+      if ((isNetworkError(error) || isHTTPRetryable || isAbort) && retryCount < MAX_RETRIES) {
+        let delay: number;
+        if (status === 429 && e.retryAfter != null) {
+          const retryAfterSec = parseInt(String(e.retryAfter), 10);
+          delay = (isNaN(retryAfterSec) ? 1 : Math.max(retryAfterSec, 1)) * 1000;
+        } else {
+          delay = Math.pow(2, retryCount - 1) * RETRY_DELAY_BASE;
+        }
+        const reason = isAbort ? '请求超时' : isHTTPRetryable ? `HTTP ${status}` : '网络错误';
+        console.error(`[API] ${reason}，${delay / 1000}秒后重试（第${retryCount}次）`);
+        await sleep(delay);
+        continue;
+      }
+
+      throw error;
+    } finally {
+      if (reader) {
+        try {
+          await reader.cancel();
+        } catch {
+          /* 忽略取消失败 */
+        }
+      }
+      clearTimeout(timeoutId);
+    }
+  }
+
+  throw new Error('unreachable');
+}
+
+export { streamChat, streamChatNative, estimateTokens };

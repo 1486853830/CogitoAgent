@@ -536,9 +536,14 @@ class AgentOrchestrator {
     messages: Array<{ role: string; content: string }>,
   ): Promise<string> {
     let fullResponse = '';
-    // 连续两轮调用「相同签名」的工具说明模型在截断的工具输出下无法取得进展，
+    // 连续两轮调用「相同方法签名」的工具说明模型在截断的工具输出下无法取得进展，
     // 继续循环只会重复执行同一动作，直接终止避免死循环。
     let previousToolSignatures = '';
+    // 是否已产出纯文本的最终回复（无工具调用）。
+    // 只有「无工具调用」或「重复调用被掐断后的收尾」才算真正完成；
+    // 若因迭代次数上限耗尽仍停留在工具调用，则循环体会被强行唤醒完成，
+    // 否则任务会被标记为 done 却没有拿到最终结果。
+    let hasFinalAnswer = false;
 
     for (let i = 0; i < this.maxIterations; i++) {
       agent.iterationCount = i + 1;
@@ -564,10 +569,10 @@ class AgentOrchestrator {
 
       if (toolCalls.length === 0) {
         // 没有工具调用，这就是最终回复
+        hasFinalAnswer = true;
         break;
       }
 
-      // 检测重复工具调用：本轮与上轮的工具+参数签名一致 → 停止循环
       const signatures = toolCalls
         .map((tc) => `${tc.tool}(${JSON.stringify(tc.args)})`)
         .sort()
@@ -624,6 +629,28 @@ class AgentOrchestrator {
       messages.push({ role: 'user', content: resultMessage });
 
       this._broadcastClusterState();
+    }
+
+    // 循环因迭代次数耗尽或重复工具调用被提前终止，但没有产出纯文本最终答复：
+    // 追加一次收尾调用，让模型基于已收集的信息直接给出最终结果。
+    // （缺失此步骤时任务会在没完成的情况下被标记 done，返回的只是中间推理片段。）
+    if (!hasFinalAnswer) {
+      agent.state = 'thinking';
+      this._broadcastClusterState();
+      messages.push({
+        role: 'user',
+        content:
+          '[系统] 你已用尽本次任务的思考迭代次数。请基于上面已经取得的工具结果，立刻给出你的最终结果和结论，不要再调用任何工具。',
+      });
+      try {
+        for await (const chunk of streamChat(messages)) {
+          if (chunk.content) {
+            fullResponse += chunk.content;
+          }
+        }
+      } catch (error: unknown) {
+        throw new Error(`LLM 调用失败: ${(error as Error).message}`, { cause: error });
+      }
     }
 
     return fullResponse;
