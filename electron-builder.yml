@@ -49,10 +49,11 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: CogitoAgent
 asar: true
-# 原生模块（isolated-vm）需要按 Electron ABI 重新编译，
-# 否则打包版中代码执行工具无法加载隔离沙箱。
-asarUnpack:
-  - '**/node_modules/isolated-vm/**'
+# 说明：isolated-vm 对 Windows + Electron ABI 不兼容（官方 issue #132/#383，#272 起
+# 未修复）。打包版不按 Electron ABI 重建 native，避免 electron-builder 的
+# @electron/rebuild 触发编译失败；桌面版代码执行走 sandbox 降级路径（见 sandbox.ts）。
+# Docker/服务器（纯 Node）环境仍直接使用 isolated-vm 强隔离沙箱。
+npmRebuild: false
 compression: maximum
 publish:
   provider: generic

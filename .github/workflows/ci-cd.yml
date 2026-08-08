@@ -150,12 +150,9 @@ jobs:
       - name: Install npm dependencies
         run: npm ci --ignore-scripts
 
-      - name: Apply patch-package (Electron 42 / V8 14 compat)
-        run: npx patch-package
-
-      - name: Try rebuild isolated-vm (continue on error)
-        run: npm rebuild isolated-vm --target_platform=win32 --target_arch=x64 2>&1 || echo "isolated-vm 编译失败，将在运行时降级到原生 vm"
-        continue-on-error: true
+      # isolated-vm 不按 Electron ABI 重编译（Windows+Electron 官方不兼容，见 issue #132/#383）。
+      # 打包版桌面环境中 isolated-vm 不可用时 sandbox 会明确拒绝降级并提示用户；
+      # Docker/服务器（纯 Node）仍使用 isolated-vm 强隔离沙箱。
 
       - name: Install electron-builder
         run: npm install electron-builder --save-dev
