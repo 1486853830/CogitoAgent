@@ -1,4 +1,5 @@
 import { broadcast } from '../io/ws-server.ts';
+import { channelManager } from './channels/index.ts';
 
 const STATE = {
   THINKING: 'THINKING',
@@ -60,6 +61,14 @@ async function requestConfirmation(
   });
 
   const CONFIRM_TIMEOUT = 5 * 60 * 1000;
+
+  // 跨通道审批：把确认请求推送到在线通道（如微信），对方回复 y/n 即可完成审批
+  channelManager.pushConfirmation({
+    toolName,
+    hint: hint || toolName,
+    argsText: formatArgsForConfirmation(args),
+    timeoutMs: CONFIRM_TIMEOUT,
+  });
 
   return new Promise((resolve) => {
     confirmationResolve = resolve;

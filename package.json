@@ -84,6 +84,7 @@
     "dotenv": "^16.4.5",
     "echarts": "^6.1.0",
     "isolated-vm": "^6.1.2",
+    "jszip": "^3.10.1",
     "marked": "^18.0.5",
     "nodemailer": "^9.0.1",
     "playwright": "^1.61.0",

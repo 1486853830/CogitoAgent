@@ -58,7 +58,12 @@ import {
   onMessage,
   onStatsRequest,
   onToolsRequest,
+  onStatusSnapshot,
 } from '../io/ws-server.ts';
+import { laneQueue, AGENT_LANE_KEY } from './lane.ts';
+import { channelManager } from './channels/index.ts';
+import { startHeartbeat, getHeartbeatStatus } from './heartbeat.ts';
+import { startWebhookServer } from '../io/webhook.ts';
 import {
   recordToolCall,
   recordMessage,
@@ -779,6 +784,25 @@ function scheduleNextCycle(): void {
   }, thoughtInterval);
 }
 
+/**
+ * hello-ok 状态快照（presence）：Agent 核心运行状态 + 通道状态 + Lane 队列。
+ * 由 WS hello-ok 握手与监控面板抓取使用。
+ */
+function buildPresenceSnapshot(): Record<string, unknown> {
+  return {
+    version: APP_VERSION,
+    state: state.current,
+    persona: getCurrentPersonaTitle(),
+    workspace: tools.getBasePath(),
+    sessions: listSessions().length,
+    channels: channelManager.statusSnapshot(),
+    lanes: laneQueue.getLaneState().total,
+    heartbeat: getHeartbeatStatus(),
+    model: loadConfig().api.model || 'unknown',
+    serverTime: new Date().toISOString(),
+  };
+}
+
 async function start(): Promise<void> {
   const cfg = loadConfig();
   thoughtInterval = cfg.chat?.thinkingInterval || 3000;
@@ -824,9 +848,11 @@ async function start(): Promise<void> {
         }
         if (msg.type === 'user-message' && typeof msg.text === 'string') {
           recordMessage();
-          handleUserInput(msg.text);
+          // 与微信/Webhook/Heartbeat 共用同一条主 Lane，串行化避免并发踩踏
+          laneQueue.enqueue(AGENT_LANE_KEY, () => handleUserInput(msg.text as string));
         }
       });
+      onStatusSnapshot(() => buildPresenceSnapshot());
       onToolsRequest(() => getToolsOverview());
       onStatsRequest((payload: { type?: string; limit?: number } | null) => {
         if (payload?.type === 'toolUsage') {
@@ -909,6 +935,35 @@ async function start(): Promise<void> {
   await tools.startScheduler();
 
   await initWechatChannel();
+
+  // Heartbeat 主动清单：周期性检查工作区 TODO.md 并主动派活（默认开启，
+  // COGITO_HEARTBEAT_ENABLED=false 可关闭，COGITO_HEARTBEAT_INTERVAL 可调间隔）。
+  startHeartbeat(
+    {
+      workspace: tools.getBasePath(),
+      enabled: process.env.COGITO_HEARTBEAT_ENABLED !== 'false',
+      intervalMs:
+        (process.env.COGITO_HEARTBEAT_INTERVAL &&
+          parseInt(process.env.COGITO_HEARTBEAT_INTERVAL, 10)) ||
+        60000,
+      maxTasksPerTick: 1,
+    },
+    (taskText: string) => {
+      laneQueue.enqueue(AGENT_LANE_KEY, () => handleUserInput(taskText));
+    },
+  );
+
+  // Webhook 外部触发器：COGITO_WEBHOOK_ENABLED=true 时开放 HTTP 入口，
+  // 供第三方服务把事件注入 Agent（COGITO_WEBHOOK_PORT / COGITO_WEBHOOK_TOKEN 可选）。
+  if (process.env.COGITO_WEBHOOK_ENABLED === 'true') {
+    startWebhookServer({
+      onTrigger: (payload) => {
+        laneQueue.enqueue(AGENT_LANE_KEY, () => handleUserInput(payload.text as string));
+      },
+    }).catch((e: Error) => {
+      console.log('[Webhook] 触发器启动失败，已跳过:', e.message);
+    });
+  }
 
   println('\n  准备就绪，等待您的指令...', 'green');
   state.current = STATE.AWAITING_INPUT;

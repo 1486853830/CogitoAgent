@@ -203,6 +203,8 @@ const TOOL_REGISTRY: Record<string, ToolRegistryEntry> = {
   createWord: { fn: tools.createWord, argCount: 1, category: 'office' },
   createExcel: { fn: tools.createExcel, argCount: 1, category: 'office' },
   readExcel: { fn: tools.readExcel, argCount: 1, category: 'office' },
+  readWord: { fn: tools.readWord, argCount: 1, category: 'office' },
+  readPpt: { fn: tools.readPpt, argCount: 1, category: 'office' },
 
   spawnAgent: { fn: tools.spawnAgent, argCount: 3, category: 'cluster' },
   delegateTask: { fn: tools.delegateTask, argCount: 2, category: 'cluster' },

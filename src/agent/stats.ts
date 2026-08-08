@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import { writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
+import { estimateCost } from '../api/router.ts';
 
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const STATS_FILE = path.join(DATA_DIR, 'data', 'stats.json');
@@ -24,6 +25,7 @@ interface DailyStats {
   tokens: number;
   inputTokens: number;
   outputTokens: number;
+  cost?: number;
 }
 
 interface SessionStats {
@@ -40,10 +42,13 @@ interface SessionStats {
   todayInputTokens: number;
   todayOutputTokens: number;
   todayTokens: number;
+  totalCost: number;
+  todayCost: number;
   lastDate?: string;
   // 按天历史(用于热力图),key 为 YYYY-MM-DD
-  dailyHistory?: Record<string, DailyStats>;
-  [key: string]: number | string | undefined | Record<string, DailyStats>;
+  dailyHistory?: Record<string, DailyStats & { cost?: number }>;
+  [key: string]:
+    number | string | undefined | Record<string, DailyStats & { cost?: number }> | boolean;
 }
 
 let toolStats: Record<string, ToolCategoryStats> = {};
@@ -61,6 +66,8 @@ let sessionStats: SessionStats = {
   todayInputTokens: 0,
   todayOutputTokens: 0,
   todayTokens: 0,
+  totalCost: 0,
+  todayCost: 0,
 };
 
 function initStats(): void {
@@ -110,6 +117,8 @@ async function loadStats(): Promise<void> {
       'todayInputTokens',
       'todayOutputTokens',
       'todayTokens',
+      'totalCost',
+      'todayCost',
     ];
     for (const k of tokenFields) {
       if (typeof sessionStats[k] !== 'number') sessionStats[k] = 0;
@@ -205,6 +214,7 @@ function checkAndResetDay(): void {
         tokens: sessionStats.todayTokens,
         inputTokens: sessionStats.todayInputTokens,
         outputTokens: sessionStats.todayOutputTokens,
+        cost: sessionStats.todayCost,
       };
     }
     sessionStats.lastDate = today;
@@ -214,6 +224,7 @@ function checkAndResetDay(): void {
     sessionStats.todayInputTokens = 0;
     sessionStats.todayOutputTokens = 0;
     sessionStats.todayTokens = 0;
+    sessionStats.todayCost = 0;
   }
 }
 
@@ -239,6 +250,7 @@ function getMergedDailyHistory(days = 365): DailyStats[] {
     tokens: sessionStats.todayTokens,
     inputTokens: sessionStats.todayInputTokens,
     outputTokens: sessionStats.todayOutputTokens,
+    cost: sessionStats.todayCost,
   };
   // 排序并截取最近 days 天
   return Object.values(history)
@@ -316,10 +328,15 @@ function recordTokenUsage(inputTokens: number, outputTokens: number): void {
   sessionStats.totalOutputTokens += output;
   sessionStats.totalTokens += total;
 
+  // 成本估算：基于当前模型价格表 / 环境变量覆盖
+  const cost = estimateCost(input, output);
+  sessionStats.totalCost += cost;
+
   checkAndResetDay();
   sessionStats.todayInputTokens += input;
   sessionStats.todayOutputTokens += output;
   sessionStats.todayTokens += total;
+  sessionStats.todayCost += cost;
 
   saveStats();
 }
@@ -415,6 +432,8 @@ function resetStats(): void {
     todayInputTokens: 0,
     todayOutputTokens: 0,
     todayTokens: 0,
+    totalCost: 0,
+    todayCost: 0,
     lastDate: new Date().toISOString().split('T')[0],
     dailyHistory: {},
   };

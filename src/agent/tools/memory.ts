@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
@@ -60,6 +61,51 @@ function normalizeTags(tags: unknown): string[] {
 }
 
 let memories: Memory[] = [];
+let memoriesLoaded = false;
+
+/**
+ * 同步加载记忆缓存（供系统提示词构建等非异步场景读取）。
+ * 首次调用读盘一次，之后复用内存缓存，避免每轮刷新重复 IO。
+ */
+function syncLoadMemory(): void {
+  if (memoriesLoaded) return;
+  memoriesLoaded = true;
+  try {
+    if (existsSync(MEMORY_FILE)) {
+      const data = readFileSync(MEMORY_FILE, 'utf-8');
+      const parsed: unknown = JSON.parse(data);
+      memories = Array.isArray(parsed) ? (parsed as Memory[]) : [];
+    }
+  } catch {
+    memories = [];
+  }
+}
+
+/**
+ * 生成"相关记忆"上下文片段，供 session/system-prompt 在每个思考周期注入。
+ * 选取最近访问且被高频使用的记忆，让 Agent 无需主动搜索即可"想起"关键信息。
+ */
+function getMemoryContextHint(limit: number = 12): string {
+  syncLoadMemory();
+  if (memories.length === 0) return '';
+
+  const sorted = [...memories]
+    .sort((a, b) => {
+      const fa = a.accessCount || 0;
+      const fb = b.accessCount || 0;
+      if (fa !== fb) return fb - fa;
+      const ta = new Date(a.accessedAt).getTime();
+      const tb = new Date(b.accessedAt).getTime();
+      return (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta);
+    })
+    .slice(0, Math.max(1, Math.min(limit, memories.length)));
+
+  const lines = sorted.map(
+    (m) =>
+      `- [${m.category || 'general'}]${m.tags.length > 0 ? ` (#${m.tags.join(',#')})` : ''} ${m.content.slice(0, 300)}`,
+  );
+  return `## 你可能需要知道的相关记忆（长期记忆，供你回忆/参考，不必主动展示给用户）\n${lines.join('\n')}\n`;
+}
 
 /**
  * 记忆条数超限时，淘汰最久未访问的记忆，防止 memory.json 无限膨胀
@@ -86,6 +132,7 @@ function safeParseId(id: unknown): number | null {
  * 加载记忆数据
  */
 async function loadMemory(): Promise<void> {
+  memoriesLoaded = true;
   try {
     if (
       await fs
@@ -445,6 +492,7 @@ async function getRelatedMemories(
  */
 async function clearMemory(): Promise<ActionResult<string>> {
   memories = [];
+  memoriesLoaded = true;
   await saveMemory();
 
   return {
@@ -463,4 +511,5 @@ export {
   getMemoryStats,
   getRelatedMemories,
   clearMemory,
+  getMemoryContextHint,
 };

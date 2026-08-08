@@ -22,6 +22,7 @@ import {
   type FileChild,
 } from 'docx';
 import XLSX from 'xlsx';
+import JSZip from 'jszip';
 import fs from 'fs/promises';
 import path from 'path';
 import { resolveInWorkspace } from './path.ts';
@@ -462,7 +463,10 @@ async function readExcel(filePath: string): Promise<{
     filePath = resolvedPath;
 
     await fs.access(filePath);
-    const wb = XLSX.readFile(filePath);
+    // 不直接用 XLSX.readFile：打包/Electron 环境下 SheetJS 内部的 fs 绑定缺失
+    // 会抛 "Cannot access file"，改为用自己的 fs 读 buffer 再交给 XLSX 解析。
+    const buf = await fs.readFile(filePath);
+    const wb = XLSX.read(buf, { type: 'buffer' });
 
     const result: Record<string, unknown[][]> = {};
     for (const sheetName of wb.SheetNames) {
@@ -476,4 +480,177 @@ async function readExcel(filePath: string): Promise<{
   }
 }
 
-export { createPpt, createWord, createExcel, readExcel };
+// ==================== Word / PPT 读取 ====================
+
+/** 反转 XML 实体，保持 &amp; 最后处理避免二次解码 */
+function unescapeXmlEntities(s: string): string {
+  return s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, '\u00a0')
+    .replace(/&amp;/g, '&');
+}
+
+/** 提取 XML 片段内的文本：兼容 Word 的 <w:t> 与 PPT 的 <a:t> */
+function extractTextRuns(xml: string): string {
+  const parts: string[] = [];
+  const re = /<(?:[A-Za-z0-9]+:)?t\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z0-9]+:)?t>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml)) !== null) {
+    parts.push(unescapeXmlEntities(m[1]));
+  }
+  return parts.join('');
+}
+
+/** 解析 docx 的 document.xml：返回分段正文、标题和表格 */
+function parseWordDocument(xml: string): {
+  headings: string[];
+  paragraphs: string[];
+  tables: string[][][];
+} {
+  const tables: string[][][] = [];
+  const tblRe = /<w:tbl[\s\S]*?<\/w:tbl>/gi;
+  let tbl: RegExpExecArray | null;
+  while ((tbl = tblRe.exec(xml)) !== null) {
+    const rows: string[][] = [];
+    const trRe = /<w:tr[\s\S]*?<\/w:tr>/gi;
+    let tr: RegExpExecArray | null;
+    while ((tr = trRe.exec(tbl[0])) !== null) {
+      const cells: string[] = [];
+      const tcRe = /<w:tc\b[\s\S]*?<\/w:tc>/gi;
+      let tc: RegExpExecArray | null;
+      while ((tc = tcRe.exec(tr[0])) !== null) {
+        cells.push(extractTextRuns(tc[0]).trim());
+      }
+      rows.push(cells);
+    }
+    tables.push(rows);
+  }
+
+  // 表格与正文分离后，再按段落切分，避免重复
+  const bodyWithoutTables = xml.replace(/<w:tbl[\s\S]*?<\/w:tbl>/gi, ' ');
+  const headings: string[] = [];
+  const paragraphs: string[] = [];
+  const pRe = /<w:p\b[\s\S]*?<\/w:p>/gi;
+  let p: RegExpExecArray | null;
+  while ((p = pRe.exec(bodyWithoutTables)) !== null) {
+    const text = extractTextRuns(p[0]).trim();
+    if (!text) continue;
+    const styleMatch = /<w:pStyle\b[^>]*w:val="([^"]+)"/i.exec(p[0]);
+    const style = styleMatch ? styleMatch[1] : '';
+    if (/heading\d+/i.test(style)) {
+      headings.push(text);
+    } else {
+      paragraphs.push(text);
+    }
+  }
+  return { headings, paragraphs, tables };
+}
+
+/** 解析 pptx：按 slide 序号提取每页文本，保留一段一行的顺序 */
+async function parsePptSlides(zip: JSZip): Promise<{ slide: number; paragraphs: string[] }[]> {
+  const slideFiles = Object.keys(zip.files)
+    .filter((name) => /^ppt\/slides\/slide(\d+)\.xml$/i.test(name))
+    .map((name) => {
+      const n = parseInt(/^ppt\/slides\/slide(\d+)\.xml$/i.exec(name)![1], 10);
+      return { name, n };
+    })
+    .sort((a, b) => a.n - b.n);
+
+  const slides: { slide: number; paragraphs: string[] }[] = [];
+  for (const { name, n } of slideFiles) {
+    const xml = await zip.file(name)!.async('string');
+    const paragraphs: string[] = [];
+    const pRe = /<a:p\b[\s\S]*?<\/a:p>/gi;
+    let p: RegExpExecArray | null;
+    while ((p = pRe.exec(xml)) !== null) {
+      const text = extractTextRuns(p[0]).trim();
+      if (text) paragraphs.push(text);
+    }
+    if (paragraphs.length > 0) slides.push({ slide: n, paragraphs });
+  }
+  return slides;
+}
+
+async function readWord(filePath: string): Promise<{
+  success: boolean;
+  data?: {
+    format: 'docx';
+    title?: string;
+    headings: string[];
+    paragraphs: string[];
+    tables: string[][][];
+  };
+  error?: string;
+}> {
+  try {
+    const resolvedPath = resolveInWorkspace(filePath);
+    if (!resolvedPath) {
+      return { success: false, error: 'filePath 越界：必须位于工作区内' };
+    }
+    filePath = resolvedPath;
+
+    const buf = await fs.readFile(filePath);
+    const zip = await JSZip.loadAsync(buf);
+    const docXml = await zip.file('word/document.xml')?.async('string');
+    if (!docXml) {
+      return {
+        success: false,
+        error: '未找到 word/document.xml，可能不是有效的 .docx 文件（旧版 .doc 需先转换为 .docx）',
+      };
+    }
+
+    const { headings, paragraphs, tables } = parseWordDocument(docXml);
+
+    let title: string | undefined;
+    const coreXml = await zip.file('docProps/core.xml')?.async('string');
+    if (coreXml) {
+      const t = /<dc:title>(.*?)<\/dc:title>/i.exec(coreXml);
+      if (t && t[1].trim()) title = unescapeXmlEntities(t[1].trim());
+    }
+
+    return {
+      success: true,
+      data: { format: 'docx', title, headings, paragraphs, tables },
+    };
+  } catch (e: unknown) {
+    return { success: false, error: `读取Word失败: ${(e as Error).message}` };
+  }
+}
+
+async function readPpt(filePath: string): Promise<{
+  success: boolean;
+  data?: {
+    format: 'pptx';
+    slideCount: number;
+    slides: { slide: number; paragraphs: string[] }[];
+  };
+  error?: string;
+}> {
+  try {
+    const resolvedPath = resolveInWorkspace(filePath);
+    if (!resolvedPath) {
+      return { success: false, error: 'filePath 越界：必须位于工作区内' };
+    }
+    filePath = resolvedPath;
+
+    const buf = await fs.readFile(filePath);
+    const zip = await JSZip.loadAsync(buf);
+    const slides = await parsePptSlides(zip);
+    if (slides.length === 0) {
+      return {
+        success: false,
+        error:
+          '未找到 ppt/slides/ 下的幻灯片，可能不是有效的 .pptx 文件（旧版 .ppt 需先转换为 .pptx）',
+      };
+    }
+
+    return { success: true, data: { format: 'pptx', slideCount: slides.length, slides } };
+  } catch (e: unknown) {
+    return { success: false, error: `读取PPT失败: ${(e as Error).message}` };
+  }
+}
+
+export { createPpt, createWord, createExcel, readExcel, readWord, readPpt };

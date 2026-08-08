@@ -18,6 +18,14 @@ let statsHandler:
 
 let toolsHandler: (() => Record<string, unknown> | Promise<Record<string, unknown>>) | null = null;
 
+let statusSnapshotHandler: (() => Record<string, unknown>) | null = null;
+
+const SERVER_START_TIME = Date.now();
+
+function getServerUptimeMs(): number {
+  return Date.now() - SERVER_START_TIME;
+}
+
 // 每次启动生成随机 token，非浏览器客户端（如 agent-bridge）连接时必须携带。
 // 浏览器客户端仍靠 Origin 白名单校验（前端无法安全存储 token）。
 // 此前仅校验回环地址，本机任意进程都能连 9527 端口伪装 Agent 推送恶意 session-meta-update。
@@ -170,6 +178,20 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
       wss.on('connection', (ws, req) => {
         console.log('[WS] 客户端已连接:', req.socket.remoteAddress);
 
+        // hello-ok 握手：连接建立后推送状态快照（presence/health/uptime/rate limit），
+        // 让客户端立即知道 Agent 的整体运行状态（对齐 OpenClaw 的 hello-ok 协议）。
+        sendToClient(ws, {
+          type: 'hello-ok',
+          presence: statusSnapshotHandler ? statusSnapshotHandler() : { state: 'unknown' },
+          uptime: getServerUptimeMs(),
+          rateLimit: { maxMessagesPerMinute: 60, windowMs: 60000 },
+          serverTime: new Date().toISOString(),
+        });
+
+        // 每连接简单限流：60 秒内最多 60 条消息，超出则提示并忽略，防止失控客户端打爆主循环
+        let msgCount = 0;
+        let windowStart = Date.now();
+
         // 必须为每个连接注册 error 监听器：Node EventEmitter 规则下，
         // 若 error 事件无监听器会抛出并导致进程退出。ws 库在底层 socket
         // 异常时会向 ws 对象 emit error，缺监听器即崩溃整个 Agent。
@@ -193,7 +215,9 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
             return;
           }
           alive.__isAlive = false;
-          ws.ping();
+          if (typeof (ws as AliveSocket & { ping?: () => void }).ping === 'function') {
+            ws.ping();
+          }
         }, 30000);
         // 心跳定时器不应阻止进程退出（服务停止后残留的连接不应挂住进程）
         const looseInterval = heartbeatInterval as unknown as { unref?: () => void };
@@ -203,6 +227,18 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
 
         ws.on('message', (raw) => {
           try {
+            // 限流检查：重置窗口 & 计数
+            const now = Date.now();
+            if (now - windowStart >= 60000) {
+              windowStart = now;
+              msgCount = 0;
+            }
+            msgCount++;
+            if (msgCount > 60) {
+              sendToClient(ws, { type: 'rate-limit', message: '消息过于频繁，请稍后再试' });
+              return;
+            }
+
             const msg = JSON.parse(raw.toString());
             if (msg.type === 'stats-request' && statsHandler) {
               handlePayloadRequest(ws, msg, 'stats-response', statsHandler(msg.payload));
@@ -252,6 +288,21 @@ function onToolsRequest(
   handler: () => Record<string, unknown> | Promise<Record<string, unknown>>,
 ): void {
   toolsHandler = handler;
+}
+
+/** Agent 注册 hello-ok 状态快照提供者（presence 数据） */
+function onStatusSnapshot(handler: () => Record<string, unknown>): void {
+  statusSnapshotHandler = handler;
+}
+
+function sendToClient(ws: WebSocket, payload: Record<string, unknown>): void {
+  try {
+    if (ws.readyState === 1) {
+      ws.send(JSON.stringify(payload));
+    }
+  } catch {
+    // 忽略发送错误
+  }
 }
 
 /**
@@ -321,6 +372,7 @@ export {
   onMessage,
   onStatsRequest,
   onToolsRequest,
+  onStatusSnapshot,
   stopWsServer,
   getWsToken,
 };

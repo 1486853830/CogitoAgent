@@ -6,6 +6,7 @@
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import { getBasePath } from './tools/index.ts';
+import { getMemoryContextHint } from './tools/memory.ts';
 import { getEnabledCategories, getAllCategories } from './registry.ts';
 
 /**
@@ -211,13 +212,16 @@ COGITO_CONFIRM_DANGEROUS=false
 - createWord(options) - 创建 Word 文档，参数包含 outputPath(输出路径)、paragraphs(段落数组，每项含 type/text/level/items/rows/src 等)、title(标题)、author(作者)
 - createExcel(options) - 创建 Excel 文件，参数包含 outputPath(输出路径)、sheets(工作表数组，每项含 name/data，data为二维数组)
 - readExcel(filePath) - 读取 Excel 文件，返回各工作表数据的二维数组
+- readWord(filePath) - 读取 Word(.docx) 文件，返回 headings(标题)、paragraphs(段落)、tables(表格)
+- readPpt(filePath) - 读取 PPT(.pptx) 文件，返回按页码排列的 slides(每页的 paragraphs 段落文本)
 
 【重要】使用 Office 工具时：
 1. 确保 outputPath 以正确的扩展名结尾（.pptx/.docx/.xlsx）
 2. PPT 的 slides 每项支持：title(标题)、content(正文)、bullets(要点数组)、image(图片路径)
 3. Word 的 paragraphs 支持 type：heading(标题，带level)、text(正文)、list(列表，带items)、table(表格，带rows)、image(图片，带src/width/height)
 4. Excel 的 sheets 每项含 name(表名) 和 data(二维数组数据)
-5. 图片路径必须是有效的本地文件路径
+5. 需要读取 .xlsx/.docx/.pptx 文件内容时，请优先使用 readExcel/readWord/readPpt，而非自行调用 Python
+6. 图片路径必须是有效的本地文件路径
 
 `;
         break;
@@ -381,6 +385,7 @@ function buildSystemPrompt(): string {
 ## 活动范围
   你在 ${workspace} 目录下活动，可以自由探索.
 
+${getMemoryContextHint()}
   ## 可用工具（共 ${enabledCount}/${totalCount} 个分类已启用）
 
 ${buildToolList()}

@@ -53,6 +53,32 @@ function isBinaryFile(ext: string, buffer: Buffer): boolean {
   return false;
 }
 
+/**
+ * 为二进制文件生成可操作的处理指引：指明该用什么专用工具解析，
+ * 而不是只给"无法显示文本"而无处下手。
+ */
+function buildBinaryHint(ext: string, fullPath: string, size: number): string {
+  const base = `[这是一个二进制文件 (${(size / 1024).toFixed(1)} KB)，无法以文本方式读取] `;
+  switch (ext.toLowerCase()) {
+    case '.xlsx':
+    case '.xls':
+      return base + `请使用 read_excel("${fullPath}") 读取，返回各工作表（sheet）的二维数组数据。`;
+    case '.docx':
+    case '.doc':
+      return base + `请使用 readWord("${fullPath}") 读取，返回标题、段落和表格。`;
+    case '.pptx':
+    case '.ppt':
+      return base + `请使用 readPpt("${fullPath}") 读取，返回每页幻灯片的段落文本。`;
+    case '.pdf':
+      return base + `请使用 Python 代码解析（如 PyPDF2/pdfplumber）。`;
+    default:
+      return (
+        base +
+        `该扩展名（${ext}）无法被 read 直接解析；若需读取结构（如图片 OCR、PDF/Office 内容），请使用对应专用工具（如 vision/ocr）或 Python 代码解析。`
+      );
+  }
+}
+
 async function ls(targetPath: string): Promise<{
   success: boolean;
   data?: { name: string; type: string; path: string }[];
@@ -96,7 +122,7 @@ async function read(
     if (isBinaryFile(ext, buffer)) {
       return {
         success: true,
-        data: `[这是一个二进制文件 (${(buffer.length / 1024).toFixed(1)} KB)，无法显示文本内容]`,
+        data: buildBinaryHint(ext, fullPath, buffer.length),
       };
     }
 

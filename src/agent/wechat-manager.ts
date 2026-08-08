@@ -17,6 +17,9 @@ import {
   getCurrentSession,
   setConversationHistory,
 } from './session.ts';
+import { laneQueue, AGENT_LANE_KEY } from './lane.ts';
+import { channelManager } from './channels/index.ts';
+import type { ChannelAdapter, ChannelStatus } from './channels/index.ts';
 import { broadcast } from '../io/ws-server.ts';
 import type { Message } from '../types/index.ts';
 
@@ -33,6 +36,7 @@ interface SessionData {
 const WECHAT_SESSIONS = new Map<string, SessionData>();
 
 let cleanupInterval: ReturnType<typeof setInterval> | null = null;
+let lastChatSender: string | null = null;
 
 function syncWechatHistoryToSession(): void {
   const msgs = getWechatMessages();
@@ -68,6 +72,7 @@ function ensureWechatSession(): string {
 async function handleWechatMessage(message: WechatMessage): Promise<void> {
   const { from, text } = message;
   const timestamp = new Date().toISOString();
+  lastChatSender = from;
 
   addWechatMessage({ direction: 'received', from, text, timestamp });
 
@@ -121,11 +126,15 @@ async function handleWechatMessage(message: WechatMessage): Promise<void> {
   });
 
   const prompt = `[微信消息 来自 ${from}] ${text}`;
-  handleUserInput(prompt, from);
+  // 通过 Lane 串行化进入 Agent，与桌面 WebSocket/CLI 共用同一处理管线，
+  // 同一发送者的多条消息不会并发踩踏，多发送者之间互不阻塞。
+  laneQueue.enqueue(AGENT_LANE_KEY, () => handleUserInput(prompt, from));
 }
 
 async function initWechatChannel(): Promise<void> {
   console.log('[微信通道] 初始化中...');
+  channelManager.register(getWechatAdapter());
+  channelManager.setConfirmationHandler(pushConfirmationToWechat);
 
   const status = await getWechatStatus();
 
@@ -254,6 +263,49 @@ function cleanupInactiveSessions(maxAgeMs = 30 * 60 * 1000): void {
   }
 }
 
+/**
+ * 把危险操作确认请求推送到微信通道：发给最近活跃的发送者，对方可直接回复
+ * y/n 完成跨通道审批（handleUserInput 的 AWAITING_CONFIRMATION 分支统一兜底）。
+ */
+function pushConfirmationToWechat(payload: {
+  toolName: string;
+  hint?: string;
+  argsText?: string;
+  timeoutMs?: number;
+}): void {
+  const target = lastChatSender;
+  if (!target) return;
+  const timeoutNote = payload.timeoutMs
+    ? `（${Math.round(payload.timeoutMs / 60000)} 分钟内有效）`
+    : '';
+  void sendWechatMessage(
+    target,
+    `⚠️ 需要您确认的操作：${payload.toolName}\n${payload.hint || ''}\n参数：${payload.argsText || '(无)'}${timeoutNote}\n回复 y 确认，n 拒绝。`,
+  );
+}
+
+function getWechatAdapter(): ChannelAdapter {
+  return {
+    id: 'wechat',
+    name: '微信通道',
+    connect: async () => {
+      await initWechatChannel();
+    },
+    disconnect: async () => {
+      await stopWechatPolling();
+    },
+    send: async (target: string, text: string) => {
+      return sendWechatMessage(target, text);
+    },
+    getStatus: (): ChannelStatus => {
+      return {
+        connected: wechatState.loggedIn,
+        details: { accountId: wechatState.accountId, polling: wechatState.polling },
+      };
+    },
+  };
+}
+
 cleanupInterval = setInterval(
   () => {
     cleanupInactiveSessions();
@@ -275,5 +327,6 @@ export {
   manualLogoutWechat,
   getWechatStatus,
   getWechatSessionCount,
+  getWechatAdapter,
   WECHAT_SESSIONS,
 };
