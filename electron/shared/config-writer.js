@@ -169,13 +169,6 @@ export function buildEnvLines(config) {
     '',
     '# 工作区根路径',
     `COGITO_WORKSPACE=${q(c.workspace || path.join(os.homedir(), 'cogito-workspace'))}`,
-    '',
-    '# ============================================',
-    '# 人设配置（可选）',
-    '# ============================================',
-    '',
-    '# 人设名称（对应 personas/ 目录下的文件夹名称）',
-    `COGITO_PERSONA=${q(c.persona)}`,
   ];
 }
 
@@ -189,23 +182,9 @@ export function writeEnvConfig(config, options = {}) {
   const dataDir = options.dataDir || process.env.COGITO_USER_DATA_DIR || process.cwd();
   const envPath = path.join(dataDir, '.env');
 
-  // persona 为空时保留现有 .env 中的 COGITO_PERSONA：
-  // Setup 向导的 submitConfig 不包含 persona 字段，main.js saveConfig 也不补，
-  // 此前每次保存都会把已配置的人设擦成空字符串。
-  let effectiveConfig = config;
-  if (!config || !config.persona) {
-    try {
-      const existing = fs.readFileSync(envPath, 'utf-8');
-      const match = existing.match(/^COGITO_PERSONA=["']?([^"'\n\r]*)["']?/m);
-      if (match && match[1]) {
-        effectiveConfig = { ...config, persona: match[1] };
-      }
-    } catch {
-      // .env 不存在或读取失败，忽略（首次创建时无现有文件）
-    }
-  }
-
-  const lines = buildEnvLines(effectiveConfig);
+  // 注意：人设不再写入 .env（loadEnvConfig 已不读取 COGITO_PERSONA），
+  // 而是持久化到 config.json 的顶层 persona 字段，由 Agent 启动时读取。
+  const lines = buildEnvLines(config);
 
   try {
     fs.writeFileSync(envPath, lines.join('\n'), 'utf-8');

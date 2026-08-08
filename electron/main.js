@@ -80,8 +80,21 @@ function isConfigured() {
  */
 function saveConfig(config) {
   try {
+    // 人设不再写入 .env；此处持久化到 config.json 顶层 persona 字段，
+    // 若传入 config 不含 persona（如设置向导），则保留 config.json 已有值。
+    let existingPersona = '';
+    try {
+      if (fs.existsSync(CONFIG_FILE)) {
+        existingPersona = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8')).persona || '';
+      }
+    } catch {
+      // 读取失败则视为无已有人设
+    }
+    const persona = config?.persona || existingPersona;
+
     // 保存 config.json（过滤敏感字段）
     const configData = {
+      persona,
       api: {
         provider: config.api?.provider || 'custom',
         baseURL: config.api?.baseURL || '',
@@ -982,10 +995,21 @@ app.whenReady().then(async () => {
   });
 
   // ===== 会话管理 IPC =====
-  // 更新当前 persona（在 Agent 侧切换人设时同步）
+  // 更新当前 persona（在 Agent 侧切换人设时同步），并持久化到 config.json
   ipcMain.on('update-current-persona', (_event, personaName) => {
     currentPersona = personaName;
     console.log('[主进程] Persona 已同步:', personaName);
+    try {
+      if (fs.existsSync(CONFIG_FILE)) {
+        const configJson = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+        // 空字符串表示默认人设（Cogito），仍写入以覆盖之前的显式人设
+        configJson.persona = personaName || '';
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(configJson, null, 2), 'utf-8');
+        console.log('[主进程] Persona 已持久化到 config.json:', personaName || '默认');
+      }
+    } catch (e) {
+      console.error('[主进程] 持久化 persona 失败:', e.message);
+    }
   });
 
   // 获取会话列表（从 meta.json 读取基本信息，从会话文件读取预览）
