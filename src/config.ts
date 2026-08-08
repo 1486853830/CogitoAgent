@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import path from 'path';
 import os from 'os';
-import type { Config } from './types/index.ts';
+import type { Config, McpConfig, ToolPermissionRule } from './types/index.ts';
 // 复用 electron 端的凭据加密实现，避免重复代码。
 // .env 中的邮箱密码由 main.js 加密，src 端读取后需解密。
 import { decrypt as decryptCredential } from '../electron/shared/credentials.js';
@@ -428,6 +428,56 @@ function readConfigFresh(): Config {
   return { ...DEFAULT_CONFIG };
 }
 
+/**
+ * 读取 MCP 配置（R4.3）：本地 stdio server 开关 + 外部 server 注册表 + 工具前缀。
+ * 配置驱动——Agent 在（重新）加载时读取，Dashboard 编辑后由 Agent 重启/reload 生效。
+ */
+function getMcpConfig(): McpConfig {
+  const cfg = loadConfig();
+  return cfg.mcp || {};
+}
+
+/**
+ * 写入 MCP 配置（R4.3）：合并补丁并持久化到 config.json。
+ * 成功后同步更新内存缓存，使后续读取拿到最新值。
+ */
+function setMcpConfig(patch: Partial<McpConfig>): boolean {
+  const cfg = loadConfig();
+  cfg.mcp = { ...(cfg.mcp || {}), ...patch };
+  const ok = saveConfig(cfg);
+  if (ok) config = cfg;
+  return ok;
+}
+
+/**
+ * 读取工具权限规则（R5.2）：{ name, level } 列表，level ∈ allow/deny/ask。
+ */
+function getToolPermissions(): ToolPermissionRule[] {
+  const cfg = loadConfig();
+  return Array.isArray(cfg.tools?.permissions) ? cfg.tools!.permissions! : [];
+}
+
+/**
+ * 设置单条工具权限规则（R5.2）：upsert 到 tools.permissions，持久化到 config.json。
+ */
+function setToolPermission(name: string, level: 'allow' | 'deny' | 'ask'): boolean {
+  if (!name) return false;
+  const cfg = loadConfig();
+  const rules: ToolPermissionRule[] = Array.isArray(cfg.tools?.permissions)
+    ? [...cfg.tools!.permissions!]
+    : [];
+  const idx = rules.findIndex((r) => r.name === name);
+  if (idx >= 0) {
+    rules[idx] = { name, level };
+  } else {
+    rules.push({ name, level });
+  }
+  cfg.tools = { ...(cfg.tools || {}), permissions: rules };
+  const ok = saveConfig(cfg);
+  if (ok) config = cfg;
+  return ok;
+}
+
 function saveConfig(cfg: Config): boolean {
   try {
     const sanitized = JSON.parse(JSON.stringify(cfg)) as Record<string, unknown>;
@@ -469,4 +519,8 @@ export {
   deepMerge,
   CONFIG_FILE,
   DEFAULT_CONFIG,
+  getMcpConfig,
+  setMcpConfig,
+  getToolPermissions,
+  setToolPermission,
 };

@@ -120,6 +120,15 @@ function saveSessionAsync(sessionId: string, messages: Message[]): Promise<void>
   return task;
 }
 
+/**
+ * 等待所有排队的会话写操作完成（R3.1）。
+ * 热路径的 add* 函数为 fire-and-forget 异步写入，不阻塞调用方；
+ * 测试与优雅退出前可 await 此方法确保落盘。
+ */
+export function flushSessionWrites(): Promise<void> {
+  return saveQueue;
+}
+
 let currentSessionId: string | null = null;
 let conversationHistory: Message[] = [];
 let turnCount = 0;
@@ -458,7 +467,8 @@ function addUserMessage(content: string): void {
   }
   conversationHistory.push({ role: 'user', content });
   turnCount++;
-  saveSession(currentSessionId!, conversationHistory);
+  // R3.1：热路径走异步写队列，避免每次消息同步落盘阻塞思考循环
+  saveSessionAsync(currentSessionId!, conversationHistory);
 
   const meta = loadMeta();
   const session = meta.sessions.find((s) => s.id === currentSessionId);
@@ -476,7 +486,8 @@ function addAssistantMessage(content: string): void {
   }
   conversationHistory.push({ role: 'assistant', content });
   turnCount++;
-  saveSession(currentSessionId!, conversationHistory);
+  // R3.1：热路径走异步写队列
+  saveSessionAsync(currentSessionId!, conversationHistory);
 }
 
 /**
@@ -492,13 +503,11 @@ function addAssistantNativeMessage(
   }
   conversationHistory.push({ role: 'assistant', content, tool_calls });
   turnCount++;
-  saveSession(currentSessionId!, conversationHistory);
+  // R3.1：热路径走异步写队列
+  saveSessionAsync(currentSessionId!, conversationHistory);
 }
 
-function addToolResultMessage(
-  content: string,
-  options?: { toolCallId?: string; async?: boolean },
-): void {
+function addToolResultMessage(content: string, options?: { toolCallId?: string }): void {
   // 无会话时懒创建（工具结果必然发生在会话中，兜底保护）
   if (!currentSessionId) {
     createNewSession();
@@ -507,11 +516,8 @@ function addToolResultMessage(
     ? { role: 'tool', content, tool_call_id: options.toolCallId }
     : { role: 'user', content };
   conversationHistory.push(message);
-  if (options?.async) {
-    saveSessionAsync(currentSessionId!, conversationHistory);
-  } else {
-    saveSession(currentSessionId!, conversationHistory);
-  }
+  // R3.1：热路径统一走异步写队列
+  saveSessionAsync(currentSessionId!, conversationHistory);
 }
 
 function getContextTokenEstimate(): number {

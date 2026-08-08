@@ -139,6 +139,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 获取当前 persona 的媒体资源（视频或图片）
   getPersonaMedia: () => ipcRenderer.invoke('get-persona-media'),
 
+  // ===== 扩展配置（R4.3 MCP / R5.2 插件权限） =====
+  // 获取 MCP 配置
+  getMcpConfig: () => ipcRenderer.invoke('get-mcp-config'),
+
+  // 更新 MCP 配置（合并补丁）
+  updateMcpConfig: (patch) => ipcRenderer.invoke('update-mcp-config', patch),
+
+  // 获取扩展信息：插件列表 + MCP 配置 + 工具权限规则
+  getExtensions: () => ipcRenderer.invoke('get-extensions'),
+
+  // 设置完整工具权限规则集（替换 tools.permissions）
+  setToolPermissions: (rules) => ipcRenderer.invoke('set-tool-permissions', { rules }),
+
   // ===== 会话管理 IPC =====
   // 获取会话列表
   getSessions: () => ipcRenderer.invoke('get-sessions'),

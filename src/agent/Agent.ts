@@ -504,7 +504,7 @@ async function executeNativeToolCallsServer(invocations: NativeToolInvocation[])
       settled[i]?.status === 'fulfilled'
         ? (settled[i] as PromiseFulfilledResult<{ content: string; success: boolean }>).value
         : { content: '[工具错误]: 工具执行异常中断', success: false };
-    addToolResultMessage(outcome.content, { toolCallId: invocations[i].id, async: true });
+    addToolResultMessage(outcome.content, { toolCallId: invocations[i].id });
   }
 }
 

@@ -32,6 +32,7 @@ const {
   resetConversation,
   updateSystemPrompt,
   setConversationHistory,
+  flushSessionWrites,
   estimateTokens,
   getContextTokenEstimate,
   isApproachingLimit,
@@ -257,9 +258,11 @@ describe('session.ts', () => {
       expect(current?.id).toBe(session.id);
     });
 
-    it('should load existing messages when initializing', () => {
+    it('should load existing messages when initializing', async () => {
       const session = createNewSession('With Messages');
       addUserMessage('hello world');
+      // R3.1：add* 为异步写，reload 前需等待落盘
+      await flushSessionWrites();
       // Re-initialize to reload from disk
       const result = initializeSession(session.id);
       expect(result).toBe(true);
@@ -314,9 +317,11 @@ describe('session.ts', () => {
       expect(after).toBe(before + 1);
     });
 
-    it('should persist the message to the session file', () => {
+    it('should persist the message to the session file', async () => {
       const session = createNewSession('Persist UserMsg');
       addUserMessage('persisted user input');
+      // R3.1：add* 改为 fire-and-forget 异步写，读文件前需等待落盘
+      await flushSessionWrites();
       const file = path.join(SESSIONS_DIR, `${session.id}.json`);
       const messages = JSON.parse(fs.readFileSync(file, 'utf-8'));
       expect(messages.some((m) => m.role === 'user' && m.content === 'persisted user input')).toBe(
@@ -345,6 +350,19 @@ describe('session.ts', () => {
       addToolResultMessage('[系统返回的工具执行结果] done');
       const messages = getMessages();
       expect(messages.some((m) => m.content === '[系统返回的工具执行结果] done')).toBe(true);
+    });
+
+    it('R3.1 should persist tool result (with toolCallId) to file asynchronously', async () => {
+      const session = createNewSession('ToolMsgPersist');
+      addToolResultMessage('tool output', { toolCallId: 'call_1' });
+      await flushSessionWrites();
+      const file = path.join(SESSIONS_DIR, `${session.id}.json`);
+      const messages = JSON.parse(fs.readFileSync(file, 'utf-8'));
+      expect(
+        messages.some(
+          (m) => m.role === 'tool' && m.content === 'tool output' && m.tool_call_id === 'call_1',
+        ),
+      ).toBe(true);
     });
   });
 

@@ -472,6 +472,209 @@ const PersonaSelectModal = {
   },
 };
 
+// 扩展配置弹窗（R4.3 MCP 配置面 / R5.2 插件权限）
+const ExtensionsModal = {
+  mcpServers: {}, // { [name]: { command, args: string, env: string } }
+  permRules: [], // [{ name, level }]
+
+  async show() {
+    const modal = document.getElementById('extensionsModal');
+    if (!modal) return;
+
+    // 重置状态
+    this.mcpServers = {};
+    this.permRules = [];
+
+    try {
+      const data = await window.electronAPI.getExtensions();
+      const mcp = data.mcp || {};
+      document.getElementById('mcpEnabled').checked = !!mcp.enabled;
+      document.getElementById('mcpServerName').value = mcp.serverName || '';
+      document.getElementById('mcpPrefix').value = mcp.prefix || '';
+      // servers: { name: { command, args, env } } -> 保留为编辑状态
+      this.mcpServers = mcp.servers || {};
+      this.permRules = Array.isArray(data.toolPermissions) ? data.toolPermissions : [];
+      this._renderPlugins(data.plugins || []);
+    } catch (e) {
+      console.error('[ExtensionsModal] 加载扩展信息失败:', e);
+      this._renderPlugins([]);
+    }
+
+    this._renderServers();
+    this._renderPerms();
+
+    // 绑定按钮
+    document.getElementById('extensionsModalClose').onclick = () => this._cancel();
+    document.getElementById('extensionsModalCancel').onclick = () => this._cancel();
+    document.getElementById('extensionsModalSave').onclick = () => this._save();
+    document.getElementById('mcpAddServer').onclick = () => this._addServer();
+    document.getElementById('permAddRule').onclick = () => this._addRule();
+    modal.onclick = (ev) => {
+      if (ev.target === modal) this._cancel();
+    };
+
+    modal.style.display = 'flex';
+  },
+
+  hide() {
+    const modal = document.getElementById('extensionsModal');
+    if (modal) modal.style.display = 'none';
+  },
+
+  _cancel() {
+    this.hide();
+  },
+
+  _renderPlugins(plugins) {
+    const el = document.getElementById('extPluginList');
+    if (!el) return;
+    el.innerHTML = '';
+    if (!plugins.length) {
+      el.innerHTML = `<p class="ext-empty">${T('dashboard.ext.noPlugins')}</p>`;
+      return;
+    }
+    for (const p of plugins) {
+      const row = document.createElement('div');
+      row.className = 'ext-plugin-row';
+      row.innerHTML =
+        `<span class="ext-plugin-name">${this._esc(p.name)}</span>` +
+        `<span class="ext-plugin-meta">${this._esc(p.version || '')} · ${this._esc(p.description || '')}</span>`;
+      el.appendChild(row);
+    }
+  },
+
+  _renderServers() {
+    const list = document.getElementById('mcpServerList');
+    if (!list) return;
+    list.innerHTML = '';
+    const names = Object.keys(this.mcpServers);
+    if (!names.length) {
+      list.innerHTML = `<p class="ext-empty">${T('dashboard.ext.noServers')}</p>`;
+      return;
+    }
+    for (const name of names) {
+      const s = this.mcpServers[name];
+      const row = document.createElement('div');
+      row.className = 'ext-server-row';
+      row.innerHTML =
+        `<div class="ext-server-name">${this._esc(name)}</div>` +
+        `<label>${T('dashboard.ext.cmd')}</label><input type="text" data-k="command" value="${this._esc(s.command || '')}" />` +
+        `<label>${T('dashboard.ext.args')}</label><input type="text" data-k="args" value="${this._esc(Array.isArray(s.args) ? s.args.join(' ') : s.args || '')}" />` +
+        `<label>${T('dashboard.ext.env')}</label><textarea data-k="env" rows="2">${this._esc(this._envToText(s.env))}</textarea>` +
+        `<button class="ext-del-btn" data-name="${this._esc(name)}">${T('dashboard.ext.delete')}</button>`;
+      // 字段变更写回状态
+      row.querySelectorAll('input,textarea').forEach((inp) => {
+        inp.addEventListener('input', () => {
+          const k = inp.dataset.k;
+          const cur = this.mcpServers[name] || {};
+          if (k === 'args') cur.args = inp.value.trim().split(/\s+/).filter(Boolean);
+          else if (k === 'env') cur.env = this._textToEnv(inp.value);
+          else cur[k] = inp.value;
+          this.mcpServers[name] = cur;
+        });
+      });
+      row.querySelector('.ext-del-btn').addEventListener('click', () => {
+        delete this.mcpServers[name];
+        this._renderServers();
+      });
+      list.appendChild(row);
+    }
+  },
+
+  _addServer() {
+    const name = `server-${Object.keys(this.mcpServers).length + 1}`;
+    this.mcpServers[name] = { command: '', args: [], env: {} };
+    this._renderServers();
+  },
+
+  _renderPerms() {
+    const list = document.getElementById('extPermList');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!this.permRules.length) {
+      list.innerHTML = `<p class="ext-empty">${T('dashboard.ext.noRules')}</p>`;
+      return;
+    }
+    for (let i = 0; i < this.permRules.length; i++) {
+      const r = this.permRules[i];
+      const row = document.createElement('div');
+      row.className = 'ext-perm-row';
+      const sel =
+        `<select data-i="${i}">` +
+        `<option value="allow"${r.level === 'allow' ? ' selected' : ''}>allow</option>` +
+        `<option value="ask"${r.level === 'ask' ? ' selected' : ''}>ask</option>` +
+        `<option value="deny"${r.level === 'deny' ? ' selected' : ''}>deny</option>` +
+        `</select>`;
+      row.innerHTML =
+        `<input type="text" data-i="${i}" value="${this._esc(r.name)}" placeholder="${T('dashboard.ext.toolNamePh')}" />` +
+        sel +
+        `<button class="ext-del-btn" data-i="${i}">${T('dashboard.ext.delete')}</button>`;
+      row.querySelector('input').addEventListener('input', (ev) => {
+        this.permRules[i].name = ev.target.value;
+      });
+      row.querySelector('select').addEventListener('change', (ev) => {
+        this.permRules[i].level = ev.target.value;
+      });
+      row.querySelector('.ext-del-btn').addEventListener('click', () => {
+        this.permRules.splice(i, 1);
+        this._renderPerms();
+      });
+      list.appendChild(row);
+    }
+  },
+
+  _addRule() {
+    this.permRules.push({ name: '', level: 'ask' });
+    this._renderPerms();
+  },
+
+  async _save() {
+    try {
+      // 清理空名的权限规则
+      const rules = this.permRules.filter((r) => r.name && r.name.trim());
+      await window.electronAPI.updateMcpConfig({
+        enabled: document.getElementById('mcpEnabled').checked,
+        serverName: document.getElementById('mcpServerName').value.trim() || undefined,
+        prefix: document.getElementById('mcpPrefix').value.trim() || undefined,
+        servers: this.mcpServers,
+      });
+      await window.electronAPI.setToolPermissions(rules);
+      this.hide();
+    } catch (e) {
+      console.error('[ExtensionsModal] 保存失败:', e);
+      alert(T('dashboard.ext.saveFailed') + (e && e.message ? e.message : e));
+    }
+  },
+
+  _envToText(env) {
+    if (!env || typeof env !== 'object') return '';
+    return Object.entries(env)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n');
+  },
+
+  _textToEnv(text) {
+    const env = {};
+    (text || '')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .forEach((line) => {
+        const idx = line.indexOf('=');
+        if (idx > 0) env[line.slice(0, idx)] = line.slice(idx + 1);
+      });
+    return env;
+  },
+
+  _esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  },
+};
+
 // ============================================================
 // 窗口控制模块 - 使用公共 WindowControls
 // ============================================================
@@ -522,11 +725,21 @@ const NavManager = {
         });
         return;
       }
+      // 扩展按钮有独立 handler（打开弹窗），不能当作快捷指令发给 Agent
+      if (btn.id === 'extensionsBtn') return;
       btn.addEventListener('click', () => {
         const label = btn.textContent.trim();
         this.handleQuickAction(label);
       });
     });
+
+    // 扩展配置按钮
+    const extensionsBtn = document.getElementById('extensionsBtn');
+    if (extensionsBtn) {
+      extensionsBtn.addEventListener('click', () => {
+        ExtensionsModal.show();
+      });
+    }
 
     // 关于我们链接
     const aboutLink = document.getElementById('aboutLink');

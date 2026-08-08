@@ -56,6 +56,13 @@
           </svg>
           <span id="wechatBtnLabel" data-i18n="dashboard.connectWechat">连接微信</span>
         </button>
+
+        <button class="action-btn" id="extensionsBtn" data-i18n-title="dashboard.extensions">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M13 2L3 14h7v8l10-12h-7z"/>
+          </svg>
+          <span data-i18n="dashboard.extensions">扩展</span>
+        </button>
       </div>
 
       <!-- Persona 形象区域 -->
@@ -427,6 +434,61 @@
       <div class="persona-modal-footer">
         <button class="persona-modal-btn secondary" id="personaModalCancel" data-i18n="common.cancel">取消</button>
         <button class="persona-modal-btn primary" id="personaModalConfirm" data-i18n="dashboard.createSession" disabled>创建会话</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 扩展配置弹窗（R4.3 MCP / R5.2 插件权限） -->
+  <div class="persona-modal-overlay" id="extensionsModal" style="display: none;">
+    <div class="persona-modal-box extensions-modal-box">
+      <div class="persona-modal-header">
+        <span class="persona-modal-title" data-i18n="dashboard.ext.title">扩展配置</span>
+        <span class="persona-modal-subtitle" data-i18n="dashboard.ext.subtitle">管理 MCP 服务器与插件工具权限</span>
+        <button class="persona-modal-close" id="extensionsModalClose" data-i18n-title="common.close" title="关闭">×</button>
+      </div>
+      <div class="persona-modal-body">
+        <!-- MCP 配置 -->
+        <section class="ext-section">
+          <div class="ext-section-head">
+            <h3 data-i18n="dashboard.ext.mcpServers">MCP 服务器</h3>
+            <label class="ext-switch">
+              <input type="checkbox" id="mcpEnabled" />
+              <span data-i18n="dashboard.ext.enable">启用</span>
+            </label>
+          </div>
+          <div class="ext-field">
+            <label data-i18n="dashboard.ext.mcpServerName">本地 Server 名称（供外部客户端连接）</label>
+            <input type="text" id="mcpServerName" data-i18n-placeholder="dashboard.ext.mcpServerNamePh" placeholder="cogito-agent" />
+          </div>
+          <div class="ext-field">
+            <label data-i18n="dashboard.ext.mcpPrefix">外部 Server 工具前缀</label>
+            <input type="text" id="mcpPrefix" data-i18n-placeholder="dashboard.ext.mcpPrefixPh" placeholder="mcp_" />
+          </div>
+          <div class="ext-subhead">
+            <span data-i18n="dashboard.ext.mcpRegistry">外部 MCP Server 注册表</span>
+            <button class="ext-add-btn" id="mcpAddServer" data-i18n="dashboard.ext.addServer">+ 添加服务器</button>
+          </div>
+          <div id="mcpServerList" class="ext-server-list"></div>
+          <p class="ext-hint" data-i18n="dashboard.ext.mcpHint">配置保存后需重启应用（或重新配置）以让 Agent 加载新的 MCP 工具。</p>
+        </section>
+
+        <!-- 插件权限 -->
+        <section class="ext-section">
+          <div class="ext-subhead">
+            <span data-i18n="dashboard.ext.plugins">已安装插件</span>
+          </div>
+          <div id="extPluginList" class="ext-plugin-list"></div>
+          <div class="ext-subhead">
+            <span data-i18n="dashboard.ext.permRules">工具权限规则</span>
+            <button class="ext-add-btn" id="permAddRule" data-i18n="dashboard.ext.addRule">+ 添加规则</button>
+          </div>
+          <div id="extPermList" class="ext-perm-list"></div>
+          <p class="ext-hint" data-i18n="dashboard.ext.permHint">规则优先级：显式规则 &gt; 插件声明默认值 &gt; 允许。deny 将禁用该工具。</p>
+        </section>
+      </div>
+      <div class="persona-modal-footer">
+        <button class="persona-modal-btn secondary" id="extensionsModalCancel" data-i18n="common.cancel">取消</button>
+        <button class="persona-modal-btn primary" id="extensionsModalSave" data-i18n="dashboard.ext.save">保存</button>
       </div>
     </div>
   </div>

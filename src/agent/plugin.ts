@@ -370,7 +370,11 @@ export const metadata = {
   name: '${name}',
   version: '1.0.0',
   author: 'Your Name',
-  description: 'A custom plugin for CogitoAgent'
+  description: 'A custom plugin for CogitoAgent',
+  // 权限模型（R5.2）：声明本插件工具的默认权限级别。
+  // 用户未显式配置 tools.permissions 规则时，按此默认值生效。
+  // 可选值：'allow' | 'ask' | 'deny'。建议敏感工具（写文件/联网/执行）声明 'ask'。
+  defaultPermission: 'ask'
 };
 `,
     'package.json': `{
@@ -416,17 +420,64 @@ function createTool(options: { name: string; [key: string]: unknown }) {
 }
 
 /**
- * 权限策略查询（R5.2）。
- * 从配置 tools.permissions 读取规则：deny 强拒、ask 走确认、allow 放行。
- * 未配置规则时返回 'allow'（由工具自身或 Agent 的危险操作确认兜底）。
+ * 解析工具权限级别（R5.2，纯函数，便于单测）。
+ * 优先级：全局显式规则 (globalLevel) > 插件声明的 defaultPermission > allow。
+ * globalLevel 来自配置 tools.permissions 中该工具名命中的规则；
+ * pluginDefault 来自插件 manifest 的 metadata.defaultPermission。
  */
-function getToolPermission(name: string): 'allow' | 'deny' | 'ask' {
+export function resolveToolPermission(
+  globalLevel: 'allow' | 'deny' | 'ask' | null,
+  pluginDefault?: 'allow' | 'deny' | 'ask',
+): 'allow' | 'deny' | 'ask' {
+  if (globalLevel === 'allow' || globalLevel === 'deny' || globalLevel === 'ask') {
+    return globalLevel;
+  }
+  if (pluginDefault === 'allow' || pluginDefault === 'deny' || pluginDefault === 'ask') {
+    return pluginDefault;
+  }
+  return 'allow';
+}
+
+/**
+ * 权限策略查询（R5.2）。
+ * 优先级：配置 tools.permissions 的 name 级规则 > 插件 manifest 声明的 defaultPermission > allow。
+ * 未配置规则且插件未声明默认权限时返回 'allow'（由工具自身或 Agent 的危险操作确认兜底）。
+ *
+ * @param pluginDefaultProvider 测试/外部注入的「按工具名查插件默认权限」实现；
+ *   省略时从本进程插件管理器查询（插件在 Agent 进程加载）。
+ */
+function getToolPermission(
+  name: string,
+  pluginDefaultProvider?: (toolName: string) => 'allow' | 'deny' | 'ask' | undefined,
+): 'allow' | 'deny' | 'ask' {
   const cfg = loadConfig();
   const rules = cfg.tools?.permissions;
-  if (!rules || !Array.isArray(rules)) return 'allow';
-  const rule = rules.find((r) => r.name === name);
-  if (!rule) return 'allow';
-  return rule.level;
+  let globalLevel: 'allow' | 'deny' | 'ask' | null = null;
+  if (Array.isArray(rules)) {
+    const rule = rules.find((r) => r.name === name);
+    if (rule) globalLevel = rule.level;
+  }
+
+  let pluginDefault: 'allow' | 'deny' | 'ask' | undefined;
+  if (pluginDefaultProvider) {
+    pluginDefault = pluginDefaultProvider(name);
+  } else {
+    const pm = getPluginManager();
+    const info = pm.getToolInfo(name);
+    if (info?.plugin) {
+      const meta = pm.plugins.get(info.plugin)?.metadata;
+      if (
+        meta &&
+        (meta.defaultPermission === 'allow' ||
+          meta.defaultPermission === 'deny' ||
+          meta.defaultPermission === 'ask')
+      ) {
+        pluginDefault = meta.defaultPermission as 'allow' | 'deny' | 'ask';
+      }
+    }
+  }
+
+  return resolveToolPermission(globalLevel, pluginDefault);
 }
 
 /**

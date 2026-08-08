@@ -1012,6 +1012,133 @@ app.whenReady().then(async () => {
     }
   });
 
+  // ===== IPC: 扩展配置（R4.3 MCP 配置面 / R5.2 插件权限） =====
+  // 配置驱动：Dashboard 编辑 config.json，Agent 在（重新）加载时读取生效。
+
+  // 读取完整 config.json（不存在时返回 {}）
+  function readConfigJson() {
+    try {
+      if (fs.existsSync(CONFIG_FILE)) {
+        return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      }
+    } catch (e) {
+      console.error('[主进程] 读取 config.json 失败:', e.message);
+    }
+    return {};
+  }
+
+  // 写回 config.json（保留其他字段）
+  function writeConfigJson(patch) {
+    const configJson = readConfigJson();
+    const merged = { ...configJson, ...patch };
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2), 'utf-8');
+    return merged;
+  }
+
+  // 获取 MCP 配置
+  ipcMain.handle('get-mcp-config', () => {
+    const configJson = readConfigJson();
+    return configJson.mcp || {};
+  });
+
+  // 更新 MCP 配置（合并补丁）
+  ipcMain.handle('update-mcp-config', (_event, patch) => {
+    try {
+      if (!patch || typeof patch !== 'object') {
+        return { success: false, error: '无效的配置' };
+      }
+      // 基本校验：servers 必须是对象（外部 server 注册表）
+      if (
+        patch.servers !== undefined &&
+        (patch.servers === null ||
+          typeof patch.servers !== 'object' ||
+          Array.isArray(patch.servers))
+      ) {
+        return { success: false, error: 'servers 必须是对象' };
+      }
+      if (patch.enabled !== undefined && typeof patch.enabled !== 'boolean') {
+        return { success: false, error: 'enabled 必须是布尔值' };
+      }
+      if (patch.prefix !== undefined && typeof patch.prefix !== 'string') {
+        return { success: false, error: 'prefix 必须是字符串' };
+      }
+      writeConfigJson({ mcp: { ...(readConfigJson().mcp || {}), ...patch } });
+      console.log('[主进程] MCP 配置已更新');
+      return { success: true };
+    } catch (e) {
+      console.error('[主进程] 更新 MCP 配置失败:', e.message);
+      return { success: false, error: e.message };
+    }
+  });
+
+  // 获取扩展信息：已安装插件（静态扫描 manifest）+ MCP 配置 + 工具权限规则
+  ipcMain.handle('get-extensions', () => {
+    const configJson = readConfigJson();
+    const pluginsDir = path.join(process.cwd(), 'plugins');
+    const plugins = [];
+    try {
+      if (fs.existsSync(pluginsDir)) {
+        for (const entry of fs.readdirSync(pluginsDir)) {
+          const pluginPath = path.join(pluginsDir, entry);
+          let stat;
+          try {
+            stat = fs.statSync(pluginPath);
+          } catch {
+            continue;
+          }
+          if (!stat.isDirectory()) continue;
+          if (!fs.existsSync(path.join(pluginPath, 'index.js'))) continue;
+          let meta = {};
+          try {
+            const pkgPath = path.join(pluginPath, 'package.json');
+            if (fs.existsSync(pkgPath)) {
+              meta = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+            }
+          } catch {
+            /* 忽略 manifest 解析失败 */
+          }
+          plugins.push({
+            name: meta.name || entry,
+            id: entry,
+            version: meta.version || '',
+            description: meta.description || '',
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[主进程] 扫描插件目录失败:', e.message);
+    }
+    return {
+      plugins,
+      mcp: configJson.mcp || {},
+      toolPermissions: Array.isArray(configJson.tools?.permissions)
+        ? configJson.tools.permissions
+        : [],
+    };
+  });
+
+  // 设置完整工具权限规则集（R5.2）：替换 tools.permissions 全量
+  ipcMain.handle('set-tool-permissions', (_event, payload) => {
+    try {
+      const rules = payload?.rules;
+      if (!Array.isArray(rules)) {
+        return { success: false, error: 'rules 必须是数组' };
+      }
+      for (const r of rules) {
+        if (!r || typeof r.name !== 'string' || !['allow', 'deny', 'ask'].includes(r.level)) {
+          return { success: false, error: '规则格式无效' };
+        }
+      }
+      const configJson = readConfigJson();
+      writeConfigJson({ tools: { ...(configJson.tools || {}), permissions: rules } });
+      console.log(`[主进程] 工具权限规则已保存（${rules.length} 条）`);
+      return { success: true };
+    } catch (e) {
+      console.error('[主进程] 保存工具权限失败:', e.message);
+      return { success: false, error: e.message };
+    }
+  });
+
   // 获取会话列表（从 meta.json 读取基本信息，从会话文件读取预览）
   ipcMain.handle('get-sessions', () => {
     const sessionsDir = path.join(USER_DATA_DIR, 'data', 'sessions');

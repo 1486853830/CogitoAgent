@@ -82,7 +82,7 @@ CogitoAgent 早期本质是 **"文本标记 + 正则解析"的自助式智能体
 
 ### R3. 会话与上下文
 
-- [~] **R3.1 会话存储异步化**：去掉热路径 `writeFileSync`（`session.ts` 每次增消息同步落盘），改异步 + 批量/节流 + 原子写（新增 `saveSessionAsync` 异步写路径，`addUserMessage`/`addAssistantMessage` 同步写暂保留）
+- [x] **R3.1 会话存储异步化**：去掉热路径 `writeFileSync`（`session.ts` 每次增消息同步落盘），改异步 + 批量/节流 + 原子写——`addUserMessage`/`addAssistantMessage`/`addAssistantNativeMessage`/`addToolResultMessage` 均改走 `saveSessionAsync` 异步队列（fire-and-forget，签名不变、不阻塞思考循环）；新增 `flushSessionWrites()` 供测试与优雅退出等待落盘；创建/切换/归档等关键原子操作仍走同步 `saveSession`
 - [x] **R3.2 智能压缩**：`compressHistory()` 从"丢弃 + 枚举工具名"升级为 LLM 分级摘要（保留关键数据、代码片段、目标状态），触发阈值按模型动态设置；修复原实现摘要的是「保留的近期消息」而非「被丢弃的旧内容」的 bug，新增分块 + 失败回退朴素摘要 + `compressionSummary` 开关
 - [x] **R3.3 上下文对齐模型**：`max_tokens` 与压缩阈值根据 `api.model` 真实 context window 自动设置，80% 时提前预警
 - [x] **R3.4 tool 计数修复**：`turnCount` 与压缩触发正确计入 `tool` 角色消息（修复现有计数不一致 bug）
@@ -96,7 +96,7 @@ CogitoAgent 早期本质是 **"文本标记 + 正则解析"的自助式智能体
 
 - [x] **R4.1 MCP 服务端**：将 `TOOL_REGISTRY` 自动导出为 `tools/list` / `tools/call` / `resources/list`（基于 `@modelcontextprotocol/sdk`）
 - [x] **R4.2 MCP 客户端**：可连接外部 MCP server，动态拉取其工具 schema 并入上下文
-- [~] **R4.3 MCP 配置面**：Dashboard / 配置文件中管理接入的 MCP server（启停、鉴权、别名）（config 新增 `mcp` 段支持 `servers`，Dashboard 待做）
+- [x] **R4.3 MCP 配置面**：Dashboard 扩展面板管理接入的 MCP server（启停、本地 server 名、工具前缀、外部 server 注册表增删改）；config `mcp` 段（`enabled`/`serverName`/`prefix`/`servers`）已由 `getMcpConfig`/`setMcpConfig` 读写，Dashboard 经 IPC（`get-mcp-config`/`update-mcp-config`）编辑、Agent 重载生效
 - [x] **R4.4 MCP 文案修正**：README / CHANGELOG 中"已支持 MCP"的文案与实际能力一致，去掉虚假宣传
 - [ ] **R4.5 MCP Elicitation**：MCP 服务端可通过客户端向用户请求结构化输入，实现更丰富的人机交互（如运行时确认参数、收集缺失信息）
 - [ ] **R4.6 MCP Sampling**：MCP 服务端可从客户端请求 LLM 补全（含工具调用），使服务端从被动工具提供者升级为可编排多步推理流的协调者
@@ -106,7 +106,7 @@ CogitoAgent 早期本质是 **"文本标记 + 正则解析"的自助式智能体
 ### R5. 插件体系
 
 - [x] **R5.1 插件工具注入**：`plugin.ts` 动态注册的工具自动生成 JSON Schema 并注入系统提示 / 原生 tools，解决"插件工具模型不可见"
-- [~] **R5.2 插件权限模型**：插件以 `plugin.yaml` 声明权限（`file:read`、`network:off`、`dir:workspace` 等），运行时强制校验（config `tools.permissions` 规则 + `enforceToolPermission` 门禁已实现，plugin.yaml 声明待接）
+- [x] **R5.2 插件权限模型**：插件在 manifest `metadata.defaultPermission` 声明默认权限级别（`allow`/`ask`/`deny`，模板已含示例）；`resolveToolPermission` 解析优先级为「全局 `tools.permissions` 规则 > 插件默认 > allow」；Dashboard 扩展面板可编辑 `tools.permissions` 规则集（IPC `get-extensions`/`set-tool-permissions` 全量替换）。注：权限声明落地为插件 `metadata`（与现有 `export const metadata` 约定一致），而非独立的 `plugin.yaml`
 - [x] **R5.3 插件热加载**：运行中加载 / 卸载插件（不重启 Agent），UI 面板反映
 - [ ] **R5.4 插件安全**：不可信插件默认受限运行；文档明确插件执行权限边界
 - [x] **R5.5 Agent Skills 标准（三级渐进式披露）**：对齐 Anthropic 2025-10 发布的 Agent Skills 开放标准——L1 元数据（~50 tokens/skill，预加载仅够决定是否加载）→ L2 完整 SKILL.md 正文（按需加载）→ L3 嵌套资源（表单/模板/参考文件，仅在正文引用时加载）；已被 Codex CLI、Gemini CLI、Cursor 等 12+ 工具采纳
@@ -563,7 +563,7 @@ CogitoAgent 早期本质是 **"文本标记 + 正则解析"的自助式智能体
 | R2.7   | 推测执行                | [ ]  | —        | —          |                                                                                                                                                    |
 | R2.8   | PASTE 模式挖掘          | [ ]  | —        | —          |                                                                                                                                                    |
 | R2.9   | 推理深度可调旋钮        | [ ]  | —        | —          |                                                                                                                                                    |
-| R3.1   | 会话存储异步化          | [~]  | —        | —          | saveSessionAsync；热路径暂保留同步                                                                                                                 |
+| R3.1   | 会话存储异步化          | [x]  | —        | —          | 热路径 add* 改走 saveSessionAsync 异步队列；flushSessionWrites 供刷新；关键原子操作保留同步                                                        |
 | R3.2   | 智能压缩                | [x]  | v2.4.1   | 2026-08-08 | LLM 分级摘要 + 分块 + 失败回退朴素摘要；修复摘要对象错误（原摘要近期消息而非归档内容）；新增 compressionSummary 开关                               |
 | R3.3   | 上下文对齐              | [x]  | v2.4.0   | 2026-08-08 | 按 api.model context window 取 80%                                                                                                                 |
 | R3.4   | tool 计数修复           | [x]  | v2.4.0   | 2026-08-08 | 原生 tool 结果不再膨胀 user 计数                                                                                                                   |
@@ -574,14 +574,14 @@ CogitoAgent 早期本质是 **"文本标记 + 正则解析"的自助式智能体
 | R3.9   | 会话中途系统消息        | [ ]  | —        | —          |                                                                                                                                                    |
 | R4.1   | MCP 服务端              | [x]  | v2.4.0   | 2026-08-08 | createLocalMcpServer (stdio)                                                                                                                       |
 | R4.2   | MCP 客户端              | [x]  | v2.4.0   | 2026-08-08 | registerExternalMcpServers                                                                                                                         |
-| R4.3   | MCP 配置面              | [~]  | —        | —          | config.mcp.servers 已支持；Dashboard 待做                                                                                                          |
+| R4.3   | MCP 配置面              | [x]  | —        | —          | Dashboard 扩展面板 + getMcpConfig/setMcpConfig + IPC 已完成                                                                                        |
 | R4.4   | MCP 文案修正            | [x]  | v2.4.1   | 2026-08-08 | README/CHANGELOG/introduction 均无 MCP 虚假宣传文案，与实际能力一致                                                                                |
 | R4.5   | MCP Elicitation         | [ ]  | —        | —          |                                                                                                                                                    |
 | R4.6   | MCP Sampling            | [ ]  | —        | —          |                                                                                                                                                    |
 | R4.7   | MCP 工具注解传播        | [x]  | v2.4.0   | 2026-08-08 | annotations → MCP toolAnnotations                                                                                                                  |
 | R4.8   | MCP 无状态重构对齐      | [ ]  | —        | —          |                                                                                                                                                    |
 | R5.1   | 插件工具注入            | [x]  | v2.4.0   | 2026-08-08 | schema/param/annotations 随注册注入                                                                                                                |
-| R5.2   | 插件权限模型            | [~]  | —        | —          | config permissions + 门禁；plugin.yaml 待接                                                                                                        |
+| R5.2   | 插件权限模型            | [x]  | —        | —          | metadata.defaultPermission 回退 + resolveToolPermission + Dashboard 规则编辑                                                                       |
 | R5.3   | 插件热加载              | [x]  | v2.4.0   | 2026-08-08 | unloadPlugin + reloadPlugins                                                                                                                       |
 | R5.4   | 插件安全                | [ ]  | —        | —          |                                                                                                                                                    |
 | R5.5   | Agent Skills 标准       | [x]  | v2.4.0   | 2026-08-08 | SKILL.md front-matter 扫描                                                                                                                         |

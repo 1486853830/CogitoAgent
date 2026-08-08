@@ -5,6 +5,10 @@ import {
   isConfigured,
   deepMerge,
   DEFAULT_CONFIG,
+  getMcpConfig,
+  setMcpConfig,
+  getToolPermissions,
+  setToolPermission,
 } from '../../src/config.ts';
 import os from 'os';
 import path from 'path';
@@ -395,6 +399,73 @@ describe('config.ts', () => {
       expect(result).toBe(false);
       // restore for subsequent cleanup
       process.env.COGITO_USER_DATA_DIR = testConfigDir;
+    });
+  });
+
+  describe('MCP 配置（R4.3）', () => {
+    it('getMcpConfig 默认返回空对象', () => {
+      reloadConfig();
+      expect(getMcpConfig()).toEqual({});
+    });
+
+    it('setMcpConfig 写入并能被读取', () => {
+      reloadConfig();
+      const ok = setMcpConfig({
+        enabled: true,
+        serverName: 'cogito-agent',
+        prefix: 'mcp_',
+        servers: {
+          fs: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
+        },
+      });
+      expect(ok).toBe(true);
+      const mcp = getMcpConfig();
+      expect(mcp.enabled).toBe(true);
+      expect(mcp.serverName).toBe('cogito-agent');
+      expect(mcp.prefix).toBe('mcp_');
+      expect(mcp.servers.fs.command).toBe('npx');
+    });
+
+    it('setMcpConfig 合并补丁并持久化到 config.json', () => {
+      reloadConfig();
+      setMcpConfig({ enabled: true });
+      const file = JSON.parse(readFileSync(path.join(testConfigDir, 'config.json'), 'utf-8'));
+      expect(file.mcp.enabled).toBe(true);
+      // 其他字段不应被清掉
+      expect(file.api).toBeDefined();
+      // 二次补丁应叠加
+      setMcpConfig({ prefix: 'mcp_' });
+      expect(getMcpConfig().prefix).toBe('mcp_');
+      expect(getMcpConfig().enabled).toBe(true);
+    });
+  });
+
+  describe('工具权限（R5.2）', () => {
+    it('getToolPermissions 默认返回空数组', () => {
+      reloadConfig();
+      expect(getToolPermissions()).toEqual([]);
+    });
+
+    it('setToolPermission 新增规则并持久化', () => {
+      reloadConfig();
+      const ok = setToolPermission('dangerousTool', 'deny');
+      expect(ok).toBe(true);
+      const rules = getToolPermissions();
+      expect(rules).toContainEqual({ name: 'dangerousTool', level: 'deny' });
+    });
+
+    it('setToolPermission 同名校验应更新而非重复', () => {
+      reloadConfig();
+      setToolPermission('toolA', 'ask');
+      setToolPermission('toolA', 'deny');
+      const rules = getToolPermissions();
+      expect(rules.filter((r) => r.name === 'toolA')).toHaveLength(1);
+      expect(rules.find((r) => r.name === 'toolA').level).toBe('deny');
+    });
+
+    it('空工具名应被拒绝', () => {
+      reloadConfig();
+      expect(setToolPermission('', 'allow')).toBe(false);
     });
   });
 });
