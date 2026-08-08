@@ -64,6 +64,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,js,json}\" \"electron/**/*.{js,json}\"",
     "prepare": "husky",
+    "postinstall": "patch-package",
     "prepublishOnly": "npm run typecheck && npm test",
     "publish:npm": "npm publish --access public"
   },
@@ -113,6 +114,7 @@
     "husky": "^9.1.7",
     "jest": "^30.4.2",
     "lint-staged": "^16.4.0",
+    "patch-package": "^8.0.1",
     "prettier": "^3.9.5",
     "ts-jest": "^29.4.11",
     "typescript": "^5.9.3",
