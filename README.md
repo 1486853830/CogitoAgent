@@ -409,7 +409,7 @@ cogito-agent/
 │   ├── desktop/ / dashboard/ / monitor/ / setup/
 │   ├── shared/                       # Shared utilities
 │   └── assets/
-├── personas/                         # 28 preset personas (18 modern + 10 ancient)
+├── personas/                         # Persona folders — `cogito` is the built-in default; the rest are selectable presets (18 modern + 10 ancient)
 ├── tests/                            # Test files
 ├── data/                             # Runtime data (auto-created)
 ├── tsconfig.json                     # TypeScript config

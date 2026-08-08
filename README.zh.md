@@ -379,7 +379,7 @@ cogito-agent/
 │   ├── desktop/ / dashboard/ / monitor/ / setup/
 │   ├── shared/                       # 共享工具
 │   └── assets/
-├── personas/                         # 28 个预设角色（18 现代 + 10 古代）
+├── personas/                         # 角色文件夹 —— `cogito` 为内置默认人设，其余为可切换预设（18 现代 + 10 古代）
 ├── tests/                            # 测试文件
 ├── data/                             # 运行时数据（自动创建）
 ├── tsconfig.json                     # TypeScript 配置

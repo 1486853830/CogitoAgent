@@ -534,6 +534,37 @@ async function runNativeTurnLoop(): Promise<void> {
   });
   const reasoningEffort = cfg.chat?.reasoningEffort;
 
+  // R1.8 结构化输出（strict 合规模式）：开启时把最终输出约束为 json_schema。
+  // schema 取配置或默认 { result: string }（OpenAI strict 要求 additionalProperties:false + 全字段必填）。
+  // 仅当 structuredOutput.strict 为真时启用，对普通对话无影响（opt-in）。
+  const so = cfg.chat?.structuredOutput;
+  const responseFormat =
+    so?.strict === true
+      ? {
+          type: 'json_schema',
+          json_schema: {
+            name: 'agent_output',
+            strict: true,
+            schema:
+              (so.schema as {
+                type: string;
+                properties: Record<string, unknown>;
+                required: string[];
+              }) ||
+              ({
+                type: 'object',
+                properties: { result: { type: 'string' } },
+                required: ['result'],
+                additionalProperties: false,
+              } as unknown as {
+                type: string;
+                properties: Record<string, unknown>;
+                required: string[];
+              }),
+          },
+        }
+      : undefined;
+
   let step = 0;
   let tokensUsed = 0;
   let costUsed = 0;
@@ -547,6 +578,7 @@ async function runNativeTurnLoop(): Promise<void> {
 
     const stream = streamChatNative(buildNativeApiMessages(), {
       tools,
+      ...(responseFormat ? { responseFormat } : {}),
       ...(reasoningEffort && reasoningEffort !== 'none' ? { reasoningEffort } : {}),
     });
 

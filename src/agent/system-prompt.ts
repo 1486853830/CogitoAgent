@@ -15,6 +15,7 @@ import { getEnabledCategories, getAllCategories, getToolsByCategory } from './re
 import { getToolParamDocs } from './tool-schema.ts';
 import { TOOL_DOCS } from './tool-docs.ts';
 import { getActivePersonaName, resolvePersonaPath } from './persona.ts';
+import { loadConfig } from '../config.ts';
 
 /**
  * 分类级安全警告文案：属于策略提示，不属于工具 schema，因此保留静态维护。
@@ -106,6 +107,18 @@ function buildSystemPrompt(): string {
 - 普通对话：直接输出文字
 - 说完等回复：直接输出文字，末尾无需任何标记`;
 
+  // R1.8 结构化输出指令：开启 strict 模式时，最终回复必须是符合 schema 的 JSON 对象。
+  let structuredOutputNote = '';
+  try {
+    const so = loadConfig().chat?.structuredOutput;
+    if (so?.strict === true) {
+      const schemaName = (so.schema as { title?: string } | undefined)?.title || 'agent_output';
+      structuredOutputNote = `\n\n## 结构化输出模式\n你当前处于结构化输出模式（strict）。每轮最终回复必须是**且仅是**一个符合 JSON Schema 的 JSON 对象，不要输出任何 JSON 之外的解释性文字或 Markdown 代码块标记。Schema 名称：${schemaName}。\n`;
+    }
+  } catch {
+    /* 配置读取失败时忽略，不影响普通对话 */
+  }
+
   const basePrompt = `${languageInstruction}${personaHeader}${protocolHeader}
 
 ${protocolRules}
@@ -165,7 +178,7 @@ ${buildToolList()}
 
 ## 输出格式
 ${outputFormat}
-
+${structuredOutputNote}
 开始你的探索吧！`;
 
   return basePrompt;

@@ -249,14 +249,15 @@ describe('config.ts', () => {
       expect(result.security?.sandboxMode).toBe(false);
     });
 
-    it('should load mode and persona from environment', () => {
+    it('should load mode from environment (persona is NOT read from env)', () => {
       process.env.COGITO_MODE = 'dashboard';
       process.env.COGITO_PERSONA = 'developer';
 
       const result = loadEnvConfig();
 
       expect(result.mode).toBe('dashboard');
-      expect(result.persona).toBe('developer');
+      // 人设不再从环境变量读取：启动默认套用 Cogito，避免环境覆盖默认人设。
+      expect(result.persona).toBeUndefined();
     });
 
     it('should handle empty environment', () => {

@@ -7,7 +7,7 @@
  * - 富错误：工具失败时附加稳定错误码 + 用户可读文案（R1.9）。
  */
 
-import { getToolRegistry } from './registry.ts';
+import { getToolRegistry, DANGEROUS_OPERATIONS } from './registry.ts';
 import { TOOL_DOCS } from './tool-docs.ts';
 import type { JSONSchema, ToolAnnotations, ToolParamDoc } from '../types/index.ts';
 
@@ -39,8 +39,72 @@ export function getToolDescription(name: string): string {
   return getToolRegistry(name)?.description || TOOL_DOCS[name]?.description || `执行工具 ${name}`;
 }
 
+/**
+ * 行为注解推导（R1.7）：为「每个工具」声明 readOnly / destructive / idempotent / openWorld。
+ * - 优先采用 TOOL_DOCS / registry 中的显式注解（override）；
+ * - 未显式声明时从权威信号推导：
+ *   - destructiveHint：以 registry.DANGEROUS_OPERATIONS 为准（自动批准/确认的唯一事实来源）；
+ *   - readOnlyHint：读取 / 查询类工具（显式名单或前缀匹配）；
+ *   - openWorldHint：依赖外部世界（网络 / 时间）的工具（web/vision/ocr/email/wechat/cluster 类）；
+ *   - idempotentHint：只读工具天然可安全重试，其余默认 false。
+ * 推导结果经由 toPlainAnnotations 随 OpenAI tools 暴露，并经 mcp.ts 以 toolAnnotations 传播。
+ */
+const READ_ONLY_NAMES = new Set([
+  'browse',
+  'getPageContent',
+  'viewChanges',
+  'monitorSystem',
+  'csvToJSON',
+  'jsonToCSV',
+  'gitStatus',
+  'gitLog',
+  'gitBranchList',
+  'gitDiff',
+]);
+const READ_ONLY_PREFIXES = [
+  'get',
+  'list',
+  'ls',
+  'read',
+  'fetch',
+  'search',
+  'query',
+  'find',
+  'status',
+  'stat',
+  'check',
+  'analyze',
+  'sort',
+];
+const OPEN_WORLD_CATEGORIES = new Set(['web', 'vision', 'ocr', 'email', 'wechat', 'cluster']);
+
+function deriveToolAnnotations(name: string): ToolAnnotations {
+  const entry = getToolRegistry(name);
+  const category = entry?.category;
+  const explicit = TOOL_DOCS[name]?.annotations || entry?.annotations || {};
+
+  const destructiveHint = explicit.destructiveHint ?? DANGEROUS_OPERATIONS.has(name);
+  const readOnlyHint =
+    explicit.readOnlyHint ??
+    (READ_ONLY_NAMES.has(name) || READ_ONLY_PREFIXES.some((p) => name.startsWith(p)));
+  const openWorldHint =
+    explicit.openWorldHint ?? (category ? OPEN_WORLD_CATEGORIES.has(category) : false);
+  const idempotentHint = explicit.idempotentHint ?? readOnlyHint;
+
+  const result: ToolAnnotations = {
+    readOnlyHint,
+    destructiveHint,
+    idempotentHint,
+    openWorldHint,
+  };
+  if (explicit.title !== undefined) result.title = explicit.title;
+  return result;
+}
+
 export function getToolAnnotations(name: string): ToolAnnotations {
-  return getToolRegistry(name)?.annotations || TOOL_DOCS[name]?.annotations || {};
+  // 未知工具：保持返回 {}（向后兼容，对应测试断言）。
+  if (!getToolRegistry(name) && !TOOL_DOCS[name]) return {};
+  return deriveToolAnnotations(name);
 }
 
 function typeToSchemaType(type: ToolParamDoc['type']): JSONSchema['type'] {
