@@ -30,36 +30,38 @@ import {
 } from './cluster-commands.ts';
 import { STATE, setPendingConfirmation, state } from './state.ts';
 
-// 命令帮助文本
-const HELP_TEXT = `
-  CogitoAgent 命令帮助
-
-  可用命令:
-    /help          - 显示此帮助信息
-    /status        - 显示当前状态
-    /clear         - 清空对话历史
-    /persona <name> - 切换 Persona
-    /personas      - 列出所有可用 Persona
-    /tools         - 列出所有可用工具
-    /config        - 显示当前配置
-    /debug         - 切换调试模式
-    /sessions      - 显示会话列表
-    /new           - 创建新会话
-    /switch <id>   - 切换会话
-    /delete <id>   - 删除会话
-    /rename <name> - 重命名当前会话
-
-  集群命令:
-    /spawn <persona> <name> <instruction>  - 生成新智能体
-    /delegate <agentId> <task>            - 委托任务
-    /agents /cluster      - 显示集群状态
-    /stop-agent <id>      - 停止智能体
-    /stop-all-agents      - 停止所有智能体
-
-  基本操作:
-    ENTER          - 打断当前思考，输入消息
-    exit           - 退出程序
-`;
+// 命令帮助文本（HELP_TEXT 用于统一维护，printHelp 直接从它派生避免分叉维护）
+const HELP_TEXT = [
+  {
+    section: '可用命令',
+    items: [
+      ['/help', '显示此帮助信息'],
+      ['/status', '显示当前状态'],
+      ['/clear', '清空对话历史'],
+      ['/persona <name>', '切换 Persona'],
+      ['/personas', '列出所有可用 Persona'],
+      ['/tools', '列出所有可用工具'],
+      ['/config', '显示当前配置'],
+      ['/debug', '切换调试模式'],
+      ['/sessions', '显示会话列表'],
+      ['/new [persona]', '创建新会话'],
+      ['/switch <id>', '切换会话'],
+      ['/delete <id>', '删除会话'],
+      ['/rename <name>', '重命名当前会话'],
+      ['/save', '保存当前会话'],
+    ],
+  },
+  {
+    section: '集群命令',
+    items: [
+      ['/spawn <persona> <name> <instruction>', '生成新智能体'],
+      ['/delegate <agentId> <task>', '委托任务'],
+      ['/agents /cluster', '显示集群状态'],
+      ['/stop-agent <id>', '停止智能体'],
+      ['/stop-all-agents', '停止所有智能体'],
+    ],
+  },
+];
 
 /**
  * 处理特殊命令
@@ -284,23 +286,13 @@ function printHelp(): void {
   printDivider('=', 'cyan');
   println('  CogitoAgent 命令帮助', 'cyan');
   printDivider('=', 'cyan');
-  println('');
-  println('  可用命令:', 'yellow');
-  println('    /help          - 显示此帮助信息', 'gray');
-  println('    /status        - 显示当前状态', 'gray');
-  println('    /clear         - 清空对话历史', 'gray');
-  println('    /persona <name> - 切换 Persona', 'gray');
-  println('    /personas      - 列出所有可用 Persona', 'gray');
-  println('    /tools         - 列出所有可用工具', 'gray');
-  println('    /config        - 显示当前配置', 'gray');
-  println('    /debug         - 切换调试模式', 'gray');
-  println('');
-  println('  集群命令:', 'yellow');
-  println('    /spawn <persona> <name> <instruction>  - 生成新智能体', 'gray');
-  println('    /delegate <agentId> <task>            - 委托任务', 'gray');
-  println('    /agents /cluster      - 显示集群状态', 'gray');
-  println('    /stop-agent <id>      - 停止智能体', 'gray');
-  println('    /stop-all-agents      - 停止所有智能体', 'gray');
+  for (const { section, items } of HELP_TEXT) {
+    println('');
+    println(`  ${section}:`, 'yellow');
+    for (const [cmd, desc] of items) {
+      println(`    ${cmd.padEnd(42)} ${desc}`, 'gray');
+    }
+  }
   println('');
   println('  基本操作:', 'yellow');
   println('    ENTER          - 打断当前思考，输入消息', 'gray');

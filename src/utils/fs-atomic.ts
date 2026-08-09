@@ -6,7 +6,18 @@
  * 直接 writeFileSync 覆盖会在中断时留下截断文件，导致下次加载解析失败。
  */
 
-import { openSync, writeSync, fsyncSync, closeSync, renameSync, unlinkSync, existsSync } from 'fs';
+import {
+  openSync,
+  writeSync,
+  fsyncSync,
+  closeSync,
+  renameSync,
+  unlinkSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+} from 'fs';
+import { dirname } from 'path';
 import { randomBytes } from 'crypto';
 
 /**
@@ -16,7 +27,9 @@ import { randomBytes } from 'crypto';
  * @throws 写入失败时抛出原始异常，清理临时文件后传播
  */
 export function writeFileAtomic(filePath: string, content: string): void {
-  const tmpPath = `${filePath}.${process.pid}.${Date.now()}.${randomBytes(4).toString('hex')}.tmp`;
+  // 将临时文件放在目标文件同目录下，确保 rename 在同一文件系统内（原子性）
+  const dir = dirname(filePath);
+  const tmpPath = `${dir}/.${process.pid}.${Date.now()}.${randomBytes(4).toString('hex')}.tmp`;
   let fd: number | undefined;
   try {
     fd = openSync(tmpPath, 'w', 0o600);
@@ -24,19 +37,31 @@ export function writeFileAtomic(filePath: string, content: string): void {
     fsyncSync(fd);
     closeSync(fd);
     fd = undefined;
+    // 同目录 rename 保证原子性（同一文件系统内）
     renameSync(tmpPath, filePath);
   } catch (e) {
     if (fd !== undefined) {
       try {
         closeSync(fd);
       } catch {
-        // 关闭失败不掩盖原始错误
+        /* 关闭失败不掩盖原始错误 */
+      }
+    }
+    // rename 失败（如跨文件系统 EXDEV），回退到读+写+删除临时文件
+    if (existsSync(tmpPath)) {
+      try {
+        const data = readFileSync(tmpPath);
+        writeFileSync(filePath, data, 'utf-8');
+        unlinkSync(tmpPath);
+        return;
+      } catch {
+        // 回退也失败，清理临时文件并抛出原始错误
       }
     }
     try {
       if (existsSync(tmpPath)) unlinkSync(tmpPath);
     } catch {
-      // 临时文件清理失败不影响错误传播
+      /* 临时文件清理失败不影响错误传播 */
     }
     throw e;
   }

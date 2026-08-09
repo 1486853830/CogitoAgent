@@ -115,10 +115,7 @@ window.WidgetRegistry?.register('heatmap', (container, opts = {}) => {
   }
 
   function formatNum(n) {
-    const num = Number(n) || 0;
-    if (num >= 10000) return (num / 10000).toFixed(1) + 'w';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
-    return num.toString();
+    return window.SharedUtils?.formatNumCompact?.(n) ?? String(Number(n) || 0);
   }
 
   return {

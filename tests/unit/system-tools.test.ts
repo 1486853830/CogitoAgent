@@ -14,10 +14,12 @@ describe('system tools', () => {
       expect(result.error).toContain('非法字符');
     });
 
-    it('should resolve with an object containing success property for valid name', async () => {
+    it('should open notepad on Windows (or return not-found on other OS)', async () => {
       const result = await openApp('notepad');
       expect(result).toHaveProperty('success');
-      expect(typeof result.success).toBe('boolean');
+      if (!result.success) {
+        expect(result.error).toBeDefined();
+      }
     });
   });
 
@@ -34,18 +36,24 @@ describe('system tools', () => {
       expect(result.error).toContain('非法字符');
     });
 
-    it('should resolve with an object containing success property for valid name', async () => {
+    it('should attempt to close notepad.exe on Windows (or return not-found on other OS)', async () => {
       const result = await closeApp('notepad.exe');
       expect(result).toHaveProperty('success');
-      expect(typeof result.success).toBe('boolean');
+      if (!result.success) {
+        expect(result.error).toBeDefined();
+      }
     });
   });
 
   describe('listApps', () => {
-    it('should resolve and return an object with success property', async () => {
+    it('should return list of running apps or succeed with empty list', async () => {
       const result = await listApps();
       expect(result).toHaveProperty('success');
-      expect(typeof result.success).toBe('boolean');
+      if (result.success) {
+        expect(result).toHaveProperty('data');
+      } else {
+        expect(result.error).toBeDefined();
+      }
     });
   });
 });

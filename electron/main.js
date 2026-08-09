@@ -1663,9 +1663,9 @@ async function launchMainApp() {
     }
 
     // 读取当前 persona
-    getCurrentPersona();
-    if (currentPersona) {
-      console.log('[主进程] 当前 persona:', currentPersona);
+    const activePersona = getCurrentPersona();
+    if (activePersona) {
+      console.log('[主进程] 当前 persona:', activePersona);
     }
 
     // 读取启动模式

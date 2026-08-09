@@ -195,11 +195,14 @@ window.WidgetRegistry?.register('ecg', (container) => {
         });
       }
       // 心跳: 每 3 秒推一个 think beat,模拟 think cycle
+      // 页面隐藏时不模拟心跳，避免无意义的 CPU 消耗
       state.intervalId = setInterval(() => {
+        if (document.hidden) return;
         beat('think');
       }, 3000);
       // 衰减 + 重绘循环
       state.intervalId2 = setInterval(() => {
+        if (document.hidden) return;
         decay();
         draw();
       }, 250);

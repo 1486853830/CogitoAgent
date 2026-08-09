@@ -210,8 +210,9 @@ export async function predictNextTool(
   tools: OpenAITool[],
   draftModel: string,
 ): Promise<NativeToolInvocation | null> {
+  let stream: AsyncGenerator<unknown, NativeStreamReturn, unknown> | undefined;
   try {
-    const stream = streamChatNative(messages, {
+    stream = streamChatNative(messages, {
       tools,
       model: draftModel,
       toolChoice: 'auto',
@@ -242,5 +243,17 @@ export async function predictNextTool(
     };
   } catch {
     return null;
+  } finally {
+    // 确保 SSE 流 reader 被正确清理，防止连接泄漏
+    if (
+      stream &&
+      typeof (stream as AsyncGenerator & { return?: () => unknown }).return === 'function'
+    ) {
+      try {
+        (stream as AsyncGenerator & { return: () => unknown }).return();
+      } catch {
+        /* 静默清理 */
+      }
+    }
   }
 }

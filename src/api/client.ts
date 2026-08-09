@@ -127,6 +127,9 @@ function isNetworkError(error: unknown): boolean {
  *   { usage: { input, output } }   - 流结束时返回 token 用量（若 API 支持）
  *
  * 流结束后，generator 的 return value 为 { usage } 或 null
+ *
+ * @deprecated 请使用 streamChatNative，它支持原生 tool_calls 和更完整的 OpenAI 协议。
+ *             保留 streamChat 仅为向后兼容旧的调用方。
  */
 async function* streamChat(
   messages: Array<{ role: string; content: string }>,

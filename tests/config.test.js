@@ -96,8 +96,10 @@ describe('config.js', () => {
   });
 
   describe('isConfigured', () => {
-    test('应该是一个函数', () => {
+    test('应该是一个函数且返回布尔值', () => {
       expect(typeof isConfigured).toBe('function');
+      const result = isConfigured();
+      expect(typeof result).toBe('boolean');
     });
   });
 });

@@ -77,6 +77,20 @@ const SharedUtils = {
     textarea.style.height = 'auto';
     textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
   },
+
+  // 数字格式化：千分位分隔（统一入口，避免 widget 中各维护一份）
+  formatNum(n, locale = 'zh-CN') {
+    if (typeof n !== 'number' || Number.isNaN(n)) return '0';
+    return n.toLocaleString(locale);
+  },
+
+  // 紧凑数字格式化（k/w 缩写），供 widget 统一使用
+  formatNumCompact(n) {
+    const num = Number(n) || 0;
+    if (num >= 10000) return (num / 10000).toFixed(1) + 'w';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+    return num.toString();
+  },
 };
 
 window.SharedUtils = SharedUtils;

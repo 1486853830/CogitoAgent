@@ -295,7 +295,15 @@ function isDangerousOperation(toolName: string): boolean {
 }
 
 function isConfirmEnabled(): boolean {
+  // 环境变量显式关闭（最高优先级，用于 CI/测试环境）
   if (process.env.COGITO_CONFIRM_DANGEROUS === 'false') {
+    return false;
+  }
+  // 其次检查 config.json 中的 security.confirmDangerous
+  const config = loadConfig();
+  const security = (config as unknown as Record<string, unknown>).security as
+    Record<string, unknown> | undefined;
+  if (security && security.confirmDangerous === false) {
     return false;
   }
   return true;

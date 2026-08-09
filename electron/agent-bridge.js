@@ -248,7 +248,10 @@ function ensureUserMessageHandler() {
 
   // 请求历史（暂不支持，桌面端独立管理历史）
   ipcMain.on('request-history', (event) => {
-    event.reply('agent-history', []);
+    // event.reply 从 Electron v28 起已废弃，改用 event.sender.send
+    if (event.sender && !event.sender.isDestroyed()) {
+      event.sender.send('agent-history', []);
+    }
   });
 
   // 请求 ID 生成器：单调递增，避免同毫秒并发请求（如监控页多个 widget 同时
@@ -269,7 +272,9 @@ function ensureUserMessageHandler() {
           // 必须匹配 requestId：多窗口并发请求时，若不校验会让第一个到达的
           // stats-response 错误地回复给所有等待中的 handler，造成串扰。
           if (msg.type === 'stats-response' && msg.requestId === requestId) {
-            event.reply('stats-response', msg);
+            if (event.sender && !event.sender.isDestroyed()) {
+              event.sender.send('stats-response', msg);
+            }
             ws.removeListener('message', handler);
           }
         } catch {
@@ -287,7 +292,9 @@ function ensureUserMessageHandler() {
         currentWs.removeListener('message', handler);
       }, 30000);
     } else {
-      event.reply('stats-response', { error: 'Agent 未连接' });
+      if (event.sender && !event.sender.isDestroyed()) {
+        event.sender.send('stats-response', { error: 'Agent 未连接' });
+      }
     }
   });
   // 技能与工具面板数据请求
@@ -298,7 +305,9 @@ function ensureUserMessageHandler() {
         try {
           const msg = JSON.parse(raw.toString());
           if (msg.type === 'tools-response' && msg.requestId === requestId) {
-            event.reply('tools-response', msg);
+            if (event.sender && !event.sender.isDestroyed()) {
+              event.sender.send('tools-response', msg);
+            }
             ws.removeListener('message', handler);
           }
         } catch {
@@ -313,7 +322,9 @@ function ensureUserMessageHandler() {
         currentWs2.removeListener('message', handler);
       }, 30000);
     } else {
-      event.reply('tools-response', { error: 'Agent 未连接' });
+      if (event.sender && !event.sender.isDestroyed()) {
+        event.sender.send('tools-response', { error: 'Agent 未连接' });
+      }
     }
   });
 }
@@ -329,6 +340,7 @@ function sendToAgent(text) {
     ws.send(JSON.stringify({ type: 'user-message', text }));
     return true;
   }
+  console.warn('[agent-bridge] sendToAgent 失败：WebSocket 未连接');
   return false;
 }
 

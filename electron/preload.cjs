@@ -61,7 +61,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('agent-state', listener);
   },
 
-  // 监听思维链消息
+  // 监听指定 channel 消息
   on: (channel, callback) => {
     const listener = (_event, data) => callback(data);
     if (channel === 'thought-trace') {
@@ -74,6 +74,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('cluster-state', listener);
       return () => ipcRenderer.removeListener('cluster-state', listener);
     }
+    // 未识别的 channel：不注册监听器，返回空操作清理函数。
+    // 调用方不能依赖此方法监听未在白名单内的 channel。
+    console.warn(`[preload] 未识别的 IPC channel: "${channel}"，监听未注册`);
     return () => {};
   },
 

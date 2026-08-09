@@ -107,9 +107,11 @@ const StatsManager = {
     // 窗口卸载/重建时清理定时器与图表实例，防止监听器/定时器累积
     window.addEventListener('pagehide', () => {
       if (this.intervalId) clearInterval(this.intervalId);
+      if (this._resizeHandler) window.removeEventListener('resize', this._resizeHandler);
       if (this.chart && typeof this.chart.dispose === 'function') this.chart.dispose();
       this.chart = null;
       this.intervalId = null;
+      this._resizeHandler = null;
     });
   },
 
@@ -138,7 +140,8 @@ const StatsManager = {
     if (dom && window.echarts) {
       this.chart = window.echarts.init(dom);
       this.updateChart([]);
-      window.addEventListener('resize', () => this.chart?.resize());
+      this._resizeHandler = () => this.chart?.resize();
+      window.addEventListener('resize', this._resizeHandler);
     }
   },
 
