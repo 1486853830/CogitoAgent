@@ -58,11 +58,26 @@ function randomWechatUin(): string {
   return Buffer.from(String(uint32), 'utf-8').toString('base64');
 }
 
+/**
+ * 获取 accountId：含运行时 null 检查，替代 `as string` 强制类型断言。
+ * 当状态文件损坏导致 loggedIn=true 但 accountId=null 时，抛出明确错误
+ * 而非传递 NULL 导致 SDK 内部未定义行为。
+ */
+function getAccountId(): string {
+  if (!wechatState.accountId) {
+    throw new Error('微信 accountId 不可用：请先完成登录 (wechatLogin)');
+  }
+  return wechatState.accountId;
+}
+
 async function wechatApiPost(
   endpoint: string,
   body: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  const base = wechatState.baseUrl!.replace(/\/$/, '');
+  if (!wechatState.baseUrl) {
+    throw new Error('微信 baseUrl 未配置，请先 startWechatPolling 或配置 iLink 服务地址');
+  }
+  const base = wechatState.baseUrl.replace(/\/$/, '');
   const url = `${base}/${endpoint}`;
   const resp = await fetch(url, {
     method: 'POST',
@@ -300,14 +315,14 @@ async function startWechatPolling(
       for (const msg of msgs) {
         const from = (msg.from_user_id as string) || '';
         if (msg.context_token) {
-          setContextToken(wechatState.accountId as string, from, msg.context_token as string);
+          setContextToken(getAccountId(), from, msg.context_token as string);
         }
         const text = bodyFromItemList(msg.item_list as MessageItem[]);
         if (text && messageHandler) {
           await messageHandler({
             from,
             text: text as string,
-            contextToken: getContextToken(wechatState.accountId as string, from) as string,
+            contextToken: getContextToken(getAccountId(), from) as string,
             raw: msg,
           });
         }
@@ -317,6 +332,9 @@ async function startWechatPolling(
     }
 
     if (pollingActive) {
+      // 使用 setTimeout 而非 setInterval + 在回调开始时调度下一次，
+      // 确保上一次 poll 完全结束后才启动下一次，避免网络慢时多个
+      // pollLoop 实例并发执行导致消息重复处理。
       setTimeout(pollLoop, 1000);
     }
   };
@@ -353,7 +371,7 @@ async function sendWechatMessage(
   }
 
   try {
-    const ctxToken = getContextToken(wechatState.accountId as string, to);
+    const ctxToken = getContextToken(getAccountId(), to);
     const clientId = `ilink-bot-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     await wechatApiPost('ilink/bot/sendmessage', {
       msg: {
@@ -413,7 +431,7 @@ async function sendWechatImage(
     const sendOpts: SendOptions = {
       baseUrl: wechatState.baseUrl as string,
       token: wechatState.botToken as string,
-      contextToken: getContextToken(wechatState.accountId as string, to),
+      contextToken: getContextToken(getAccountId(), to),
     };
     // 本实现传 filePath 直接发送（区别于 SDK 的 uploaded 流程），
     // 类型不符处用 unknown 断言桥接，运行时行为不变。

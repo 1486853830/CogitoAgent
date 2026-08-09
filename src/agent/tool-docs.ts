@@ -256,11 +256,13 @@ export const TOOL_DOCS: Record<string, ToolDoc> = {
     params: [p('csvPath'), p('jsonPath')],
   },
   jsonToCSV: {
-    description: 'JSON 转 CSV',
+    description:
+      'JSON 转 CSV。JSON 文件必须是对象数组 [{...}, ...] 或 { headers: [...], rows: [...] } 格式',
     params: [p('jsonPath'), p('csvPath')],
   },
   queryData: {
-    description: '查询数据',
+    description:
+      '按条件查询 JSON/CSV 数据。JSON 文件必须是对象数组 [{...}, ...] 或 { rows: [...] } 格式',
     params: [p('filePath'), p('query', 'any', '查询条件（JSON 对象）')],
   },
   analyzeData: {
@@ -268,7 +270,8 @@ export const TOOL_DOCS: Record<string, ToolDoc> = {
     params: [p('filePath')],
   },
   sortData: {
-    description: '排序数据',
+    description:
+      '按指定列排序 JSON/CSV 数据。JSON 文件必须是对象数组 [{...}, ...] 或 { headers: [...], rows: [...] } 格式',
     params: [p('filePath'), p('by'), p('order', 'string', 'asc / desc')],
   },
 
@@ -415,7 +418,10 @@ export const TOOL_DOCS: Record<string, ToolDoc> = {
     description: '创建 Excel 文件',
     params: [p('options', 'any', 'Excel 配置对象（outputPath/sheets）')],
   },
-  readExcel: { description: '读取 Excel 文件', params: [p('filePath')] },
+  readExcel: {
+    description: '读取 Excel(.xlsx) 文件内容。不支持 .csv，请用 readCSV',
+    params: [p('filePath')],
+  },
   readWord: { description: '读取 Word(.docx) 文件', params: [p('filePath')] },
   readPpt: { description: '读取 PPT(.pptx) 文件', params: [p('filePath')] },
 

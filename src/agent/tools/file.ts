@@ -110,7 +110,7 @@ async function ls(targetPath: string): Promise<{
     }
     return { success: true, data: result };
   } catch (error: unknown) {
-    return { success: false, error: (error as Error).message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -165,7 +165,7 @@ async function read(
         : content;
     return { success: true, data: truncated };
   } catch (error: unknown) {
-    return { success: false, error: (error as Error).message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -182,7 +182,7 @@ async function copy(
     await fs.copyFile(fullSrc, fullDest);
     return { success: true, data: `已复制到: ${fullDest}` };
   } catch (error: unknown) {
-    return { success: false, error: (error as Error).message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -197,7 +197,7 @@ async function mkdir(
     await fs.mkdir(fullPath, { recursive: true });
     return { success: true, data: `已创建目录: ${fullPath}` };
   } catch (error: unknown) {
-    return { success: false, error: (error as Error).message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -215,9 +215,13 @@ async function create(
       await fs.mkdir(dir, { recursive: true });
     }
     await fs.writeFile(fullPath, content, 'utf-8');
+    // 确保文件已落盘，防止后续立即读取时遇到缓存未刷新（Windows 文件系统特性）
+    const fd = await fs.open(fullPath, 'r');
+    await fd.sync();
+    await fd.close();
     return { success: true, data: `已创建: ${fullPath}` };
   } catch (error: unknown) {
-    return { success: false, error: (error as Error).message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 

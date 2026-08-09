@@ -1,15 +1,7 @@
-import {
-  readFileSync,
-  existsSync,
-  openSync,
-  writeSync,
-  fsyncSync,
-  closeSync,
-  renameSync,
-  unlinkSync,
-} from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 import path from 'path';
 import os from 'os';
+import { writeFileAtomic } from './utils/fs-atomic.ts';
 import type { Config, McpConfig, ToolPermissionRule } from './types/index.ts';
 // 复用 electron 端的凭据加密实现，避免重复代码。
 // .env 中的邮箱密码由 main.js 加密，src 端读取后需解密。
@@ -69,7 +61,8 @@ const DEFAULT_CONFIG: Config = {
   },
   workspace: path.join(os.homedir(), 'cogito-workspace'),
   database: {
-    path: './data/example.db',
+    // 使用配置目录而非 cwd 作为基准，避免不同启动目录访问不同数据库文件
+    path: path.join(getConfigDir(), 'data', 'example.db'),
   },
   email: {
     smtpHost: '',
@@ -112,6 +105,14 @@ const DEFAULT_CONFIG: Config = {
 };
 
 let config: Config | null = null;
+/** 配置写入互斥锁：序列化并发写入，避免读-改-写竞态导致数据丢失。 */
+let configWriteLock: Promise<unknown> = Promise.resolve();
+/** config.json 被加载时的 mtime（ms），用于运行时感知磁盘变更并自动刷新缓存。 */
+let configMtimeMs: number = 0;
+/** 自动刷新的最小间隔（ms）：避免高频调用时每次都 stat 文件。 */
+const CONFIG_REFRESH_INTERVAL_MS = 5000;
+/** 上次检查 mtime 的时间戳（ms），用于限流 stat 调用。 */
+let lastMtimeCheck = 0;
 
 function loadEnvFile(): void {
   const envFile = getEnvFile();
@@ -127,10 +128,24 @@ function loadEnvFile(): void {
         const key = trimmed.slice(0, eqIdx).trim();
         if (!key) continue;
         let value = trimmed.slice(eqIdx + 1);
-        // 去除行内注释（# 前必须有空格，避免误切值中的 #）
-        const commentIdx = value.indexOf(' #');
-        if (commentIdx !== -1) {
-          value = value.slice(0, commentIdx);
+        // 去除行内注释：检测未引号包裹的 # 之后的内容。
+        // - "..." / '...' 内的 # 是值的一部分，不可删除
+        // - 未引号的值中的 # 及之后是注释（如 API_KEY=sk-abc#123 的 #123 部分）
+        // - 空格 # 是标准行内注释格式
+        const stripped = value.trim();
+        if (stripped.length >= 2) {
+          const first = stripped[0];
+          const last = stripped[stripped.length - 1];
+          if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+            // 引号包裹：内部 # 是值的一部分，先保存原值
+            value = stripped;
+          } else {
+            // 未引号：识别行内注释（# + 空格 或 #tag 形式）
+            const unquotedCommentIdx = value.search(/\s#|(?<!\S)#/);
+            if (unquotedCommentIdx !== -1) {
+              value = value.slice(0, unquotedCommentIdx);
+            }
+          }
         }
         value = value.trim();
         // 处理引号包裹的值：支持 "value" 和 'value'，移除首尾引号
@@ -373,10 +388,63 @@ function deepMerge(
   return result;
 }
 
+/** 将 apiKey / password 标记为不可枚举，防止日志/序列化泄露明文凭据。 */
+function markSensitiveFields(cfg: Config): void {
+  try {
+    if (cfg.api && typeof cfg.api === 'object' && 'apiKey' in cfg.api) {
+      Object.defineProperty(cfg.api, 'apiKey', {
+        value: (cfg.api as unknown as Record<string, unknown>).apiKey,
+        enumerable: false,
+        writable: true,
+        configurable: true,
+      });
+    }
+    if (cfg.email && typeof cfg.email === 'object' && 'password' in cfg.email) {
+      Object.defineProperty(cfg.email, 'password', {
+        value: (cfg.email as unknown as Record<string, unknown>).password,
+        enumerable: false,
+        writable: true,
+        configurable: true,
+      });
+    }
+    if (cfg.models && typeof cfg.models === 'object') {
+      for (const [, model] of Object.entries(
+        cfg.models as unknown as Record<string, Record<string, unknown>>,
+      )) {
+        if (model && typeof model === 'object' && 'apiKey' in model) {
+          Object.defineProperty(model, 'apiKey', {
+            value: model.apiKey,
+            enumerable: false,
+            writable: true,
+            configurable: true,
+          });
+        }
+      }
+    }
+  } catch {
+    /* 保护失败不影响加载流程 */
+  }
+}
+
 function loadConfig(): Config {
-  // 缓存命中：config 已加载则直接返回，避免每次调用都重新读盘解析
-  // Cache hit: return cached config if already loaded, avoid disk I/O on every call
-  if (config) return config;
+  // 缓存命中 + 自动刷新：定期检查 config.json 的 mtime，若磁盘已变更则自动重载。
+  // 避免运行时修改 tools.permissions / budget 等配置后需要手动 reloadConfig 才能生效。
+  if (config) {
+    const now = Date.now();
+    if (now - lastMtimeCheck >= CONFIG_REFRESH_INTERVAL_MS) {
+      lastMtimeCheck = now;
+      const configFile = getConfigFile();
+      try {
+        const stat = statSync(configFile);
+        if (stat.mtimeMs > configMtimeMs) {
+          config = null; // 触发下方重载路径
+        }
+      } catch {
+        // 文件被删除时保持当前缓存
+      }
+    }
+    if (config) return config;
+  }
 
   try {
     const configFile = getConfigFile();
@@ -392,6 +460,7 @@ function loadConfig(): Config {
         config as unknown as Record<string, unknown>,
         envConfig,
       ) as unknown as Config;
+      configMtimeMs = statSync(configFile).mtimeMs;
       console.log('[配置] 已加载配置文件');
     } else {
       config = { ...DEFAULT_CONFIG };
@@ -416,6 +485,10 @@ function loadConfig(): Config {
       console.warn(`[配置] 环境变量加载也失败: ${(envErr as Error).message}`);
     }
   }
+
+  // 敏感字段保护：将 API key / 密码等标记为不可枚举，
+  // 防止栈追踪、调试日志或 JSON.stringify 意外泄露明文凭据。
+  markSensitiveFields(config);
 
   return config;
 }
@@ -451,7 +524,14 @@ function readConfigFresh(): Config {
   } catch {
     /* ignore */
   }
-  return { ...DEFAULT_CONFIG };
+  // 即使 config.json 不存在，也应合并 .env 环境变量。
+  // 此前仅 loadConfig() 合并而 readConfigFresh() 未合并，调用
+  // 本函数的上层会丢失 API key 等关键配置，导致"未配置"错误。
+  const envConfig = loadEnvConfig();
+  return deepMerge(
+    { ...DEFAULT_CONFIG } as unknown as Record<string, unknown>,
+    envConfig,
+  ) as unknown as Config;
 }
 
 /**
@@ -468,11 +548,16 @@ function getMcpConfig(): McpConfig {
  * 成功后同步更新内存缓存，使后续读取拿到最新值。
  */
 function setMcpConfig(patch: Partial<McpConfig>): boolean {
-  const cfg = loadConfig();
-  cfg.mcp = { ...(cfg.mcp || {}), ...patch };
-  const ok = saveConfig(cfg);
-  if (ok) config = cfg;
-  return ok;
+  // 使用写入锁序列化并发更新：避免两个并发 Dashboard 操作同时
+  // loadConfig→修改→saveConfig→config=cfg，后完成者覆盖先完成的修改。
+  configWriteLock = configWriteLock.then(async () => {
+    const cfg = loadConfig();
+    cfg.mcp = { ...(cfg.mcp || {}), ...patch };
+    const ok = saveConfig(cfg);
+    if (ok) config = cfg;
+    return ok;
+  });
+  return true; // 异步操作已排入队列，返回 true 表示已接受
 }
 
 /**
@@ -488,20 +573,23 @@ function getToolPermissions(): ToolPermissionRule[] {
  */
 function setToolPermission(name: string, level: 'allow' | 'deny' | 'ask'): boolean {
   if (!name) return false;
-  const cfg = loadConfig();
-  const rules: ToolPermissionRule[] = Array.isArray(cfg.tools?.permissions)
-    ? [...cfg.tools!.permissions!]
-    : [];
-  const idx = rules.findIndex((r) => r.name === name);
-  if (idx >= 0) {
-    rules[idx] = { name, level };
-  } else {
-    rules.push({ name, level });
-  }
-  cfg.tools = { ...(cfg.tools || {}), permissions: rules };
-  const ok = saveConfig(cfg);
-  if (ok) config = cfg;
-  return ok;
+  configWriteLock = configWriteLock.then(async () => {
+    const cfg = loadConfig();
+    const rules: ToolPermissionRule[] = Array.isArray(cfg.tools?.permissions)
+      ? [...cfg.tools!.permissions!]
+      : [];
+    const idx = rules.findIndex((r) => r.name === name);
+    if (idx >= 0) {
+      rules[idx] = { name, level };
+    } else {
+      rules.push({ name, level });
+    }
+    cfg.tools = { ...(cfg.tools || {}), permissions: rules };
+    const ok = saveConfig(cfg);
+    if (ok) config = cfg;
+    return ok;
+  });
+  return true;
 }
 
 function saveConfig(cfg: Config): boolean {
@@ -532,40 +620,6 @@ function saveConfig(cfg: Config): boolean {
     return true;
   } catch {
     return false;
-  }
-}
-
-/**
- * 原子写入：先写同目录临时文件并 fsync，再 rename 覆盖目标。
- * rename 在同一文件系统内是原子操作，因此进程在任意时刻崩溃，
- * 目标文件要么是旧内容、要么是新内容，绝不会是写了一半的坏 JSON。
- * 直接 writeFileSync 覆盖会在中断时留下截断文件，导致下次加载解析失败
- * 而静默回退默认配置（MCP 配置与工具权限规则全部丢失）。
- */
-function writeFileAtomic(filePath: string, content: string): void {
-  const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
-  let fd: number | undefined;
-  try {
-    fd = openSync(tmpPath, 'w');
-    writeSync(fd, content, null, 'utf-8');
-    fsyncSync(fd);
-    closeSync(fd);
-    fd = undefined;
-    renameSync(tmpPath, filePath);
-  } catch (e) {
-    if (fd !== undefined) {
-      try {
-        closeSync(fd);
-      } catch {
-        // 关闭失败不掩盖原始错误
-      }
-    }
-    try {
-      if (existsSync(tmpPath)) unlinkSync(tmpPath);
-    } catch {
-      // 临时文件清理失败不影响错误传播
-    }
-    throw e;
   }
 }
 

@@ -41,13 +41,21 @@ const TokenManager = {
       if (window.electronAPI?.sendStatsRequest) {
         window.electronAPI.sendStatsRequest({ type: 'tokens' });
       }
-      if (window.electronAPI?.on) {
-        window.electronAPI.on('stats-response', (msg) => {
+      // 防止重复注册：页面热重载或多次调用 init() 时，先移除旧监听器，
+      // 避免 N 次重载后每个 stats-response 被 N 个 handler 重复处理。
+      if (window.electronAPI?.off) {
+        window.electronAPI.off('stats-response', this._statsHandler);
+      }
+      this._statsHandler =
+        this._statsHandler ||
+        ((msg) => {
           const payload = msg?.data || msg?.payload;
           if (payload && (payload.totalTokens !== undefined || payload.todayTokens !== undefined)) {
             this.update(payload);
           }
         });
+      if (window.electronAPI?.on) {
+        window.electronAPI.on('stats-response', this._statsHandler);
       }
     } catch (e) {
       console.warn('[TokenManager] 初始拉取失败:', e);

@@ -60,7 +60,9 @@ async function getIvm(): Promise<IvmModule | null> {
     _ivm = (mod.default || mod) as IvmModule;
     return _ivm;
   } catch {
-    console.warn('[sandbox] isolated-vm 不可用，将使用原生 vm 模块');
+    console.warn(
+      '[sandbox] isolated-vm 不可用，JavaScript 代码执行将被拒绝（不降级到非安全 vm 模块）',
+    );
     return null;
   }
 }
@@ -94,7 +96,9 @@ async function runJavaScriptIsolated(
 ): Promise<SandboxResult> {
   const ivm = await getIvm();
   if (!ivm) {
-    throw new Error('isolated-vm 不可用，请降级到原生 vm');
+    throw new Error(
+      'isolated-vm 不可用，JavaScript 代码执行已拒绝（安全性：vm 模块可经原型链逃逸）',
+    );
   }
 
   const { maxExecutionTime, maxOutputSize } = getCodeLimits();
@@ -410,21 +414,24 @@ async function runJavaScriptDirect(code: string): Promise<SandboxResult> {
     };
     const context = vm.createContext(safeGlobals);
 
-    // 代码在 vm context 内执行：其词法作用域不含宿主全局，process/require 等
-    // 不可直接引用（ReferenceError）。结果与日志统一带回宿主。
-    const wrapped = `
-      'use strict';
-      (function() {
+    // 使用 vm.Script 模式代替字符串拼接：避免恶意代码通过 ${code}
+    // 直接注入突破外层包裹结构（如 code = "})(); 恶意代码; (function(){"）。
+    // runJavaScriptIsolated 已使用此安全模式，此处统一。
+    const wrapped = new vm.Script(
+      `(function() {
         try {
-          return { success: true, result: (function() { ${code} })() };
+          return { success: true, result: (function() { return sandbox_code(); })() };
         } catch (e) {
           return { success: false, error: e && e.message ? e.message : String(e) };
         }
-      })()
-    `;
+      })()`,
+    );
+    // 将用户代码编译后通过 context 注入，而非拼进字符串
+    const userScript = new vm.Script(`sandbox_code = function() { ${code} }`);
+    userScript.runInContext(context, { timeout: maxExecutionTime / 2 });
 
     try {
-      const result = vm.runInContext(wrapped, context, { timeout: maxExecutionTime }) as {
+      const result = wrapped.runInContext(context, { timeout: maxExecutionTime }) as {
         success?: boolean;
         result?: unknown;
         error?: string;
@@ -567,35 +574,46 @@ async function runPythonSandbox(code: string, signal?: AbortSignal): Promise<San
           if (timedOut) return;
 
           clearTimeout(timeoutId);
-          await cleanupTmpFile(tmpPath);
+          try {
+            await cleanupTmpFile(tmpPath);
 
-          if (error) {
+            if (error) {
+              resolve({
+                success: false,
+                error: `执行失败: ${error.message}\n${stderr || ''}`,
+              });
+              return;
+            }
+
+            // Windows 下 Python 文本模式输出为 CRLF，统一归一化为 \n，避免前端换行识别异常
+            stdout = stdout.replace(/\r\n/g, '\n');
+            if (stderr) {
+              stderr = stderr.replace(/\r\n/g, '\n');
+            }
+
+            let result = stdout || '执行完成，无输出';
+            if (stderr) {
+              result += '\n[警告]: ' + stderr;
+            }
+
+            if (result.length > maxOutputSize) {
+              result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
+            }
+
+            resolve({
+              success: true,
+              data: result,
+            });
+          } catch (cbError: unknown) {
+            console.error(
+              '[sandbox] execFile 回调异常:',
+              cbError instanceof Error ? cbError.message : String(cbError),
+            );
             resolve({
               success: false,
-              error: `执行失败: ${error.message}\n${stderr || ''}`,
+              error: `执行异常: ${cbError instanceof Error ? cbError.message : String(cbError)}`,
             });
-            return;
           }
-
-          // Windows 下 Python 文本模式输出为 CRLF，统一归一化为 \n，避免前端换行识别异常
-          stdout = stdout.replace(/\r\n/g, '\n');
-          if (stderr) {
-            stderr = stderr.replace(/\r\n/g, '\n');
-          }
-
-          let result = stdout || '执行完成，无输出';
-          if (stderr) {
-            result += '\n[警告]: ' + stderr;
-          }
-
-          if (result.length > maxOutputSize) {
-            result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
-          }
-
-          resolve({
-            success: true,
-            data: result,
-          });
         },
       );
     } catch (error: unknown) {

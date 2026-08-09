@@ -4,7 +4,9 @@
  * 集中于此一处实现，避免在 client/session 等模块重复导致统计口径分叉。
  */
 export function estimateTokens(text: string): number {
-  if (!text) return 0;
+  // 运行时类型守卫：调用方可能传入 number/null/undefined/object，
+  // 若不检查 typeof，null/非字符串会传播 NaN 到 usage 统计。
+  if (typeof text !== 'string' || !text) return 0;
   const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
   const otherChars = text.length - chineseChars;
   return Math.ceil(chineseChars / 1.5) + Math.ceil(otherChars / 4);

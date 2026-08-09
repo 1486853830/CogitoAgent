@@ -93,6 +93,12 @@ function tick(): void {
     pushed++;
   }
 
+  // 清理超过冷却期 2 倍的过期条目，防止 lastPush Map 无限增长
+  const staleBefore = now - COOLDOWN_MS * 2;
+  for (const [k, t] of lastPush) {
+    if (t < staleBefore) lastPush.delete(k);
+  }
+
   broadcast('heartbeat', {
     type: 'active',
     pending: pending.length,

@@ -120,13 +120,19 @@ async function createPpt(
 
       if (slideData.image) {
         try {
-          await fs.access(slideData.image);
+          // 安全校验：图片路径必须限制在工作区内，防止路径穿越读取任意文件
+          const resolvedImage = resolveInWorkspace(slideData.image);
+          if (!resolvedImage) {
+            // resolveInWorkspace 返回 null 表示路径越界，静默跳过
+            continue;
+          }
+          await fs.access(resolvedImage);
           slide.addImage({
             x: 0.5,
             y: slideData.title ? 2.5 : 1.5,
             w: '80%',
             h: '50%',
-            path: slideData.image,
+            path: resolvedImage,
           });
         } catch {
           // 图片添加失败不影响幻灯片整体生成
@@ -289,8 +295,11 @@ async function createWord(
         }
       } else if (para.type === 'image') {
         try {
-          await fs.access(para.src!);
-          const imageBuffer = await fs.readFile(para.src!);
+          // 安全校验：图片路径必须限制在工作区内，防止路径穿越读取任意文件
+          const resolvedImagePath = resolveInWorkspace(para.src!);
+          if (!resolvedImagePath) continue;
+          await fs.access(resolvedImagePath);
+          const imageBuffer = await fs.readFile(resolvedImagePath);
           children.push(
             new Paragraph({
               children: [
@@ -461,6 +470,16 @@ async function readExcel(filePath: string): Promise<{
       return { success: false, error: 'filePath 越界：必须位于工作区内' };
     }
     filePath = resolvedPath;
+
+    // CSV 文件提示：readExcel 底层使用 Excel 解析库，CSV 解析可能不完整。
+    // 建议使用 readCSV 工具替代。
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.csv' || ext === '.tsv') {
+      return {
+        success: false,
+        error: `readExcel 不支持 .csv/.tsv 格式，请使用 readCSV 工具读取 CSV 文件（支持更准确的逗号/引号解析）`,
+      };
+    }
 
     await fs.access(filePath);
     // 不直接用 XLSX.readFile：打包/Electron 环境下 SheetJS 内部的 fs 绑定缺失

@@ -62,6 +62,10 @@ function normalizeTags(tags: unknown): string[] {
 
 let memories: Memory[] = [];
 let memoriesLoaded = false;
+let nextMemoryId = 1; // 递增 ID，避免 Date.now() 毫秒碰撞
+/** 写入锁：序列化并发 saveMemory，避免 addMemory/updateMemory/deleteMemory
+ *  并发调用时的后保存者覆盖先保存者的修改（TOCTOU 竞态）。 */
+let memorySaveLock: Promise<unknown> = Promise.resolve();
 
 /**
  * 同步加载记忆缓存（供系统提示词构建等非异步场景读取）。
@@ -156,24 +160,30 @@ async function loadMemory(): Promise<void> {
  * @throws 当保存失败时抛出错误
  */
 async function saveMemory(): Promise<boolean> {
-  const dir = path.dirname(MEMORY_FILE);
-  try {
-    if (
-      !(await fs
-        .access(dir)
-        .then(() => true)
-        .catch(() => false))
-    ) {
-      await fs.mkdir(dir, { recursive: true });
+  const task = memorySaveLock.then(async () => {
+    const dir = path.dirname(MEMORY_FILE);
+    try {
+      if (
+        !(await fs
+          .access(dir)
+          .then(() => true)
+          .catch(() => false))
+      ) {
+        await fs.mkdir(dir, { recursive: true });
+      }
+      await fs.writeFile(MEMORY_FILE, JSON.stringify(memories, null, 2), 'utf-8');
+      return true;
+    } catch (e: unknown) {
+      const error = new Error(`[记忆] 保存失败: ${e instanceof Error ? e.message : String(e)}`);
+      (error as Error & { code?: string }).code = 'MEMORY_SAVE_FAILED';
+      console.error(error.message);
+      throw error; // 重新抛出错误，让调用者知道保存失败
     }
-    await fs.writeFile(MEMORY_FILE, JSON.stringify(memories, null, 2), 'utf-8');
-    return true;
-  } catch (e: unknown) {
-    const error = new Error(`[记忆] 保存失败: ${e instanceof Error ? e.message : String(e)}`);
-    (error as Error & { code?: string }).code = 'MEMORY_SAVE_FAILED';
-    console.error(error.message);
-    throw error; // 重新抛出错误，让调用者知道保存失败
-  }
+  });
+  memorySaveLock = task.catch(() => {
+    /* 已在上层 log，不让锁链断裂 */
+  });
+  return task;
 }
 
 /**
@@ -197,7 +207,7 @@ async function addMemory(
   }
 
   const memory: Memory = {
-    id: Date.now(),
+    id: nextMemoryId++,
     content: contentStr,
     tags: processedTags.map((t) => t.toLowerCase()).map((t) => t.slice(0, 100)),
     category: String(category).toLowerCase(),

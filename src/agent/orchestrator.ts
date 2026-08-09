@@ -311,14 +311,9 @@ class AgentOrchestrator {
     }
 
     // 收集每个智能体的观点
-    const opinions: Array<{
-      agentId: string;
-      agentName: string;
-      persona: string;
-      success: boolean;
-      response?: unknown;
-    }> = [];
-    for (const agentId of ids) {
+    // 并行收集意见：panelDiscussion 语义上应该是"所有专家同时思考后再汇总"，
+    // 而非串行逐个询问（5 个 agent 各 30s 推理 → 150s vs 30s）。
+    const tasks = ids.map(async (agentId) => {
       const agent = this.agents.get(agentId)!;
       this._broadcastClusterState();
 
@@ -328,23 +323,24 @@ class AgentOrchestrator {
 
       try {
         const result = await this.delegateTask(agentId, instruction);
-        opinions.push({
+        return {
           agentId: agent.id,
           agentName: agent.name,
           persona: agent.persona,
           success: result.success,
           response: result.success ? result.data : result.error,
-        });
+        };
       } catch (error: unknown) {
-        opinions.push({
+        return {
           agentId: agent.id,
           agentName: agent.name,
           persona: agent.persona,
           success: false,
           response: (error as Error).message,
-        });
+        };
       }
-    }
+    });
+    const opinions = await Promise.all(tasks);
 
     return {
       success: true,
@@ -466,8 +462,8 @@ class AgentOrchestrator {
             .join('\n')}\n\n请从以上选项中选择一个，并说明理由。`
         : '';
 
-    const votes: Array<Record<string, unknown>> = [];
-    for (const agentId of ids) {
+    // 并行投票：与 panelDiscussion 同理，多个 agent 应同时决策而非串行。
+    const voteTasks = ids.map(async (agentId) => {
       const agent = this.agents.get(agentId)!;
       this._broadcastClusterState();
 
@@ -477,7 +473,6 @@ class AgentOrchestrator {
           `## 投票\n\n问题：${question}${optionsText}\n\n请给出你的投票和理由。格式：\n投票：[你的选择]\n理由：...`,
         );
 
-        // 从结果中提取投票
         let vote = '';
         let reasoning = '';
         if (result.success) {
@@ -492,25 +487,26 @@ class AgentOrchestrator {
           }
         }
 
-        votes.push({
+        return {
           agentId: agent.id,
           agentName: agent.name,
           persona: agent.persona,
           success: result.success,
           vote: vote || '未明确投票',
           reasoning: reasoning || (result.success ? result.data : result.error),
-        });
+        };
       } catch (error: unknown) {
-        votes.push({
+        return {
           agentId: agent.id,
           agentName: agent.name,
           persona: agent.persona,
           success: false,
           vote: '错误',
           reasoning: (error as Error).message,
-        });
+        };
       }
-    }
+    });
+    const votes = await Promise.all(voteTasks);
 
     // 统计投票结果
     const tally: Record<string, number> = {};
@@ -799,9 +795,30 @@ class AgentOrchestrator {
           // 与主 Agent 原生路径一致：先做 JSON Schema 顺序换算为位置参数，
           // 再交给工具执行，避免依赖 JSON 解析的工具收到字符串而非对象。
           const processedArgs = objectArgsToPositional(tc.name, args);
-          const resultValue: unknown = await registry.fn(
+          // 传入 AbortSignal：若主智能体对子智能体发起了 stopAgent，
+          // 长时间运行的工具（如 executeCode）可响应中断而非把剩余
+          // 工具逐个跑完（副作用照做）。
+          const abortSignal = agent.abortController?.signal;
+          if (abortSignal?.aborted) {
+            messages.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              content: `[工具跳过 - ${agent.name}]: 操作已中断`,
+            });
+            continue;
+          }
+          const toolFn = registry.fn(
             ...(Array.isArray(processedArgs) ? processedArgs : [processedArgs]),
           );
+          const resultValue: unknown = abortSignal
+            ? await Promise.race([
+                toolFn,
+                new Promise<never>((_, reject) => {
+                  const onAbort = () => reject(new Error('操作已中断'));
+                  abortSignal.addEventListener('abort', onAbort, { once: true });
+                }),
+              ])
+            : await toolFn;
           const data =
             (resultValue as Record<string, unknown>)?.data ?? resultValue ?? '执行完成（无返回值）';
           const text = typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data);

@@ -41,16 +41,17 @@ function loadMeta(): SessionMeta {
 function saveMeta(meta: SessionMeta): void {
   try {
     broadcast('session-meta-update', { meta });
-    console.log('[会话] 元数据已广播给主进程');
   } catch (e) {
     console.error(`[会话] 元数据广播失败: ${(e as Error).message}`);
   }
 
+  // CLI 模式下没有 Electron 主进程兜底，本地持久化是唯一的元数据保存路径。
+  // 失败时必须记录为 error——否则用户创建的会话在重启后可能全部消失。
   try {
     ensureDir();
     writeFileSync(META_FILE, JSON.stringify(meta, null, 2), 'utf-8');
   } catch (e) {
-    console.warn(`[会话] 本地元数据保存失败（主进程会处理）: ${(e as Error).message}`);
+    console.error(`[会话] 元数据本地保存失败！会话列表可能在重启后丢失: ${(e as Error).message}`);
   }
 }
 
@@ -104,19 +105,49 @@ function saveSession(sessionId: string, messages: Message[]): void {
  */
 let saveQueue: Promise<void> = Promise.resolve();
 
+/** 异步写入连续失败计数：连续 5 次失败后发出用户可见警告（通过 console.error + broadcast）。 */
+let saveAsyncFailures = 0;
+const SAVE_ASYNC_FAILURE_THRESHOLD = 5;
+
 function saveSessionAsync(sessionId: string, messages: Message[]): Promise<void> {
   if (!isValidSessionId(sessionId)) {
     return Promise.resolve();
   }
-  ensureDir();
+  // 确保会话目录存在。若磁盘满或权限不足，ensureDir 内的 mkdirSync 会同步抛出；
+  // 但 saveSessionAsync 对外声明返回 Promise，调用方用 await/catch 处理，
+  // 将无法捕获同步异常（unhandledRejection）。因此包装 try-catch 转为 rejected Promise。
+  try {
+    ensureDir();
+  } catch (e: unknown) {
+    console.error(`[会话] 创建会话目录失败: ${(e as Error).message}`);
+    return Promise.reject(e);
+  }
   const filePath = path.join(SESSIONS_DIR, `${sessionId}.json`);
   const payload = JSON.stringify(messages, null, 2);
-  const task = saveQueue.then(async () => {
-    await fsp.writeFile(filePath, payload, 'utf-8');
-  });
-  saveQueue = task.catch((e: Error) => {
-    console.error(`[会话] 异步保存会话 ${sessionId} 失败: ${e.message}`);
-  });
+  // 将写入任务串联到队列尾部：即使前一个任务失败，后续任务仍可继续执行。
+  // 使用 .then() 而非链式 .catch() 吞掉错误，确保持久化链不会因单次失败而断裂。
+  const task: Promise<void> = saveQueue.then(() => fsp.writeFile(filePath, payload, 'utf-8'));
+  saveQueue = task.then(
+    () => {
+      saveAsyncFailures = 0; // 成功写入，重置失败计数
+    },
+    (e: Error) => {
+      saveAsyncFailures++;
+      console.error(`[会话] 异步保存会话 ${sessionId} 失败: ${e.message}`);
+      // 连续多次写入失败时发出用户可见警告：用户可能在进程重启后丢失数据
+      if (saveAsyncFailures >= SAVE_ASYNC_FAILURE_THRESHOLD) {
+        const alertMsg =
+          `[会话] ⚠️ 会话数据连续 ${saveAsyncFailures} 次写入失败！` +
+          ' 请检查磁盘空间与权限，重启后可能丢失最近对话。';
+        console.error(alertMsg);
+        try {
+          broadcast('agent-reply', { type: 'error', data: alertMsg });
+        } catch {
+          /* ignore */
+        }
+      }
+    },
+  );
   return task;
 }
 
@@ -512,9 +543,18 @@ function addToolResultMessage(content: string, options?: { toolCallId?: string }
   if (!currentSessionId) {
     createNewSession();
   }
-  const message: Message = options?.toolCallId
-    ? { role: 'tool', content, tool_call_id: options.toolCallId }
-    : { role: 'user', content };
+  // 原生 function calling 协议要求工具结果必须以 role='tool' + tool_call_id 形式
+  // 回传，否则 API 收到 orphan user 消息夹在 assistant(tool_calls) 之间会 400。
+  // 未传 toolCallId 时使用哨兵值避免破坏协议，同时记录告警以便追踪调用方遗漏。
+  const toolCallId = options?.toolCallId;
+  if (!toolCallId || typeof toolCallId !== 'string' || !/^[a-zA-Z0-9_-]{1,40}$/.test(toolCallId)) {
+    console.warn(
+      `[会话] addToolResultMessage 缺少合法 toolCallId（got: ${String(toolCallId)}），` +
+        '跳过注入以避免破坏原生工具调用协议。调用方应在 executeNativeToolCallsServer 中提供有效 toolCallId。',
+    );
+    return;
+  }
+  const message: Message = { role: 'tool', content, tool_call_id: toolCallId };
   conversationHistory.push(message);
   // R3.1：热路径统一走异步写队列
   saveSessionAsync(currentSessionId!, conversationHistory);

@@ -7,6 +7,8 @@
  * 彻底避免命令注入风险。
  */
 
+import path from 'path';
+import fs from 'fs';
 import { runPython, validateOutputPath, validateInputPath } from '../shared/python-runner.js';
 
 const TOOLS = [];
@@ -134,17 +136,30 @@ except Exception as e:
 // ============================================
 TOOLS.push({
   name: 'bioConvert',
-  description: '序列格式转换（FASTA/GenBank/EMBL/SwissProt 互转）',
+  description:
+    '序列格式转换（FASTA/GenBank/EMBL 互转）。必须传入文件路径而非序列字符串，例如 bioConvert("input.fasta", "output.gb", "fasta", "genbank")',
   category: 'bioinformatics',
   fn: async (inputPath, outputPath, inputFormat = 'fasta', outputFormat = 'fasta') => {
     if (!inputPath || !outputPath) {
-      return { success: false, error: '请指定输入和输出文件路径' };
+      return {
+        success: false,
+        error:
+          '请指定输入和输出文件路径。bioConvert 需要**文件路径**（非序列字符串），例如 bioConvert("input.fasta", "output.gb", "fasta", "genbank")',
+      };
     }
     try {
       // 校验输出路径，防止路径遍历
       validateOutputPath(outputPath);
       // 校验输入路径，防止任意文件读取（此前仅校验输出，inputPath 可读 /etc/passwd）
       validateInputPath(inputPath);
+      // 检查输入文件是否存在
+      const resolvedInput = path.resolve(process.cwd(), inputPath);
+      if (!fs.existsSync(resolvedInput)) {
+        return {
+          success: false,
+          error: `输入文件不存在: ${inputPath}。bioConvert 需要**文件路径**指向已有的序列文件，而不是直接传入序列字符串。如果序列是 FASTA 格式字符串，请先用 create 工具写入文件再转换。`,
+        };
+      }
       // 白名单校验格式
       const allowedFormats = ['fasta', 'genbank', 'embl', 'swiss', 'fastq', 'phylip'];
       const inFmt = allowedFormats.includes(inputFormat) ? inputFormat : 'fasta';
@@ -300,13 +315,27 @@ for model in structure:
 // ============================================
 TOOLS.push({
   name: 'bioFastaStats',
-  description: '对 FASTA 文件进行全面的序列统计',
+  description:
+    '对 FASTA 文件进行全面的序列统计。必须传入文件路径（如 "sequences.fasta"），而非序列字符串',
   category: 'bioinformatics',
   fn: async (fastaPath) => {
-    if (!fastaPath) return { success: false, error: '请输入 FASTA 文件路径' };
+    if (!fastaPath)
+      return {
+        success: false,
+        error:
+          '请输入 FASTA 文件路径。bioFastaStats 需要**文件路径**（非序列字符串），例如 bioFastaStats("sequences.fasta")',
+      };
     try {
       // 校验输入路径，防止任意文件读取
       validateInputPath(fastaPath);
+      // 检查输入文件是否存在
+      const resolvedInput = path.resolve(process.cwd(), fastaPath);
+      if (!fs.existsSync(resolvedInput)) {
+        return {
+          success: false,
+          error: `输入文件不存在: ${fastaPath}。bioFastaStats 需要**文件路径**指向已有的 FASTA 文件，而不是直接传入序列字符串。如果序列是 FASTA 格式字符串，请先用 create 工具写入文件再分析。`,
+        };
+      }
       const script = `
 import json, sys, os
 from Bio import SeqIO

@@ -25,20 +25,43 @@ async function ocr(
 
 /**
  * 批量识别多张图片中的文字
- * @param {string} images - 图片路径列表，用逗号分隔（如 "img1.jpg, img2.png, img3.webp"）
+ * @param {string | string[]} images - 图片路径列表，可以是逗号分隔的字符串或字符串数组
  * @returns {Promise<Object>} 返回批量识别结果
  */
 async function ocrBatch(
-  images: string,
+  images: string | string[] | Record<string, unknown>,
 ): Promise<{ success: boolean; data?: string; error?: string }> {
-  if (!images || !images.trim()) {
-    return { success: false, error: '请提供图片路径列表' };
-  }
+  let imageList: string[];
 
-  const imageList = images
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  // 处理 { images: [...] } 或 { images: "a,b" } 包装格式
+  if (images && typeof images === 'object' && !Array.isArray(images)) {
+    const inner = (images as Record<string, unknown>).images;
+    if (Array.isArray(inner)) {
+      imageList = inner.map((s) => String(s).trim()).filter(Boolean);
+    } else if (typeof inner === 'string' && inner.trim()) {
+      imageList = inner
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    } else {
+      return {
+        success: false,
+        error: '请提供图片路径列表（逗号分隔的字符串、数组或 {images: [...]} 对象）',
+      };
+    }
+  } else if (Array.isArray(images)) {
+    imageList = images.map((s) => String(s).trim()).filter(Boolean);
+  } else if (typeof images === 'string' && images.trim()) {
+    imageList = images
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  } else {
+    return {
+      success: false,
+      error: '请提供图片路径列表（逗号分隔的字符串、数组或 {images: [...]} 对象）',
+    };
+  }
 
   if (imageList.length === 0) {
     return { success: false, error: '未提供有效的图片路径' };

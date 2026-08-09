@@ -187,7 +187,17 @@ export function writeEnvConfig(config, options = {}) {
   const lines = buildEnvLines(config);
 
   try {
-    fs.writeFileSync(envPath, lines.join('\n'), 'utf-8');
+    // 原子写入：先写临时文件 → fsync → rename，防止写入中途系统崩溃/断电
+    // 导致 .env 不完整（下次启动时配置解析失败，应用无法使用）。
+    const tmpPath = `${envPath}.${process.pid}.${Date.now()}.tmp`;
+    const fd = fs.openSync(tmpPath, 'w');
+    try {
+      fs.writeSync(fd, lines.join('\n'), 0, 'utf-8');
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    fs.renameSync(tmpPath, envPath);
     // .env 含 API 密钥，必须限制文件访问权限
     try {
       if (process.platform === 'win32') {

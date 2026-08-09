@@ -9,6 +9,6 @@ export function safeParseJSON<T = unknown>(
     const parsed = JSON.parse(raw) as T;
     return { success: true, data: parsed };
   } catch (e) {
-    return { success: false, data: null, error: e as Error };
+    return { success: false, data: null, error: e instanceof Error ? e : new Error(String(e)) };
   }
 }

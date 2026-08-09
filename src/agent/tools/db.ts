@@ -62,9 +62,33 @@ function containsDangerousStatement(sql: string): boolean {
 const COLUMN_TYPE_PATTERN =
   /^(INTEGER|INT|REAL|TEXT|BLOB|NUMERIC|BOOLEAN|DATETIME|DATE|TIME|VARCHAR|CHAR|FLOAT|DOUBLE|DECIMAL)(\(\d+\))?$/i;
 
-function validateColumnType(type: unknown): boolean {
-  if (typeof type !== 'string') return false;
-  return COLUMN_TYPE_PATTERN.test(type.trim());
+const SQL_CONSTRAINT_PATTERN =
+  /\b(PRIMARY\s+KEY|NOT\s+NULL|UNIQUE|AUTOINCREMENT|DEFAULT\s+\S+)\b/gi;
+
+interface ColumnTypeInfo {
+  baseType: string;
+  constraints: string[];
+}
+
+function validateColumnType(type: unknown): ColumnTypeInfo | null {
+  if (typeof type !== 'string') return null;
+  const trimmed = type.trim();
+  if (!trimmed) return null;
+
+  // 提取约束部分，保留基础类型进行白名单校验
+  const constraints: string[] = [];
+  let baseType = trimmed;
+  const constraintMatch = trimmed.match(SQL_CONSTRAINT_PATTERN);
+  if (constraintMatch) {
+    for (const c of constraintMatch) {
+      constraints.push(c.toUpperCase());
+    }
+    // 移除约束部分，得到纯类型名
+    baseType = trimmed.replace(SQL_CONSTRAINT_PATTERN, '').trim();
+  }
+
+  if (!COLUMN_TYPE_PATTERN.test(baseType)) return null;
+  return { baseType, constraints };
 }
 
 /**
@@ -104,10 +128,18 @@ function validateColumnDefault(val: unknown): string | null {
 async function initSQL(): Promise<any> {
   if (SQL) return SQL;
   try {
-    const modulePath = path.join(process.cwd(), 'src', 'agent', 'tools', 'db.ts');
-    const sqlJsDir = path.dirname(modulePath).replace(/\\/g, '/');
+    // 使用 import.meta.url 定位 WASM 文件：原实现依赖 process.cwd() +
+    // 字面量路径 "src/agent/tools/db.ts"，打包/webpack 后路径结构不再匹配，
+    // import.meta.url 始终指向当前模块的实际文件系统位置。
+    const currentDir = new URL('.', import.meta.url).pathname;
+    // Windows 下 URL.pathname 以 / 开头（如 /C:/...），需处理盘符
+    const normalizedDir =
+      process.platform === 'win32' && /^\/[a-zA-Z]:/.test(currentDir)
+        ? currentDir.slice(1)
+        : currentDir;
     SQL = await initSqlJs({
-      locateFile: (file: string) => `file://${sqlJsDir}/../../../node_modules/sql.js/dist/${file}`,
+      locateFile: (file: string) =>
+        `file://${normalizedDir}../../../node_modules/sql.js/dist/${file}`,
     });
   } catch {
     SQL = await initSqlJs();
@@ -521,14 +553,20 @@ async function createTable(name: string, columns: Record<string, unknown>[]): Pr
         throw new Error('无效的列名');
       }
       // 列类型必须命中白名单，禁止直接拼接任意字符串（防 SQL 注入）
-      if (!validateColumnType(col.type)) {
+      const typeInfo = validateColumnType(col.type);
+      if (!typeInfo) {
         throw new Error(`无效的列类型: ${col.type}`);
       }
-      let def = `\`${col.name}\` ${col.type}`;
-      if (col.primaryKey) def += ' PRIMARY KEY';
-      if (col.autoIncrement) def += ' AUTOINCREMENT';
-      if (col.notNull) def += ' NOT NULL';
-      if (col.unique) def += ' UNIQUE';
+      let def = `\`${col.name}\` ${typeInfo.baseType}`;
+      // 收集约束：从类型字符串解析 + 从显式属性指定，去重
+      const constraints = new Set(typeInfo.constraints);
+      if (col.primaryKey && !constraints.has('PRIMARY KEY')) constraints.add('PRIMARY KEY');
+      if (col.autoIncrement && !constraints.has('AUTOINCREMENT')) constraints.add('AUTOINCREMENT');
+      if (col.notNull && !constraints.has('NOT NULL')) constraints.add('NOT NULL');
+      if (col.unique && !constraints.has('UNIQUE')) constraints.add('UNIQUE');
+      for (const c of constraints) {
+        def += ` ${c}`;
+      }
       if (col.default !== undefined) {
         // 默认值必须通过校验后才可拼接，避免 DEFAULT 子句注入
         const safeDefault = validateColumnDefault(col.default);

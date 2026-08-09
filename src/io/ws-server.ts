@@ -59,20 +59,10 @@ function readTokenFromRequest(req: {
   headers?: Record<string, string | string[] | undefined>;
   url?: string;
 }): string | null {
-  // 优先从 header 读取，其次从 URL query 读取
+  // 仅从 Header 读取 token：URL 查询参数 ?token=xxx 会被代理/负载均衡/
+  // 访问日志以明文持久化，构成凭据泄露。WebSocket 帧层面传递 token 更安全。
   const headerToken = req?.headers?.['x-ws-token'];
   if (typeof headerToken === 'string' && headerToken.length > 0) return headerToken;
-  const url = req?.url || '';
-  try {
-    const idx = url.indexOf('?');
-    if (idx >= 0) {
-      const params = new URLSearchParams(url.slice(idx + 1));
-      const t = params.get('token');
-      if (t) return t;
-    }
-  } catch {
-    // URL 解析失败，忽略
-  }
   return null;
 }
 
@@ -187,7 +177,7 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
           console.log(`[WS] 健康检查服务已启动: http://0.0.0.0:${healthPort}/health`);
         });
         healthServer.on('error', (err) => {
-          console.error('[WS] 健康检查服务错误:', err.message);
+          console.error(`[WS] 健康检查服务错误（端口 ${healthPort} 可能被占用）: ${err.message}`);
         });
       }
 
@@ -376,25 +366,53 @@ function broadcast(type: string, data: Record<string, unknown>): void {
 
 async function stopWsServer(): Promise<void> {
   if (healthServer) {
-    // 强制关闭健康检查端口的 keep-alive 空闲连接，避免 close() 回调挂起
-    try {
-      if (typeof healthServer.closeAllConnections === 'function') {
-        healthServer.closeAllConnections();
-      } else if (typeof healthServer.closeIdleConnections === 'function') {
-        healthServer.closeIdleConnections();
+    // 仅在 server 真正在监听时执行关闭；listen 失败时 healthServer 存在但
+    // not listening，close() 会抛错导致下方 close 永远不被调用。
+    if (healthServer.listening) {
+      // 强制关闭健康检查端口的 keep-alive 空闲连接，避免 close() 回调挂起
+      try {
+        if (typeof healthServer.closeAllConnections === 'function') {
+          healthServer.closeAllConnections();
+        } else if (typeof healthServer.closeIdleConnections === 'function') {
+          healthServer.closeIdleConnections();
+        }
+      } catch {
+        // 忽略
       }
-    } catch {
-      // 忽略
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          // 5 秒超时保护：若 server.close() 回调因客户端不响应 close 帧
+          // 而永不触发，强制 resolve 防止优雅关闭无限挂起（进程无法退出）。
+          resolve();
+        }, 5000);
+        try {
+          healthServer!.close(() => {
+            clearTimeout(timer);
+            resolve();
+          });
+        } catch {
+          clearTimeout(timer);
+          resolve();
+        }
+      });
     }
-    await new Promise<void>((resolve) => {
-      healthServer!.close(() => resolve());
-    });
     healthServer = null;
   }
   if (wss) {
     // 先关闭已有连接（1001=Going Away），仅 wss.close() 不会主动断开 clients
     wss.clients.forEach((c) => c.close(1001));
-    await new Promise<void>((resolve) => wss!.close(() => resolve()));
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(() => resolve(), 5000);
+      try {
+        wss!.close(() => {
+          clearTimeout(timer);
+          resolve();
+        });
+      } catch {
+        clearTimeout(timer);
+        resolve();
+      }
+    });
     wss = null;
   }
 }

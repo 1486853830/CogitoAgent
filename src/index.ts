@@ -3,7 +3,7 @@ import 'dotenv/config';
 import { isConfigured } from './config.ts';
 import { runSetup } from './setup.ts';
 import { start } from './agent/Agent.ts';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
@@ -15,16 +15,21 @@ function openWelcomePage(): void {
   const isWindows = process.platform === 'win32';
   const isMac = process.platform === 'darwin';
 
+  // 使用 execFile 而非 exec，将参数以数组形式传递，避免 shell 解析注入。
   let cmd: string;
+  let args: string[];
   if (isWindows) {
-    cmd = `start "" "${url}"`;
+    cmd = 'cmd';
+    args = ['/c', 'start', '', url];
   } else if (isMac) {
-    cmd = `open "${url}"`;
+    cmd = 'open';
+    args = [url];
   } else {
-    cmd = `xdg-open "${url}"`;
+    cmd = 'xdg-open';
+    args = [url];
   }
 
-  exec(cmd, (err) => {
+  execFile(cmd, args, (err) => {
     if (err) {
       console.error('打开欢迎页面失败:', err.message);
     }

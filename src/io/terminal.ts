@@ -96,6 +96,17 @@ function printTag(
 function init(onUserInput: (input: string) => void): void {
   userInputCallback = onUserInput;
 
+  // 幂等保护：关闭旧的 readline 实例再创建新的，避免重复 init
+  // 时 stdin 流泄漏（多测试/热重载场景）。
+  if (rl) {
+    try {
+      rl.close();
+    } catch {
+      /* ignore */
+    }
+    rl = null;
+  }
+
   rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,

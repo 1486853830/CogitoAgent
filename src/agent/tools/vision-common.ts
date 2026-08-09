@@ -56,6 +56,13 @@ async function callVLApi(
 
   const baseURL =
     (toolCfg.baseURL as string) || ((cfg.api as Record<string, unknown>)?.baseURL as string);
+  // baseURL 为 falsy 时（未配置 → undefined/null/''）直接抛错，
+  // 避免后续 .endsWith() 调用 TypeError 导致 OCR/Vision 崩溃。
+  if (!baseURL) {
+    throw new Error(
+      `${config.errorPrefix} API 地址 (baseURL) 未配置。请在配置中设定 ${config.section}.baseURL 或 api.baseURL`,
+    );
+  }
   const model = (toolCfg.model as string) || 'InternVL3-78B';
 
   const url = baseURL.endsWith('/') ? `${baseURL}chat/completions` : `${baseURL}/chat/completions`;
@@ -73,7 +80,9 @@ async function callVLApi(
           {
             type: 'image_url',
             image_url: {
-              url: `data:${mimeType};base64,${imageBase64}`,
+              url: /^https?:\/\//i.test(imageBase64)
+                ? imageBase64
+                : `data:${mimeType};base64,${imageBase64}`,
             },
           },
         ],

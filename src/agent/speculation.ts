@@ -17,6 +17,7 @@ import { streamChatNative } from '../api/client.ts';
 import type { NativeStreamReturn, OpenAITool } from '../api/client.ts';
 import type { Message, NativeToolInvocation } from '../types/index.ts';
 import { getToolAnnotations } from './tool-schema.ts';
+import { writeFileAtomic } from '../utils/fs-atomic.ts';
 
 export type ToolSpeculationClass = 'speculatable' | 'dryrun' | 'forbidden';
 
@@ -104,7 +105,7 @@ export class PatternStore {
     }
   }
 
-  /** 立即落盘（原子写：tmp + rename，避免崩溃留下半截 JSON）。 */
+  /** 立即落盘（原子写：tmp + fsync + rename，避免崩溃留下半截 JSON）。 */
   flush(): void {
     if (this.saveTimer) {
       clearTimeout(this.saveTimer);
@@ -112,21 +113,14 @@ export class PatternStore {
     }
     if (!this.dirty) return;
     this.dirty = false;
-    const tmpPath = `${this.filePath}.${process.pid}.tmp`;
     try {
       const dir = path.dirname(this.filePath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       const obj: Record<string, PatternEntry> = {};
       for (const [k, v] of this.map) obj[k] = v;
-      fs.writeFileSync(tmpPath, JSON.stringify(obj, null, 2), 'utf-8');
-      fs.renameSync(tmpPath, this.filePath);
+      writeFileAtomic(this.filePath, JSON.stringify(obj, null, 2));
     } catch {
       // 持久化失败不阻塞主流程。
-      try {
-        if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
-      } catch {
-        /* ignore */
-      }
     }
   }
 

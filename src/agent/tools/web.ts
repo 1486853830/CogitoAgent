@@ -2,12 +2,39 @@ import { execFile } from 'child_process';
 import { search as webSearch } from '../../api/webSearch.ts';
 import * as cheerio from 'cheerio';
 import os from 'os';
+import { isIP } from 'net';
+
+/** 工具调用方不可访问的网络地址：localhost + 私有网段 + 链路本地 + 本地回环 */
+const BLOCKED_HOST_PATTERNS = [
+  /^localhost$/i,
+  /^127\.\d+\.\d+\.\d+$/,
+  /^10\.\d+\.\d+\.\d+$/,
+  /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
+  /^192\.168\.\d+\.\d+$/,
+  /^0\.0\.0\.0$/,
+  /^169\.254\.\d+\.\d+$/,
+  /^::1$/i,
+];
+
+function isBlockedHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (BLOCKED_HOST_PATTERNS.some((p) => p.test(h))) return true;
+  // IPv6 链路本地（fe80::/10）
+  if (isIP(h) === 6 && h.toLowerCase().startsWith('fe80:')) return true;
+  // 纯粹的 IPv6 localhost 别名（如 [::1]、[0:0:0:0:0:0:0:1]）
+  if (/^\[.*\]$/.test(h)) return false;
+  return false;
+}
 
 function isValidUrl(url: string): boolean {
   try {
     const cleanedUrl = url.trim().replace(/`/g, '');
     const parsed = new URL(cleanedUrl);
-    return ['http:', 'https:'].includes(parsed.protocol);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+    // 阻止 localhost / 私有网段 / 链路本地地址：Agent 不可访问本地服务，
+    // 否则恶意 prompt 注入可让 Agent 探测内网服务、修改路由/配置面板等。
+    if (isBlockedHost(parsed.hostname)) return false;
+    return true;
   } catch {
     return false;
   }
@@ -110,6 +137,12 @@ async function browse(url: string): Promise<{ success: boolean; data?: string; e
 async function fetchPage(
   url: string,
 ): Promise<{ success: boolean; data?: string; error?: string }> {
+  // URL 安全校验：与 browse() 一致，阻止 SSRF 攻击（内网探测、本地服务访问）。
+  // 此前 fetchPage 未做此校验，恶意 prompt 注入可让 Agent 访问
+  // http://127.0.0.1:6379、http://169.254.169.254 等地址。
+  if (!isValidUrl(url)) {
+    return { success: false, error: '安全限制：禁止访问内网地址、本地服务或未授权域名' };
+  }
   // 超时控制 + 响应体大小上限（避免恶意服务端无限拖慢/撑爆内存）
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -126,14 +159,32 @@ async function fetchPage(
     if (!response.ok) {
       return { success: false, error: `HTTP ${response.status}: ${response.statusText}` };
     }
-    const contentLength = Number(response.headers.get('content-length') || 0);
-    if (contentLength > MAX_BODY_BYTES) {
-      return { success: false, error: '页面过大，已跳过抓取' };
+    // 使用流式读取分段检查大小：response.arrayBuffer() 会将整个响应体
+    // 全量加载到内存中再检查大小，恶意超大响应可直接 OOM。
+    // 改为 reader.read() 分段读取，每段累计检查，超限立即终止。
+    const reader = response.body?.getReader();
+    if (!reader) {
+      return { success: false, error: '响应体不可读' };
     }
-    const buf = Buffer.from(await response.arrayBuffer());
-    if (buf.length > MAX_BODY_BYTES) {
-      return { success: false, error: '页面过大，已跳过抓取' };
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          totalBytes += value.length;
+          if (totalBytes > MAX_BODY_BYTES) {
+            reader.cancel();
+            return { success: false, error: '页面过大，已跳过抓取' };
+          }
+          chunks.push(value);
+        }
+      }
+    } finally {
+      reader.releaseLock();
     }
+    const buf = Buffer.concat(chunks);
     const html = buf.toString('utf8');
     const $ = cheerio.load(html);
 

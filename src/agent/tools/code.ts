@@ -168,54 +168,76 @@ async function runPython(code: string, signal?: AbortSignal): Promise<CodeExecRe
           encoding: 'utf8',
           env: secureEnv,
           signal,
-          // 注意：Python 执行当前无真正的沙盒隔离（不同于 runJavaScript 的 isolated-vm）。
-          // 此前传入的 gid/uid 取自当前进程自身，等于零隔离，反而误导维护者以为有权限降级。
-          // 真正的隔离需要容器/cgroups/seccomp 或独立低权限用户，待架构层面解决。
-          // 当前仅通过环境变量清理（PYTHONNOUSERSITE 等）和超时做有限缓解。
+          // ⚠️ 安全警告：Python 执行无操作系统级沙盒隔离（不同于 runJavaScript 的 isolated-vm）。
+          // Python 脚本以当前用户完整权限运行，可读写任意文件、访问网络、执行系统命令。
+          // 此前传入的 gid/uid 取自当前进程自身=零隔离，反而误导维护者以为有权限降级。
+          //
+          // 多层缓解措施（有限，非银弹）：
+          // 1. 环境变量清理（移除 PYTHONPATH/PYTHONHOME/VIRTUAL_ENV，设置 PYTHONNOUSERSITE）
+          // 2. CODE_TIMEOUT 硬超时（配置 code.maxExecutionTime，默认 30s）
+          // 3. AbortSignal 传递（/stop 时由 Node kill 子进程）
+          // 4. 临时文件基于 crypto.randomUUID()，避免可预测文件名竞态
+          //
+          // 真正隔离需容器/cgroups/seccomp 或独立低权限用户，待架构层面解决。
+          // 当前安全模式下的环境净化上限由 sandbox.ts:getSecurePythonEnv() 定义。
         },
         async (error, stdout, stderr) => {
           if (timedOut) return;
 
           clearTimeout(timeoutId);
 
-          await cleanupTmpFile(tmpPath);
+          // 回调为 async：若 cleanupTmpFile 等异步操作抛异常，错误不会被
+          // Promise 链捕获（execFile 回调返回 Promise 但无人 await），形成
+          // unhandledRejection。外层 try/catch 统一兜底。
+          try {
+            await cleanupTmpFile(tmpPath);
 
-          if (error) {
+            if (error) {
+              resolve({
+                success: false,
+                error: `执行失败: ${error.message}\n${stderr || ''}`,
+              });
+              return;
+            }
+
+            // Windows 下 Python 文本模式输出为 CRLF，统一归一化为 \n，避免前端换行识别异常
+            stdout = stdout.replace(/\r\n/g, '\n');
+            if (stderr) {
+              stderr = stderr.replace(/\r\n/g, '\n');
+            }
+
+            let result = stdout || '执行完成，无输出';
+
+            if (isGuiCode) {
+              result =
+                '🖼️ [GUI 程序已执行]\n' +
+                '提示：窗口将在 10 秒后自动关闭\n' +
+                '如果窗口未显示，可能是因为当前环境不支持图形界面\n\n' +
+                (stdout ? '[程序输出]:\n' + stdout : '');
+            }
+
+            if (stderr) {
+              result += '\n[错误输出]: ' + stderr;
+            }
+
+            if (result.length > maxOutputSize) {
+              result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
+            }
+
+            resolve({
+              success: true,
+              data: result,
+            });
+          } catch (cbError: unknown) {
+            console.error(
+              '[code] execFile 回调异常:',
+              cbError instanceof Error ? cbError.message : String(cbError),
+            );
             resolve({
               success: false,
-              error: `执行失败: ${error.message}\n${stderr || ''}`,
+              error: `执行异常: ${cbError instanceof Error ? cbError.message : String(cbError)}`,
             });
-            return;
           }
-
-          // Windows 下 Python 文本模式输出为 CRLF，统一归一化为 \n，避免前端换行识别异常
-          stdout = stdout.replace(/\r\n/g, '\n');
-          if (stderr) {
-            stderr = stderr.replace(/\r\n/g, '\n');
-          }
-
-          let result = stdout || '执行完成，无输出';
-
-          if (isGuiCode) {
-            result =
-              '🖼️ [GUI 程序已执行]\n' +
-              '提示：窗口将在 10 秒后自动关闭\n' +
-              '如果窗口未显示，可能是因为当前环境不支持图形界面\n\n' +
-              (stdout ? '[程序输出]:\n' + stdout : '');
-          }
-
-          if (stderr) {
-            result += '\n[错误输出]: ' + stderr;
-          }
-
-          if (result.length > maxOutputSize) {
-            result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
-          }
-
-          resolve({
-            success: true,
-            data: result,
-          });
         },
       );
     } catch (e: unknown) {
@@ -262,6 +284,16 @@ async function executeFile(
   }
 
   try {
+    // 文件大小检查：避免超大文件（如几 GB 的日志/数据文件）直接 readFile OOM。
+    // file.ts:read() 已实现先 stat 再决定怎么读，此处保持一致的防护层级。
+    const stat = await fs.stat(resolvedPath);
+    const MAX_CODE_FILE_BYTES = 10 * 1024 * 1024; // 10MB 上限
+    if (stat.size > MAX_CODE_FILE_BYTES) {
+      return {
+        success: false,
+        error: `文件过大 (${(stat.size / 1024 / 1024).toFixed(1)}MB)，跳过执行`,
+      };
+    }
     const content = await fs.readFile(resolvedPath, 'utf-8');
 
     if (!language) {

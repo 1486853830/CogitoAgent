@@ -12,6 +12,9 @@ import path from 'path';
 const WS_URL = 'ws://localhost:9527';
 let ws = null;
 let reconnectTimer = null;
+let reconnectAttempts = 0;
+const RECONNECT_BASE_MS = 3000;
+const RECONNECT_MAX_MS = 30000;
 // 是否应当重连。窗口全部关闭后置为 false，避免 ws.close() 触发 close 事件
 // 又调度重连，导致连接空转泄漏。
 let shouldReconnect = true;
@@ -79,6 +82,7 @@ function connect() {
   ws.on('open', () => {
     console.log('[AgentBridge] 已连接到 Agent');
     shouldReconnect = true;
+    reconnectAttempts = 0; // 连接成功，重置退避计数
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
@@ -175,8 +179,12 @@ function connect() {
       reconnectTimer = null;
     }
     if (shouldReconnect) {
-      console.log('[AgentBridge] 3秒后重连...');
-      reconnectTimer = setTimeout(() => connect(), 3000);
+      const delay = Math.min(RECONNECT_BASE_MS * 2 ** reconnectAttempts, RECONNECT_MAX_MS);
+      reconnectAttempts++;
+      console.log(
+        `[AgentBridge] ${(delay / 1000).toFixed(0)}秒后重连... (第${reconnectAttempts}次)`,
+      );
+      reconnectTimer = setTimeout(() => connect(), delay);
     }
   });
 
@@ -271,8 +279,12 @@ function ensureUserMessageHandler() {
       ws.on('message', handler);
       ws.send(JSON.stringify({ type: 'stats-request', payload, requestId }));
 
+      // 超时清理：捕获当前 ws 引用为局部变量，防止 30 秒内 WebSocket
+      // 断线重连导致模块级 ws 被替换为新的连接实例，使 removeListener
+      // 作用在错误的对象上（或 ws 已被置 null 导致 TypeError）。
+      const currentWs = ws;
       setTimeout(() => {
-        ws.removeListener('message', handler);
+        currentWs.removeListener('message', handler);
       }, 30000);
     } else {
       event.reply('stats-response', { error: 'Agent 未连接' });
@@ -296,8 +308,9 @@ function ensureUserMessageHandler() {
       ws.on('message', handler);
       ws.send(JSON.stringify({ type: 'tools-request', requestId }));
 
+      const currentWs2 = ws;
       setTimeout(() => {
-        ws.removeListener('message', handler);
+        currentWs2.removeListener('message', handler);
       }, 30000);
     } else {
       event.reply('tools-response', { error: 'Agent 未连接' });

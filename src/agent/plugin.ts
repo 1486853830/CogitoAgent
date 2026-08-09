@@ -11,8 +11,10 @@
 
 import { readdirSync, statSync, existsSync, readFileSync } from 'fs';
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { TOOL_REGISTRY } from './registry.ts';
 import { loadConfig } from '../config.ts';
+import type { ToolPermissionRule } from '../types/index.ts';
 import type { JSONSchema, ToolAnnotations, RichErrorSpec, SkillInfo } from '../types/index.ts';
 
 const PLUGINS_DIR = path.resolve(process.cwd(), 'plugins');
@@ -128,9 +130,20 @@ class PluginManager {
       throw new Error('Plugin must have index.js');
     }
 
-    // 动态导入插件
+    // 动态导入插件（带超时保护：插件 index.js 中的顶层 await 或无限循环
+    // 不应永久阻塞 Agent 启动流程）
+    const PLUGIN_IMPORT_TIMEOUT_MS = 15000;
+    const pluginUrl = pathToFileURL(indexPath).href;
     const plugin: { default?: unknown; tools?: unknown; metadata?: Record<string, unknown> } =
-      await import(`file://${indexPath}`);
+      await Promise.race([
+        import(pluginUrl),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`插件加载超时 (${PLUGIN_IMPORT_TIMEOUT_MS / 1000}s): ${name}`)),
+            PLUGIN_IMPORT_TIMEOUT_MS,
+          ),
+        ),
+      ]);
 
     // 验证插件格式
     if (!plugin.default && !plugin.tools) {
@@ -453,6 +466,11 @@ export function resolveToolPermission(
   return 'allow';
 }
 
+/** 缓存权限规则 + 定期刷新：避免高频工具调用路径每次 loadConfig() 做同步 I/O。 */
+let cachedPermissions: ToolPermissionRule[] | null = null;
+let permissionsCacheTime = 0;
+const PERMISSIONS_CACHE_TTL_MS = 5000; // 5 秒后重新读取磁盘
+
 /**
  * 权限策略查询（R5.2）。
  * 优先级：配置 tools.permissions 的 name 级规则 > 插件 manifest 声明的 defaultPermission > allow。
@@ -465,8 +483,14 @@ function getToolPermission(
   name: string,
   pluginDefaultProvider?: (toolName: string) => 'allow' | 'deny' | 'ask' | undefined,
 ): 'allow' | 'deny' | 'ask' {
-  const cfg = loadConfig();
-  const rules = cfg.tools?.permissions;
+  // 缓存 + TTL 刷新：避免每次工具调用都 loadConfig() 触发磁盘 I/O
+  const now = Date.now();
+  if (!cachedPermissions || now - permissionsCacheTime > PERMISSIONS_CACHE_TTL_MS) {
+    const cfg = loadConfig();
+    cachedPermissions = cfg.tools?.permissions ?? null;
+    permissionsCacheTime = now;
+  }
+  const rules = cachedPermissions;
   let globalLevel: 'allow' | 'deny' | 'ask' | null = null;
   if (Array.isArray(rules)) {
     const rule = rules.find((r) => r.name === name);

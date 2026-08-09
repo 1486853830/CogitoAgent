@@ -5,10 +5,17 @@
 
 const SharedUtils = {
   renderMarkdown(text) {
-    if (window.marked) {
-      return marked.parse(text, { breaks: true, gfm: true });
+    // 默认自动消毒：marked.parse() 返回原始 HTML，上游若忘记消毒会形成 XSS。
+    // 调用方无需再单独 sanitizeHtml。
+    const raw = window.marked
+      ? marked.parse(text, { breaks: true, gfm: true })
+      : text.replace(/\n/g, '<br>');
+    if (window.DOMPurify) {
+      return window.DOMPurify.sanitize(raw);
     }
-    return text.replace(/\n/g, '<br>');
+    const div = document.createElement('div');
+    div.textContent = raw;
+    return div.innerHTML;
   },
 
   sanitizeHtml(html) {

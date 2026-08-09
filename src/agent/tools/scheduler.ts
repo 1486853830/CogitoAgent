@@ -33,6 +33,7 @@ const MAX_PARAMS_KEYS = 50;
 
 let tasks: ScheduleTask[] = [];
 let intervals: Record<number, NodeJS.Timeout> = {};
+let tasksLoaded = false;
 
 /**
  * 安全解析 ID，返回数字或 null（无效时）
@@ -43,7 +44,7 @@ function safeParseId(id: unknown): number | null {
 }
 
 /**
- * 加载定时任务
+ * 加载定时任务（仅在首次或显式需要刷新时从文件读取）
  */
 async function loadTasks(): Promise<void> {
   try {
@@ -63,7 +64,21 @@ async function loadTasks(): Promise<void> {
   } catch {
     tasks = [];
   }
+  tasksLoaded = true;
 }
+
+/**
+ * 确保任务已加载（读操作专用：不重复读文件，直接使用内存缓存）
+ * 写操作（toggle/update/remove）仍调用 loadTasks() 以确保拿到最新数据
+ */
+async function ensureTasksLoaded(): Promise<void> {
+  if (!tasksLoaded) {
+    await loadTasks();
+  }
+}
+
+/** 写入锁：序列化并发 saveTasks 调用，防止后写入者覆盖先写入者的修改。 */
+let saveLock: Promise<unknown> = Promise.resolve();
 
 /**
  * 保存定时任务
@@ -71,24 +86,35 @@ async function loadTasks(): Promise<void> {
  * @throws 当保存失败时抛出错误
  */
 async function saveTasks(): Promise<boolean> {
-  const dir = path.dirname(TASKS_FILE);
-  try {
-    if (
-      !(await fs
-        .access(dir)
-        .then(() => true)
-        .catch(() => false))
-    ) {
-      await fs.mkdir(dir, { recursive: true });
+  // 将写入排入队列：并发 addScheduleTask/removeScheduleTask 等操作均可
+  // 触发 saveTasks，若不序列化则后保存者覆盖先保存者的修改导致数据丢失。
+  const task = saveLock.then(async () => {
+    const dir = path.dirname(TASKS_FILE);
+    try {
+      if (
+        !(await fs
+          .access(dir)
+          .then(() => true)
+          .catch(() => false))
+      ) {
+        await fs.mkdir(dir, { recursive: true });
+      }
+      // 原子写入：先写临时文件，再 rename，防止写入中断导致文件损坏
+      const tmpFile = TASKS_FILE + '.tmp';
+      await fs.writeFile(tmpFile, JSON.stringify(tasks, null, 2), 'utf-8');
+      await fs.rename(tmpFile, TASKS_FILE);
+      return true;
+    } catch (e: unknown) {
+      const error = new Error(`[定时任务] 保存失败: ${e instanceof Error ? e.message : String(e)}`);
+      (error as Error & { code?: string }).code = 'SCHEDULER_SAVE_FAILED';
+      console.error(error.message);
+      throw error;
     }
-    await fs.writeFile(TASKS_FILE, JSON.stringify(tasks, null, 2), 'utf-8');
-    return true;
-  } catch (e: unknown) {
-    const error = new Error(`[定时任务] 保存失败: ${e instanceof Error ? e.message : String(e)}`);
-    (error as Error & { code?: string }).code = 'SCHEDULER_SAVE_FAILED';
-    console.error(error.message);
-    throw error;
-  }
+  });
+  saveLock = task.catch(() => {
+    /* 已在上层 log，不让锁链断裂 */
+  });
+  return task;
 }
 
 /**
@@ -173,7 +199,14 @@ async function removeScheduleTask(id: unknown): Promise<ActionResult<string>> {
 
   const task = tasks[index];
   tasks.splice(index, 1);
-  await saveTasks();
+  try {
+    await saveTasks();
+  } catch {
+    return {
+      success: false,
+      error: `定时任务删除失败：保存到文件时出错，请重试`,
+    };
+  }
 
   if (intervals[numId]) {
     clearInterval(intervals[numId]);
@@ -190,7 +223,7 @@ async function removeScheduleTask(id: unknown): Promise<ActionResult<string>> {
  * 获取定时任务列表
  */
 async function getScheduleTasks(): Promise<ActionResult<ScheduleTask[]>> {
-  await loadTasks();
+  await ensureTasksLoaded();
 
   return {
     success: true,
@@ -202,7 +235,7 @@ async function getScheduleTasks(): Promise<ActionResult<ScheduleTask[]>> {
  * 获取单个定时任务
  */
 async function getScheduleTask(id: unknown): Promise<ActionResult<ScheduleTask>> {
-  await loadTasks();
+  await ensureTasksLoaded();
 
   const numId = safeParseId(id);
   if (numId === null) {
@@ -312,7 +345,14 @@ async function toggleScheduleTask(
     unscheduleTask(task.id);
   }
 
-  await saveTasks();
+  try {
+    await saveTasks();
+  } catch {
+    return {
+      success: false,
+      error: `定时任务状态切换失败：保存到文件时出错，请重试`,
+    };
+  }
 
   return {
     success: true,

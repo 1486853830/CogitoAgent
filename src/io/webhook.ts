@@ -192,7 +192,18 @@ async function stopWebhookServer(): Promise<void> {
     } catch {
       // 忽略关闭连接失败
     }
-    await new Promise<void>((resolve) => server!.close(() => resolve()));
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(() => resolve(), 5000);
+      try {
+        server!.close(() => {
+          clearTimeout(timer);
+          resolve();
+        });
+      } catch {
+        clearTimeout(timer);
+        resolve();
+      }
+    });
     server = null;
   }
 }

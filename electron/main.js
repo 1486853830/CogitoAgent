@@ -17,6 +17,17 @@ import { writeEnvConfig } from './shared/config-writer.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 全局未捕获 Promise 拒绝处理器：防止异步操作中意外遗漏 .catch() 导致错误被静默吞没。
+// 主进程中的 unhandledRejection 不会像渲染进程那样显示错误对话框，缺少此处理器会使
+// 问题极难定位。记录完整错误以便故障排查，但不终止进程（与 uncaughtException 不同）。
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[主进程] 未捕获的 Promise 拒绝:', reason);
+  // 输出堆栈以便定位
+  if (reason instanceof Error && reason.stack) {
+    console.error(reason.stack);
+  }
+});
+
 let mainWindow = null;
 let setupWindow = null;
 let dashboardWindow = null;
@@ -464,11 +475,13 @@ function startAgentProcess() {
   const env = {
     ...process.env,
     ...fileEnv,
-    ELECTRON_RUN_AS_NODE: undefined,
+    // 显式删除而非设为 undefined：child_process.spawn 要求 env 值必须为字符串，
+    // undefined 会被隐式转为 "undefined" 干扰子进程的运行时检测。
     COGITO_USER_DATA_DIR: USER_DATA_DIR,
     ELECTRON_MODE: 'true',
     COGITO_SRC_PATH: srcPath,
   };
+  delete env.ELECTRON_RUN_AS_NODE;
 
   let tsxPath;
   if (isPackaged) {
@@ -1208,7 +1221,9 @@ app.whenReady().then(async () => {
   });
 
   // ===== 会话管理 IPC =====
-  // 更新当前 persona（在 Agent 侧切换人设时同步），并持久化到 config.json
+  // 更新当前 persona（在 Agent 侧切换人设时同步）。
+  // persona 是运行时概念，不持久化到 config.json——会话级人设由 session.ts 管理，
+  // 启动初始人设由 config.json 的 persona 字段（setup wizard 写入）决定。
   ipcMain.on('update-current-persona', (_event, personaName) => {
     // 空串 = 回到默认人设，是合法输入；非空但非法（含分隔符/遍历）一律拒绝
     const safe = personaName ? sanitizePersonaId(personaName) : '';
@@ -1217,18 +1232,7 @@ app.whenReady().then(async () => {
       return;
     }
     currentPersona = safe;
-    console.log('[主进程] Persona 已同步:', safe || '默认');
-    try {
-      if (fs.existsSync(CONFIG_FILE)) {
-        const configJson = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-        // 空字符串表示默认人设（Cogito），仍写入以覆盖之前的显式人设
-        configJson.persona = safe;
-        writeFileAtomicSync(CONFIG_FILE, JSON.stringify(configJson, null, 2));
-        console.log('[主进程] Persona 已持久化到 config.json:', safe || '默认');
-      }
-    } catch (e) {
-      console.error('[主进程] 持久化 persona 失败:', e.message);
-    }
+    console.log('[主进程] Persona 已同步:', safe || '默认(Cogito)');
   });
 
   // ===== IPC: 扩展配置（R4.3 MCP 配置面 / R5.2 插件权限） =====

@@ -8,6 +8,7 @@
 import { loadConfig } from '../config.ts';
 import { safeParseJSON } from '../utils/llm-validator.ts';
 import { estimateTokens } from '../utils/token.ts';
+import type { Message } from '../types/index.ts';
 
 // 重试配置
 const MAX_RETRIES = 5; // 最大重试次数
@@ -182,7 +183,9 @@ async function* streamChat(
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        const err = new Error(`API ${response.status}: ${text.slice(0, 200)}`) as Error & {
+        const err = new Error(
+          `API ${response.status}: ${response.statusText || '请求失败'}`,
+        ) as Error & {
           status?: number;
           retryAfter?: string | null;
         };
@@ -376,7 +379,9 @@ async function chatText(
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        const err = new Error(`API ${response.status}: ${text.slice(0, 200)}`) as Error & {
+        const err = new Error(
+          `API ${response.status}: ${response.statusText || '请求失败'}`,
+        ) as Error & {
           status?: number;
           retryAfter?: string | null;
         };
@@ -477,7 +482,7 @@ export interface NativeStreamChunk {
  * yield 的 chunk 为内容增量；generator 的 return value 为 NativeStreamReturn。
  */
 async function* streamChatNative(
-  messages: Array<Record<string, unknown>>,
+  messages: Message[] | Array<Record<string, unknown>>,
   options: NativeStreamOptions = {},
 ): AsyncGenerator<NativeStreamChunk, NativeStreamReturn, unknown> {
   let retryCount = 0;
@@ -542,7 +547,9 @@ async function* streamChatNative(
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        const err = new Error(`API ${response.status}: ${text.slice(0, 200)}`) as Error & {
+        const err = new Error(
+          `API ${response.status}: ${response.statusText || '请求失败'}`,
+        ) as Error & {
           status?: number;
           retryAfter?: string | null;
         };

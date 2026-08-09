@@ -84,7 +84,13 @@ function enqueue<T = unknown>(key: string, task: () => Promise<T> | T, priority 
   });
 
   const queue = queues.get(key) ?? [];
-  // 同优先级按入队顺序；高优先级任务插到同优先级组最前
+  // 同优先级按入队顺序；高优先级任务插到同优先级组最前。
+  //
+  // 注意：当前实现为严格优先级队列，若持续有高优先级任务入队，
+  // 低优先级任务可能被无限期推迟（饥饿）。当前所有调用方均使用
+  // 默认 priority=0，因此实际不会触发。若未来引入异构优先级：
+  //   1. 建议为低优先级任务引入年龄提升（age boost）机制；
+  //   2. 或设 maxPending 上限防止无界增长。
   const insertAt = queue.findIndex((q) => q.priority < priority);
   const genericItem = item as unknown as LaneItem;
   if (insertAt === -1) {

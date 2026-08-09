@@ -2,6 +2,32 @@ import { execFile } from 'child_process';
 
 type SystemResult = { success: boolean; data?: string; error?: string };
 
+/** 受保护的系统进程名（不区分大小写），终止这些进程可能导致系统不稳定或崩溃。 */
+const PROTECTED_PROCESSES = new Set([
+  'system',
+  'smss',
+  'csrss',
+  'wininit',
+  'winlogon',
+  'services',
+  'lsass',
+  'svchost',
+  'explorer',
+  'taskhost',
+  'spoolsv',
+  'dwm',
+  'fontdrvhost',
+  'logonui',
+  'sihost',
+  'taskhostw',
+  'ctfmon',
+  'shellexperiencehost',
+  'searchindexer',
+  'securityhealthservice',
+  'wlms',
+  'audiodg',
+]);
+
 function sanitizeAppName(appName: string): string {
   const sanitized = appName.trim();
 
@@ -67,6 +93,14 @@ async function closeApp(appName: string): Promise<SystemResult> {
     try {
       const sanitizedName = sanitizeAppName(appName);
       const processName = sanitizedName.replace(/\.exe$/i, '');
+      // 拒绝终止关键系统进程，防止 Agent 被恶意利用导致系统崩溃
+      if (PROTECTED_PROCESSES.has(processName.toLowerCase())) {
+        resolve({
+          success: false,
+          error: `拒绝终止系统关键进程: ${processName}。终止此进程可能导致系统不稳定。`,
+        });
+        return;
+      }
       execFile('taskkill', ['/f', '/im', `${processName}.exe`], (error) => {
         if (error) {
           resolve({ success: false, error: `关闭失败: ${error.message}` });

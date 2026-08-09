@@ -76,6 +76,10 @@ export function estimateCost(inputTokens: number, outputTokens: number): number 
  * 成本累计到金额字符串（保留 4 位小数，不足 0.0001 时显示更小单位）。
  */
 export function formatCost(cost: number): string {
+  if (Number.isNaN(cost)) {
+    console.warn('[路由] formatCost 收到 NaN，请检查 token 计数逻辑');
+    return '$0.0000';
+  }
   if (!cost || cost <= 0) return '$0.0000';
   if (cost < 0.01) return `$${cost.toFixed(4)}`;
   return `$${cost.toFixed(2)}`;

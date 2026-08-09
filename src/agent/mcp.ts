@@ -105,16 +105,18 @@ function isValidServerParams(params: unknown): params is McpServerParams {
 
 /** 关闭一个外部 client 的 transport 与 client（吞掉关闭异常）。 */
 async function closeQuietly(client: Client | null, transport: StdioClientTransport | null) {
-  if (transport) {
+  // 先关闭客户端再关闭传输层：client.close() 可能需要向 transport 发送
+  // 关闭通知，若 transport 先被销毁则 notify 会丢失，导致客户端 hang。
+  if (client) {
     try {
-      await transport.close();
+      await client.close();
     } catch {
       /* 忽略关闭错误 */
     }
   }
-  if (client) {
+  if (transport) {
     try {
-      await client.close();
+      await transport.close();
     } catch {
       /* 忽略关闭错误 */
     }
@@ -482,17 +484,25 @@ export async function disconnectExternalMcpServer(serverName: string): Promise<b
 /** 注销全部外部 MCP server 及由其注册的工具。 */
 export async function disconnectExternalMcpServers(): Promise<void> {
   const entries = Array.from(externalClients.values());
+  // 先移除工具注册：断开期间若有新的工具调用，callExternalTool 看到
+  // externalClients 中仍存在条目不会报"已断开"，但 TOOL_REGISTRY 已清空
+  // 也就不会产生新调用。
   for (const entry of entries) {
     for (const toolName of entry.tools) {
       delete TOOL_REGISTRY[toolName];
     }
   }
-  // 先清空注册表再逐个关闭：关闭是异步的，若期间有调用进来，
-  // callExternalTool 应当立刻报"已断开"而不是打到正在关闭的连接上。
-  externalClients.clear();
+  // 清空注册表后逐个关闭。关闭操作移至 clear 之前（原实现在 clear 后再关闭，
+  // 若某个 entry 关闭抛异常，后续 entry 永不关闭→子进程成为僵尸进程）。
+  // 每个 entry 用独立 try-catch 隔离，确保一个失败不影响其他。
   for (const entry of entries) {
-    await closeQuietly(entry.client, entry.transport);
+    try {
+      await closeQuietly(entry.client, entry.transport);
+    } catch {
+      /* closeQuietly 已内部捕获，此处兜底防未预期异常 */
+    }
   }
+  externalClients.clear();
 }
 
 /** 从配置初始化 MCP：本地 server 暴露 + 外部 client 接入。返回句柄与已注册外部工具名。 */

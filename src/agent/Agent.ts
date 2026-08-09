@@ -373,6 +373,35 @@ function handleUserInput(input: string, replyKey?: string): void {
   }
 
   if (state.current === STATE.THINKING) {
+    // 防御性检查：state 可能因微任务竞态（连续工具确认时，前一个工具的
+    // executeTool 将 state 重置为 THINKING 的微任务在后一个工具的
+    // requestConfirmationExclusive 设置 AWAITING_CONFIRMATION 之后执行）
+    // 显示为 THINKING，但实际上有挂起的确认等待响应。
+    // 此时如果当作普通打断处理，y/n 会被 addUserMessage 入队破坏对话历史，
+    // 且 cancelConfirmation 因 isAwaitingConfirmation() 为 false 不会被调用，
+    // confirmationResolve 永不触发 → 旧周期永久卡死 → isProcessing 永不复位
+    // → scheduleNextCycle 重试耗尽 → "上一思考周期长时间未退出，放弃本次调度"。
+    if (input && getPendingConfirmation() !== null) {
+      // 将输入当作确认响应处理，走 AWAITING_CONFIRMATION 分支逻辑。
+      // 注：不直接 continue/fall-through，需显式调用 handleUserInput 自身的
+      // AWAITING_CONFIRMATION 分支（但 handleUserInput 是入口函数不可自调）。
+      // 直接在此内联确认响应逻辑，与 AWAITING_CONFIRMATION 分支保持一致。
+      const response = input.toLowerCase().trim();
+      if (response === 'y' || response === 'yes' || response === '确认') {
+        println('[确认] 用户同意执行危险操作', 'green');
+        resolveConfirmation(true);
+      } else if (response === 'n' || response === 'no' || response === '拒绝') {
+        println('[拒绝] 用户拒绝执行危险操作', 'red');
+        resolveConfirmation(false);
+      } else {
+        println(
+          `[提示] 请输入 ${printTag('y', 'bgGreen')} 确认或 ${printTag('n', 'bgRed')} 拒绝`,
+          'yellow',
+        );
+      }
+      return;
+    }
+
     shouldStop = true;
     if (thinkingTimer) clearTimeout(thinkingTimer);
     // 中断正在执行的工具与推测预执行：abort 让 executeTool 尽快返回，缩短旧周期的退出路径
@@ -514,6 +543,16 @@ async function executeNativeInvocation(
  * 事件中断时所有在途工具经共享 AbortController 尽快返回。
  */
 async function executeNativeToolCallsServer(invocations: NativeToolInvocation[]): Promise<void> {
+  // 若上一轮调用未正常退出（旧周期残留），其 controller 可能仍是未 abort 的悬空引用；
+  // 必须在创建新 controller 前 abort 旧 controller，否则旧工具调用会在后台继续执行，
+  // 且 /stop 只能 abort 新 controller，导致旧工具泄漏。
+  if (toolAbortController) {
+    try {
+      toolAbortController.abort();
+    } catch {
+      /* ignore */
+    }
+  }
   const controller = new AbortController();
   toolAbortController = controller;
 
@@ -608,7 +647,7 @@ async function runNativeTurnLoop(): Promise<void> {
     }
   }
 
-  const tools = buildOpenAITools(getEnabledToolNames(), {
+  const openaiTools = buildOpenAITools(getEnabledToolNames(), {
     strict: cfg.chat?.structuredOutput?.strict === true,
   });
   const reasoningEffort = cfg.chat?.reasoningEffort;
@@ -676,7 +715,7 @@ async function runNativeTurnLoop(): Promise<void> {
 
     if (runPrediction) {
       const draftModel = spec?.draftModel || cfg.api.model;
-      predictionPromise = predictNextTool(buildNativeApiMessages(), tools, draftModel).then(
+      predictionPromise = predictNextTool(buildNativeApiMessages(), openaiTools, draftModel).then(
         (pred) => {
           // R5.2：推测执行是"猜测"阶段的预执行，只对权限为 allow 的工具进行。
           // 否则 ask 类工具会因一次猜测就弹出授权框，deny 类工具则可能被提前执行。
@@ -687,7 +726,16 @@ async function runNativeTurnLoop(): Promise<void> {
             getToolPermission(pred.name) === 'allow'
           ) {
             const safePred = pred; // 已收窄为 NativeToolInvocation，供 .then/.catch 闭包安全引用
-            // 用可持有的 controller，使 /stop / 中断能真正取消这次预执行
+            // 新周期启动前，必须 abort 上一轮残留的 speculativeAbortController；
+            // 否则旧 controller 成为无人持有的孤儿引用，其信号永不触发，
+            // 预执行的工具调用在旧周期已退出后仍在后台消耗 CPU/IO。
+            if (speculativeAbortController) {
+              try {
+                speculativeAbortController.abort();
+              } catch {
+                /* ignore */
+              }
+            }
             speculativeAbortController = new AbortController();
             speculativeTask = executeNativeInvocation(safePred, speculativeAbortController.signal)
               .then((outcome) => ({ predicted: safePred, outcome }))
@@ -702,7 +750,7 @@ async function runNativeTurnLoop(): Promise<void> {
     }
 
     const stream = streamChatNative(buildNativeApiMessages(), {
-      tools,
+      tools: openaiTools,
       ...(responseFormat ? { responseFormat } : {}),
       ...(reasoningEffort && reasoningEffort !== 'none' ? { reasoningEffort } : {}),
       ...(cfg.chat?.verbosity ? { verbosity: cfg.chat.verbosity } : {}),
@@ -1044,14 +1092,18 @@ async function start(): Promise<void> {
 
   // 自动加载科学插件
   (async () => {
-    const result = await loadPlugins();
-    if (result.loaded > 0) {
-      console.log(`[Agent] 已加载 ${result.loaded} 个科学插件`);
-    }
-    if (result.errors.length > 0) {
-      for (const err of result.errors) {
-        console.warn(`[Agent] 插件加载失败: ${err.name} - ${err.error}`);
+    try {
+      const result = await loadPlugins();
+      if (result.loaded > 0) {
+        console.log(`[Agent] 已加载 ${result.loaded} 个科学插件`);
       }
+      if (result.errors.length > 0) {
+        for (const err of result.errors) {
+          console.warn(`[Agent] 插件加载失败: ${err.name} - ${err.error}`);
+        }
+      }
+    } catch (e) {
+      console.error(`[Agent] 插件加载异常: ${(e as Error).message}`);
     }
   })();
 

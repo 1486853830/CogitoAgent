@@ -346,13 +346,17 @@ function submitConfig() {
       model: modelInput.value.trim(),
     },
     workspace: workspaceInput.value.trim() || defaultWorkspace,
-    thinkingInterval: thinkingIntervalInput.value.trim()
-      ? parseInt(thinkingIntervalInput.value.trim(), 10)
-      : 3000,
+    thinkingInterval: (() => {
+      const val = parseInt(thinkingIntervalInput.value.trim(), 10);
+      return Number.isNaN(val) ? 3000 : val;
+    })(),
     mode: modeSelect.value,
     email: {
       smtpHost: emailHostInput.value.trim(),
-      smtpPort: emailPortInput.value.trim() ? parseInt(emailPortInput.value.trim(), 10) : 587,
+      smtpPort: (() => {
+        const val = parseInt(emailPortInput.value.trim(), 10);
+        return Number.isNaN(val) ? 587 : val;
+      })(),
       user: emailUserInput.value.trim(),
       password: emailPasswordInput.value.trim(),
       from: emailFromInput.value.trim(),
@@ -369,9 +373,10 @@ function submitConfig() {
       model: visionModelInput.value.trim() || 'InternVL3-78B',
     },
     code: {
-      maxExecutionTime: codeTimeoutInput.value.trim()
-        ? parseInt(codeTimeoutInput.value.trim(), 10)
-        : 30000,
+      maxExecutionTime: (() => {
+        const val = parseInt(codeTimeoutInput.value.trim(), 10);
+        return Number.isNaN(val) ? 30000 : val;
+      })(),
       maxOutputSize: codeMaxOutputInput.value.trim()
         ? parseInt(codeMaxOutputInput.value.trim(), 10)
         : 100000,

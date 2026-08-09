@@ -31,6 +31,9 @@ interface ActionResult<T = unknown> {
 }
 
 let tasks: Task[] = [];
+/** 写入锁：序列化并发 saveTasks，避免 createTask/deleteTask/updateTask 等
+ *  并发调用时的后保存者覆盖先保存者的修改（TOCTOU 竞态）。 */
+let taskSaveLock: Promise<unknown> = Promise.resolve();
 let nextId = 1;
 
 /**
@@ -70,24 +73,30 @@ async function loadTasks(): Promise<void> {
  * @throws 当保存失败时抛出错误
  */
 async function saveTasks(): Promise<boolean> {
-  const dir = path.dirname(TASKS_FILE);
-  try {
-    if (
-      !(await fs
-        .access(dir)
-        .then(() => true)
-        .catch(() => false))
-    ) {
-      await fs.mkdir(dir, { recursive: true });
+  const task = taskSaveLock.then(async () => {
+    const dir = path.dirname(TASKS_FILE);
+    try {
+      if (
+        !(await fs
+          .access(dir)
+          .then(() => true)
+          .catch(() => false))
+      ) {
+        await fs.mkdir(dir, { recursive: true });
+      }
+      await fs.writeFile(TASKS_FILE, JSON.stringify({ tasks, nextId }, null, 2), 'utf-8');
+      return true;
+    } catch (e: unknown) {
+      const error = new Error(`[任务] 保存失败: ${e instanceof Error ? e.message : String(e)}`);
+      (error as Error & { code?: string }).code = 'TASK_SAVE_FAILED';
+      console.error(error.message);
+      throw error;
     }
-    await fs.writeFile(TASKS_FILE, JSON.stringify({ tasks, nextId }, null, 2), 'utf-8');
-    return true;
-  } catch (e: unknown) {
-    const error = new Error(`[任务] 保存失败: ${e instanceof Error ? e.message : String(e)}`);
-    (error as Error & { code?: string }).code = 'TASK_SAVE_FAILED';
-    console.error(error.message);
-    throw error;
-  }
+  });
+  taskSaveLock = task.catch(() => {
+    /* 已在上层 log，不让锁链断裂 */
+  });
+  return task;
 }
 
 /**
@@ -308,17 +317,26 @@ async function splitTask(
 
   const created: Task[] = [];
 
+  // 直接操作内存数组 + 一次性持久化：原有循环中每次 createTask
+  // 都会 loadTasks + saveTasks，N 个子任务 → N 次磁盘 I/O。
+  // 改为批量创建后单次保存。
   for (const subtask of subtasks) {
-    const result = await createTask(
-      subtask.title,
-      subtask.description || '',
-      subtask.priority || 'medium',
-      numId,
-    );
-    if (result.success && result.data) {
-      created.push(result.data);
-    }
+    const newId = nextId++;
+    const newTask: Task = {
+      id: newId,
+      title: String((subtask as Record<string, unknown>).title || ''),
+      description: String((subtask as Record<string, unknown>).description || ''),
+      status: 'pending',
+      priority: String((subtask as Record<string, unknown>).priority || 'medium'),
+      parentId: numId,
+      children: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    tasks.push(newTask);
+    created.push(newTask);
   }
+  await saveTasks();
 
   return {
     success: true,

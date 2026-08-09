@@ -37,18 +37,24 @@ function probe(cmd) {
  * 探测可用的 Python 可执行文件并缓存结果
  * 遍历候选列表，返回第一个能成功执行 --version 的命令
  * 若全部失败，回退到 'python'（执行时若失败由调用方处理）
+ * 使用 Promise 缓存：多个并发调用共享同一次探测，避免重复启动子进程。
  */
+let _detectPromise = null;
 async function detectPython() {
   if (pythonCmd !== null) return pythonCmd;
-  for (const cmd of PYTHON_CANDIDATES) {
-    if (await probe(cmd)) {
-      pythonCmd = cmd;
-      return pythonCmd;
+  if (_detectPromise) return _detectPromise;
+  _detectPromise = (async () => {
+    for (const cmd of PYTHON_CANDIDATES) {
+      if (await probe(cmd)) {
+        pythonCmd = cmd;
+        return pythonCmd;
+      }
     }
-  }
-  // 没找到任何候选，回退到 python（执行时若失败由调用方处理）
-  pythonCmd = 'python';
-  return pythonCmd;
+    // 没找到任何候选，回退到 python（执行时若失败由调用方处理）
+    pythonCmd = 'python';
+    return pythonCmd;
+  })();
+  return _detectPromise;
 }
 
 /**
@@ -88,12 +94,16 @@ export async function runPython(script, inputData, timeout = 30000) {
     child.on('timeout', () => {
       if (killed) return;
       killed = true;
+      // 立即捕获 child.pid：SIGTERM 1000ms 后操作系统可能已回收 PID，
+      // 届时 child.pid 为 undefined，String(undefined) → "undefined" 导致
+      // taskkill 命令失败。
+      const capturedPid = child.pid;
       setTimeout(() => {
         try {
           if (process.platform === 'win32') {
-            execFile('taskkill', ['/f', '/t', '/pid', String(child.pid)]);
+            execFile('taskkill', ['/f', '/t', '/pid', String(capturedPid)]);
           } else {
-            execFile('kill', ['-9', String(child.pid)]);
+            execFile('kill', ['-9', String(capturedPid)]);
           }
         } catch {
           // 进程可能已结束
@@ -115,8 +125,18 @@ export async function runPython(script, inputData, timeout = 30000) {
  */
 export function validateOutputPath(p, allowedExt) {
   if (!p || typeof p !== 'string') throw new Error('输出路径不能为空');
-  // 拒绝绝对路径和 .. 遍历
-  if (path.isAbsolute(p) || p.includes('..')) {
+  // 拒绝绝对路径：仅允许工作区内的绝对路径
+  if (path.isAbsolute(p)) {
+    const cwd = process.cwd();
+    const normalized = path.resolve(p);
+    // Windows 大小写兼容：process.cwd() 返回大写盘符（C:\），
+    // 但 path.resolve 保留下层传入的大小写（c:\），导致 startsWith 误判
+    const cwdUpper = cwd.toUpperCase();
+    const normUpper = normalized.toUpperCase();
+    if (!normUpper.startsWith(cwdUpper)) {
+      throw new Error('输出路径必须为相对路径或工作区内的绝对路径，且不能包含 ..');
+    }
+  } else if (p.includes('..')) {
     throw new Error('输出路径必须为相对路径且不能包含 ..');
   }
   if (allowedExt && !p.toLowerCase().endsWith(allowedExt.toLowerCase())) {
@@ -132,7 +152,15 @@ export function validateOutputPath(p, allowedExt) {
  */
 export function validateInputPath(p) {
   if (!p || typeof p !== 'string') throw new Error('输入路径不能为空');
-  if (path.isAbsolute(p) || p.includes('..')) {
+  if (path.isAbsolute(p)) {
+    const cwd = process.cwd();
+    const normalized = path.resolve(p);
+    const cwdUpper = cwd.toUpperCase();
+    const normUpper = normalized.toUpperCase();
+    if (!normUpper.startsWith(cwdUpper)) {
+      throw new Error('输入路径必须为相对路径或工作区内的绝对路径，且不能包含 ..');
+    }
+  } else if (p.includes('..')) {
     throw new Error('输入路径必须为相对路径且不能包含 ..');
   }
 }

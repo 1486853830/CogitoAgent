@@ -241,7 +241,13 @@ function validateCwd(
 
   // 如果不允许在项目目录外，检查是否在项目目录下
   if (!allowOutsideProject) {
-    const normalizedRoot = path.normalize(PROJECT_ROOT);
+    let normalizedRoot = path.normalize(PROJECT_ROOT);
+    // Windows 路径大小写兼容：process.cwd() 返回大写盘符，但 normalize 保留输入大小写，
+    // 导致 c:/users/... 无法 startsWith C:/Users/...
+    if (process.platform === 'win32') {
+      absolutePath = absolutePath.toUpperCase();
+      normalizedRoot = normalizedRoot.toUpperCase();
+    }
     // 必须使用路径分隔符边界校验，避免兄弟目录前缀绕过：
     // 若仅用 startsWith，PROJECT_ROOT=/proj 会放行 /proj-evil。
     if (absolutePath !== normalizedRoot && !absolutePath.startsWith(normalizedRoot + path.sep)) {

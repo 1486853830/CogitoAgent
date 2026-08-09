@@ -143,8 +143,10 @@ async function takeScreenshot(
   }
 
   try {
-    // 安全验证：防止路径注入
-    const safeName = name.replace(/[\\:*?"<>|]/g, '_').replace(/\.\./g, '');
+    // 安全验证：防止路径注入。过滤 Windows 禁用字符、双点和正斜杠。
+    // 在 Linux/macOS 上 '/' 是路径分隔符，未过滤时 name="../../etc/malicious"
+    // 可将截图写入工作区外的任意目录。
+    const safeName = name.replace(/[\\/:*?"<>|]/g, '_').replace(/\.\./g, '');
     const screenshotPath = `${safeName}-${Date.now()}.png`;
     await page!.screenshot({ path: screenshotPath, fullPage: true });
     return {

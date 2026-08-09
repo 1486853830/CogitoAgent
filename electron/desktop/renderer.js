@@ -81,10 +81,12 @@ function initApp() {
 
   bindEvents();
 
-  window.electronAPI.onReply((data) => replyHandler.handle(data));
-  window.electronAPI.onStateChange(handleStateChange);
-  window.electronAPI.onHistory(handleHistory);
-  window.electronAPI.requestHistory();
+  // 使用可选链保护：若 preload 脚本未正确暴露 electronAPI（如加载失败），
+  // 这些调用应静默跳过，避免 TypeError 导致整个 UI 无响应。
+  window.electronAPI?.onReply?.((data) => replyHandler.handle(data));
+  window.electronAPI?.onStateChange?.(handleStateChange);
+  window.electronAPI?.onHistory?.(handleHistory);
+  window.electronAPI?.requestHistory?.();
 
   // 危险操作确认
   if (window.electronAPI.onConfirmationRequest) {

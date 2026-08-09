@@ -70,13 +70,15 @@ export async function clickElement(
     }
 
     if (!element) {
+      // 对 selector 做 CSS 转义：双引号会破坏选择器语法，导致查找静默失败。
+      const safe = selector.replace(/"/g, '\\"');
       const selectors = [
-        `[id="${selector}"]`,
-        `[name="${selector}"]`,
-        `[placeholder="${selector}"]`,
-        `button:has-text("${selector}")`,
-        `a:has-text("${selector}")`,
-        `[data-testid="${selector}"]`,
+        `[id="${safe}"]`,
+        `[name="${safe}"]`,
+        `[placeholder="${safe}"]`,
+        `button:has-text("${safe}")`,
+        `a:has-text("${safe}")`,
+        `[data-testid="${safe}"]`,
       ];
 
       for (const sel of selectors) {
@@ -171,14 +173,15 @@ export async function fillField(
     }
 
     if (!element) {
+      const safe2 = selector.replace(/"/g, '\\"');
       const selectors = [
-        `[id="${selector}"]`,
-        `[name="${selector}"]`,
-        `[placeholder="${selector}"]`,
-        `input[aria-label="${selector}"]`,
-        `textarea[aria-label="${selector}"]`,
-        `label:has-text("${selector}") + input`,
-        `label:has-text("${selector}") + textarea`,
+        `[id="${safe2}"]`,
+        `[name="${safe2}"]`,
+        `[placeholder="${safe2}"]`,
+        `input[aria-label="${safe2}"]`,
+        `textarea[aria-label="${safe2}"]`,
+        `label:has-text("${safe2}") + input`,
+        `label:has-text("${safe2}") + textarea`,
       ];
 
       for (const sel of selectors) {

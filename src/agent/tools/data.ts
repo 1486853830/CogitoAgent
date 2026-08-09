@@ -273,7 +273,7 @@ async function jsonToCSV(
   } else {
     return {
       success: false,
-      error: '不支持的 JSON 格式',
+      error: `不支持的 JSON 格式：期望对象数组 [{...}, {...}] 或包含 headers/rows 的对象 { headers: [...], rows: [...] }`,
     };
   }
 
@@ -298,9 +298,16 @@ async function queryData(
     const result = await readJSON(filePath);
     if (!result.success) return result as { success: false; error: string };
     const jsonData = result.data as Record<string, unknown> | Record<string, string>[];
-    data =
+    const candidate =
       (jsonData as Record<string, Record<string, string>[]>).rows ||
       (jsonData as Record<string, string>[]);
+    if (!Array.isArray(candidate)) {
+      return {
+        success: false,
+        error: `JSON 数据格式不支持查询：期望数组（或包含 rows 数组的对象），实际为 ${typeof candidate}。请使用对象数组或 { rows: [...] } 格式。`,
+      };
+    }
+    data = candidate as Record<string, string>[];
   } else {
     return {
       success: false,
@@ -450,8 +457,13 @@ function detectType(values: string[]): string {
       hasString = true;
     }
 
-    if (!hasDate && !isNaN(Date.parse(value))) {
-      hasDate = true;
+    // 仅对符合常见日期格式的字符串做 Date.parse 检测。
+    // Date.parse 过于宽松："123" → 1970、"2025" → 2025，导致纯数字/年份
+    // 字符串被错误识别为 date 类型。此处先用正则做格式预筛。
+    if (!hasDate && /^\d{4}-\d{2}-\d{2}|^\d{2}\/\d{2}\/\d{4}|^\d{4}\/\d{2}\/\d{2}/.test(value)) {
+      if (!isNaN(Date.parse(value))) {
+        hasDate = true;
+      }
     }
   }
 
@@ -491,9 +503,16 @@ async function sortData(
       (Array.isArray(jsonData) && jsonData.length > 0
         ? Object.keys(jsonData[0] as Record<string, string>)
         : []);
-    data =
+    const candidate =
       (jsonData as Record<string, Record<string, string>[]>).rows ||
       (jsonData as Record<string, string>[]);
+    if (!Array.isArray(candidate)) {
+      return {
+        success: false,
+        error: `JSON 数据格式不支持排序：期望数组（或包含 rows 数组的对象），实际为 ${typeof candidate}。请使用对象数组或 { rows: [...] } 格式。`,
+      };
+    }
+    data = candidate as Record<string, string>[];
   } else {
     return {
       success: false,

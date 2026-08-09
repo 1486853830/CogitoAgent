@@ -60,8 +60,13 @@ interface SystemInfo {
 }
 
 /**
- * 获取 CPU 信息
+ * 获取 CPU 信息（瞬时使用率，基于两次采样差值）。
+ * os.cpus().times 返回自启动以来的累计 ticks，单次快照计算出的值
+ * 代表"自启动以来的平均使用率"而非"当前瞬时使用率"。
+ * 改为缓存上一次采样值，计算两次快照间的差值得到真实瞬时使用率。
  */
+let prevCpuSnapshot: { totalIdle: number; totalTick: number } | null = null;
+
 function getCPUInfo(): CPUInfo {
   const cpus = os.cpus();
   const totalCores = cpus.length;
@@ -77,13 +82,24 @@ function getCPUInfo(): CPUInfo {
     totalIdle += cpu.times.idle;
   });
 
-  const usage = (((totalTick - totalIdle) / totalTick) * 100).toFixed(2);
+  let usageStr: string;
+  if (prevCpuSnapshot) {
+    const deltaTick = totalTick - prevCpuSnapshot.totalTick;
+    const deltaIdle = totalIdle - prevCpuSnapshot.totalIdle;
+    const usage = deltaTick > 0 ? (((deltaTick - deltaIdle) / deltaTick) * 100).toFixed(2) : '0.00';
+    usageStr = `${usage}%`;
+  } else {
+    // 首次调用：使用启动以来的平均使用率作为初始值
+    const usage = totalTick > 0 ? (((totalTick - totalIdle) / totalTick) * 100).toFixed(2) : '0.00';
+    usageStr = `${usage}% (启动以来平均)`;
+  }
+  prevCpuSnapshot = { totalIdle, totalTick };
 
   return {
     model,
     cores: totalCores,
-    usage: `${usage}%`,
-    usagePercent: parseFloat(usage),
+    usage: usageStr,
+    usagePercent: parseFloat(usageStr),
   };
 }
 

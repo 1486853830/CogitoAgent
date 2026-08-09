@@ -120,10 +120,6 @@ export interface SchedulerConfig {
   enabled: boolean;
 }
 
-export interface ToolsConfig {
-  enabledCategories?: string[];
-}
-
 export interface Config {
   api: ApiConfig;
   chat: ChatConfig;
