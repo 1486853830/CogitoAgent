@@ -52,23 +52,6 @@ Unlike cloud-dependent agents that upload your files to third-party servers, Cog
 | **Monitor Panel**               | Dedicated window for real-time cluster topology, thought chain, and tool stats                                                       |
 | **WeChat Integration**          | QR code login, message sending/receiving, dedicated session, tool bubble display                                                     |
 
-### Comparison with Other AI Agents
-
-| Feature                              |   CogitoAgent    |     AutoGPT      |  Claude Code  |      Cline       |
-| ------------------------------------ | :--------------: | :--------------: | :-----------: | :--------------: |
-| **Privacy (files stay local)**       |        ✅        |        ❌        |      ❌       |        ⚠️        |
-| **Continuous thinking (auto-cycle)** |      ✅ 3s       |        ❌        |      ❌       |        ❌        |
-| **Desktop GUI (Electron)**           |        ✅        |        ❌        |      ❌       |        ❌        |
-| **Plugin system**                    | ✅ Dynamic load  |        ✅        |      ❌       |        ❌        |
-| **Agent Cluster (sub-agents)**       |        ✅        |        ❌        |      ❌       |        ❌        |
-| **WeChat integration**               |        ✅        |        ❌        |      ❌       |        ❌        |
-| **Code sandbox (isolated-vm)**       |        ✅        |        ❌        |      ❌       |        ❌        |
-| **200+ built-in tools**              |        ✅        |        ❌        |      ❌       |        ❌        |
-| **Multi-session + auto-compress**    |        ✅        |        ❌        |      ❌       |        ❌        |
-| **Docker support**                   |        ✅        |        ✅        |      ❌       |        ✅        |
-| **Open source**                      |  ✅ Apache 2.0   |      ✅ MIT      |      ❌       |  ✅ Apache 2.0   |
-| **Free to use**                      | ✅ (BYO LLM key) | ✅ (BYO LLM key) | ❌ (paid API) | ✅ (BYO LLM key) |
-
 > **Privacy note**: CogitoAgent never uploads your files to any cloud. Only conversation context is sent to the LLM API you specify. Your workspace stays yours.
 
 ---

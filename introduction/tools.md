@@ -30,6 +30,7 @@
 | Office 文档  | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
 | 集群管理     | `cluster.ts`   | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting`                                                                                                                                                        |
 | 微信消息     | `wechat.ts`    | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode`                                                                                                                                                                                  |
+| 图像生成     | `image-gen.ts` | `generateImage`                                                                                                                                                                                                                                                                                   |
 
 ### 工具注册机制
 
@@ -539,6 +540,53 @@ visionFromUrl('https://example.com/image.jpg');
 
 ---
 
+## 图像生成（Image Generation）详解
+
+图像生成工具调用 OpenAI 兼容的 `images/generations` 接口，支持文生图与图生图（多图参考），生成结果保存到工作区 `generated-images/` 目录。
+
+> **模型与参数均为「建议值」**
+> 下列模型名称、输出尺寸为**建议值**，由图像服务商决定并可能随其版本升级而变更。工具本身不校验模型与尺寸，实际有效性以服务商接口的返回为准；使用默认模型时若传入其不支持的尺寸，工具会在返回结果中提示正确取值。
+
+### 核心工具
+
+| 工具            | 说明                          | 参数                                                                                                                                                                                      |
+| --------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `generateImage` | 文生图 / 图生图，结果存工作区 | `prompt`（必填）, `referenceImages`（可选）, `model`（可选，建议 `qwen-image-2.0-pro`）, `size`（可选，见下）, `seed`（可选）, `negativePrompt`（可选）, `watermark`（可选）, `n`（可选） |
+
+### 建议参数
+
+- **建议模型**：`qwen-image-2.0-pro`（以服务商实际支持为准）
+- **建议输出尺寸（宽\*高）**：`2048*2048`、`2368*1728`、`2688*1536`、`1728*2368`、`2536*2688`（以服务商实际支持为准；不填默认 `2048*2048`）
+
+### 使用示例
+
+```javascript
+// 文生图
+generateImage('一只戴草帽的猫坐在窗台上看雨');
+
+// 图生图：以本地图片作为多图参考
+generateImage('让图中的猫穿上红色连衣裙', {
+  referenceImages: ['cat.png', 'dress.png'],
+  size: '2048*2048',
+});
+```
+
+### Image Generation 配置
+
+```json
+{
+  "imageGen": {
+    "apiKey": "",
+    "baseURL": "https://api.moark.com/v1",
+    "model": "qwen-image-2.0-pro"
+  }
+}
+```
+
+对应环境变量：`COGITO_IMAGEGEN_API_KEY` / `COGITO_IMAGEGEN_API_BASE_URL` / `COGITO_IMAGEGEN_MODEL`（未配置时依次回退 `models.moark`、主 API 密钥）。
+
+---
+
 ## Office 文档工具详解
 
 Office 文档工具支持创建 PPT 演示文稿、Word 文档和 Excel 表格。
@@ -608,6 +656,7 @@ fetchPage('https://nodejs.org/');
 ```javascript
 ocr('screenshot.png');
 vision('photo.jpg', '请描述这张图片');
+generateImage('一只戴草帽的猫坐在窗台上看雨');
 ```
 
 ### Office 文档生成

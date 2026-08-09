@@ -298,6 +298,7 @@ const CATEGORY_CODES = {
   system: 'SYS',
   task: 'TASK',
   vision: 'VIS',
+  image: 'IMG',
   web: 'WEB',
   cluster: 'NODE',
   wechat: 'WX',

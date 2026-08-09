@@ -59,6 +59,11 @@ const DEFAULT_CONFIG: Config = {
     apiKey: '',
     model: 'InternVL3-78B',
   },
+  imageGen: {
+    baseURL: 'https://api.moark.com/v1',
+    apiKey: '',
+    model: 'qwen-image-2.0-pro',
+  },
   workspace: path.join(os.homedir(), 'cogito-workspace'),
   database: {
     // 使用配置目录而非 cwd 作为基准，避免不同启动目录访问不同数据库文件
@@ -334,6 +339,24 @@ function loadEnvConfig(): Partial<Config> {
   }
   if (Object.keys(visionConfig).length > 0) {
     envConfig.vision = visionConfig as Config['vision'];
+  }
+
+  const imageGenConfig: Partial<Config['imageGen']> = {};
+  const imageGenKey = process.env.COGITO_IMAGEGEN_API_KEY || process.env.IMAGEGEN_API_KEY;
+  if (imageGenKey) {
+    imageGenConfig.apiKey = imageGenKey;
+  }
+  const imageGenBaseURL =
+    process.env.COGITO_IMAGEGEN_API_BASE_URL || process.env.IMAGEGEN_API_BASE_URL;
+  if (imageGenBaseURL) {
+    imageGenConfig.baseURL = imageGenBaseURL;
+  }
+  const imageGenModel = process.env.COGITO_IMAGEGEN_MODEL || process.env.IMAGEGEN_MODEL;
+  if (imageGenModel) {
+    imageGenConfig.model = imageGenModel;
+  }
+  if (Object.keys(imageGenConfig).length > 0) {
+    envConfig.imageGen = imageGenConfig as Config['imageGen'];
   }
 
   if (process.env.COGITO_MODE) {

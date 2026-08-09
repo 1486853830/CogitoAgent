@@ -119,6 +119,7 @@ import {
 } from './scheduler.ts';
 import { ocr, ocrBatch } from './ocr.ts';
 import { vision, visionFromUrl } from './vision.ts';
+import { generateImage } from './image-gen.ts';
 import { createPpt, createWord, createExcel, readExcel, readWord, readPpt } from './office.ts';
 import {
   isSandboxEnabled,
@@ -283,6 +284,7 @@ export {
   ocrBatch,
   vision,
   visionFromUrl,
+  generateImage,
   createPpt,
   createWord,
   createExcel,

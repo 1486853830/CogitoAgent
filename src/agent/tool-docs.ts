@@ -405,6 +405,49 @@ export const TOOL_DOCS: Record<string, ToolDoc> = {
     annotations: { readOnlyHint: true, openWorldHint: true },
   },
 
+  // ---- image ----
+  generateImage: {
+    description:
+      '调用图像生成模型（默认 qwen-image-2.0-pro）文生图 / 图生图，结果保存到工作区 generated-images/。注意：默认模型 qwen-image-2.0-pro 仅支持以下 5 种输出尺寸（宽*高）：2048*2048、2368*1728、2688*1536、1728*2368、2536*2688，请勿传其他值',
+    params: [
+      p('prompt', 'string', '生成提示词，例如「图1中的女生穿着图2中的黑色裙子按图3的姿势坐下」'),
+      {
+        name: 'referenceImages',
+        type: 'array',
+        description: '参考图数组，元素为本地路径或图片 URL（图生图 / 多图参考，可选）',
+        required: false,
+      },
+      {
+        name: 'model',
+        type: 'string',
+        description: '模型名，默认 qwen-image-2.0-pro（可选）',
+        required: false,
+      },
+      {
+        name: 'size',
+        type: 'string',
+        description:
+          '输出尺寸（宽*高）。默认模型 qwen-image-2.0-pro 仅支持：2048*2048、2368*1728、2688*1536、1728*2368、2536*2688（可选，不填默认 2048*2048）',
+        required: false,
+      },
+      { name: 'seed', type: 'number', description: '随机种子，整数（可选）', required: false },
+      {
+        name: 'negativePrompt',
+        type: 'string',
+        description: '反向提示词，描述不希望出现的内容（可选）',
+        required: false,
+      },
+      {
+        name: 'watermark',
+        type: 'boolean',
+        description: '是否添加水印，默认 false（可选）',
+        required: false,
+      },
+      { name: 'n', type: 'number', description: '生成数量，默认 1（可选）', required: false },
+    ],
+    annotations: { openWorldHint: true },
+  },
+
   // ---- office ----
   createPpt: {
     description: '创建 PPT 文件',

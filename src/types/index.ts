@@ -79,6 +79,12 @@ export interface VisionConfig {
   model: string;
 }
 
+export interface ImageGenConfig {
+  baseURL: string;
+  apiKey: string;
+  model: string;
+}
+
 export interface DatabaseConfig {
   path: string;
 }
@@ -126,6 +132,7 @@ export interface Config {
   search: SearchConfig;
   ocr: OcrConfig;
   vision: VisionConfig;
+  imageGen: ImageGenConfig;
   workspace: string;
   database: DatabaseConfig;
   email: EmailConfig;
@@ -235,6 +242,7 @@ export type ToolCategory =
   | 'scheduler'
   | 'ocr'
   | 'vision'
+  | 'image'
   | 'office'
   | 'cluster'
   | 'wechat'

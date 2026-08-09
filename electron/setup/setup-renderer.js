@@ -66,6 +66,11 @@ const visionApiKeyInput = document.getElementById('visionApiKey');
 const visionBaseURLInput = document.getElementById('visionBaseURL');
 const visionModelInput = document.getElementById('visionModel');
 
+// 图像生成配置元素
+const imageGenApiKeyInput = document.getElementById('imageGenApiKey');
+const imageGenBaseURLInput = document.getElementById('imageGenBaseURL');
+const imageGenModelInput = document.getElementById('imageGenModel');
+
 // 代码执行配置元素
 const codeTimeoutInput = document.getElementById('codeTimeout');
 const codeMaxOutputInput = document.getElementById('codeMaxOutput');
@@ -162,6 +167,13 @@ function fillConfig(cfg) {
     if (cfg.vision.apiKey) visionApiKeyInput.value = cfg.vision.apiKey;
     if (cfg.vision.baseURL) visionBaseURLInput.value = cfg.vision.baseURL;
     if (cfg.vision.model) visionModelInput.value = cfg.vision.model;
+  }
+
+  // 图像生成
+  if (cfg.imageGen) {
+    if (cfg.imageGen.apiKey) imageGenApiKeyInput.value = cfg.imageGen.apiKey;
+    if (cfg.imageGen.baseURL) imageGenBaseURLInput.value = cfg.imageGen.baseURL;
+    if (cfg.imageGen.model) imageGenModelInput.value = cfg.imageGen.model;
   }
 
   // 代码执行
@@ -371,6 +383,11 @@ function submitConfig() {
       apiKey: visionApiKeyInput.value.trim(),
       baseURL: visionBaseURLInput.value.trim(),
       model: visionModelInput.value.trim() || 'InternVL3-78B',
+    },
+    imageGen: {
+      apiKey: imageGenApiKeyInput.value.trim(),
+      baseURL: imageGenBaseURLInput.value.trim(),
+      model: imageGenModelInput.value.trim() || 'qwen-image-2.0-pro',
     },
     code: {
       maxExecutionTime: (() => {

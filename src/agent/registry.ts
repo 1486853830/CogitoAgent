@@ -19,6 +19,7 @@ const TOOL_CATEGORIES: Record<ToolCategory, string> = {
   scheduler: '定时任务',
   ocr: '图像文字识别',
   vision: '视觉分析',
+  image: '图像生成',
   office: 'Office文档',
   cluster: '集群管理',
   wechat: '微信消息',
@@ -199,6 +200,8 @@ const TOOL_REGISTRY: Record<string, ToolRegistryEntry> = {
 
   vision: { fn: tools.vision, argCount: 2, category: 'vision' },
   visionFromUrl: { fn: tools.visionFromUrl, argCount: 2, category: 'vision' },
+
+  generateImage: { fn: tools.generateImage, argCount: 8, category: 'image' },
 
   createPpt: { fn: tools.createPpt, argCount: 1, category: 'office' },
   createWord: { fn: tools.createWord, argCount: 1, category: 'office' },

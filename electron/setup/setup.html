@@ -207,6 +207,30 @@
           </div>
         </div>
 
+        <!-- Image Generation Config Section -->
+        <div class="config-section">
+          <div class="section-header">
+            <span class="section-mark">›</span>
+            <span class="section-label" data-i18n="setup.imageGenSection">图像生成</span>
+            <span class="section-tag">IMAGE</span>
+            <span class="section-toggle">+</span>
+          </div>
+          <div class="section-content" id="imageGenSection">
+            <div class="input-group">
+              <input type="text" id="imageGenApiKey" placeholder="ImageGen API Key">
+              <span class="hint" data-i18n="setup.imageGenKeyHint">不填则使用主 API Key（与语言模型相同）</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="imageGenBaseURL" placeholder="ImageGen API 地址" data-i18n-placeholder="setup.imageGenBasePh">
+              <span class="hint" data-i18n="setup.imageGenBaseHint">例如: https://api.moark.com/v1，不填则使用默认地址</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="imageGenModel" placeholder="qwen-image-2.0-pro">
+              <span class="hint" data-i18n="setup.imageGenModelHint">图像生成模型名称</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Code Execution Config Section -->
         <div class="config-section">
           <div class="section-header">
