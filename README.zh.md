@@ -35,20 +35,21 @@
 
 ## 核心功能
 
-| 功能                | 描述                                                                                      |
-| ------------------- | ----------------------------------------------------------------------------------------- |
-| **TypeScript 核心** | 全量 TypeScript 重构，类型安全，编译时错误检测                                            |
-| **隐私优先**        | 用户工作文件保留在本地，仅通过 API 将必要上下文发送至你指定的模型服务商                   |
-| **持续思考**        | 每 3 秒自动触发一次思考循环（可配置）                                                     |
-| **工具执行**        | 28 工具模块，200+ 工具，覆盖文件操作、代码执行、Git、数据库、OCR、Office 文档、生物信息等 |
-| **安全沙箱**        | JavaScript 代码执行使用 `isolated-vm` 进行进程级隔离                                      |
-| **多会话管理**      | 多个独立的对话会话，持久化存储，自动压缩                                                  |
-| **桌面模式**        | Electron 桌面窗口，通过 WebSocket 与终端 Agent 通信                                       |
-| **插件系统**        | 动态加载自定义工具插件                                                                    |
-| **思维链可视化**    | 实时可视化思考过程和工具执行                                                              |
-| **智能体集群**      | 支持子智能体创建与任务委派，多智能体协作                                                  |
-| **监控面板**        | 独立窗口实时展示集群拓扑、思维链和工具统计                                                |
-| **微信集成**        | 扫码登录、消息收发、专属会话、工具气泡展示                                                |
+| 功能                | 描述                                                                                               |
+| ------------------- | -------------------------------------------------------------------------------------------------- |
+| **TypeScript 核心** | 全量 TypeScript 重构，类型安全，编译时错误检测                                                     |
+| **隐私优先**        | 用户工作文件保留在本地，仅通过 API 将必要上下文发送至你指定的模型服务商                            |
+| **持续思考**        | 每 3 秒自动触发一次思考循环（可配置）                                                              |
+| **工具执行**        | 28 工具模块，200+ 工具，覆盖文件操作、代码执行、Git、数据库、OCR、Office 文档、生物信息等          |
+| **安全沙箱**        | JavaScript 代码执行使用 `isolated-vm` 进行进程级隔离                                               |
+| **多会话管理**      | 多个独立的对话会话，持久化存储，自动压缩                                                           |
+| **桌面模式**        | Electron 桌面窗口，通过 WebSocket 与终端 Agent 通信                                                |
+| **插件系统**        | 动态加载自定义工具插件                                                                             |
+| **思维链可视化**    | 实时可视化思考过程和工具执行                                                                       |
+| **智能体集群**      | 支持子智能体创建与任务委派，多智能体协作                                                           |
+| **监控面板**        | 独立窗口实时展示集群拓扑、思维链和工具统计                                                         |
+| **微信集成**        | 扫码登录、消息收发、专属会话、工具气泡展示                                                         |
+| **图像生成**        | 通过可配置图像模型（如 `qwen-image-2.0-pro`）文生图 / 图生图，结果保存到工作区 `generated-images/` |
 
 ---
 
@@ -118,7 +119,7 @@ flowchart LR
         direction LR
         CORE1["file<br/>web<br/>code<br/>system<br/>browser"]
         CORE2["git<br/>data<br/>db<br/>path"]
-        AI["memory<br/>ocr<br/>vision"]
+        AI["memory<br/>ocr<br/>vision<br/>image"]
         COMM["wechat<br/>email<br/>cluster"]
         AUTO["task<br/>scheduler<br/>monitor<br/>office"]
     end
@@ -168,8 +169,11 @@ flowchart LR
 | 图像识别     | `ocr.ts`       | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
 | 视觉分析     | `vision.ts`    | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
 | Office 文档  | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
+| 图像生成     | `image-gen.ts` | `generateImage`                                                                                                                                                                                                                                                                                   |
 | 集群管理     | `cluster.ts`   | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting`                                                                                                                                                        |
 | 微信消息     | `wechat.ts`    | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode`                                                                                                                                                                                  |
+
+> **图像生成**（`generateImage`）：文生图 / 图生图。以 `qwen-image-2.0-pro` 为例，建议尺寸为 `2048*2048`、`2368*1728`、`2688*1536`、`1728*2368`、`2536*2688`（模型与尺寸均为建议值，详见 `introduction/tools.md`）。
 
 > 详细工具文档：注册机制、使用示例、最佳实践 → [introduction/tools.md](introduction/tools.md)
 
@@ -352,9 +356,14 @@ flowchart TB
 
 ## 配置
 
-通过 `config.json` 和环境变量（`.env`）进行配置，环境变量优先级更高。
+通过 `config.json` 和环境变量（`.env`）进行配置，环境变量优先级更高。关键变量：
 
-> 完整配置参考：环境变量列表、高级选项（压缩、截断、归档）→ [introduction/configuration.md](introduction/configuration.md)
+- `COGITO_API_KEY` — 大模型 API 密钥（OCR / 视觉 / 图像生成的回退密钥）
+- `COGITO_IMAGEGEN_API_KEY` — 图像生成 API 密钥（可选，留空则回退主密钥）
+- `COGITO_IMAGEGEN_MODEL` — 图像模型名，默认 `qwen-image-2.0-pro`（建议值，详见 `introduction/tools.md`）
+- `COGITO_VISION_API_KEY` / `COGITO_OCR_API_KEY` — 可选的分功能密钥
+
+> 完整配置参考：环境变量列表、高级选项（压缩、截断、归档）、图像生成 → [introduction/configuration.md](introduction/configuration.md)
 
 ---
 

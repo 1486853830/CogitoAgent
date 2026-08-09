@@ -1,26 +1,35 @@
-# 扩展功能详解
+# Extension Features in Detail / 扩展功能详解
 
+> Detailed documentation: plugin system, tracing module, retry mechanism, multi-model support, and web search.
 > 详细文档：插件系统、追踪模块、重试机制、多模型支持、联网搜索。
 
 ---
 
-## 一、插件系统
+## 1. Plugin System / 一、插件系统
+
+The plugin system allows dynamically loading custom tools to extend the Agent's capabilities.
 
 插件系统允许动态加载自定义工具，扩展 Agent 的能力。
 
-### 1.1 插件目录结构
+### 1.1 Plugin Directory Structure / 插件目录结构
+
+Plugins are organized under the `plugins/` directory, each in its own subfolder.
+
+插件统一放置在 `plugins/` 目录下，每个插件拥有独立子目录。
 
 ```
 plugins/
 ├── my-plugin/
-│   └── index.ts          # 插件入口文件
+│   └── index.ts          # Plugin entry file
 └── another-plugin/
     └── index.ts
 ```
 
-### 1.2 插件开发
+### 1.2 Plugin Development / 插件开发
 
-插件入口文件需导出一个包含工具定义的对象：
+The plugin entry file must export an object containing the tool definitions.
+
+插件入口文件需导出一个包含工具定义的对象。
 
 ```javascript
 export default {
@@ -45,9 +54,11 @@ export default {
 };
 ```
 
-### 1.3 插件加载
+### 1.3 Plugin Loading / 插件加载
 
-系统启动时自动扫描 `plugins/` 目录下的所有插件：
+The system automatically scans all plugins under the `plugins/` directory at startup.
+
+系统启动时自动扫描 `plugins/` 目录下的所有插件。
 
 ```javascript
 import pluginLoader from './plugin';
@@ -55,43 +66,59 @@ import pluginLoader from './plugin';
 const plugins = await pluginLoader.loadAll();
 ```
 
-### 1.4 插件管理
+### 1.4 Plugin Management / 插件管理
 
-| 方法           | 描述               | 参数             |
-| -------------- | ------------------ | ---------------- |
-| `loadAll()`    | 加载所有插件       | 无               |
-| `load(name)`   | 加载指定插件       | `name`：插件名称 |
-| `unload(name)` | 卸载指定插件       | `name`：插件名称 |
-| `list()`       | 列出所有已加载插件 | 无               |
+The loader exposes the following management methods.
+
+加载器提供以下管理方法。
+
+| Method / 方法  | Description / 描述        | Parameters / 参数              |
+| -------------- | ------------------------- | ------------------------------ |
+| `loadAll()`    | Load all plugins          | None / 无                      |
+| `load(name)`   | Load a specified plugin   | `name`: plugin name / 插件名称 |
+| `unload(name)` | Unload a specified plugin | `name`: plugin name / 插件名称 |
+| `list()`       | List all loaded plugins   | None / 无                      |
 
 ---
 
-## 二、追踪模块
+## 2. Tracing Module / 二、追踪模块
+
+The tracing module provides lightweight observability, recording detailed information about tool executions and LLM calls.
 
 追踪模块提供轻量级可观测性，记录工具执行和 LLM 调用的详细信息。
 
-### 2.1 追踪特性
+### 2.1 Tracing Features / 追踪特性
 
-| 特性         | 说明                                     |
-| ------------ | ---------------------------------------- |
-| 工具执行追踪 | 记录每次工具调用的参数、结果和耗时       |
-| LLM 调用追踪 | 记录 LLM 请求的提示词、响应和 token 消耗 |
-| 状态转换追踪 | 记录 Agent 状态变更                      |
-| 日志输出     | 追踪信息输出到控制台和日志文件           |
+The module traces the following aspects of execution.
 
-### 2.2 追踪事件类型
+该模块对以下执行方面进行追踪。
 
-| 事件类型       | 描述         |
-| -------------- | ------------ |
-| `tool_call`    | 工具调用开始 |
-| `tool_result`  | 工具调用结束 |
-| `llm_call`     | LLM 调用     |
-| `state_change` | 状态变更     |
-| `error`        | 错误事件     |
+| Feature / 特性         | Description / 说明                                            |
+| ---------------------- | ------------------------------------------------------------- |
+| Tool execution trace   | Records parameters, results, and duration of each tool call   |
+| LLM call trace         | Records LLM request prompts, responses, and token consumption |
+| State transition trace | Records Agent state changes                                   |
+| Log output             | Outputs tracing information to console and log files          |
 
-### 2.3 启用追踪
+### 2.2 Tracing Event Types / 追踪事件类型
 
-追踪模块在 `Agent.ts` 中自动集成，通过配置开关启用：
+The following event types are emitted by the tracing module.
+
+追踪模块会发出以下事件类型。
+
+| Event Type / 事件类型 | Description / 描述 |
+| --------------------- | ------------------ |
+| `tool_call`           | Tool call started  |
+| `tool_result`         | Tool call finished |
+| `llm_call`            | LLM invocation     |
+| `state_change`        | State transition   |
+| `error`               | Error event        |
+
+### 2.3 Enable Tracing / 启用追踪
+
+The tracing module is integrated automatically in `Agent.ts` and enabled via a configuration switch.
+
+追踪模块在 `Agent.ts` 中自动集成，通过配置开关启用。
 
 ```json
 {
@@ -102,7 +129,11 @@ const plugins = await pluginLoader.loadAll();
 }
 ```
 
-### 2.4 追踪输出示例
+### 2.4 Tracing Output Example / 追踪输出示例
+
+The following is a sample of tracing output.
+
+以下是追踪输出的示例。
 
 ```
 [TRACING] tool_call: ls("./src")
@@ -113,13 +144,17 @@ const plugins = await pluginLoader.loadAll();
 
 ---
 
-## 三、重试机制
+## 3. Retry Mechanism / 三、重试机制
+
+The retry logic is integrated into the API client layer, providing reliable retry support for network requests with an exponential backoff strategy.
 
 重试逻辑集成在 API 客户端层，为网络请求提供可靠的重试支持，支持指数退避策略。
 
-### 3.1 重试配置
+### 3.1 Retry Configuration / 重试配置
 
-重试机制通过 `config.json` 中的 `api.retry` 配置项控制：
+The retry mechanism is controlled by the `api.retry` setting in `config.json`.
+
+重试机制通过 `config.json` 中的 `api.retry` 配置项控制。
 
 ```json
 {
@@ -133,43 +168,59 @@ const plugins = await pluginLoader.loadAll();
 }
 ```
 
-### 3.2 重试选项
+### 3.2 Retry Options / 重试选项
 
-| 选项          | 说明               | 默认值        |
-| ------------- | ------------------ | ------------- |
-| `maxAttempts` | 最大重试次数       | 3             |
-| `baseDelay`   | 初始延迟（毫秒）   | 1000          |
-| `backoff`     | 退避策略           | `exponential` |
-| `retryOn`     | 需要重试的错误类型 | `[Error]`     |
-| `onRetry`     | 重试回调           | `null`        |
+The available retry options are as follows.
 
-### 3.3 退避策略
+可用的重试选项如下。
 
-| 策略          | 说明                         |
-| ------------- | ---------------------------- |
-| `fixed`       | 固定延迟                     |
-| `exponential` | 指数退避（延迟 × 2^attempt） |
-| `linear`      | 线性增长（延迟 × attempt）   |
+| Option / 选项 | Description / 说明      | Default / 默认值 |
+| ------------- | ----------------------- | ---------------- |
+| `maxAttempts` | Maximum retry attempts  | 3                |
+| `baseDelay`   | Initial delay (ms)      | 1000             |
+| `backoff`     | Backoff strategy        | `exponential`    |
+| `retryOn`     | Error types to retry on | `[Error]`        |
+| `onRetry`     | Retry callback          | `null`           |
+
+### 3.3 Backoff Strategies / 退避策略
+
+The following backoff strategies are supported.
+
+支持的退避策略如下。
+
+| Strategy / 策略 | Description / 说明                      |
+| --------------- | --------------------------------------- |
+| `fixed`         | Fixed delay                             |
+| `exponential`   | Exponential backoff (delay × 2^attempt) |
+| `linear`        | Linear growth (delay × attempt)         |
 
 ---
 
-## 四、多模型支持
+## 4. Multi-Model Support / 四、多模型支持
+
+The system supports multiple AI model providers through a unified API client.
 
 系统支持多种 AI 模型提供商，通过统一的 API 客户端调用。
 
-### 4.1 支持的提供商
+### 4.1 Supported Providers / 支持的提供商
 
-| 提供商    | 模型示例                             | 协议            |
-| --------- | ------------------------------------ | --------------- |
-| OpenAI    | `gpt-4o`, `gpt-4o-mini`              | OpenAI API      |
-| Anthropic | `claude-3-sonnet`, `claude-3-opus`   | Anthropic API   |
-| Google    | `gemini-1.5-pro`, `gemini-1.5-flash` | Google AI API   |
-| Moark     | `moark-llm`                          | OpenAI 兼容 API |
-| Ollama    | 任意本地模型                         | Ollama API      |
+The following providers and models are supported.
 
-### 4.2 模型配置
+支持以下提供商与模型。
 
-在 `config.json` 中配置模型：
+| Provider / 提供商 | Example Models / 模型示例            | Protocol / 协议       |
+| ----------------- | ------------------------------------ | --------------------- |
+| OpenAI            | `gpt-4o`, `gpt-4o-mini`              | OpenAI API            |
+| Anthropic         | `claude-3-sonnet`, `claude-3-opus`   | Anthropic API         |
+| Google            | `gemini-1.5-pro`, `gemini-1.5-flash` | Google AI API         |
+| Moark             | `moark-llm`                          | OpenAI-compatible API |
+| Ollama            | Any local model / 任意本地模型       | Ollama API            |
+
+### 4.2 Model Configuration / 模型配置
+
+Configure the model in `config.json`.
+
+在 `config.json` 中配置模型。
 
 ```json
 {
@@ -181,9 +232,11 @@ const plugins = await pluginLoader.loadAll();
 }
 ```
 
-### 4.3 切换模型
+### 4.3 Switch Model / 切换模型
 
-通过命令切换模型：
+Switch the model via command-line arguments.
+
+通过命令切换模型。
 
 ```bash
 npm run cli -- --model claude-3-sonnet --baseURL https://api.anthropic.com/v1 --apiKey your-key
@@ -191,22 +244,30 @@ npm run cli -- --model claude-3-sonnet --baseURL https://api.anthropic.com/v1 --
 
 ---
 
-## 五、联网搜索
+## 5. Web Search / 五、联网搜索
+
+The web search feature allows the Agent to fetch information from the internet in real time.
 
 联网搜索功能允许 Agent 实时从互联网获取信息。
 
-### 5.1 搜索工具
+### 5.1 Search Tools / 搜索工具
 
-`web.ts` 提供以下搜索相关工具：
+`web.ts` provides the following search-related tools.
 
-| 工具             | 说明           | 参数    |
-| ---------------- | -------------- | ------- |
-| `search`         | 执行联网搜索   | `query` |
-| `browse`         | 浏览网页内容   | `url`   |
-| `fetchPage`      | 获取页面内容   | `url`   |
-| `searchOnEngine` | 在搜索引擎搜索 | `query` |
+`web.ts` 提供以下搜索相关工具。
 
-### 5.2 搜索配置
+| Tool / 工具      | Description / 说明        | Parameters / 参数 |
+| ---------------- | ------------------------- | ----------------- |
+| `search`         | Perform a web search      | `query`           |
+| `browse`         | Browse web page content   | `url`             |
+| `fetchPage`      | Fetch page content        | `url`             |
+| `searchOnEngine` | Search on a search engine | `query`           |
+
+### 5.2 Search Configuration / 搜索配置
+
+Configure web search as follows.
+
+按如下方式配置联网搜索。
 
 ```json
 {
@@ -218,9 +279,11 @@ npm run cli -- --model claude-3-sonnet --baseURL https://api.anthropic.com/v1 --
 }
 ```
 
-### 5.3 使用示例
+### 5.3 Usage Example / 使用示例
 
-联网搜索能力通过原生工具调用接入：
+The web search capability is integrated through native tool calls.
+
+联网搜索能力通过原生工具调用接入。
 
 ```
 工具: search
@@ -232,4 +295,5 @@ npm run cli -- --model claude-3-sonnet --baseURL https://api.anthropic.com/v1 --
 
 ---
 
+> This document covers detailed explanations of the five major extension features: plugin system, tracing module, retry mechanism, multi-model support, and web search.
 > 本文档涵盖了插件系统、追踪模块、重试机制、多模型支持和联网搜索五大扩展功能的详细说明。

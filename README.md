@@ -37,20 +37,21 @@ Unlike cloud-dependent agents that upload your files to third-party servers, Cog
 
 ## Core Features
 
-| Feature                         | Description                                                                                                                          |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **TypeScript Core**             | Full TypeScript migration with type safety and compile-time error detection                                                          |
-| **Privacy First**               | Workspace files stay local; only conversation context is sent to the LLM API you specify                                             |
-| **Continuous Thinking**         | Automatically triggers a thinking cycle every 3 seconds (configurable)                                                               |
-| **Tool Execution**              | 28 tool modules with 200+ tools for file operations, code execution, Git, databases, OCR, Office documents, bioinformatics, and more |
-| **Security Sandbox**            | JavaScript code execution uses `isolated-vm` for process-level isolation                                                             |
-| **Multi-Session Management**    | Multiple independent conversation sessions with persistent storage and auto-compression                                              |
-| **Desktop Mode**                | Electron desktop window communicating via WebSocket with the terminal Agent                                                          |
-| **Plugin System**               | Dynamically load custom tool plugins                                                                                                 |
-| **Thought Chain Visualization** | Real-time visualization of thinking process and tool execution                                                                       |
-| **Agent Cluster**               | Sub-agent creation, task delegation, and multi-agent collaboration                                                                   |
-| **Monitor Panel**               | Dedicated window for real-time cluster topology, thought chain, and tool stats                                                       |
-| **WeChat Integration**          | QR code login, message sending/receiving, dedicated session, tool bubble display                                                     |
+| Feature                         | Description                                                                                                                                      |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **TypeScript Core**             | Full TypeScript migration with type safety and compile-time error detection                                                                      |
+| **Privacy First**               | Workspace files stay local; only conversation context is sent to the LLM API you specify                                                         |
+| **Continuous Thinking**         | Automatically triggers a thinking cycle every 3 seconds (configurable)                                                                           |
+| **Tool Execution**              | 28 tool modules with 200+ tools for file operations, code execution, Git, databases, OCR, Office documents, bioinformatics, and more             |
+| **Security Sandbox**            | JavaScript code execution uses `isolated-vm` for process-level isolation                                                                         |
+| **Multi-Session Management**    | Multiple independent conversation sessions with persistent storage and auto-compression                                                          |
+| **Desktop Mode**                | Electron desktop window communicating via WebSocket with the terminal Agent                                                                      |
+| **Plugin System**               | Dynamically load custom tool plugins                                                                                                             |
+| **Thought Chain Visualization** | Real-time visualization of thinking process and tool execution                                                                                   |
+| **Agent Cluster**               | Sub-agent creation, task delegation, and multi-agent collaboration                                                                               |
+| **Monitor Panel**               | Dedicated window for real-time cluster topology, thought chain, and tool stats                                                                   |
+| **WeChat Integration**          | QR code login, message sending/receiving, dedicated session, tool bubble display                                                                 |
+| **Image Generation**            | Text-to-image / image-to-image via a configurable image model (e.g. `qwen-image-2.0-pro`); results saved to `generated-images/` in the workspace |
 
 > **Privacy note**: CogitoAgent never uploads your files to any cloud. Only conversation context is sent to the LLM API you specify. Your workspace stays yours.
 
@@ -131,7 +132,7 @@ flowchart LR
         direction LR
         CORE1["file<br/>web<br/>code<br/>system<br/>browser"]
         CORE2["git<br/>data<br/>db<br/>path"]
-        AI["memory<br/>ocr<br/>vision"]
+        AI["memory<br/>ocr<br/>vision<br/>image"]
         COMM["wechat<br/>email<br/>cluster"]
         AUTO["task<br/>scheduler<br/>monitor<br/>office"]
     end
@@ -181,8 +182,11 @@ flowchart LR
 | Image Recognition  | `ocr.ts`       | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
 | Vision Analysis    | `vision.ts`    | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
 | Office Documents   | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
+| Image Generation   | `image-gen.ts` | `generateImage`                                                                                                                                                                                                                                                                                   |
 | Cluster            | `cluster.ts`   | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting`                                                                                                                                                        |
 | WeChat             | `wechat.ts`    | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode`                                                                                                                                                                                  |
+
+> **Image Generation** (`generateImage`): text-to-image / image-to-image. For `qwen-image-2.0-pro` the suggested output sizes are `2048*2048`, `2368*1728`, `2688*1536`, `1728*2368`, `2536*2688` (model & sizes are suggested values — see `introduction/tools.md`).
 
 > Detailed tool documentation: registration mechanism, usage examples, best practices → [introduction/tools.md](introduction/tools.md) (Chinese)
 
@@ -365,9 +369,14 @@ flowchart TB
 
 ## Configuration
 
-Configuration via `config.json` and environment variables (`.env`), with env vars taking priority.
+Configuration via `config.json` and environment variables (`.env`), with env vars taking priority. Key variables:
 
-> Full configuration reference: environment variables list, advanced options (compression, truncation, archiving) → [introduction/configuration.md](introduction/configuration.md) (Chinese)
+- `COGITO_API_KEY` — your LLM API key (also the fallback for OCR / Vision / Image Generation when their own keys are blank)
+- `COGITO_IMAGEGEN_API_KEY` — image generation API key (optional; falls back to the main API key)
+- `COGITO_IMAGEGEN_MODEL` — image model name, default `qwen-image-2.0-pro` (suggested value; see `introduction/tools.md`)
+- `COGITO_VISION_API_KEY` / `COGITO_OCR_API_KEY` — optional per-feature keys
+
+> Full configuration reference: environment variables list, advanced options (compression, truncation, archiving), image generation → [introduction/configuration.md](introduction/configuration.md) (Chinese)
 
 ---
 

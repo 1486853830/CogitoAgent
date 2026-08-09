@@ -1,18 +1,27 @@
-# 部署与开发
+# Deployment and Development / 部署与开发
 
+> Detailed documentation: Docker deployment, development guide, testing, and contribution guide.
 > 详细文档：Docker 部署、开发指南、测试与贡献指南。
 
 ---
 
-## 一、Docker 部署
+## 1. Docker Deployment / 一、Docker 部署
 
-### 环境要求
+### Environment Requirements / 环境要求
+
+The following minimum environment is required to run CogitoAgent with Docker.
+
+运行 CogitoAgent 的 Docker 环境需要满足以下最低要求。
 
 - Docker Engine 20.10+
 - Docker Compose v2.0+
-- 最低 2GB 可用内存
+- Minimum 2GB available memory / 最低 2GB 可用内存
 
-### 快速开始
+### Quick Start / 快速开始
+
+Clone the repository and start the service stack with Docker Compose.
+
+克隆仓库并使用 Docker Compose 启动服务。
 
 ```bash
 git clone https://gitee.com/cnt-code/cogito-agent.git
@@ -23,18 +32,26 @@ docker compose up -d
 docker compose ps
 ```
 
-### 环境变量配置
+### Environment Variable Configuration / 环境变量配置
 
-| 变量名                | 说明             | 默认值        | 是否必填 |
-| --------------------- | ---------------- | ------------- | -------- |
-| `NODE_ENV`            | 运行环境         | `production`  | 否       |
-| `COGITO_API_BASE_URL` | LLM API 基础地址 | —             | 是       |
-| `COGITO_API_KEY`      | LLM API 密钥     | —             | 是       |
-| `COGITO_MODEL`        | 默认模型名称     | `gpt-4o`      | 否       |
-| `COGITO_WORKSPACE`    | 工作目录路径     | `./workspace` | 否       |
-| `COGITO_LOG_LEVEL`    | 日志级别         | `info`        | 否       |
+The following environment variables configure the runtime. Required variables must be provided.
 
-### Docker Compose 配置
+以下环境变量用于配置运行时。必填变量必须提供。
+
+| Variable / 变量名     | Description / 说明  | Default / 默认值 | Required / 是否必填 |
+| --------------------- | ------------------- | ---------------- | ------------------- |
+| `NODE_ENV`            | Runtime environment | `production`     | No / 否             |
+| `COGITO_API_BASE_URL` | LLM API base URL    | —                | Yes / 是            |
+| `COGITO_API_KEY`      | LLM API key         | —                | Yes / 是            |
+| `COGITO_MODEL`        | Default model name  | `gpt-4o`         | No / 否             |
+| `COGITO_WORKSPACE`    | Workspace path      | `./workspace`    | No / 否             |
+| `COGITO_LOG_LEVEL`    | Log level           | `info`           | No / 否             |
+
+### Docker Compose Configuration / Docker Compose 配置
+
+Below is a sample `docker-compose.yml` configuration for the agent service.
+
+以下是 agent 服务的 `docker-compose.yml` 配置示例。
 
 ```yaml
 version: '3.8'
@@ -57,7 +74,11 @@ services:
     restart: unless-stopped
 ```
 
-### 手动构建
+### Manual Build / 手动构建
+
+Alternatively, build the image manually and run a container with the required environment variables.
+
+你也可以手动构建镜像，并使用所需的环境变量运行容器。
 
 ```bash
 docker build -t cogito-agent:latest .
@@ -74,9 +95,13 @@ docker run -d \
 
 ---
 
-## 二、开发指南
+## 2. Development Guide / 二、开发指南
 
-### 本地开发环境
+### Local Development Environment / 本地开发环境
+
+Set up the local development environment by cloning the repository and installing dependencies.
+
+克隆仓库并安装依赖以搭建本地开发环境。
 
 ```bash
 git clone https://gitee.com/cnt-code/cogito-agent.git
@@ -86,51 +111,65 @@ npm install
 npm run cli
 ```
 
-### 开发模式
+### Development Mode / 开发模式
+
+Start the application in development mode.
+
+以开发模式启动应用。
 
 ```bash
 npm start
 ```
 
-### 构建桌面应用
+### Build Desktop App / 构建桌面应用
+
+Build the Electron desktop application for Windows.
+
+构建 Windows 平台的 Electron 桌面应用。
 
 ```bash
 npm run build:win
 ```
 
-### 代码结构
+### Code Structure / 代码结构
+
+The project is organized as follows.
+
+项目目录结构如下。
 
 ```
 cogito-agent/
 ├── src/
-│   ├── agent/              # 核心 Agent 逻辑
-│   │   ├── Agent.ts        # 思考循环
-│   │   ├── state.ts        # 状态机
-│   │   ├── registry.ts     # 工具注册
-│   │   ├── session.ts      # 会话管理
-│   │   ├── commands.ts     # 命令处理
+│   ├── agent/              # Core Agent logic
+│   │   ├── Agent.ts        # Thinking loop
+│   │   ├── state.ts        # State machine
+│   │   ├── registry.ts     # Tool registration
+│   │   ├── session.ts      # Session management
+│   │   ├── commands.ts     # Command handling
 │   │   ├── tools/          # 28+ tool modules
 │   │   └── ...
-│   ├── api/                # API 层
-│   │   ├── client.ts       # LLM 客户端
-│   │   ├── models.ts       # 模型管理
-│   │   └── webSearch.ts    # 网络搜索
-│   ├── io/                 # 输入输出
-│   │   ├── terminal.ts     # 终端交互
-│   │   ├── logger.ts       # 日志
+│   ├── api/                # API layer
+│   │   ├── client.ts       # LLM client
+│   │   ├── models.ts       # Model management
+│   │   └── webSearch.ts    # Web search
+│   ├── io/                 # Input/output
+│   │   ├── terminal.ts     # Terminal interaction
+│   │   ├── logger.ts       # Logging
 │   │   └── ws-server.ts    # WebSocket
-│   ├── config.ts           # 配置管理
-│   ├── types/              # TypeScript 类型定义
-│   └── index.ts            # 应用入口
-├── electron/               # Electron 桌面应用
-├── personas/               # 预设角色
-├── tests/                  # 测试文件
-└── data/                   # 运行时数据（自动创建）
+│   ├── config.ts           # Configuration management
+│   ├── types/              # TypeScript type definitions
+│   └── index.ts            # Application entry
+├── electron/               # Electron desktop app
+├── personas/               # Preset personas
+├── tests/                  # Test files
+└── data/                   # Runtime data (auto-created)
 ```
 
-### 配置文件
+### Configuration File / 配置文件
 
-开发环境使用 `config.json`，生产环境使用环境变量覆盖：
+The development environment uses `config.json`, which is overridden by environment variables in production.
+
+开发环境使用 `config.json`，生产环境使用环境变量覆盖。
 
 ```json
 {
@@ -153,67 +192,91 @@ cogito-agent/
 
 ---
 
-## 三、测试
+## 3. Testing / 三、测试
 
-### 运行测试
+### Run Tests / 运行测试
+
+Execute the test suite with the following command.
+
+使用以下命令运行测试套件。
 
 ```bash
 npm test
 ```
 
-### 测试覆盖
+### Test Coverage / 测试覆盖
 
-| 模块       | 测试文件               | 说明                         |
-| ---------- | ---------------------- | ---------------------------- |
-| Agent 引擎 | `Agent.test.js`        | 思考循环、状态转换、工具调用 |
-| 工具注册   | `registry.test.ts`     | 工具注册、参数校验、分类加载 |
-| 会话管理   | `session.test.ts`      | 多会话、上下文压缩、持久化   |
-| 命令处理   | `commands.test.ts`     | 命令解析、执行、结果处理     |
-| WebSocket  | `io-ws-server.test.ts` | 连接管理、消息路由、心跳检测 |
+The following modules are covered by tests.
 
-### 测试规范
+以下模块均有对应的测试覆盖。
 
-- 使用 Jest 测试框架
-- 每个工具模块应有对应的测试文件
-- 测试用例应覆盖正常路径和边界情况
+| Module / 模块      | Test File / 测试文件   | Description / 说明                                        |
+| ------------------ | ---------------------- | --------------------------------------------------------- |
+| Agent Engine       | `Agent.test.js`        | Thinking loop, state transitions, tool calls              |
+| Tool Registry      | `registry.test.ts`     | Tool registration, parameter validation, category loading |
+| Session Management | `session.test.ts`      | Multi-session, context compression, persistence           |
+| Command Handling   | `commands.test.ts`     | Command parsing, execution, result handling               |
+| WebSocket          | `io-ws-server.test.ts` | Connection management, message routing, heartbeat         |
+
+### Testing Conventions / 测试规范
+
+Follow these conventions when writing tests.
+
+编写测试时请遵循以下规范。
+
+- Use the Jest testing framework / 使用 Jest 测试框架
+- Each tool module should have a corresponding test file / 每个工具模块应有对应的测试文件
+- Test cases should cover both happy paths and edge cases / 测试用例应覆盖正常路径和边界情况
 
 ---
 
-## 四、贡献指南
+## 4. Contribution Guide / 四、贡献指南
 
-### 贡献步骤
+### Contribution Steps / 贡献步骤
 
-1. **Fork 仓库**：点击项目页面的 Fork 按钮
-2. **创建分支**：基于 `main` 分支创建功能分支
+Contribute to the project by following these steps.
+
+请按以下步骤为项目做出贡献。
+
+1. **Fork the repository**: Click the Fork button on the project page. / **Fork 仓库**：点击项目页面的 Fork 按钮
+2. **Create a branch**: Create a feature branch based on `main`. / **创建分支**：基于 `main` 分支创建功能分支
    ```bash
    git checkout -b feat/your-feature-name
    ```
-3. **编写代码**：遵循项目的代码规范
-4. **运行测试**：确保所有测试通过
+3. **Write code**: Follow the project's code conventions. / **编写代码**：遵循项目的代码规范
+4. **Run tests**: Ensure all tests pass. / **运行测试**：确保所有测试通过
    ```bash
    npm test
    ```
-5. **提交 Pull Request**：将分支推送至远程仓库并提交 PR
+5. **Submit a Pull Request**: Push your branch to the remote repository and open a PR. / **提交 Pull Request**：将分支推送至远程仓库并提交 PR
 
-### 代码规范
+### Code Conventions / 代码规范
 
-- **语言**：使用 TypeScript（ES6+）
-- **格式化**：使用 Prettier，提交前运行 `npm run format`
-- **Lint**：使用 ESLint + TypeScript ESLint，提交前运行 `npm run lint`
-- **命名**：
-  - 变量/函数：`camelCase`
-  - 类：`PascalCase`
-  - 常量：`UPPER_SNAKE_CASE`
-  - 文件：`kebab-case`
-- **提交信息**：遵循 Conventional Commits 规范
+Adhere to the following code conventions.
+
+请遵守以下代码规范。
+
+- **Language**: Use TypeScript (ES6+). / **语言**：使用 TypeScript（ES6+）
+- **Formatting**: Use Prettier, run `npm run format` before committing. / **格式化**：使用 Prettier，提交前运行 `npm run format`
+- **Lint**: Use ESLint + TypeScript ESLint, run `npm run lint` before committing. / **Lint**：使用 ESLint + TypeScript ESLint，提交前运行 `npm run lint`
+- **Naming**: / **命名**：
+  - Variables / functions: `camelCase` / 变量/函数：`camelCase`
+  - Classes: `PascalCase` / 类：`PascalCase`
+  - Constants: `UPPER_SNAKE_CASE` / 常量：`UPPER_SNAKE_CASE`
+  - Files: `kebab-case` / 文件：`kebab-case`
+- **Commit messages**: Follow the Conventional Commits specification. / **提交信息**：遵循 Conventional Commits 规范
   - `feat(agent): 添加新工具`
   - `fix(session): 修复会话压缩问题`
   - `docs(readme): 更新文档`
-- **测试要求**：新增代码必须包含对应的测试用例
+- **Testing requirement**: New code must include corresponding test cases. / **测试要求**：新增代码必须包含对应的测试用例
 
-### 开发建议
+### Development Tips / 开发建议
 
-1. **工具开发**：在 `src/agent/tools/` 目录下创建新工具文件
-2. **工具注册**：在 `registry.ts` 中注册新工具
-3. **文档更新**：同步更新 `introduction/tools.md`
-4. **测试编写**：在 `tests/` 目录下添加对应的测试文件
+Recommended workflow for adding new tools and extending the project.
+
+新增工具和扩展项目的推荐工作流。
+
+1. **Tool development**: Create a new tool file under `src/agent/tools/`. / **工具开发**：在 `src/agent/tools/` 目录下创建新工具文件
+2. **Tool registration**: Register the new tool in `registry.ts`. / **工具注册**：在 `registry.ts` 中注册新工具
+3. **Update docs**: Update `introduction/tools.md` accordingly. / **文档更新**：同步更新 `introduction/tools.md`
+4. **Write tests**: Add the corresponding test file under `tests/`. / **测试编写**：在 `tests/` 目录下添加对应的测试文件

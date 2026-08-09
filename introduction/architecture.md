@@ -1,10 +1,16 @@
-# 架构设计详解
+# 架构设计详解 / Architecture Design Details
 
+> Detailed documentation: core components, thinking loop, tool invocation flow, desktop-mode architecture, and WebSocket communication.
+>
 > 详细文档：核心组件、思考循环、工具调用流程、桌面模式架构与 WebSocket 通信。
 
 ---
 
-## 1. 核心组件表
+## 1. 核心组件表 / Core Components
+
+The following table lists the core components of Cogito Agent along with their primary responsibilities and the source file that implements each one.
+
+下表列出了 Cogito Agent 的核心组件及其主要职责，并标注了各组件对应的源文件。
 
 | 组件                 | 文件                  | 职责描述                                                                                     |
 | -------------------- | --------------------- | -------------------------------------------------------------------------------------------- |
@@ -22,7 +28,11 @@
 
 ---
 
-## 2. 模块关系图
+## 2. 模块关系图 / Module Relationship Diagram
+
+The diagram below illustrates the connections between the Electron main process, the Agent subprocess, and external interfaces.
+
+下图展示了 Electron 主进程、Agent 子进程与外部接口之间的连接关系。
 
 ```mermaid
 flowchart TB
@@ -76,17 +86,26 @@ flowchart TB
 
 ---
 
-## 3. 思考循环（Think Cycle）
+## 3. 思考循环（Think Cycle）/ Thinking Cycle
+
+The thinking cycle is the core operating mechanism of the Agent. It adopts an iterative **observe–think–act** paradigm. In each cycle, the Agent will:
 
 思考循环是 Agent 的核心运行机制，采用 **观察-思考-行动** 的迭代范式。每一轮循环中，Agent 会：
 
-1. **感知输入**：从用户消息、系统事件或工具返回结果中获取上下文
-2. **构建提示**：将当前状态、历史记录、可用工具 schema 组装为 LLM 提示
-3. **调用 LLM**：向大模型发送请求，获取推理结果与行动决策
-4. **解析响应**：从 LLM 输出中提取思考内容、工具调用或最终答案
-5. **执行工具**：若 LLM 决定调用工具，则通过注册中心执行相应操作
-6. **更新状态**：将结果写回会话上下文，更新状态机
-7. **决定下一步**：判断是继续循环（工具结果待处理）还是输出最终响应
+1. **Perceive input**: Obtain context from user messages, system events, or tool return results.
+1. **感知输入**：从用户消息、系统事件或工具返回结果中获取上下文。
+1. **Build prompt**: Assemble the LLM prompt from the current state, history, and available tool schemas.
+1. **构建提示**：将当前状态、历史记录、可用工具 schema 组装为 LLM 提示。
+1. **Call LLM**: Send a request to the large model to obtain reasoning results and action decisions.
+1. **调用 LLM**：向大模型发送请求，获取推理结果与行动决策。
+1. **Parse response**: Extract thinking content, tool calls, or the final answer from the LLM output.
+1. **解析响应**：从 LLM 输出中提取思考内容、工具调用或最终答案。
+1. **Execute tool**: If the LLM decides to call a tool, execute the corresponding operation through the registry.
+1. **执行工具**：若 LLM 决定调用工具，则通过注册中心执行相应操作。
+1. **Update state**: Write the result back to the session context and update the state machine.
+1. **更新状态**：将结果写回会话上下文，更新状态机。
+1. **Decide next step**: Determine whether to continue the loop (tool result pending) or output the final response.
+1. **决定下一步**：判断是继续循环（工具结果待处理）还是输出最终响应。
 
 ```mermaid
 flowchart TD
@@ -114,7 +133,11 @@ flowchart TD
 
 ---
 
-## 4. 工具调用流程
+## 4. 工具调用流程 / Tool Invocation Flow
+
+The sequence diagram below shows the complete flow of a tool invocation, from the user message through state updates, LLM calls, sandbox execution, and statistics tracing, until the final response is returned.
+
+下图以时序图展示了工具调用的完整流程：从用户消息开始，经过状态更新、LLM 调用、沙箱执行与统计追踪，直到返回最终响应。
 
 ```mermaid
 sequenceDiagram
@@ -160,7 +183,11 @@ sequenceDiagram
 
 ---
 
-## 5. 桌面模式消息流
+## 5. 桌面模式消息流 / Desktop-Mode Message Flow
+
+The following sequence diagram describes how a message flows through the Electron UI, the IPC bridge, the main process, the WebSocket server, and the Agent subprocess.
+
+以下时序图描述了消息在 Electron UI、IPC 桥接层、主进程、WebSocket 服务与 Agent 子进程之间的流转过程。
 
 ```mermaid
 sequenceDiagram
@@ -193,7 +220,11 @@ sequenceDiagram
 
 ---
 
-## 6. 状态机
+## 6. 状态机 / State Machine
+
+The state machine below defines the Agent lifecycle: it starts in IDLE, transitions into THINKING on input, may pause for AWAITING_CONFIRMATION on high-risk operations, and returns to AWAITING_INPUT when the final response is emitted.
+
+下图所示的状态机定义了 Agent 的生命周期：初始为 IDLE，收到输入后进入 THINKING，遇到高风险操作可暂停于 AWAITING_CONFIRMATION，输出最终响应后回到 AWAITING_INPUT。
 
 ```mermaid
 stateDiagram-v2
@@ -224,7 +255,11 @@ stateDiagram-v2
     AWAITING_INPUT --> [*]: 会话结束
 ```
 
-### 状态说明
+### 状态说明 / State Descriptions
+
+The table below explains each state in the lifecycle.
+
+下表说明了生命周期中的各个状态。
 
 | 状态                    | 说明                                               |
 | ----------------------- | -------------------------------------------------- |
@@ -235,9 +270,13 @@ stateDiagram-v2
 
 ---
 
-## 7. 桌面模式（Electron）
+## 7. 桌面模式（Electron）/ Desktop Mode (Electron)
 
-### 7.1 架构图
+### 7.1 架构图 / Architecture Diagram
+
+The architecture diagram below shows the renderer process windows, the main process modules, and the Agent subprocess, along with their communication links.
+
+下图展示了渲染进程的窗口、主进程的模块以及 Agent 子进程之间的架构与通信链路。
 
 ```mermaid
 flowchart TB
@@ -267,7 +306,11 @@ flowchart TB
     WSServer <-->|"WebSocket"| Agent
 ```
 
-### 7.2 窗口
+### 7.2 窗口 / Windows
+
+The table below lists the three Electron windows, their source files, and their purposes.
+
+下表列出了三个 Electron 窗口、对应的源文件及其用途。
 
 | 窗口                 | 文件             | 用途                                             |
 | -------------------- | ---------------- | ------------------------------------------------ |
@@ -275,20 +318,29 @@ flowchart TB
 | **Dashboard Window** | `dashboard.html` | 仪表盘——会话概览、工具调用统计、运行状态监控     |
 | **Setup Window**     | `setup.html`     | 配置向导——首次配置 API Key、模型、工作目录、角色 |
 
-### 7.3 主要进程
+### 7.3 主要进程 / Main Processes
 
-#### `main.js` — 窗口管理器
+#### `main.js` — 窗口管理器 / Window Manager
 
-- 创建和管理 Desktop、Dashboard、Setup 窗口实例
-- 注册 IPC 通道（`ipcMain.handle` / `ipcMain.on`）
-- 管理系统托盘、菜单栏和全局快捷键
-- 控制窗口生命周期（创建、隐藏、显示、销毁）
+- Create and manage the Desktop, Dashboard, and Setup window instances.
+- 创建和管理 Desktop、Dashboard、Setup 窗口实例。
+- Register IPC channels (`ipcMain.handle` / `ipcMain.on`).
+- 注册 IPC 通道（`ipcMain.handle` / `ipcMain.on`）。
+- Manage the system tray, menu bar, and global shortcuts.
+- 管理系统托盘、菜单栏和全局快捷键。
+- Control window lifecycle (create, hide, show, destroy).
+- 控制窗口生命周期（创建、隐藏、显示、销毁）。
 
-#### `preload.cjs` — IPC 桥接
+#### `preload.cjs` — IPC 桥接 / IPC Bridge
 
-- 通过 `contextBridge.exposeInMainWorld` 安全暴露 API
-- 定义白名单通道，限制渲染进程可调用的主进程方法
-- 实现请求-响应模式的异步调用
+- Safely expose APIs via `contextBridge.exposeInMainWorld`.
+- 通过 `contextBridge.exposeInMainWorld` 安全暴露 API。
+- Define a whitelist of channels, limiting which main-process methods the renderer can call.
+- 定义白名单通道，限制渲染进程可调用的主进程方法。
+- Implement asynchronous request–response calls.
+- 实现请求-响应模式的异步调用。
+
+The following code shows how `preload.cjs` exposes the API through `contextBridge`:
 
 ```javascript
 const { contextBridge, ipcRenderer } = require('electron');
@@ -299,18 +351,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
 });
 ```
 
-#### `agent-bridge.js` — Agent 通信桥
+#### `agent-bridge.js` — Agent 通信桥 / Agent Communication Bridge
 
-- 作为主进程与 Agent 子进程之间的中间层
-- 负责消息的序列化/反序列化、协议转换
-- 请求超时管理、错误重试策略
-- 统一消息路由：将渲染进程请求转发至 WebSocket，并将响应回传
+- Act as the intermediary layer between the main process and the Agent subprocess.
+- 作为主进程与 Agent 子进程之间的中间层。
+- Handle message serialization/deserialization and protocol conversion.
+- 负责消息的序列化/反序列化、协议转换。
+- Manage request timeouts and error-retry strategies.
+- 请求超时管理、错误重试策略。
+- Unified message routing: forward renderer requests to the WebSocket and relay responses back.
+- 统一消息路由：将渲染进程请求转发至 WebSocket，并将响应回传。
 
-#### `ws-server.ts` — WebSocket 服务
+#### `ws-server.ts` — WebSocket 服务 / WebSocket Service
+
+See Section 8 for details.
 
 详见第 8 节。
 
-### 7.4 窗口特性
+### 7.4 窗口特性 / Window Features
+
+The table below summarizes the special window features and how they are configured.
+
+下表汇总了窗口的特殊特性及其配置方式。
 
 | 特性                          | 说明                                                                                                    |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -321,13 +383,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 ---
 
-## 8. WebSocket 通信详解
+## 8. WebSocket 通信详解 / WebSocket Communication Details
 
-### 8.1 WebSocket 服务器
+### 8.1 WebSocket 服务器 / WebSocket Server
+
+`ws-server.ts` is a WebSocket server built on the `ws` library. It serves as the real-time communication bridge between the Agent and external clients (the Electron main process and custom clients), listening on port **9527** by default.
 
 `ws-server.ts` 是基于 `ws` 库构建的 WebSocket 服务端，作为 Agent 与外部客户端（Electron 主进程、自定义客户端）的实时通信桥梁，默认监听端口 **9527**。
 
-#### 核心功能
+#### 核心功能 / Core Features
 
 | 功能         | 说明                                     |
 | ------------ | ---------------------------------------- |
@@ -337,7 +401,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 | **重连支持** | 客户端断线后自动重连，服务端保持会话状态 |
 | **广播**     | 支持向所有或指定客户端广播消息           |
 
-#### 消息格式
+#### 消息格式 / Message Format
+
+The JSON message envelope exchanged over WebSocket is shown below.
+
+WebSocket 上交换的 JSON 消息封装格式如下所示。
 
 ```json
 {
@@ -359,7 +427,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 | `timestamp` | string | ISO 8601 时间戳            |
 | `payload`   | object | 消息体，存放具体数据       |
 
-#### 消息类型
+#### 消息类型 / Message Types
 
 | 方向            | action            | 说明                   |
 | --------------- | ----------------- | ---------------------- |
@@ -377,7 +445,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 | Server → Client | `session:list`    | 返回会话列表           |
 | System          | `ping` / `pong`   | 心跳检测               |
 
-### 8.2 Electron 客户端连接流程
+### 8.2 Electron 客户端连接流程 / Electron Client Connection Flow
+
+The sequence diagram below shows how the Electron main process establishes a WebSocket connection through the Agent bridge, performs the handshake, maintains the heartbeat, and relays messages.
+
+以下时序图展示了 Electron 主进程如何通过 Agent 桥接建立 WebSocket 连接、完成握手、维持心跳并转发消息。
 
 ```mermaid
 sequenceDiagram
@@ -412,7 +484,9 @@ sequenceDiagram
     deactivate WS
 ```
 
-#### IPC 桥接
+#### IPC 桥接 / IPC Bridge
+
+The Electron renderer process cannot access WebSocket directly; instead it communicates through the following chain:
 
 Electron 渲染进程不能直接访问 WebSocket，而是通过以下链路通信：
 
@@ -423,7 +497,11 @@ Renderer (contextBridge)
             → ws-server.ts → Agent
 ```
 
-### 8.3 自定义 WebSocket 客户端示例
+### 8.3 自定义 WebSocket 客户端示例 / Custom WebSocket Client Example
+
+The following JavaScript example implements a custom WebSocket client that connects to the Agent, handles the heartbeat, and sends/receives messages.
+
+以下 JavaScript 示例实现了一个自定义 WebSocket 客户端，用于连接 Agent、处理心跳并收发消息。
 
 ```javascript
 import WebSocket from 'ws';
@@ -524,7 +602,11 @@ client.on('agent:tool_call', (payload) => {
 client.connect();
 ```
 
-### 8.4 WebSocket 配置
+### 8.4 WebSocket 配置 / WebSocket Configuration
+
+The table below lists the WebSocket server configuration options and their default values.
+
+下表列出了 WebSocket 服务的配置项及其默认值。
 
 | 配置项              | 默认值             | 说明                               |
 | ------------------- | ------------------ | ---------------------------------- |
@@ -537,9 +619,11 @@ client.connect();
 
 ---
 
-## 9. 会话管理
+## 9. 会话管理 / Session Management
 
-### 9.1 会话结构
+### 9.1 会话结构 / Session Structure
+
+Each session holds an independent conversation context and supports automatic compression and persistent storage.
 
 每个会话包含独立的对话上下文，支持自动压缩和持久化存储。
 
@@ -555,17 +639,24 @@ client.connect();
 }
 ```
 
-### 9.2 上下文压缩
+### 9.2 上下文压缩 / Context Compression
+
+When the session history exceeds the configured maximum length, compression is triggered automatically:
 
 当会话历史超过配置的最大长度时，自动触发压缩：
 
-- 使用 LLM 总结早期对话
-- 保留最近 N 条消息
-- 将总结作为上下文前缀
+- Use the LLM to summarize earlier conversations.
+- 使用 LLM 总结早期对话。
+- Keep the most recent N messages.
+- 保留最近 N 条消息。
+- Prepend the summary as a context prefix.
+- 将总结作为上下文前缀。
 
 ---
 
-## 10. 工具分类按需加载
+## 10. 工具分类按需加载 / On-Demand Tool Loading by Category
+
+The tool registry supports loading tools on demand by category, reducing startup time and memory usage.
 
 工具注册表支持按分类按需加载，减少启动时间和内存占用：
 
@@ -582,4 +673,6 @@ const TOOL_CATEGORIES = {
 
 ---
 
+> This document covers the core architecture design of Cogito Agent, including component responsibilities, module relationships, the thinking-cycle mechanism, the tool invocation flow, the desktop-mode architecture, and WebSocket communication details, providing a complete architectural reference for development and integration.
+>
 > 本文档覆盖了 Cogito Agent 的核心架构设计，包括组件职责、模块关系、思考循环机制、工具调用流程、桌面模式架构以及 WebSocket 通信细节，为开发和集成提供完整的架构参考。

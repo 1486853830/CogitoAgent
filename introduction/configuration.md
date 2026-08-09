@@ -1,20 +1,23 @@
-# 配置指南
+# Configuration Guide / 配置指南
 
+> Detailed documentation: configuration file format, the complete list of environment variables, and advanced configuration options.
 > 详细文档：配置文件格式、环境变量完整列表、高级配置选项。
 
 ---
 
-## 1. 配置文件 (config.json)
+## 1. Configuration File (config.json) / 配置文件 (config.json)
+
+The configuration file is located at `config.json` in the user data directory, in JSON format. All fields are optional; missing fields use default values.
 
 配置文件位于用户数据目录下的 `config.json`，使用 JSON 格式。所有字段均为可选，缺失字段将使用默认值。
 
-**存储路径**：
+**Storage paths / 存储路径**：
 
 - Windows: `C:\Users\<用户名>\AppData\Roaming\cogitoagent\config.json`
 - macOS: `~/Library/Application Support/cogitoagent/config.json`
 - Linux: `~/.config/cogitoagent/config.json`
 
-**完整示例：**
+**Full example / 完整示例：**
 
 ```json
 {
@@ -48,6 +51,11 @@
     "baseURL": "",
     "apiKey": "",
     "model": "InternVL3-78B"
+  },
+  "imageGen": {
+    "apiKey": "",
+    "baseURL": "https://api.moark.com/v1",
+    "model": "qwen-image-2.0-pro"
   },
   "workspace": "C:\\Users\\username",
   "database": {
@@ -102,6 +110,7 @@
       "scheduler",
       "ocr",
       "vision",
+      "image",
       "office"
     ]
   },
@@ -109,23 +118,27 @@
 }
 ```
 
-**配置优先级（从高到低）：**
+**Configuration priority (high to low) / 配置优先级（从高到低）：**
 
-1. 环境变量（最高，覆盖配置文件）
-2. `config.json` 文件（覆盖默认值）
-3. 内置默认值（最低）
+1. Environment variables (highest, override the config file) / 环境变量（最高，覆盖配置文件）
+2. `config.json` file (overrides defaults) / `config.json` 文件（覆盖默认值）
+3. Built-in defaults (lowest) / 内置默认值（最低）
 
-**保存注意事项：**
+**Save notes / 保存注意事项：**
+
+When saving configuration, the system automatically filters sensitive fields (API keys, email passwords, etc.) to ensure sensitive information is not written to `config.json`. Sensitive information should be set via environment variables.
 
 保存配置时，系统会自动过滤敏感字段（API 密钥、邮箱密码等），确保敏感信息不会写入 `config.json`。敏感信息应通过环境变量设置。
 
 ---
 
-## 2. 环境变量 (.env)
+## 2. Environment Variables (.env) / 环境变量 (.env)
+
+Copy `.env.example` to `.env` and fill in actual values. The `.env` file is already added to `.gitignore` and will not be committed to version control.
 
 复制 `.env.example` 为 `.env` 并填入实际值。`.env` 文件已加入 `.gitignore`，不会被提交到版本控制。
 
-**完整示例：**
+**Full example / 完整示例：**
 
 ```bash
 # CogitoAgent 环境变量配置模板
@@ -221,6 +234,13 @@ COGITO_VISION_API_BASE_URL=
 COGITO_VISION_MODEL=InternVL3-78B
 
 # ============================================
+# 图像生成配置（可选）/ Image Generation Config (optional)
+# 留空则使用主 API Key（与语言模型相同）/ if blank, uses the main API key (same as the LLM)
+COGITO_IMAGEGEN_API_KEY=
+COGITO_IMAGEGEN_API_BASE_URL=https://api.moark.com/v1
+COGITO_IMAGEGEN_MODEL=qwen-image-2.0-pro
+
+# ============================================
 # 代码执行配置（可选）
 # ============================================
 
@@ -259,32 +279,35 @@ COGITO_WORKSPACE=./
 
 ---
 
-## 3. 工具分类配置
+## 3. Tool Category Configuration / 工具分类配置
+
+The `tools.enabledCategories` field in `config.json` controls which tool categories are enabled. By default, all categories are enabled if not configured.
 
 通过 `config.json` 中的 `tools.enabledCategories` 字段可以控制启用的工具分类。未配置时默认启用所有分类。
 
-### 全部分类表
+### Full category table / 全部分类表
 
-| 分类键名    | 中文名称     | 包含工具数 | 包含工具列表                                                                                                                                                                                                                                                                                      |
-| ----------- | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `file`      | 文件操作     | 5          | `ls`, `read`, `copy`, `mkdir`, `create`                                                                                                                                                                                                                                                           |
-| `web`       | 网络工具     | 3          | `search`, `browse`, `fetchPage`                                                                                                                                                                                                                                                                   |
-| `system`    | 系统操作     | 3          | `listApps`, `openApp`, `closeApp`                                                                                                                                                                                                                                                                 |
-| `browser`   | 浏览器自动化 | 12         | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile`                                                                                                   |
-| `code`      | 代码执行     | 5          | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode`                                                                                                                                                                                                                          |
-| `git`       | Git 版本控制 | 21         | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
-| `task`      | 任务管理     | 9          | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks`                                                                                                                                                                        |
-| `memory`    | 记忆系统     | 9          | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory`                                                                                                                                                 |
-| `data`      | 数据处理     | 9          | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`                                                                                                                                                                                  |
-| `db`        | 数据库       | 11         | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB`                                                                                                                                               |
-| `email`     | 邮件功能     | 6          | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig`                                                                                                                                                                                |
-| `monitor`   | 系统监控     | 9          | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem`                                                                                                                                            |
-| `scheduler` | 定时任务     | 8          | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler`                                                                                                                                     |
-| `ocr`       | 图像文字识别 | 2          | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
-| `vision`    | 视觉分析     | 2          | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
-| `office`    | Office 文档  | 4          | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
+| 分类键名    | 中文名称                    | 包含工具数 | 包含工具列表                                                                                                                                                                                                                                                                                      |
+| ----------- | --------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `file`      | 文件操作                    | 5          | `ls`, `read`, `copy`, `mkdir`, `create`                                                                                                                                                                                                                                                           |
+| `web`       | 网络工具                    | 3          | `search`, `browse`, `fetchPage`                                                                                                                                                                                                                                                                   |
+| `system`    | 系统操作                    | 3          | `listApps`, `openApp`, `closeApp`                                                                                                                                                                                                                                                                 |
+| `browser`   | 浏览器自动化                | 12         | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile`                                                                                                   |
+| `code`      | 代码执行                    | 5          | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode`                                                                                                                                                                                                                          |
+| `git`       | Git 版本控制                | 21         | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
+| `task`      | 任务管理                    | 9          | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks`                                                                                                                                                                        |
+| `memory`    | 记忆系统                    | 9          | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory`                                                                                                                                                 |
+| `data`      | 数据处理                    | 9          | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`                                                                                                                                                                                  |
+| `db`        | 数据库                      | 11         | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB`                                                                                                                                               |
+| `email`     | 邮件功能                    | 6          | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig`                                                                                                                                                                                |
+| `monitor`   | 系统监控                    | 9          | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem`                                                                                                                                            |
+| `scheduler` | 定时任务                    | 8          | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler`                                                                                                                                     |
+| `ocr`       | 图像文字识别                | 2          | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
+| `vision`    | 视觉分析                    | 2          | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
+| `image`     | 图像生成 / Image Generation | 1          | `generateImage`                                                                                                                                                                                                                                                                                   |
+| `office`    | Office 文档                 | 4          | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
 
-**配置示例（仅启用部分分类）：**
+**Config example (enable only some categories) / 配置示例（仅启用部分分类）：**
 
 ```json
 {
@@ -296,9 +319,9 @@ COGITO_WORKSPACE=./
 
 ---
 
-## 4. 完整环境变量列表
+## 4. Complete Environment Variable List / 完整环境变量列表
 
-### 4.1 API 配置
+### 4.1 API Configuration / API 配置
 
 | 环境变量              | 对应配置路径   | 必需 | 默认值 | 说明                                              |
 | --------------------- | -------------- | ---- | ------ | ------------------------------------------------- |
@@ -307,7 +330,9 @@ COGITO_WORKSPACE=./
 | `COGITO_API_PROVIDER` | `api.provider` | 否   | -      | 服务商名称（openai / moark / anthropic / google） |
 | `COGITO_MODEL`        | `api.model`    | 是   | -      | 模型名称                                          |
 
-### 4.2 多模型 API 密钥
+### 4.2 Multi-Model API Keys / 多模型 API 密钥
+
+Supports multiple AI providers; the `COGITO_`-prefixed versions are recommended; prefix-less versions (e.g. `OPENAI_API_KEY`) are retained only for backward compatibility.
 
 支持多个 AI 服务商，推荐使用 `COGITO_` 前缀版本；无前缀版本（如 `OPENAI_API_KEY`）保留仅为向后兼容。
 
@@ -322,7 +347,7 @@ COGITO_WORKSPACE=./
 | `COGITO_GOOGLE_API_KEY`    | `models.google.apiKey`    | 否   | -      | Google API 密钥    |
 | `GOOGLE_API_KEY`           | `models.google.apiKey`    | 否   | -      | 同上（向后兼容）   |
 
-### 4.3 思考与执行配置
+### 4.3 Thinking & Execution Config / 思考与执行配置
 
 | 环境变量                   | 对应配置路径            | 必需 | 默认值   | 说明                              |
 | -------------------------- | ----------------------- | ---- | -------- | --------------------------------- |
@@ -332,13 +357,13 @@ COGITO_WORKSPACE=./
 | `COGITO_CONFIRM_DANGEROUS` | -                       | 否   | `true`   | 是否启用危险操作二次确认          |
 | `COGITO_SANDBOX_MODE`      | -                       | 否   | `true`   | 是否启用代码沙盒隔离执行          |
 
-### 4.4 数据库配置
+### 4.4 Database Config / 数据库配置
 
 | 环境变量               | 对应配置路径    | 必需 | 默认值              | 说明                  |
 | ---------------------- | --------------- | ---- | ------------------- | --------------------- |
 | `COGITO_DATABASE_PATH` | `database.path` | 否   | `./data/example.db` | SQLite 数据库文件路径 |
 
-### 4.5 邮件配置
+### 4.5 Email Config / 邮件配置
 
 | 环境变量                | 对应配置路径     | 必需 | 默认值 | 说明            |
 | ----------------------- | ---------------- | ---- | ------ | --------------- |
@@ -348,14 +373,16 @@ COGITO_WORKSPACE=./
 | `COGITO_EMAIL_PASSWORD` | `email.password` | 否   | -      | 邮箱密码        |
 | `COGITO_EMAIL_FROM`     | `email.from`     | 否   | -      | 发件人邮箱地址  |
 
-### 4.6 工作区配置
+### 4.6 Workspace Config / 工作区配置
 
 | 环境变量             | 对应配置路径 | 必需 | 默认值     | 说明                                                                                                                |
 | -------------------- | ------------ | ---- | ---------- | ------------------------------------------------------------------------------------------------------------------- |
 | `COGITO_WORKSPACE`   | `workspace`  | 否   | 用户主目录 | 工作区根路径，Agent 的活动范围                                                                                      |
 | ~~`COGITO_PERSONA`~~ | `persona`    | 否   | -          | **已废弃**：人设不再从环境变量读取。请在 `config.json` 设置 `"persona": "<文件夹名>"` 指定默认人设；留空默认 Cogito |
 
-### 4.7 OCR 配置
+### 4.7 OCR Configuration / OCR 配置
+
+The OCR key falls back to the main API key (`COGITO_API_KEY`) by default. The `COGITO_`-prefixed versions are also recommended.
 
 OCR 密钥默认回退到主 API 密钥（`COGITO_API_KEY`）。同样推荐 `COGITO_` 前缀版本。
 
@@ -370,7 +397,9 @@ OCR 密钥默认回退到主 API 密钥（`COGITO_API_KEY`）。同样推荐 `CO
 | `COGITO_OCR_PROVIDER`     | `ocr.provider` | 否   | -                | OCR 服务商名称   |
 | `OCR_PROVIDER`            | `ocr.provider` | 否   | -                | 同上（向后兼容） |
 
-### 4.8 视觉分析配置
+### 4.8 Vision Analysis Config / 视觉分析配置
+
+The vision analysis key falls back to the main API key (`COGITO_API_KEY`) by default; the URL defaults to `COGITO_API_BASE_URL`.
 
 视觉分析密钥默认回退到主 API 密钥（`COGITO_API_KEY`），URL 默认使用 `COGITO_API_BASE_URL`。
 
@@ -383,15 +412,17 @@ OCR 密钥默认回退到主 API 密钥（`COGITO_API_KEY`）。同样推荐 `CO
 | `COGITO_VISION_MODEL`        | `vision.model`   | 否   | `InternVL3-78B`       | 视觉模型名称          |
 | `VISION_MODEL`               | `vision.model`   | 否   | -                     | 同上（向后兼容）      |
 
-### 4.9 WebSocket 配置
+### 4.9 WebSocket Configuration / WebSocket 配置
 
 | 环境变量     | 必需 | 默认值  | 说明                                                  |
 | ------------ | ---- | ------- | ----------------------------------------------------- |
 | `DISABLE_WS` | 否   | `false` | 设为 `true` 禁用 WebSocket 服务（CLI 模式下自动禁用） |
 
+The WebSocket service runs on port `9527` by default, for the Electron desktop client to connect. Use `startWsServer(port)` to customize the port.
+
 WebSocket 服务默认运行在端口 `9527`，供 Electron 桌面端连接。通过 `startWsServer(port)` 可自定义端口。
 
-### 4.10 调试配置
+### 4.10 Debug Configuration / 调试配置
 
 | 环境变量    | 必需 | 默认值  | 说明                                              |
 | ----------- | ---- | ------- | ------------------------------------------------- |
@@ -399,15 +430,29 @@ WebSocket 服务默认运行在端口 `9527`，供 Electron 桌面端连接。�
 | `LOG_LEVEL` | 否   | `INFO`  | 日志级别：`DEBUG` / `INFO` / `WARN` / `ERROR`     |
 | `CLI_MODE`  | 否   | -       | 设为 `true` 以 CLI 模式运行（自动禁用 WebSocket） |
 
+### 4.11 Image Generation Config / 图像生成配置
+
+| 环境变量 / Env Var             | 对应配置路径 / Config Path | 必需 / Required | 默认值 / Default                              | 说明 / Description                                             |
+| ------------------------------ | -------------------------- | --------------- | --------------------------------------------- | -------------------------------------------------------------- |
+| `COGITO_IMAGEGEN_API_KEY`      | `imageGen.apiKey`          | 否 / No         | 回退到主 API Key / falls back to main API key | 图像生成 API 密钥 / image generation API key                   |
+| `COGITO_IMAGEGEN_API_BASE_URL` | `imageGen.baseURL`         | 否 / No         | `https://api.moark.com/v1`                    | 图像生成 API 服务地址 / image generation API base URL          |
+| `COGITO_IMAGEGEN_MODEL`        | `imageGen.model`           | 否 / No         | `qwen-image-2.0-pro`                          | 图像生成模型名称（建议值）/ image model name (SUGGESTED value) |
+
+Note: Model names and output sizes are **SUGGESTED VALUES** and may change with the image provider. For `qwen-image-2.0-pro` the suggested sizes are: `2048*2048`, `2368*1728`, `2688*1536`, `1728*2368`, `2536*2688`. The tool does not validate model/size; validity depends on the provider's API.
+
+注意：模型名称和输出尺寸为**建议值**，可能随图像服务商变化。对于 `qwen-image-2.0-pro`，建议尺寸为：`2048*2048`、`2368*1728`、`2688*1536`、`1728*2368`、`2536*2688`。该工具不校验模型/尺寸，有效性取决于服务商的 API。
+
 ---
 
-## 5. 高级配置选项
+## 5. Advanced Configuration Options / 高级配置选项
 
-### 5.1 上下文压缩策略
+### 5.1 Context Compression Strategy / 上下文压缩策略
+
+When conversation history grows beyond a certain point, the system automatically compresses it to control Token consumption.
 
 当对话历史增长到一定程度时，系统自动进行压缩，以控制 Token 消耗。
 
-**压缩触发条件：**
+**Compression triggers / 压缩触发条件：**
 
 | 条件       | 阈值              | 说明                                  |
 | ---------- | ----------------- | ------------------------------------- |
@@ -415,7 +460,7 @@ WebSocket 服务默认运行在端口 `9527`，供 Electron 桌面端连接。�
 | Token 估算 | `>= 100000 Token` | 超过 `MAX_TOKEN_ESTIMATE` 常量        |
 | 警告阈值   | `>= 80000 Token`  | 达到 `WARN_TOKEN_THRESHOLD`，提前预警 |
 
-**压缩策略：**
+**Compression strategy / 压缩策略：**
 
 ```json
 {
@@ -428,21 +473,23 @@ WebSocket 服务默认运行在端口 `9527`，供 Electron 桌面端连接。�
 }
 ```
 
-**压缩流程：**
+**Compression flow / 压缩流程：**
 
-1. 检测到触发条件后，保留最近 `KEEP_RECENT_TURNS`（10）轮对话
-2. 将较旧的对话归档到磁盘文件（归档后缀为 `_archive.json`）
-3. 生成上下文摘要，替换被归档的历史消息
-4. 保留 system prompt + 摘要 + 最近对话，继续对话循环
+1. After a trigger is detected, keep the most recent `KEEP_RECENT_TURNS` (10) rounds of conversation. / 检测到触发条件后，保留最近 `KEEP_RECENT_TURNS`（10）轮对话
+2. Archive older conversations to a disk file (archive suffix `_archive.json`). / 将较旧的对话归档到磁盘文件（归档后缀为 `_archive.json`）
+3. Generate a context summary that replaces the archived history messages. / 生成上下文摘要，替换被归档的历史消息
+4. Keep system prompt + summary + recent conversation, and continue the conversation loop. / 保留 system prompt + 摘要 + 最近对话，继续对话循环
 
-**Token 估算方法：**
+**Token estimation method / Token 估算方法：**
 
 | 字符类型 | 估算比例           | 说明                            |
 | -------- | ------------------ | ------------------------------- |
 | 中文字符 | 1 Token ≈ 1.5 字符 | `Math.ceil(chineseChars / 1.5)` |
 | 其他字符 | 1 Token ≈ 4 字符   | `Math.ceil(otherChars / 4)`     |
 
-### 5.2 工具输出截断配置
+### 5.2 Tool Output Truncation / 工具输出截断配置
+
+To avoid tool outputs being too large and causing context overflow, the system sets output length limits for different tools.
 
 为避免工具返回结果过大导致上下文溢出，系统为不同工具设置了输出长度限制。
 
@@ -466,17 +513,19 @@ WebSocket 服务默认运行在端口 `9527`，供 Electron 桌面端连接。�
 | `monitorSystem` | 15,000           | 系统监控               |
 | `default`       | 10,000           | 其他未列出的工具默认值 |
 
+Outputs exceeding the limit will be truncated and appended with the notice: `... [输出内容过长，已截断]`.
+
 超出限制的输出将被截断并追加提示信息：`... [输出内容过长，已截断]`。
 
-### 5.3 会话归档策略
+### 5.3 Session Archiving Strategy / 会话归档策略
 
-**归档触发条件：**
+**Archive triggers / 归档触发条件：**
 
-- 创建新会话时自动归档当前会话
-- 切换到其他会话时自动归档当前会话
-- 上下文压缩时自动归档历史消息
+- Automatically archive the current session when creating a new session. / 创建新会话时自动归档当前会话
+- Automatically archive the current session when switching to another session. / 切换到其他会话时自动归档当前会话
+- Automatically archive history messages when compressing context. / 上下文压缩时自动归档历史消息
 
-**归档文件结构：**
+**Archive file structure / 归档文件结构：**
 
 ```
 data/sessions/
@@ -486,6 +535,8 @@ data/sessions/
 ├── sess_yyy.json
 └── sess_yyy_archive.json
 ```
+
+The JSON structure of each archive file:
 
 每个归档文件的 JSON 结构：
 
@@ -498,7 +549,7 @@ data/sessions/
 ]
 ```
 
-**保留策略：**
+**Retention policy / 保留策略：**
 
 | 项目     | 策略          | 说明                          |
 | -------- | ------------- | ----------------------------- |
@@ -507,9 +558,9 @@ data/sessions/
 | 会话文件 | 不自动删除    | 可通过 `/delete` 命令手动删除 |
 | 最少会话 | 至少保留 1 个 | 不允许删除最后一个会话        |
 
-### 5.4 思考间隔优化
+### 5.4 Thinking Interval Optimization / 思考间隔优化
 
-**代码配置：**
+**Code config / 代码配置：**
 
 ```json
 {
@@ -519,19 +570,19 @@ data/sessions/
 }
 ```
 
-**环境变量：**
+**Environment variable / 环境变量：**
 
 ```bash
 COGITO_THINKING_INTERVAL=3000
 ```
 
-**注意事项：**
+**Notes / 注意事项：**
 
-- 环境变量优先级高于配置文件
-- 环境变量值必须 `>= 1000`（1 秒），小于 1000 的值将被忽略，改用配置文件或默认值
-- 配置文件中的值无下限校验，但建议不要低于 1000
+- Environment variables take priority over the config file. / 环境变量优先级高于配置文件
+- Environment variable values must be `>= 1000` (1 second); values below 1000 are ignored and fall back to the config file or default value. / 环境变量值必须 `>= 1000`（1 秒），小于 1000 的值将被忽略，改用配置文件或默认值
+- Values in the config file are not lower-bounded, but it is recommended not to go below 1000. / 配置文件中的值无下限校验，但建议不要低于 1000
 
-**推荐值参考：**
+**Recommended values / 推荐值参考：**
 
 | 使用场景                | 推荐间隔    | 说明                                   |
 | ----------------------- | ----------- | -------------------------------------- |
@@ -541,26 +592,31 @@ COGITO_THINKING_INTERVAL=3000
 | 长时间自主探索          | 3000-5000ms | Agent 自主探索时，较长的间隔更合理     |
 | 调试/开发               | 1000ms      | 快速迭代，实时反馈                     |
 
-## 3. 推理与推测执行（R2.7 / R2.8 / R2.9）
+## 3. Reasoning & Speculative Execution (R2.7 / R2.8 / R2.9) / 推理与推测执行（R2.7 / R2.8 / R2.9）
 
-### 3.1 推理深度旋钮（R2.9）
+### 3.1 Reasoning Depth Knobs (R2.9) / 推理深度旋钮（R2.9）
+
+The `chat` config adds the following fields, all passed through the request body to supported models (OpenAI o-series / gpt-5, etc.).
 
 `chat` 配置新增以下字段，均经请求体打通到支持的模型（OpenAI o 系列 / gpt-5 等）：
 
-- `reasoningEffort`：`low` / `medium` / `high` / `xhigh`（也可设 `none` 关闭），控制每轮推理强度。
-- `verbosity`：`low` / `medium` / `high`，输出冗长度，与推理深度解耦。
-- `thinking`：思考模式。
-  - `{ "type": "adaptive" }`：自适应思考，替代固定 token 预算。
-  - `{ "type": "enabled", "budgetTokens": 8000 }`：显式预算 token。
-  - `{ "type": "disabled" }`：关闭思考。
+- `reasoningEffort`: `low` / `medium` / `high` / `xhigh` (or `none` to disable), controls reasoning strength per turn. / `reasoningEffort`：`low` / `medium` / `high` / `xhigh`（也可设 `none` 关闭），控制每轮推理强度。
+- `verbosity`: `low` / `medium` / `high`, output verbosity, decoupled from reasoning depth. / `verbosity`：`low` / `medium` / `high`，输出冗长度，与推理深度解耦。
+- `thinking`: thinking mode. / `thinking`：思考模式。
+  - `{ "type": "adaptive" }`: adaptive thinking, replaces the fixed token budget. / 自适应思考，替代固定 token 预算。
+  - `{ "type": "enabled", "budgetTokens": 8000 }`: explicit budget tokens. / 显式预算 token。
+  - `{ "type": "disabled" }`: disable thinking. / 关闭思考。
 
-### 3.2 推测执行（R2.7）与 PASTE 模式挖掘（R2.8）
+### 3.2 Speculative Execution (R2.7) & PASTE Pattern Mining (R2.8) / 推测执行（R2.7）与 PASTE 模式挖掘（R2.8）
+
+`chat.speculative` controls speculative execution, disabled by default:
 
 `chat.speculative` 控制推测执行，默认关闭：
 
-- `enabled: true`：显式启用。主模型思考期间并行跑轻量「草稿模型」预测下一步工具调用，仅对**只读/幂等**工具（`classifyTool` 基于 R1.7 注解）预执行；预测命中则复用结果，未命中无损回退。
-- `draftModel`：草稿模型名（轻量/廉价），缺省复用主模型。
-- `auto: true`：自动模式。由 `PatternStore`（`data/speculation-patterns.json`）从执行轨迹挖掘「上下文签名 → 预测工具」模式，命中率（`confidenceThreshold`，默认 0.8）与样本数（`minSamples`，默认 5）双达标后自动启用推测执行。
-- `confidenceThreshold` / `minSamples`：自动启用的门槛。
+- `enabled: true`: explicitly enable. While the main model thinks, a lightweight "draft model" runs in parallel to predict the next tool call, pre-executing only **read-only/idempotent** tools (based on R1.7 annotations); on a hit the result is reused, on a miss it falls back losslessly. / `enabled: true`：显式启用。主模型思考期间并行跑轻量「草稿模型」预测下一步工具调用，仅对**只读/幂等**工具（基于 R1.7 注解）预执行；预测命中则复用结果，未命中无损回退。
+- `draftModel`: draft model name (lightweight/cheap); defaults to reusing the main model. / `draftModel`：草稿模型名（轻量/廉价），缺省复用主模型。
+- `auto: true`: auto mode. `PatternStore` (`data/speculation-patterns.json`) mines "context signature → predicted tool" patterns from execution traces; once both the hit rate (`confidenceThreshold`, default 0.8) and sample count (`minSamples`, default 5) meet thresholds, speculative execution is enabled automatically. / `auto: true`：自动模式。由 `PatternStore`（`data/speculation-patterns.json`）从执行轨迹挖掘「上下文签名 → 预测工具」模式，命中率（`confidenceThreshold`，默认 0.8）与样本数（`minSamples`，默认 5）双达标后自动启用推测执行。
+- `confidenceThreshold` / `minSamples`: thresholds for auto-enabling. / `confidenceThreshold` / `minSamples`：自动启用的门槛。
 
+> Note: `thinkingInterval` is a legacy field. Since R2.1/R2.2 the main loop has been event-driven and no longer advances on a fixed 3-second poll, so this value no longer drives the auto-thinking cadence.
 > 注意：`thinkingInterval` 为历史字段。自 R2.1/R2.2 起主循环已改为事件驱动，不再以固定 3 秒轮询推进，该值不再驱动自动思考节奏。
