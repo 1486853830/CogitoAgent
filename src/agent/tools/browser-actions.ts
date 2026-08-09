@@ -70,8 +70,10 @@ export async function clickElement(
     }
 
     if (!element) {
-      // 对 selector 做 CSS 转义：双引号会破坏选择器语法，导致查找静默失败。
-      const safe = selector.replace(/"/g, '\\"');
+      // 对 selector 做 CSS 转义：双引号与反斜杠会破坏选择器语法。
+      // 必须先转义反斜杠再转义双引号，否则 selector="a\b" 会变成 a\\b（正确），
+      // 反过来则 `\` 会转义后续的 `\"` 导致注入。
+      const safe = selector.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       const selectors = [
         `[id="${safe}"]`,
         `[name="${safe}"]`,
@@ -173,7 +175,8 @@ export async function fillField(
     }
 
     if (!element) {
-      const safe2 = selector.replace(/"/g, '\\"');
+      // 同上方 fillField 的 safe 处理：先转义反斜杠再转义双引号。
+      const safe2 = selector.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       const selectors = [
         `[id="${safe2}"]`,
         `[name="${safe2}"]`,

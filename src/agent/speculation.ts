@@ -57,7 +57,7 @@ export function contextSignature(messages: Message[]): string {
       return `${m.role}:${c.slice(0, 80)}`;
     })
     .join('|');
-  return createHash('sha1').update(raw).digest('hex').slice(0, 16);
+  return createHash('sha256').update(raw).digest('hex').slice(0, 16);
 }
 
 interface PatternEntry {
