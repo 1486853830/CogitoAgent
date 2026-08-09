@@ -134,16 +134,23 @@ class PluginManager {
     // 不应永久阻塞 Agent 启动流程）
     const PLUGIN_IMPORT_TIMEOUT_MS = 15000;
     const pluginUrl = pathToFileURL(indexPath).href;
-    const plugin: { default?: unknown; tools?: unknown; metadata?: Record<string, unknown> } =
-      await Promise.race([
-        import(pluginUrl),
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error(`插件加载超时 (${PLUGIN_IMPORT_TIMEOUT_MS / 1000}s): ${name}`)),
-            PLUGIN_IMPORT_TIMEOUT_MS,
-          ),
-        ),
-      ]);
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const plugin = (await Promise.race([
+      import(pluginUrl),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error(`插件加载超时 (${PLUGIN_IMPORT_TIMEOUT_MS / 1000}s): ${name}`)),
+          PLUGIN_IMPORT_TIMEOUT_MS,
+        );
+      }),
+    ]).finally(() => {
+      // import 成功或 reject 后都必须清除定时器，否则 15s 后仍会触发回调，
+      // 在测试环境中留下悬空 handle 导致 Jest 无法退出。
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    })) as { default?: unknown; tools?: unknown; metadata?: Record<string, unknown> };
 
     // 验证插件格式
     if (!plugin.default && !plugin.tools) {
@@ -466,10 +473,13 @@ export function resolveToolPermission(
   return 'allow';
 }
 
-/** 缓存权限规则 + 定期刷新：避免高频工具调用路径每次 loadConfig() 做同步 I/O。 */
-let cachedPermissions: ToolPermissionRule[] | null = null;
-let permissionsCacheTime = 0;
-const PERMISSIONS_CACHE_TTL_MS = 5000; // 5 秒后重新读取磁盘
+/** 缓存权限规则 + 定期刷新：避免高频工具调用路径每次 loadConfig() 做同步 I/O。
+ *  注意：此缓存与 config.ts 的 loadConfig 缓存解耦——setToolPermission 立即更新 config
+ *  内存对象，getToolPermission 通过 loadConfig() 读取即可拿到最新值，无需独立缓存。 */
+function getPermissionRules(): ToolPermissionRule[] | null {
+  const cfg = loadConfig();
+  return cfg.tools?.permissions ?? null;
+}
 
 /**
  * 权限策略查询（R5.2）。
@@ -483,14 +493,8 @@ function getToolPermission(
   name: string,
   pluginDefaultProvider?: (toolName: string) => 'allow' | 'deny' | 'ask' | undefined,
 ): 'allow' | 'deny' | 'ask' {
-  // 缓存 + TTL 刷新：避免每次工具调用都 loadConfig() 触发磁盘 I/O
-  const now = Date.now();
-  if (!cachedPermissions || now - permissionsCacheTime > PERMISSIONS_CACHE_TTL_MS) {
-    const cfg = loadConfig();
-    cachedPermissions = cfg.tools?.permissions ?? null;
-    permissionsCacheTime = now;
-  }
-  const rules = cachedPermissions;
+  // 通过 loadConfig() 读取（config.ts 有 mtime 自动刷新缓存，且 setToolPermission 立即更新内存）
+  const rules = getPermissionRules();
   let globalLevel: 'allow' | 'deny' | 'ask' | null = null;
   if (Array.isArray(rules)) {
     const rule = rules.find((r) => r.name === name);

@@ -215,10 +215,6 @@ async function create(
       await fs.mkdir(dir, { recursive: true });
     }
     await fs.writeFile(fullPath, content, 'utf-8');
-    // 确保文件已落盘，防止后续立即读取时遇到缓存未刷新（Windows 文件系统特性）
-    const fd = await fs.open(fullPath, 'r');
-    await fd.sync();
-    await fd.close();
     return { success: true, data: `已创建: ${fullPath}` };
   } catch (error: unknown) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };

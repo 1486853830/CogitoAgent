@@ -37,6 +37,8 @@ jest.unstable_mockModule('fs', () => ({
   closeSync: jest.fn(),
   renameSync: jest.fn(),
   unlinkSync: jest.fn(),
+  statSync: jest.fn().mockReturnValue({ isDirectory: () => false, size: 0 }),
+  readdirSync: jest.fn().mockReturnValue([]),
   realpathSync: jest.fn((p) => p),
   // path.ts 用 `import fs from 'fs'`（默认导入），mock 必须提供 default
   default: {
@@ -50,6 +52,8 @@ jest.unstable_mockModule('fs', () => ({
     closeSync: jest.fn(),
     renameSync: jest.fn(),
     unlinkSync: jest.fn(),
+    statSync: jest.fn().mockReturnValue({ isDirectory: () => false, size: 0 }),
+    readdirSync: jest.fn().mockReturnValue([]),
     realpathSync: jest.fn((p) => p),
   },
 }));

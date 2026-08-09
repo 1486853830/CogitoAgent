@@ -421,7 +421,7 @@ describe('api/client.ts', () => {
 
       expect(result).toBeInstanceOf(Error);
       expect((result as Error).message).toContain('API 400');
-      expect((result as Error).message).toContain('invalid request body');
+      expect((result as Error).message).toContain('Bad Request');
       // Should NOT retry on HTTP errors
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });

@@ -71,13 +71,38 @@ describe('Web 模块', () => {
   });
 
   describe('fetchPage', () => {
+    /** 创建模拟的 ReadableStream body（fetchPage 改用流式读取后需要 mock body.getReader） */
+    function mockStreamBody(text) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(text);
+      let offset = 0;
+      let locked = true;
+      return {
+        getReader: () => ({
+          read: async () => {
+            if (!locked) throw new Error('reader is not locked');
+            if (offset >= data.length) return { done: true, value: undefined };
+            const chunk = data.slice(offset, offset + 4096);
+            offset += chunk.length;
+            return { done: false, value: chunk };
+          },
+          cancel: async () => {
+            locked = false;
+          },
+          releaseLock: () => {
+            locked = false;
+          },
+        }),
+      };
+    }
+
     it('应该正确抓取网页内容', async () => {
       const html =
         '<html><head><title>测试页面</title></head><body><h1>测试页面</h1><p>内容</p></body></html>';
       fetch.mockResolvedValue({
         ok: true,
         headers: { get: () => null },
-        arrayBuffer: async () => new TextEncoder().encode(html).buffer,
+        body: mockStreamBody(html),
       });
 
       const result = await webModule.fetchPage('https://example.com');

@@ -336,6 +336,10 @@ async function splitTask(
     tasks.push(newTask);
     created.push(newTask);
   }
+  // 将子任务 ID 写入父任务的 children 数组
+  for (const newTask of created) {
+    task.children.push(newTask.id);
+  }
   await saveTasks();
 
   return {

@@ -69,6 +69,12 @@ describe('config.ts', () => {
     });
     rmSync(testConfigDir, { recursive: true, force: true });
     mkdirSync(testConfigDir, { recursive: true });
+    // 确保无残留 config.json（safe-delete shim 可能阻止 rmSync）
+    try {
+      unlinkSync(path.join(testConfigDir, 'config.json'));
+    } catch {
+      /* ignore */
+    }
     process.env.COGITO_USER_DATA_DIR = testConfigDir;
   });
 

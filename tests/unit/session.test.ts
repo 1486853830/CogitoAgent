@@ -348,7 +348,7 @@ describe('session.ts', () => {
   describe('addToolResultMessage', () => {
     it('should add a tool result message to history as user role', () => {
       createNewSession('ToolMsg');
-      addToolResultMessage('[系统返回的工具执行结果] done');
+      addToolResultMessage('[系统返回的工具执行结果] done', { toolCallId: 'call_test_001' });
       const messages = getMessages();
       expect(messages.some((m) => m.content === '[系统返回的工具执行结果] done')).toBe(true);
     });

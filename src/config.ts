@@ -106,7 +106,7 @@ const DEFAULT_CONFIG: Config = {
 
 let config: Config | null = null;
 /** 配置写入互斥锁：序列化并发写入，避免读-改-写竞态导致数据丢失。 */
-let configWriteLock: Promise<unknown> = Promise.resolve();
+const configWriteLock: Promise<unknown> = Promise.resolve();
 /** config.json 被加载时的 mtime（ms），用于运行时感知磁盘变更并自动刷新缓存。 */
 let configMtimeMs: number = 0;
 /** 自动刷新的最小间隔（ms）：避免高频调用时每次都 stat 文件。 */
@@ -548,16 +548,11 @@ function getMcpConfig(): McpConfig {
  * 成功后同步更新内存缓存，使后续读取拿到最新值。
  */
 function setMcpConfig(patch: Partial<McpConfig>): boolean {
-  // 使用写入锁序列化并发更新：避免两个并发 Dashboard 操作同时
-  // loadConfig→修改→saveConfig→config=cfg，后完成者覆盖先完成的修改。
-  configWriteLock = configWriteLock.then(async () => {
-    const cfg = loadConfig();
-    cfg.mcp = { ...(cfg.mcp || {}), ...patch };
-    const ok = saveConfig(cfg);
-    if (ok) config = cfg;
-    return ok;
-  });
-  return true; // 异步操作已排入队列，返回 true 表示已接受
+  const cfg = loadConfig();
+  cfg.mcp = { ...(cfg.mcp || {}), ...patch };
+  config = cfg;
+  saveConfig(cfg);
+  return true;
 }
 
 /**
@@ -573,22 +568,21 @@ function getToolPermissions(): ToolPermissionRule[] {
  */
 function setToolPermission(name: string, level: 'allow' | 'deny' | 'ask'): boolean {
   if (!name) return false;
-  configWriteLock = configWriteLock.then(async () => {
-    const cfg = loadConfig();
-    const rules: ToolPermissionRule[] = Array.isArray(cfg.tools?.permissions)
-      ? [...cfg.tools!.permissions!]
-      : [];
-    const idx = rules.findIndex((r) => r.name === name);
-    if (idx >= 0) {
-      rules[idx] = { name, level };
-    } else {
-      rules.push({ name, level });
-    }
-    cfg.tools = { ...(cfg.tools || {}), permissions: rules };
-    const ok = saveConfig(cfg);
-    if (ok) config = cfg;
-    return ok;
-  });
+
+  const cfg = loadConfig();
+  const rules: ToolPermissionRule[] = Array.isArray(cfg.tools?.permissions)
+    ? [...cfg.tools!.permissions!]
+    : [];
+  const idx = rules.findIndex((r) => r.name === name);
+  if (idx >= 0) {
+    rules[idx] = { name, level };
+  } else {
+    rules.push({ name, level });
+  }
+  cfg.tools = { ...(cfg.tools || {}), permissions: rules };
+  config = cfg;
+  saveConfig(cfg);
+
   return true;
 }
 

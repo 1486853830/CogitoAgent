@@ -122,7 +122,11 @@ describe('io/ws-server.ts', () => {
       verifyClient(
         {
           origin: 'http://localhost:3000',
-          req: { socket: { remoteAddress: '127.0.0.1' }, url: `/?token=${getWsToken()}` },
+          req: {
+            socket: { remoteAddress: '127.0.0.1' },
+            headers: { 'x-ws-token': getWsToken() },
+            url: `/?token=${getWsToken()}`,
+          },
         },
         cb,
       );
@@ -359,6 +363,7 @@ describe('io/ws-server.ts', () => {
 
     it('绑定 0.0.0.0 时应放行携带正确 token 的非回环连接', async () => {
       process.env.COGITO_WS_HOST = '0.0.0.0';
+      process.env.COGITO_WS_TOKEN = 'fixed-test-token-001';
       await startWsServer(9527);
       expect(lastServerInstance.options.host).toBe('0.0.0.0');
 
@@ -367,7 +372,10 @@ describe('io/ws-server.ts', () => {
       verifyClient(
         {
           origin: undefined,
-          req: { socket: { remoteAddress: '172.17.0.1' }, url: `/?token=${getWsToken()}` },
+          req: {
+            socket: { remoteAddress: '172.17.0.1' },
+            headers: { 'x-ws-token': 'fixed-test-token-001' },
+          },
         },
         cb,
       );
@@ -388,6 +396,7 @@ describe('io/ws-server.ts', () => {
 
     it('回环绑定下非本地地址依然拒绝（默认桌面场景不放宽）', async () => {
       delete process.env.COGITO_WS_HOST;
+      process.env.COGITO_WS_TOKEN = 'fixed-test-token-002';
       await startWsServer(9527);
 
       const verifyClient = lastServerInstance.options.verifyClient;
@@ -395,7 +404,10 @@ describe('io/ws-server.ts', () => {
       verifyClient(
         {
           origin: undefined,
-          req: { socket: { remoteAddress: '172.17.0.1' }, url: `/?token=${getWsToken()}` },
+          req: {
+            socket: { remoteAddress: '172.17.0.1' },
+            headers: { 'x-ws-token': 'fixed-test-token-002' },
+          },
         },
         cb,
       );
