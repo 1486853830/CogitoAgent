@@ -2,9 +2,15 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import {
+  CreateMessageRequestSchema,
+  ElicitRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 import { TOOL_REGISTRY, isDangerousOperation } from './registry.ts';
 import { getToolPermission } from './plugin.ts';
 import { getToolAnnotations, objectArgsToPositional, paramsToSchema } from './tool-schema.ts';
+import { chatText } from '../api/client.ts';
+import { requestConfirmation } from './state.ts';
 import { loadConfig } from '../config.ts';
 import type { JSONSchema, McpConfig, ToolParamDoc } from '../types/index.ts';
 
@@ -22,6 +28,71 @@ export interface McpServerHandle {
   server: McpServer;
   transport: StdioServerTransport;
   close: () => Promise<void>;
+}
+
+/**
+ * R4.8 无状态对齐：生成随请求携带的 sessionId。
+ * 无状态模式不依赖协议层持久 Session，server 侧可水平扩缩容。
+ */
+function generateExternalSessionId(): string {
+  return `cogito_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** 查询外部 server 的 sessionId 状态（R4.8 诊断用）。 */
+export function getExternalSessionInfo(
+  serverName: string,
+): { stateless: boolean; sessionId: string | null; lastSessionId: string | null } | null {
+  const entry = externalClients.get(serverName);
+  if (!entry) return null;
+  return {
+    stateless: entry.stateless,
+    sessionId: entry.sessionId,
+    lastSessionId: entry.lastSessionId,
+  };
+}
+
+/**
+ * MCP 服务端对客户端的抽样（sampling）发起请求（R4.6）。
+ * 服务端收到外部客户端初始化后即可用；当客户端声明了 sampling 能力时发起
+ * LLM 补全请求。参数为完整 CreateMessage 参数（宽松类型避免绑定 SDK 具体结构）。
+ */
+export async function requestSamplingFromClient(
+  handle: McpServerHandle,
+  params: Record<string, unknown>,
+): Promise<unknown> {
+  const mc = handle.server as unknown as {
+    server: { createMessage: (p: unknown) => Promise<unknown> };
+  };
+  if (typeof mc?.server?.createMessage !== 'function') {
+    throw new Error('当前 MCP server 不支持向客户端发起 sampling 请求');
+  }
+  return mc.server.createMessage(params);
+}
+
+/**
+ * MCP 服务端对客户端的结构化输入 (elicitation) 发起请求（R4.5）。
+ * requestParams 形如 { message, requestedSchema, ... }，由客户端呈现给用户。
+ */
+export async function requestElicitationFromClient(
+  handle: McpServerHandle,
+  params: Record<string, unknown>,
+): Promise<unknown> {
+  const mc = handle.server as unknown as {
+    server: { elicitInput: (p: Record<string, unknown>) => Promise<unknown> };
+  };
+  if (typeof mc?.server?.elicitInput !== 'function') {
+    throw new Error('MCP 服务端不支持向客户端发起 elicitation 请求');
+  }
+  return mc.server.elicitInput(params);
+}
+
+/** 判断本地 server 承载的客户端是否声明支持进一步交互能力。 */
+export function getConnectedClientCapabilities(handle: McpServerHandle): Record<string, unknown> {
+  const mc = handle.server as unknown as {
+    server: { getClientCapabilities?: () => unknown };
+  };
+  const caps = mc?.server?.getClientCapabilities?.();
+  return (caps as Record<string, unknown> | undefined) || {};
 }
 
 /** 结构化工具参数形态（SDK 的 AnySchema 是宽松对象，这里只保留我们需要的形状）。 */
@@ -43,10 +114,120 @@ interface ExternalClient {
   tools: Set<string>; // 已注册到本地注册表的工具名
   /** 原始进程参数，断线后据此重建连接。 */
   params: McpServerParams;
+  /** R4.8 无状态对齐：是否随请求携带 sessionId。 */
+  stateless: boolean;
+  /** 最近一次响应携带的 sessionId。 */
+  lastSessionId: string | null;
+  /** 本连接内生成/复用的 sessionId（无状态模式使用）。 */
+  sessionId: string | null;
 }
 
 const DEFAULT_PREFIX = 'mcp_';
 const externalClients = new Map<string, ExternalClient>();
+
+/**
+ * Sampling / Elicitation 的能力入口（R4.5 / R4.6）。
+ * 默认实现分别走本地 LLM（chatText）与本地确认通道（requestConfirmation）；
+ * 允许注入替换（测试 / 自定义运行环境），实现与 MCP SDK 解耦。
+ */
+interface AdvanceInteractionHandlers {
+  /** 处理 sampling/createMessage。params 为 CreateMessageRequest 的 params。返回 SDK 的 CreateMessageResult。 */
+  createMessage: (params: Record<string, unknown>, serverName: string) => Promise<unknown>;
+  /** 处理 elicitation/create。params 为 ElicitRequest 的 params。 */
+  elicitInput: (params: Record<string, unknown>, serverName: string) => Promise<unknown>;
+}
+
+const advanceHandlers: AdvanceInteractionHandlers = {
+  createMessage: async (params, serverName) => {
+    const messages = Array.isArray(params.messages)
+      ? (params.messages as Array<{ role?: string; content?: unknown }>)
+      : [];
+    // 仅支持文本输入：非文本块剥成空文本，避免类型错误。
+    const normalized = messages.map((m) => {
+      const content = m.content;
+      if (typeof content === 'string') return { role: m.role || 'user', content };
+      if (Array.isArray(content)) {
+        return {
+          role: m.role || 'user',
+          content: content
+            .map((c) => (c && typeof c === 'object' && 'text' in c ? String(c.text) : ''))
+            .join(''),
+        };
+      }
+      return { role: m.role || 'user', content: '' };
+    });
+    const maxTokens = typeof params.maxTokens === 'number' ? params.maxTokens : undefined;
+    const temperature = typeof params.temperature === 'number' ? params.temperature : undefined;
+    const text = await chatText(normalized, { maxTokens, temperature });
+    return { model: '', role: 'assistant', content: { type: 'text', text } };
+  },
+  elicitInput: async (params, serverName) => {
+    const message =
+      typeof params.message === 'string' ? params.message : '外部 MCP server 请求结构化输入';
+    const requestedSchema = params.requestedSchema;
+    const summary =
+      requestedSchema && typeof requestedSchema === 'object'
+        ? JSON.stringify(requestedSchema).slice(0, 400)
+        : '';
+    const hint = `[MCP Elicitation] ${serverName}: ${message}${summary ? `\n请求结构: ${summary}` : ''}`;
+    try {
+      const approved = await requestConfirmation('mcp_elicitation', [], hint);
+      if (!approved) return { action: 'decline', content: {} };
+      return { action: 'accept', content: {} };
+    } catch {
+      // 确认通道不可用（如无人值守）→ fail-closed，拒绝请求
+      return { action: 'decline', content: {} };
+    }
+  },
+};
+
+/** 覆盖 Sampling/Elicitation 处理实现（R4.5 / R4.6，可测试注入）。 */
+export function setAdvanceInteractionHandlers(h: Partial<AdvanceInteractionHandlers>): void {
+  if (h.createMessage) advanceHandlers.createMessage = h.createMessage;
+  if (h.elicitInput) advanceHandlers.elicitInput = h.elicitInput;
+}
+
+/** 读取当前 Sampling/Elicitation 处理实现（诊断用）。 */
+export function getAdvanceInteractionHandlers(): AdvanceInteractionHandlers {
+  return advanceHandlers;
+}
+
+/** 向外接外部 MCP 工具的客户端注册 sampling / elicitation 请求处理器（R4.5 / R4.6）。 */
+function registerAdvanceClientHandlers(client: Client, serverName: string, cfg: McpConfig): void {
+  // R4.6 MCP Sampling：声明 sampling capability，把外部 server 的 LLM 补全请求
+  // 转发给本地 chatText 完成真实采样。
+  if (cfg.sampling === true) {
+    (client as unknown as { registerCapabilities: (c: unknown) => void }).registerCapabilities({
+      sampling: {},
+    });
+    (
+      client as unknown as {
+        setRequestHandler: (s: unknown, h: (request: Record<string, unknown>) => unknown) => void;
+      }
+    ).setRequestHandler(CreateMessageRequestSchema, async (request) => {
+      const params = (request as { params?: Record<string, unknown> }).params || {};
+      return advanceHandlers.createMessage(params, serverName);
+    });
+    console.log(`[MCP] external server "${serverName}" 已启用 Sampling 客户端能力（R4.6）`);
+  }
+
+  // R4.5 MCP Elicitation：客户端当外部 server 请求结构化输入时，
+  // 经本地确认通道向用户呈现；用户批准返回 accept，否则 decline。
+  if (cfg.elicitation === true) {
+    (client as unknown as { registerCapabilities: (c: unknown) => void }).registerCapabilities({
+      elicitation: { form: {} },
+    });
+    (
+      client as unknown as {
+        setRequestHandler: (s: unknown, f: (r: Record<string, unknown>) => unknown) => void;
+      }
+    ).setRequestHandler(ElicitRequestSchema, async (request) => {
+      const params = (request as { params?: Record<string, unknown> }).params || {};
+      return advanceHandlers.elicitInput(params, serverName);
+    });
+    console.log(`[MCP] external server "${serverName}" 已启用 Elicitation 能力（R4.5）`);
+  }
+}
 
 // 外部 MCP server 是独立进程，行为完全不可控：可能启动后不完成握手、
 // 调用后永不返回、或一次返回上百 MB 文本。三道硬约束缺一不可。
@@ -127,12 +308,17 @@ async function closeQuietly(client: Client | null, transport: StdioClientTranspo
 async function connectExternal(
   serverName: string,
   params: McpServerParams,
+  cfg: McpConfig,
 ): Promise<{ client: Client; transport: StdioClientTransport }> {
   const transport = new StdioClientTransport(params);
   const client = new Client(
     { name: 'cogito-agent-mcp-client', version: '1.0.0' },
     { capabilities: {} },
   );
+  // R4.5 / R4.6：capability 声明与请求处理器必须在 connect() 之前注册，
+  // SDK 要求 registerCapabilities 仅可在连接 transport 前调用，且初始化握手
+  // 阶段能力声明随 initialize 请求发送给 server。
+  registerAdvanceClientHandlers(client, serverName, cfg);
   try {
     await withTimeout(
       client.connect(transport),
@@ -183,6 +369,22 @@ function truncateResult(text: string): string {
     `\n\n... [外部 MCP 返回 ${text.length} 字符，超过 ${MAX_MCP_RESULT_CHARS} 上限，已截断]`
   );
 }
+
+/**
+ * R4.8 无状态重构对齐：从 callTool 结果中读取响应携带的 sessionId（若有）。
+ * 2026-07 起的 MCP 允许 Server 在无会话状态下仅凭每次请求自带的完整处理信息响应，
+ * 这里的读取仅用于观测/诊断，不改变既有语义。
+ */
+function readResponseSessionId(result: ToolCallResultLike | null): string | null {
+  if (!result || typeof result !== 'object') return null;
+  const raw = result as Record<string, unknown>;
+  const meta = raw._session && typeof raw._session === 'object' ? raw._session : raw._meta;
+  const candidate =
+    meta && typeof meta === 'object' ? (meta as Record<string, unknown>).sessionId : undefined;
+  return typeof candidate === 'string' ? candidate : null;
+}
+
+export { readResponseSessionId };
 
 /** 把 MCP callTool 结果归一化为文本摘要（带大小上限）。 */
 function normalizeMcpCallResult(result: ToolCallResultLike): unknown {
@@ -339,7 +541,7 @@ export async function registerExternalMcpServers(cfg?: McpConfig): Promise<strin
         await disconnectExternalMcpServer(serverName);
       }
 
-      const { client, transport } = await connectExternal(serverName, serverParams);
+      const { client, transport } = await connectExternal(serverName, serverParams, cfg);
 
       let tools;
       try {
@@ -353,7 +555,15 @@ export async function registerExternalMcpServers(cfg?: McpConfig): Promise<strin
         throw error;
       }
 
-      const entry: ExternalClient = { client, transport, tools: new Set(), params: serverParams };
+      const entry: ExternalClient = {
+        client,
+        transport,
+        tools: new Set(),
+        params: serverParams,
+        stateless: cfg.stateless === true,
+        lastSessionId: null,
+        sessionId: null,
+      };
 
       for (const tool of tools) {
         const localName = `${prefix}${serverName}_${tool.name}`;
@@ -421,11 +631,20 @@ async function callExternalTool(
     }
 
     try {
+      const callArgs: Record<string, unknown> = { name: remoteToolName, arguments: args };
+      // R4.8：无状态模式下随每次请求携带 sessionId，
+      // server 无需维护协议级持久 Session 即可应答。
+      if (entry.stateless) {
+        const sid = entry.sessionId || (entry.sessionId = generateExternalSessionId());
+        callArgs._meta = { ...((callArgs._meta as Record<string, unknown>) || {}), sessionId: sid };
+      }
       const result = (await withTimeout(
-        entry.client.callTool({ name: remoteToolName, arguments: args }),
+        entry.client.callTool(callArgs as never),
         MCP_CALL_TIMEOUT_MS,
         `调用外部 MCP 工具 "${serverName}/${remoteToolName}"`,
       )) as unknown as ToolCallResultLike;
+      // R4.8：无状态重构对齐——记录外部 server 响应携带的 sessionId。
+      entry.lastSessionId = readResponseSessionId(result) ?? entry.lastSessionId;
       return normalizeMcpCallResult(result);
     } catch (error) {
       const canRetry = attempt < MAX_RECONNECT_ATTEMPTS && isConnectionError(error);
@@ -458,7 +677,11 @@ async function reconnectExternal(serverName: string): Promise<boolean> {
   await closeQuietly(entry.client, entry.transport);
 
   try {
-    const { client, transport } = await connectExternal(serverName, entry.params);
+    const { client, transport } = await connectExternal(
+      serverName,
+      entry.params,
+      loadConfig().mcp || {},
+    );
     entry.client = client;
     entry.transport = transport;
     console.warn(`[MCP] server "${serverName}" 重连成功`);

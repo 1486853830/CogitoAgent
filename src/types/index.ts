@@ -120,6 +120,10 @@ export interface CodeConfig {
 export interface SecurityConfig {
   confirmDangerous: boolean;
   sandboxMode: boolean;
+  /** R5.4 插件安全：受信任的插件名列表。未在此列出的插件按不可信处理，其工具默认受限运行。 */
+  trustedPlugins?: string[];
+  /** 不可信插件的默认权限级别（R5.4）。默认 'ask'：不可信插件工具默认需用户授权。 */
+  untrustedPluginPermission?: 'allow' | 'ask' | 'deny';
 }
 
 export interface SchedulerConfig {
@@ -344,6 +348,24 @@ export interface McpConfig {
   >;
   /** MCP server 暴露的工具分类前缀。 */
   prefix?: string;
+  /**
+   * MCP 无状态模式（R4.8）：true 时外部工具调用附带 sessionId，
+   * 不依赖协议层持久 Session，便于对接到可水平扩缩容的无状态 MCP Server。
+   */
+  stateless?: boolean;
+  /**
+   * MCP Sampling 客户端能力（R4.6）：true 时声明 sampling capability 并注册
+   * `sampling/createMessage` 请求处理器，把外部 MCP server 的 LLM 补全请求
+   * 转发给本地 Agent（chatText）完成真实采样，使服务端可编排多步推理流。
+   * 默认关闭（无人值守场景下被请求采样可能产生额外 LLM 消耗）。
+   */
+  sampling?: boolean;
+  /**
+   * MCP Elicitation 客户端能力（R4.5）：true 时声明 elicitation capability 并注册
+   * `elicitation/create` 请求处理器，把外部 MCP server 的结构化输入请求桥接到
+   * 本地用户确认通道；运行环境无交互通道时直接拒绝（fail-closed）。
+   */
+  elicitation?: boolean;
 }
 
 /** 工具权限策略（R5.2）：allow/deny/ask 三级。 */

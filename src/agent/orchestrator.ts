@@ -108,8 +108,10 @@ class AgentOrchestrator {
   maxIterations: number; // 单个任务最大迭代次数
   maxToolOutput: number; // 工具输出最大长度
   maxSubAgents: number; // 子智能体数量上限
-  maxParallelTasks: number; // 并行/讨论/流水线任务数量上限
+  maxParallelTasks: number; // 并行讨论任务数量上限
   taskTimeoutMs: number; // 单个任务硬超时（防止 LLM/工具卡死导致任务永不结束）
+  maxResultChars: number; // 子智能体最终结果回传主 Agent 时的摘要上限（R3.8）
+  resultSummarizable: boolean; // 是否对超长结果做结构化摘要（默认开启）
 
   constructor() {
     this.agents = new Map();
@@ -119,6 +121,35 @@ class AgentOrchestrator {
     this.maxSubAgents = 12;
     this.maxParallelTasks = 8;
     this.taskTimeoutMs = 10 * 60 * 1000;
+    this.maxResultChars = 1200;
+    this.resultSummarizable = true;
+  }
+
+  /**
+   * R3.8 结构化摘要：把子智能体的最终结果压缩为适合回传主 Agent 的形式。
+   * 完整 transcript 保留在子智能体自身（agent.messages），主 Agent 只拿摘要，
+   * 避免子 Agent 的大量工具输出/长文本倒灌主上下文。
+   */
+  summarizeAgentResult(result: unknown): unknown {
+    if (!this.resultSummarizable) return result;
+    if (typeof result !== 'string') {
+      // 对象/数组结果： JSON 序列化后同规则处理
+      let textResult: string;
+      try {
+        textResult = JSON.stringify(result, null, 2);
+      } catch {
+        return result;
+      }
+      return this.truncateResult(textResult);
+    }
+    return this.truncateResult(result);
+  }
+
+  /** 超长结果截断并附结构化备注。 */
+  truncateResult(text: string): string {
+    if (text.length <= this.maxResultChars) return text;
+    const head = text.slice(0, this.maxResultChars - 60);
+    return `${head}\n\n… [子 Agent 结果过长（${text.length} 字符），主 Agent 仅接收前 ${this.maxResultChars} 字符摘要；完整结果保留在子 Agent 上下文]`;
   }
 
   /**
@@ -214,6 +245,13 @@ class AgentOrchestrator {
       // 执行智能体的思考-行动循环
       const result = await this._executeAgentLoop(agent, messages);
 
+      // R3.8：完整 transcript 留在子智能体自身（隔离上下文），
+      // 主 Agent 仅接收带长度上限的结构化摘要。
+      agent.messages = messages.map((m) => ({
+        role: String(m.role || ''),
+        content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content ?? ''),
+      }));
+
       // 被 stopAgent / 硬超时 / 移出集群中断的任务不能算成功，
       // 否则 pipeline 会拿半截结果继续往下走。
       if (agent.stopRequested) {
@@ -229,7 +267,7 @@ class AgentOrchestrator {
       agent.result = result;
       this._broadcastClusterState();
 
-      return { success: true, data: result };
+      return { success: true, data: this.summarizeAgentResult(result) };
     } catch (error: unknown) {
       if (isAbortError(error) || agent.stopRequested) {
         const reason = agent.interruptReason ?? '任务已被中断';
@@ -611,7 +649,19 @@ class AgentOrchestrator {
       lastActiveAt: agent.lastActiveAt,
       result: agent.result,
       error: agent.error,
+      messageCount: agent.messages.length,
     };
+  }
+
+  /**
+   * R3.8 按需获取子 Agent 的完整 transcript（独立上下文内容）。
+   * 默认主 Agent 只拿结构化摘要；需要细节时按 agent id 主动取回，
+   * 而不是把每个子 Agent 的全部工具输出都塞进主上下文。
+   */
+  getAgentTranscript(agentId: string): Array<{ role: string; content: string }> | null {
+    const agent = this.agents.get(agentId);
+    if (!agent) return null;
+    return agent.messages.map((m) => ({ role: m.role, content: m.content }));
   }
 
   /**

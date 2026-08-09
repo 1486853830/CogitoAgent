@@ -15,7 +15,13 @@ import { pathToFileURL } from 'url';
 import { TOOL_REGISTRY } from './registry.ts';
 import { loadConfig } from '../config.ts';
 import type { ToolPermissionRule } from '../types/index.ts';
-import type { JSONSchema, ToolAnnotations, RichErrorSpec, SkillInfo } from '../types/index.ts';
+import type {
+  JSONSchema,
+  ToolAnnotations,
+  RichErrorSpec,
+  SkillInfo,
+  SecurityConfig,
+} from '../types/index.ts';
 
 const PLUGINS_DIR = path.resolve(process.cwd(), 'plugins');
 
@@ -455,20 +461,65 @@ function createTool(options: { name: string; [key: string]: unknown }) {
 }
 
 /**
+ * R5.4 插件安全：判断插件名是否受信任。
+ * 受信任来源：插件管理器内置的 'internal'（registerTool 注册的非插件自有工具）、
+ * config.security.trustedPlugins 列表、环境变量 COGITO_TRUSTED_PLUGINS（逗号分隔）。
+ * 不可信插件默认受限运行。
+ */
+export function isPluginTrusted(pluginName: string): boolean {
+  if (!pluginName || pluginName === 'internal') return true;
+  const fromEnv = (process.env.COGITO_TRUSTED_PLUGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const securityCfg = loadConfig().security as SecurityConfig | undefined;
+  const fromConfig = Array.isArray(securityCfg?.trustedPlugins)
+    ? (securityCfg!.trustedPlugins as string[])
+    : [];
+  return fromConfig.includes(pluginName) || fromEnv.includes(pluginName);
+}
+
+/** R5.4：不可信插件工具的默认权限级别（config.security.untrustedPluginPermission，缺省 'ask'）。 */
+export function getUntrustedPluginPermission(): 'allow' | 'ask' | 'deny' {
+  const cfg = loadConfig().security as SecurityConfig | undefined;
+  const declared = cfg?.untrustedPluginPermission;
+  if (declared === 'allow' || declared === 'deny' || declared === 'ask') return declared;
+  return 'ask';
+}
+
+/** 读取已加载插件的 metadata（含 defaultPermission 等），用于权限/信任判断。 */
+export function getPluginMetadata(pluginName: string): Record<string, unknown> | null {
+  const pm = getPluginManager();
+  const plugin = pm.plugins.get(pluginName);
+  return plugin ? plugin.metadata : null;
+}
+
+/**
  * 解析工具权限级别（R5.2，纯函数，便于单测）。
  * 优先级：全局显式规则 (globalLevel) > 插件声明的 defaultPermission > allow。
  * globalLevel 来自配置 tools.permissions 中该工具名命中的规则；
  * pluginDefault 来自插件 manifest 的 metadata.defaultPermission。
+ *
+ * R5.4 扩展：untrustedFallback 参数表示「不可信插件的受限默认」——当插件未受信任、
+ * 既无全局规则也无插件自身默认权限时可落到受限级别（默认 ask），而非一律 allow。
  */
 export function resolveToolPermission(
   globalLevel: 'allow' | 'deny' | 'ask' | null,
   pluginDefault?: 'allow' | 'deny' | 'ask',
+  untrustedFallback?: 'allow' | 'ask' | 'deny',
 ): 'allow' | 'deny' | 'ask' {
   if (globalLevel === 'allow' || globalLevel === 'deny' || globalLevel === 'ask') {
     return globalLevel;
   }
   if (pluginDefault === 'allow' || pluginDefault === 'deny' || pluginDefault === 'ask') {
     return pluginDefault;
+  }
+  if (
+    untrustedFallback === 'allow' ||
+    untrustedFallback === 'deny' ||
+    untrustedFallback === 'ask'
+  ) {
+    return untrustedFallback;
   }
   return 'allow';
 }
@@ -502,12 +553,15 @@ function getToolPermission(
   }
 
   let pluginDefault: 'allow' | 'deny' | 'ask' | undefined;
+  let pluginName: string | undefined;
   if (pluginDefaultProvider) {
     pluginDefault = pluginDefaultProvider(name);
+    return resolveToolPermission(globalLevel, pluginDefault);
   } else {
     const pm = getPluginManager();
     const info = pm.getToolInfo(name);
     if (info?.plugin) {
+      pluginName = info.plugin;
       const meta = pm.plugins.get(info.plugin)?.metadata;
       if (
         meta &&
@@ -520,6 +574,15 @@ function getToolPermission(
     }
   }
 
+  // R5.4 插件安全：不可信插件默认受限运行。
+  // 无全局规则时，不可信插件的工具落到受限默认（ask），可信插件回退到其声明的默认。
+  if (pluginName && !isPluginTrusted(pluginName)) {
+    // 全局规则优先；无全局规则时不可信插件工具默认受限。
+    if (globalLevel) return globalLevel;
+    const untrustedDefault = getUntrustedPluginPermission();
+    // 插件自身声明的默认权限仅对「受信任」插件生效；不可信插件以其受限级别为准。
+    return resolveToolPermission(globalLevel, undefined, untrustedDefault);
+  }
   return resolveToolPermission(globalLevel, pluginDefault);
 }
 

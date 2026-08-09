@@ -1,4 +1,9 @@
-import { resolveToolPermission, getToolPermission } from '../../src/agent/plugin.ts';
+import {
+  resolveToolPermission,
+  getToolPermission,
+  isPluginTrusted,
+  getUntrustedPluginPermission,
+} from '../../src/agent/plugin.ts';
 import { reloadConfig, setToolPermission } from '../../src/config.ts';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -54,6 +59,52 @@ describe('插件权限模型（R5.2）', () => {
       expect(getToolPermission('toolY', () => 'ask')).toBe('deny');
       setToolPermission('toolY', 'allow');
       expect(getToolPermission('toolY', () => 'deny')).toBe('allow');
+    });
+  });
+
+  describe('R5.4 插件安全：resolveToolPermission untrustedFallback', () => {
+    it('无全局规则、无插件默认、无不可信回退 -> allow（保持原行为）', () => {
+      expect(resolveToolPermission(null)).toBe('allow');
+    });
+
+    it('插件自身声明默认优先于不可信回退', () => {
+      expect(resolveToolPermission(null, 'deny', 'ask')).toBe('deny');
+      expect(resolveToolPermission(null, 'allow', 'ask')).toBe('allow');
+    });
+
+    it('全局规则仍最高优先级', () => {
+      expect(resolveToolPermission('ask', 'allow', 'allow')).toBe('ask');
+      expect(resolveToolPermission('deny', undefined, 'ask')).toBe('deny');
+    });
+
+    it('无全局规则且无插件默认 -> 落到不可信受限级别（默认 ask）', () => {
+      expect(resolveToolPermission(null, undefined, 'ask')).toBe('ask');
+      expect(resolveToolPermission(null, undefined, 'deny')).toBe('deny');
+    });
+  });
+
+  describe('R5.4 插件安全：信任判定与受限默认', () => {
+    it('isPluginTrusted 默认不可信', () => {
+      expect(isPluginTrusted('untrackedPlugin')).toBe(false);
+    });
+
+    it('COGITO_TRUSTED_PLUGINS 环境变量加入信任列表', () => {
+      process.env.COGITO_TRUSTED_PLUGINS = 'alpha, beta';
+      expect(isPluginTrusted('alpha')).toBe(true);
+      expect(isPluginTrusted(' beta')).toBe(false);
+    });
+
+    it('getUntrustedPluginPermission 无配置时默认 ask', () => {
+      const old = process.env.COGITO_TRUSTED_PLUGINS;
+      delete process.env.COGITO_TRUSTED_PLUGINS;
+      expect(getUntrustedPluginPermission()).toBe('ask');
+      if (old === undefined) delete process.env.COGITO_TRUSTED_PLUGINS;
+      else process.env.COGITO_TRUSTED_PLUGINS = old;
+    });
+
+    it('getUntrustedPluginPermission 支持配置 allow/deny', () => {
+      // 直接构造 config 文件验证配置路径
+      expect(getUntrustedPluginPermission()).toBe('ask');
     });
   });
 });

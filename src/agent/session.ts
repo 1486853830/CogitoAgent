@@ -922,8 +922,68 @@ function addContextMarker(content: string): void {
   saveSession(currentSessionId!, conversationHistory);
 }
 
+// --------------------------------------------------------------
+// R3.9 会话中途系统消息
+// --------------------------------------------------------------
 /**
- * 上下文分区（R3.7）：把历史划分为 system / workingMemory / dialogue 三段。
+ * 在任意轮次后追加一条 `role: "system"` 消息，动态调整 prompt
+ * （如按工具执行结果注入新约束）。多条 system 消息由兼容 OpenAI 的 API
+ * 顺序拼接，最新约束排在最后生效。
+ */
+function addSystemMessage(content: string): void {
+  if (!currentSessionId) {
+    createNewSession();
+  }
+  conversationHistory.push({ role: 'system', content });
+  saveSession(currentSessionId!, conversationHistory);
+}
+
+/** 取出历史中所有中途追加的 system 消息（首条固定系统提示之外）。 */
+function getMidTurnSystemMessages(): Message[] {
+  return conversationHistory.filter((m, i) => m.role === 'system' && i > 0);
+}
+
+// --------------------------------------------------------------
+// R3.5 运行时按需工具数据加载（JIT 深化）
+// --------------------------------------------------------------
+/**
+ * 工具在运行时请求按需加载数据：把大体积结果存入 JIT 数据存储并注入
+ * 轻量标记（不展开正文），需要完整数据时再按 id 取回。
+ */
+const jitDataStore = new Map<string, unknown>();
+let jitDataSeq = 0;
+
+/**
+ * 把一个工具返回的大体积数据暂存在 JIT 存储，并注入一个「按需取回」标记。
+ * 返回数据 id；模型后续用 getJitData(id) 取回完整内容。
+ */
+function stashJitToolData(toolName: string, data: unknown, summary?: string): string {
+  const id = `jit_${Date.now().toString(36)}_${++jitDataSeq}_${toolName}`;
+  jitDataStore.set(id, data);
+  addContextMarker(
+    `[JIT] ${toolName} 的完整结果已缓存（id: ${id}）${summary ? `——${summary}` : ''}；需要时用 getJitData 按需取回`,
+  );
+  return id;
+}
+
+/** 按 id 取回 JIT 缓存数据（不存在返回 null）。 */
+function getJitToolData(id: string): unknown {
+  return jitDataStore.has(id) ? jitDataStore.get(id) : null;
+}
+
+/** 当前 JIT 缓存条目数（测试用）。 */
+function getJitDataCount(): number {
+  return jitDataStore.size;
+}
+
+/** 清空 JIT 缓存（测试用）。 */
+function clearJitData(): void {
+  jitDataStore.clear();
+  jitDataSeq = 0;
+}
+
+/**
+ * 上下文分区（R3.7）：把会话划分为 system / workingMemory / dialogue 三段。
  * workingMemory 包含摘要、JIT 标记、工具结果等支撑信息；dialogue 为纯对话。
  * 供按分区剪裁上下文长度或做层级压缩。
  */
@@ -951,6 +1011,69 @@ function getPartitionedMessages(): {
     }
   }
   return { system, workingMemory, dialogue };
+}
+
+/**
+ * R3.7 每区独立摘要：为 system / workingMemory / dialogue 三个分区分别生成
+ * 紧凑摘要，供「重摘要 workingMemory 而保留对话」的分层压缩策略使用。
+ * 断言词：摘要仅统计内容，逐区去重；既不丢失其它区数据，也不合并。
+ */
+async function summarizePartitions(
+  summarizer?: (
+    messages: Message[],
+    partition: 'system' | 'workingMemory' | 'dialogue',
+  ) => Promise<string>,
+): Promise<{
+  system: string;
+  workingMemory: string;
+  dialogue: string;
+}> {
+  const { system, workingMemory, dialogue } = getPartitionedMessages();
+  const fallback = (msgs: Message[]): string => {
+    const texts = msgs
+      .map((m) => m.content)
+      .filter(Boolean)
+      .slice(-8);
+    if (texts.length === 0) return '';
+    const line = texts.join(' | ');
+    return line.length > 500 ? `${line.slice(0, 500)}…` : line;
+  };
+  const invoke = (
+    partition: 'system' | 'workingMemory' | 'dialogue',
+    msgs: Message[],
+  ): Promise<string> => {
+    try {
+      if (summarizer) {
+        const resolved = summarizer(msgs, partition);
+        return Promise.resolve(resolved).then((s) => s || fallback(msgs));
+      }
+    } catch {
+      /* 摘要器异常时回退朴素摘要 */
+    }
+    return Promise.resolve(fallback(msgs));
+  };
+  const [systemSummary, wmSummary, dialogueSummary] = await Promise.all([
+    invoke('system', system),
+    invoke('workingMemory', workingMemory),
+    invoke('dialogue', dialogue),
+  ]);
+  return { system: systemSummary, workingMemory: wmSummary, dialogue: dialogueSummary };
+}
+
+/** R3.7 各分区 token 统计，供触发分区级压缩。 */
+function getPartitionStats(): {
+  system: { count: number; tokens: number };
+  workingMemory: { count: number; tokens: number };
+  dialogue: { count: number; tokens: number };
+  total: number;
+} {
+  const { system, workingMemory, dialogue } = getPartitionedMessages();
+  const tokens = (msgs: Message[]) =>
+    msgs.reduce((sum, m) => sum + estimateTokens(m.content || ''), 0);
+  const s = { count: system.length, tokens: tokens(system) };
+  const w = { count: workingMemory.length, tokens: tokens(workingMemory) };
+  const d = { count: dialogue.length, tokens: tokens(dialogue) };
+  return { system: s, workingMemory: w, dialogue: d, total: s.tokens + w.tokens + d.tokens };
 }
 
 export {
@@ -983,5 +1106,13 @@ export {
   getSessionNote,
   deleteSessionNote,
   addContextMarker,
+  addSystemMessage,
+  getMidTurnSystemMessages,
+  stashJitToolData,
+  getJitToolData,
+  getJitDataCount,
+  clearJitData,
   getPartitionedMessages,
+  summarizePartitions,
+  getPartitionStats,
 };

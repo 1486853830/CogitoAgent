@@ -317,6 +317,57 @@ describe('orchestrator.ts', () => {
   });
 
   // ============================================
+  // R3.8 隔离上下文 / 结构化摘要
+  // ============================================
+  describe('Agent result isolation & structured summary (R3.8)', () => {
+    it('should cap long agent results returned to the main agent', async () => {
+      const spawnResult = await orchestrator.spawnAgent('Assistant', 'TestAgent', '');
+      mockStreamChatNative.mockImplementation(async function* () {
+        yield { content: 'A'.repeat(5000) };
+        return { input: 0, output: 0, stopReason: 'stop', toolCalls: [] };
+      });
+      const result = await orchestrator.delegateTask(spawnResult.data.id, 'task');
+      expect(result.success).toBe(true);
+      // 主 Agent 拿到截断后的摘要
+      expect((result.data as string).length).toBeLessThan(1300);
+      expect(result.data).toContain('子 Agent 结果过长');
+      // 完整结果仍保留在子 Agent 自身（隔离上下文，可按需取回）
+      const agent = orchestrator.getAgent(spawnResult.data.id);
+      expect(agent.result).toBe('A'.repeat(5000));
+      expect(agent.messageCount).toBeGreaterThan(0);
+    });
+
+    it('should keep transcript isolated and retrievable on demand', async () => {
+      const spawnResult = await orchestrator.spawnAgent('Assistant', 'TestAgent', '');
+      const result = await orchestrator.delegateTask(spawnResult.data.id, 'do something');
+      expect(result.data).toBe('mock response');
+      const transcript = orchestrator.getAgentTranscript(spawnResult.data.id);
+      expect(transcript).not.toBeNull();
+      expect(transcript!.length).toBeGreaterThan(1);
+      expect(transcript!.some((m) => m.role === 'system')).toBe(true);
+      expect(transcript!.some((m) => m.role === 'user' && m.content.includes('任务'))).toBe(true);
+    });
+
+    it('should return null transcript for unknown agent', () => {
+      expect(orchestrator.getAgentTranscript('nonexistent')).toBeNull();
+    });
+
+    it('should not summarize when disabled', async () => {
+      const spawnResult = await orchestrator.spawnAgent('Assistant', 'TestAgent', '');
+      const orchestratorInstance = new AgentOrchestrator();
+      orchestratorInstance.resultSummarizable = false;
+      orchestratorInstance.agents.set(
+        spawnResult.data.id,
+        orchestrator.agents.get(spawnResult.data.id)!,
+      );
+      // 直接单测 summarizeAgentResult：关闭摘要时原样返回
+      const big = 'x'.repeat(5000);
+      const summarized = orchestratorInstance.summarizeAgentResult(big);
+      expect(summarized).toBe(big);
+    });
+  });
+
+  // ============================================
   // stopAgent
   // ============================================
   describe('stopAgent', () => {

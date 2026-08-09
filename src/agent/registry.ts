@@ -222,6 +222,7 @@ const TOOL_REGISTRY: Record<string, ToolRegistryEntry> = {
     parseJson: [true],
   },
   getAgent: { fn: tools.getAgent, argCount: 1, category: 'cluster' },
+  getAgentTranscript: { fn: tools.getAgentTranscript, argCount: 1, category: 'cluster' },
   panelDiscussion: {
     fn: tools.panelDiscussion,
     argCount: 2,

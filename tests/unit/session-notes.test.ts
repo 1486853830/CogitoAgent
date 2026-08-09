@@ -18,6 +18,14 @@ const {
   deleteSessionNote,
   addContextMarker,
   getPartitionedMessages,
+  addSystemMessage,
+  getMidTurnSystemMessages,
+  stashJitToolData,
+  getJitToolData,
+  getJitDataCount,
+  clearJitData,
+  summarizePartitions,
+  getPartitionStats,
   updateSystemPrompt,
   setConversationHistory,
 } = await import('../../src/agent/session.ts');
@@ -116,6 +124,94 @@ describe('session.ts notes / markers / partitioning (R3)', () => {
       expect(nonSystem).toHaveLength(3);
       expect(nonSystem[2].role).toBe('tool');
       expect(nonSystem[2].toolName).toBe('ls');
+    });
+  });
+
+  describe('mid-turn system messages (R3.9)', () => {
+    it('should append system messages after user turns', () => {
+      createNewSession();
+      updateSystemPrompt('sys');
+      addUserMessage('hi');
+      addSystemMessage('从现在起，请遵守新约束 X');
+      addUserMessage('继续');
+      const msgs = getMessages();
+      const systemAdded = msgs.filter((m) => m.role === 'system');
+      expect(systemAdded).toHaveLength(2);
+      expect(systemAdded[1].content).toContain('新约束');
+      const mid = getMidTurnSystemMessages();
+      expect(mid).toHaveLength(1);
+      expect(mid[0].content).toContain('新约束');
+    });
+
+    it('should keep mid-turn system messages out of turn count', () => {
+      createNewSession();
+      addUserMessage('a');
+      addSystemMessage('约束');
+      addUserMessage('b');
+      const userTurns = getMessages().filter((m) => m.role === 'user');
+      expect(userTurns).toHaveLength(2);
+    });
+  });
+
+  describe('JIT on-demand tool data (R3.5)', () => {
+    beforeEach(() => clearJitData());
+
+    it('should stash large tool data by id and fetch later', () => {
+      createNewSession();
+      const big = 'LONG_CONTENT_'.repeat(1000);
+      const id = stashJitToolData('readFile', big, '文件内容已缓存');
+      expect(id).toMatch(/^jit_/);
+      const msgs = getMessages();
+      expect(msgs.some((m) => m.content.includes('[JIT]') && m.content.includes(id))).toBe(true);
+      expect(getJitToolData(id)).toBe(big);
+      expect(getJitToolData('jit_missing')).toBeNull();
+      expect(getJitDataCount()).toBe(1);
+    });
+
+    it('should clear all JIT data', () => {
+      stashJitToolData('ls', 'out');
+      expect(getJitDataCount()).toBe(1);
+      clearJitData();
+      expect(getJitDataCount()).toBe(0);
+    });
+  });
+
+  describe('partition summarization & stats (R3.7)', () => {
+    it('should summarize each partition independently', async () => {
+      createNewSession();
+      updateSystemPrompt('sys');
+      addUserMessage('问题：1+1');
+      addAssistantNativeMessage('答 2', { budget: { planningIterations: 1 } } as never);
+      addToolResultMessage('result', { toolCallId: 'call_1' });
+      addContextMarker('jwt info');
+      const result = await summarizePartitions();
+      expect(result).toHaveProperty('system');
+      expect(result).toHaveProperty('workingMemory');
+      expect(result).toHaveProperty('dialogue');
+      // 摘要逐区独立不为空
+      expect(result.workingMemory).toContain('上下文补充');
+      expect(result.dialogue).toContain('问题：1+1');
+    });
+
+    it('should allow injecting a summarizer per partition', async () => {
+      createNewSession();
+      addUserMessage('hello');
+      const result = await summarizePartitions(async (_msgs, partition) => `S-${partition}`);
+      expect(result.system).toBe('S-system');
+      expect(result.workingMemory).toBe('S-workingMemory');
+      expect(result.dialogue).toBe('S-dialogue');
+    });
+
+    it('should compute partition token stats', () => {
+      createNewSession();
+      updateSystemPrompt('sys');
+      addUserMessage('hi there');
+      addUserMessage('how are you');
+      const stats = getPartitionStats();
+      expect(stats.system.count).toBeGreaterThan(0);
+      expect(stats.dialogue.count).toBe(2);
+      expect(stats.workingMemory.count).toBe(0);
+      expect(stats.total).toBeGreaterThan(0);
     });
   });
 });

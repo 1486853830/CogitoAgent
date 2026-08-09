@@ -52,13 +52,17 @@ function writeMeta(meta: { sessions: any[]; activeId: string | null }): void {
 
 describe('session.ts', () => {
   // Clear the temp directory before each test to isolate state where possible.
-  beforeEach(() => {
-    fs.rmSync(SESSIONS_DIR, { recursive: true, force: true });
+  // R3.1：先 flush 异步写队列，避免 Windows 上仍有打开的文件句柄导致
+  // fs.rmSync 抛出 ENOTEMPTY。
+  beforeEach(async () => {
+    await flushSessionWrites();
+    fs.rmSync(SESSIONS_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     fs.mkdirSync(SESSIONS_DIR, { recursive: true });
   });
 
-  afterAll(() => {
-    fs.rmSync(TMP_DIR, { recursive: true, force: true });
+  afterAll(async () => {
+    await flushSessionWrites();
+    fs.rmSync(TMP_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   });
 
   describe('createNewSession', () => {

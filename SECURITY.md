@@ -153,6 +153,25 @@ CogitoAgent has implemented the following security features:
 - URL 验证防止 `openExternal` 漏洞
   / URL validation prevents `openExternal` vulnerabilities
 
+### 插件执行权限边界 / Plugin Execution Permission Boundary
+
+插件是动态加载的第三方代码，其工具执行权限按 R5.4 受信任模型收敛：
+
+Plugins are dynamically loaded third-party code. Tool permissions follow the R5.4 trust boundary:
+
+- **默认不可信**：除 `config.security.trustedPlugins` 或环境变量 `COGITO_TRUSTED_PLUGINS` 列出的插件外，一律按不可信处理（fail-closed）。
+  / **Untrusted by default**: everything not listed in `config.security.trustedPlugins` or `COGITO_TRUSTED_PLUGINS` is treated as untrusted (fail-closed).
+- **不可信插件默认受限**：其工具默认权限级别为 `ask`（可在 `security.untrustedPluginPermission` 调整），且插件 manifest 自声明的 `defaultPermission` 不可信——不可信代码不能自我授权提高权限。
+  / **Untrusted tools are restricted by default**: default `ask` (configurable via `security.untrustedPluginPermission`); a plugin's self-declared `defaultPermission` is not honored for untrusted plugins, so malicious code cannot self-authorize.
+- **全局规则是最终裁决**：`tools.permissions` 的用户显式规则在任何执行路径（主 Agent / 子智能体 / MCP / 推测执行）均可覆盖插件声明与不可信默认。
+  / **Global rules are the final authority**: explicit `tools.permissions` rules override plugin declarations and untrusted defaults on every execution path.
+- **执行边界全覆盖**：主 Agent `executeTool`、子智能体 `orchestrator`、MCP 通道、推测执行四类路径统一门禁；无交互通道（子智能体 / MCP）中 `ask` 与 `deny` 同样拒绝，绝不放行。
+  / **Boundary covers all execution paths**: main agent, sub-agents, MCP channel, and speculative execution share one gate; non-interactive paths (sub-agents / MCP) reject `ask` as well as `deny`.
+
+详细权限解析规则见 [introduction/extensions.md](introduction/extensions.md)。
+
+See [introduction/extensions.md](introduction/extensions.md) for full resolution rules.
+
 ---
 
 ## Best Practices / 最佳实践

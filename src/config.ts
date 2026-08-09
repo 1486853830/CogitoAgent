@@ -106,6 +106,8 @@ const DEFAULT_CONFIG: Config = {
   security: {
     confirmDangerous: true,
     sandboxMode: true,
+    trustedPlugins: [],
+    untrustedPluginPermission: 'ask',
   },
 };
 

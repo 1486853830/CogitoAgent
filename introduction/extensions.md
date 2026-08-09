@@ -79,6 +79,61 @@ The loader exposes the following management methods.
 | `unload(name)` | Unload a specified plugin | `name`: plugin name / 插件名称 |
 | `list()`       | List all loaded plugins   | None / 无                      |
 
+### 1.5 Plugin Permissions & Trust Boundary / 插件权限与执行边界
+
+Every tool call goes through a three-tier permission resolution (`R5.2` / `R5.4`):
+
+每个工具调用都经过「三级权限解析」（R5.2 / R5.4）：
+
+1. **Global rule (最终裁决)**：`tools.permissions` in `config.json` — an explicit per-tool rule
+   set by the user (or via the Dashboard extension panel). Applies to _all_ execution
+   paths and always wins.
+   **全局规则（最终裁决）**：`config.json` 中 `tools.permissions` 的用户显式工具级规则
+   （或通过 Dashboard 扩展面板设置），对所有执行路径生效且优先级最高。
+2. **Plugin-declared default**：`metadata.defaultPermission` in the plugin manifest
+   (`allow`/`ask`/`deny`). Only honored for **trusted** plugins.
+   **插件声明默认**：插件 manifest 的 `metadata.defaultPermission`
+   （`allow`/`ask`/`deny`），仅对**受信任**插件生效。
+3. **Untrusted-restricted default (R5.4)**：for **untrusted** plugins with no global rule,
+   the tool defaults to a restricted level (`ask` by default, configurable via
+   `config.security.untrustedPluginPermission`). A plugin cannot self-authorize by
+   declaring `defaultPermission: 'allow'`.
+   **不可信受限默认（R5.4）**：不可信插件且无全局规则时，工具默认落到受限级别
+   （默认 `ask`，可通过 `config.security.untrustedPluginPermission` 配置）。插件不能通过
+   声明 `defaultPermission: 'allow'` 自我授权。
+
+**Trust model / 信任模型**：A plugin is **trusted** only if it appears in
+`config.security.trustedPlugins` or in the `COGITO_TRUSTED_PLUGINS` environment
+variable (comma-separated). Everything else is untrusted by default (fail-closed).
+
+插件仅当出现在 `config.security.trustedPlugins` 列表或环境变量
+`COGITO_TRUSTED_PLUGINS`（逗号分隔）中才被视为**受信任**，其余一律按不可信处理（fail-closed）。
+
+```
+{
+  "security": {
+    "trustedPlugins": ["my-plugin"],
+    "untrustedPluginPermission": "ask"   // allow | ask | deny
+  }
+}
+```
+
+**Execution boundary / 执行边界**：Permission gating is enforced on _all_ tool execution
+paths — main Agent (`Agent.executeTool`), sub-agents (`orchestrator`), MCP channel
+(`mcp.ts`), and speculative execution (only `allow` tools run ahead). `deny` rejects
+immediately; `ask` triggers a single user confirmation (combined with danger-level
+confirmations); sub-agents and MCP reject `ask` (fail-closed, no interactive channel).
+
+权限门禁在主 Agent（`Agent.executeTool`）、子智能体（`orchestrator`）、MCP 通道
+（`mcp.ts`）及推测执行（仅 `allow` 预执行）等**全部执行路径**上强制生效。
+`deny` 直接拒绝；`ask` 触发一次用户授权（与危险操作确认合并为单次弹窗）；
+子智能体与 MCP 通道无交互能力，`ask` 按拒绝处理（fail-closed）。
+
+**Bottom line / 结论**：What a plugin can do is decided by explicit user configuration,
+never by the plugin itself.
+
+插件能做什么，由用户显式配置决定，插件自身不能提高自己的权限。
+
 ---
 
 ## 2. Tracing Module / 二、追踪模块

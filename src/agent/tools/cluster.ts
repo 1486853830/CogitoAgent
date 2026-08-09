@@ -105,6 +105,21 @@ export async function getAgent(
 }
 
 /**
+ * R3.8 按需取回子智能体的完整 transcript（独立上下文内容）。
+ * 子智能体默认只把结构化摘要回传主 Agent，需要细节时再用本工具取回。
+ * @param {string} agentId
+ */
+export async function getAgentTranscript(
+  agentId: string,
+): Promise<{ success: boolean; data?: unknown; error?: string }> {
+  const transcript = orchestrator.getAgentTranscript(agentId);
+  if (!transcript) {
+    return { success: false, error: `智能体 "${agentId}" 不存在` };
+  }
+  return { success: true, data: { agentId, messageCount: transcript.length, transcript } };
+}
+
+/**
  * Panel Discussion - 多智能体就同一主题展开讨论
  * @param {string} topic - 讨论主题
  * @param {string} agentIds - 参与讨论的智能体 ID 列表（JSON数组字符串）
