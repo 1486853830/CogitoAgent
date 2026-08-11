@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { randomUUID } from 'crypto';
 import {
   CreateMessageRequestSchema,
   ElicitRequestSchema,
@@ -35,7 +36,7 @@ export interface McpServerHandle {
  * 无状态模式不依赖协议层持久 Session，server 侧可水平扩缩容。
  */
 function generateExternalSessionId(): string {
-  return `cogito_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  return `cogito_${Date.now().toString(36)}_${randomUUID().slice(0, 8)}`;
 }
 
 /** 查询外部 server 的 sessionId 状态（R4.8 诊断用）。 */

@@ -78,25 +78,37 @@ async function entrezFetch(url, redirects = 0) {
  */
 function stripXmlTags(str) {
   if (!str) return '';
-  // S20: 必须先解码实体再剥离标签。原实现先剥离标签后解码，导致
-  // &lt;script&gt; 先被当成标签剥掉、再解码成 <script> 残留（XSS 隐患）。
-  // 先解码（&amp; 必须最先，避免 &amp;lt; 二次解码错误），任何被实体编码的
-  // 标签在解码后会重新进入状态机被剥离，确保输出不含可解析的标签。
-  let decoded = str
-    .replace(/&amp;/g, '&')
-    .replace(/&#38;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&#60;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&#62;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#34;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#160;/g, ' ')
-    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(parseInt(code, 10)))
-    .replace(/&#[xX]([0-9a-fA-F]+);/g, (_, code) => String.fromCodePoint(parseInt(code, 16)));
+  // 单次替换所有已知实体，避免链式 .replace() 导致的"先解 &amp; 再解 &#38;"
+  // 双重反转义风险（CodeQL "Double escaping or unescaping"）。
+  const ENTITY_MAP = {
+    '&amp;': '&',
+    '&#38;': '&',
+    '&lt;': '<',
+    '&#60;': '<',
+    '&gt;': '>',
+    '&#62;': '>',
+    '&quot;': '"',
+    '&#34;': '"',
+    '&apos;': "'",
+    '&#39;': "'",
+    '&nbsp;': ' ',
+    '&#160;': ' ',
+  };
+  let decoded = str.replace(
+    /&(?:amp|lt|gt|quot|apos|nbsp|#(?:38|60|62|34|39|160));/g,
+    (m) => ENTITY_MAP[m] || m,
+  );
+
+  // 解码剩余数字字符引用，过滤控制字符（U+0000–U+001F，不含空格/TAB/CR/LF）
+  decoded = decoded.replace(/&#(\d+);/g, (_, code) => {
+    const n = parseInt(code, 10);
+    return n >= 32 && n <= 0x10ffff ? String.fromCodePoint(n) : `&#${code};`;
+  });
+  decoded = decoded.replace(/&#[xX]([0-9a-fA-F]+);/g, (_, code) => {
+    const n = parseInt(code, 16);
+    return n >= 32 && n <= 0x10ffff ? String.fromCodePoint(n) : `&#x${code};`;
+  });
+
   let out = '';
   let inTag = false;
   for (let i = 0; i < decoded.length; i++) {
