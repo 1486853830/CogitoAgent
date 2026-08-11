@@ -59,6 +59,7 @@
     "build": "node scripts/electron-build.mjs",
     "build:win": "node scripts/electron-build.mjs --win",
     "build:nsis": "node scripts/electron-build.mjs --win nsis",
+    "build:dir": "node scripts/electron-build.mjs --win --dir",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src electron plugins",
     "lint:fix": "eslint . --fix",

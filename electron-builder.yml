@@ -30,9 +30,47 @@ extraResources:
     to: node_modules
     filter:
       - '**/*'
+      # === 开发工具 — 运行时不需要，排除可显著减少复制量（提速打包） ===
+      - '!electron/**'
+      - '!@electron/**'
+      - '!electron-builder/**'
+      - '!electron-builder-*/**'
+      - '!electron-*/**'
+      - '!typescript/**'
+      - '!typescript-eslint/**'
+      - '!eslint/**'
+      - '!eslint-*/**'
+      - '!jest/**'
+      - '!@jest/**'
+      - '!ts-jest/**'
+      - '!prettier/**'
+      - '!husky/**'
+      - '!lint-staged/**'
+      - '!cross-env/**'
+      - '!babel-*/**'
+      - '!@babel/**'
+      - '!@eslint/**'
+      - '!@types/**'
+      - '!@typescript-eslint/**'
+      # === isolated-vm：Electron ABI 不兼容 (npmRebuild: false)，运行时自动降级 ===
+      - '!isolated-vm/**'
+      # === 包内开发/文档/测试产物 ===
       - '!**/*.map'
+      - '!**/*.ts'
+      - '!**/*.md'
+      - '!**/CHANGELOG*'
+      - '!**/LICENSE*'
+      - '!**/package-lock.json'
       - '!**/tests/**'
+      - '!**/test/**'
+      - '!**/__tests__/**'
       - '!**/docs/**'
+      - '!**/example/**'
+      - '!**/examples/**'
+      - '!**/benchmark/**'
+      - '!**/coverage/**'
+      - '!**/.bin/**'
+      - '!**/tsconfig*.json'
 win:
   icon: electron/assets/icon.ico
   target:
@@ -53,7 +91,9 @@ asar: true
 # @electron/rebuild 触发编译失败；桌面版代码执行走 sandbox 降级路径（见 sandbox.ts）。
 # Docker/服务器（纯 Node）环境仍直接使用 isolated-vm 强隔离沙箱。
 npmRebuild: false
-compression: maximum
+# normal 压缩：打包速度远快于 maximum（体积约增大 5-10%）。
+# 追求最小体积时可临时改回 maximum。
+compression: normal
 publish:
   provider: generic
   url: ''
