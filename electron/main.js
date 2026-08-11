@@ -378,6 +378,22 @@ function loadEnvFile() {
                 value = value.slice(1, -1);
               }
             }
+            // 统一反转义：与 src/config.ts 的 unescapeEnvValue 保持一致。
+            // config-writer.js 写入时会对 \ " \n 做转义（如路径 C:\Users 写成
+            // C:\\Users），此处必须还原，否则工作区路径等含反斜杠的值
+            // 会随每次保存翻倍（C:\ → C:\\ → C:\\\\ ...）。
+            value = value.replace(/\\(.)/g, (_m, ch) => {
+              switch (ch) {
+                case 'n':
+                  return '\n';
+                case 't':
+                  return '\t';
+                case 'r':
+                  return '\r';
+                default:
+                  return ch;
+              }
+            });
             envConfig[key] = value;
           }
         }
@@ -526,12 +542,17 @@ function startAgentProcess() {
       shell: false,
     });
   } else {
-    agentProcess = spawn('npx', ['tsx', 'src/index.ts'], {
-      cwd: PROJECT_ROOT,
+    // 开发模式：直接使用本地 tsx CLI + 系统 Node，跳过 npx 解析层。
+    // npx 偶发联网检查版本/解析 .bin 导致 Agent 子进程启动延迟（30s 未就绪）。
+    const tsxCli = path.join(PROJECT_ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs');
+    // npm 启动时注入当前 Node 可执行路径；缺失时回退到 Electron 自带的 Node 入口
+    const nodeBin = process.env.npm_node_execpath || process.execPath;
+    agentProcess = spawn(nodeBin, [tsxCli, path.join(srcPath, 'index.ts')], {
+      cwd: workingDir,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
-      shell: true,
+      shell: false,
     });
   }
 
@@ -1056,14 +1077,15 @@ app.whenReady().then(async () => {
       if (success && setupWindow) {
         setupWindow.webContents.send('setup-config-result', { success: true });
 
-        // 如果是重新配置模式，保存后直接刷新 Dashboard，不重启应用
+        // 重新配置模式：保存成功即同步关闭向导窗口（不依赖 setTimeout 异步链路，
+        // 避免极端时序下窗口滞留"配置已更新"页）。Agent 重启与界面刷新异步进行。
         if (isReconfiguring) {
-          setTimeout(async () => {
+          if (setupWindow && !setupWindow.isDestroyed()) {
+            setupWindow.close();
+          }
+          setupWindow = null;
+          void (async () => {
             try {
-              if (setupWindow) {
-                setupWindow.close();
-                setupWindow = null;
-              }
               // 重启 Agent 子进程以加载新 .env：仅 reload 窗口不会让已在运行的
               // Agent 重新读取配置，内存状态与磁盘不一致，配置变更不生效。
               await stopAgentProcess();
@@ -1093,8 +1115,7 @@ app.whenReady().then(async () => {
             } finally {
               isSetupConfiguring = false;
             }
-          }, 500);
-          // 不在此处重置标志——setTimeout 回调完成后才会重置
+          })();
           return;
         }
         // 非重新配置模式：直接在本同步路径重置
@@ -1132,19 +1153,12 @@ app.whenReady().then(async () => {
       /* ignore */
     }
 
-    // 安全注意：load-config 返回明文凭据仅用于设置向导表单回填。
-    // 非开发模式下对长敏感值进行掩码处理，仅展示后 4 位。
-    const isDev = process.env.NODE_ENV === 'development';
-    const mask = (val) => {
-      if (isDev) return val;
-      if (typeof val === 'string' && val.length > 8) return '***' + val.slice(-4);
-      return val;
-    };
-
+    // 设置向导表单回填：直接返回明文，便于用户查看/修改完整凭据
+    // （.env 为本地文件且受限权限 600，页面仅本机可见，无泄露面）。
     return {
       api: {
         baseURL: env['COGITO_API_BASE_URL'] || configJson.api?.baseURL || '',
-        apiKey: mask(env['COGITO_API_KEY'] || ''),
+        apiKey: env['COGITO_API_KEY'] || '',
         model: env['COGITO_MODEL'] || configJson.api?.model || '',
       },
       workspace: env['COGITO_WORKSPACE'] || configJson.workspace || '',
@@ -1639,6 +1653,16 @@ app.whenReady().then(async () => {
     }
     // 关闭现有窗口，重新创建 setup（传递 reconfigure 模式）
     createSetupWindow(true);
+  });
+
+  // 前端兜底关闭：重配置保存成功后，若主进程自动关闭链路异常
+  // （stopAgentProcess 挂起 / close 抛错），窗口会停在"配置已更新"页，
+  // 由前端在此强制关闭，避免界面滞留。
+  ipcMain.on('setup-close', () => {
+    if (setupWindow && !setupWindow.isDestroyed()) {
+      setupWindow.close();
+    }
+    setupWindow = null;
   });
 
   // ===== IPC: 微信相关 =====

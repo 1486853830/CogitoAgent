@@ -38,6 +38,11 @@ const WECHAT_SESSIONS = new Map<string, SessionData>();
 let cleanupInterval: ReturnType<typeof setInterval> | null = null;
 let lastChatSender: string | null = null;
 
+/** 最近一位微信互动者（用于微信信道界面输入时，将回复发回微信手机） */
+export function getLastChatSender(): string | null {
+  return lastChatSender;
+}
+
 function syncWechatHistoryToSession(): void {
   const msgs = getWechatMessages();
   const history: Array<{ role: string; content: string }> = [];

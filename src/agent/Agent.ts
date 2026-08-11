@@ -29,6 +29,7 @@ import {
   resetConversation,
   updateSystemPrompt,
   listSessions,
+  isCurrentSessionWechat,
 } from './session.ts';
 import { reloadConfig, loadConfig } from '../config.ts';
 import {
@@ -101,7 +102,7 @@ import {
   toggleDebug,
 } from './commands.ts';
 import { orchestrator } from './orchestrator.ts';
-import { initWechatChannel } from './wechat-manager.ts';
+import { initWechatChannel, getLastChatSender } from './wechat-manager.ts';
 import {
   TOOL_OUTPUT_LIMITS,
   formatToolResult,
@@ -295,11 +296,16 @@ async function executeTool(
 }
 
 function handleUserInput(input: string, replyKey?: string): void {
-  // 记录本轮回复目标：调用方传入 replyKey 时按来源隔离回调（微信通道）；
-  // 未传入时一律清空，回复走终端而非微信通道——不依赖输入格式判断，
-  // 避免微信格式消息漏传 replyKey 时 _currentReplyKey 保留旧值导致回复错发。
+  // 记录本轮回复目标：
+  // - 调用方显式传入 replyKey（微信通道消息）→ 按来源隔离回调；
+  // - 未传入但当前处于「微信通道」会话 → 回复目标设为最近微信互动者，
+  //   使用户在微信信道界面输入的内容也能发回微信手机；
+  // - 其余情况一律清空，回复走终端/桌面界面——不依赖输入格式判断，
+  //   避免微信格式消息漏传 replyKey 时 _currentReplyKey 保留旧值导致回复错发。
   if (replyKey !== undefined) {
     setCurrentReplyKey(replyKey);
+  } else if (isCurrentSessionWechat()) {
+    setCurrentReplyKey(getLastChatSender());
   } else {
     setCurrentReplyKey(null);
   }

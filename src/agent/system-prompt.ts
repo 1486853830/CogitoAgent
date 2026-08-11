@@ -66,8 +66,12 @@ function buildToolList(): string {
 
 /**
  * 获取系统提示词
+ * @param personaNameOverride 可选：覆盖当前活动人设。
+ *   - 传入名称 → 使用该人设（如微信信道强制默认人设）
+ *   - 传入 null → 使用默认人设（Cogito）
+ *   - undefined → 使用当前活动人设（默认行为）
  */
-function buildSystemPrompt(): string {
+function buildSystemPrompt(personaNameOverride?: string | null): string {
   const workspace = getBasePath();
   const enabledCategories = getEnabledCategories();
   const enabledCount = enabledCategories.length;
@@ -81,7 +85,9 @@ function buildSystemPrompt(): string {
   // 活动人设为 null 时读取默认人设 personas/cogito/persona.md（Cogito）。
   let personaHeader = '';
   try {
-    const personaPath = resolvePersonaPath(getActivePersonaName());
+    const personaPath = resolvePersonaPath(
+      personaNameOverride !== undefined ? personaNameOverride : getActivePersonaName(),
+    );
     if (existsSync(personaPath)) {
       const personaContent = readFileSync(personaPath, 'utf-8');
       if (personaContent.trim()) {

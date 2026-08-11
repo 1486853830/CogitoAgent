@@ -19,6 +19,24 @@ import { applyPersona } from './persona.ts';
 import { loadConfig } from '../config.ts';
 import { chatText } from '../api/client.ts';
 
+// 微信信道强制默认人设：微信会话的 system prompt 不使用当前活动人设，
+// 避免微信回复带上用户在其他对话中选中的个性人设。判断依据是消息内容前缀。
+const WECHAT_MSG_PREFIX = '[微信消息';
+
+function isWechatConversation(messages: Message[]): boolean {
+  for (const m of messages) {
+    if (m.role === 'user' && typeof m.content === 'string') {
+      return m.content.startsWith(WECHAT_MSG_PREFIX);
+    }
+  }
+  return false;
+}
+
+/** 按会话来源构建 system prompt：微信会话 → 默认人设；否则当前活动人设。 */
+function buildSessionPrompt(messages: Message[]): string {
+  return buildSystemPrompt(isWechatConversation(messages) ? null : undefined);
+}
+
 const DATA_DIR = process.env.COGITO_USER_DATA_DIR || process.cwd();
 const SESSIONS_DIR = path.resolve(DATA_DIR, 'data', 'sessions');
 const META_FILE = path.join(SESSIONS_DIR, 'meta.json');
@@ -168,6 +186,14 @@ export function flushSessionWrites(): Promise<void> {
   return saveQueue;
 }
 
+/** 判断当前会话是否为「微信通道」专属会话（用户可在该界面直接回复微信） */
+export function isCurrentSessionWechat(): boolean {
+  if (!currentSessionId) return false;
+  const meta = loadMeta();
+  const s = meta.sessions.find((x) => x.id === currentSessionId);
+  return s?.name === '微信通道';
+}
+
 let currentSessionId: string | null = null;
 let conversationHistory: Message[] = [];
 let turnCount = 0;
@@ -224,10 +250,10 @@ function initializeSession(sessionId?: string | null): boolean {
   if (currentSessionId) {
     const messages = loadSession(currentSessionId);
     if (messages.length === 0) {
-      conversationHistory = [{ role: 'system', content: buildSystemPrompt() }];
+      conversationHistory = [{ role: 'system', content: buildSessionPrompt(messages) }];
     } else {
       conversationHistory = messages;
-      conversationHistory[0] = { role: 'system', content: buildSystemPrompt() };
+      conversationHistory[0] = { role: 'system', content: buildSessionPrompt(messages) };
     }
     meta.activeId = currentSessionId;
     saveMeta(meta);
@@ -260,7 +286,7 @@ function getOrCreateWechatSession(): string {
   meta.sessions.push(session);
   saveMeta(meta);
 
-  const messages: Message[] = [{ role: 'system', content: buildSystemPrompt() }];
+  const messages: Message[] = [{ role: 'system', content: buildSystemPrompt(null) }];
   const filePath = path.join(SESSIONS_DIR, `${id}.json`);
   ensureDir();
   writeFileSync(filePath, JSON.stringify(messages, null, 2), 'utf-8');
@@ -360,7 +386,7 @@ function switchSession(sessionId: string): {
 
   const messages = loadSession(sessionId);
   conversationHistory =
-    messages.length > 0 ? messages : [{ role: 'system', content: buildSystemPrompt() }];
+    messages.length > 0 ? messages : [{ role: 'system', content: buildSessionPrompt(messages) }];
   turnCount = conversationHistory.filter((m) => m.role !== 'system').length;
 
   return { success: true, session };
@@ -799,7 +825,7 @@ async function compressHistory(summarizer?: (m: Message[]) => Promise<string>): 
   if (!summary) summary = generateSummary(toArchive);
 
   conversationHistory = [
-    { role: 'system', content: buildSystemPrompt() },
+    { role: 'system', content: buildSessionPrompt(conversationHistory) },
     { role: 'user', content: `[上下文摘要] ${summary}` },
     ...recentMessages,
   ];
@@ -824,7 +850,7 @@ function resetConversation(): void {
 
 function updateSystemPrompt(): void {
   if (conversationHistory.length > 0 && conversationHistory[0].role === 'system') {
-    conversationHistory[0].content = buildSystemPrompt();
+    conversationHistory[0].content = buildSessionPrompt(conversationHistory);
     if (currentSessionId) {
       saveSession(currentSessionId, conversationHistory);
     }
@@ -833,7 +859,7 @@ function updateSystemPrompt(): void {
 }
 
 function setConversationHistory(messages: Message[]): void {
-  conversationHistory = [{ role: 'system', content: buildSystemPrompt() }, ...messages];
+  conversationHistory = [{ role: 'system', content: buildSessionPrompt(messages) }, ...messages];
   turnCount = messages.length;
   if (currentSessionId) {
     saveSession(currentSessionId, conversationHistory);

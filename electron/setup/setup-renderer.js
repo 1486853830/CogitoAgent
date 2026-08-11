@@ -421,6 +421,13 @@ function submitConfig() {
  * 处理配置结果
  */
 function handleConfigResult(data) {
+  // 收到主进程响应（无论成败）即取消超时保护，避免保存成功后
+  // 定时器仍触发导致"配置保存超时"假报错。
+  if (configSubmitTimer) {
+    clearTimeout(configSubmitTimer);
+    configSubmitTimer = null;
+  }
+
   if (data.success) {
     // 显示完成页面
     setupForm.style.display = 'none';
@@ -432,7 +439,11 @@ function handleConfigResult(data) {
       const completeDesc = setupComplete.querySelector('p');
       if (completeTitle) completeTitle.textContent = t('setup.updated') || '配置已更新';
       if (completeDesc) completeDesc.textContent = t('setup.refreshing') || '正在刷新界面...';
-      // 主进程会自动关闭 setup 窗口并刷新 Dashboard
+      // 主进程会在保存成功后自动关闭窗口；此处加兜底：若主进程关闭链路异常
+      // （Agent 重启挂起等），5 秒后由前端强制关闭，避免"配置已更新"页滞留。
+      if (window.electronAPI?.closeSetup) {
+        setTimeout(() => window.electronAPI.closeSetup(), 5000);
+      }
     } else {
       // 首次配置模式：2秒后启动主界面
       setTimeout(() => {

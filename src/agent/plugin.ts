@@ -462,8 +462,8 @@ export const metadata = {
  */
 function createTool(options: { name: string; [key: string]: unknown }) {
   return function (
-    target: unknown,
-    propertyKey: string,
+    _target: unknown,
+    _propertyKey: string,
     descriptor: PropertyDescriptor,
   ): PropertyDescriptor {
     const originalFn = descriptor.value;

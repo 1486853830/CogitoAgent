@@ -122,7 +122,7 @@ function writeToFile(message: string): void {
 /**
  * 格式化日志消息
  */
-function formatMessage(prefix: string, level: number, ...args: unknown[]): string {
+function formatMessage(prefix: string, ...args: unknown[]): string {
   const timestamp = new Date().toISOString();
   const message = args
     .map((arg) => {
@@ -148,7 +148,7 @@ function log(level: number, prefix: string, ...args: unknown[]): void {
     return;
   }
 
-  const formattedMessage = formatMessage(prefix, level, ...args);
+  const formattedMessage = formatMessage(prefix, ...args);
 
   // 同步写入文件（若启用）
   writeToFile(formattedMessage);

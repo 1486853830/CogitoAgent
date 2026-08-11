@@ -98,6 +98,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 打开配置向导（重新配置）
   openSetup: () => ipcRenderer.send('open-setup'),
 
+  // 关闭配置向导窗口（重配置完成后，前端兜底关闭）
+  closeSetup: () => ipcRenderer.send('setup-close'),
+
   // 打开监控面板
   openMonitor: () => ipcRenderer.send('open-monitor'),
 

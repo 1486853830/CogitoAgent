@@ -750,10 +750,12 @@ const NavManager = {
       });
     }
 
-    // 左上角 COGITO 字样 → 返回欢迎页
+    // 左上角 COGITO 字样 → 返回欢迎页 + 恢复默认人设（Cogito）
     const logoEl = document.querySelector('.sidebar-logo');
     if (logoEl) {
       logoEl.addEventListener('click', () => {
+        // 切换回默认人设（personas/cogito），确保欢迎页/新会话回归默认形象
+        window.electronAPI?.sendMessage('/persona cogito');
         this.goWelcome();
       });
       logoEl.style.cursor = 'pointer';
@@ -1505,7 +1507,10 @@ const ChatManager = {
     const text = this.inputTop.value.trim();
     if (!text) return;
 
+    // 欢迎页输入 = 开启全新会话（默认人设）：先发 /new 再清空界面消息，
+    // 否则上一会话（可能是其他人设）的对话气泡仍残留在界面上。
     window.electronAPI?.sendMessage('/new');
+    this.clearMessages();
 
     this.enterChatView();
     this.sendMessage(text);
