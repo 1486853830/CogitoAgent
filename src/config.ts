@@ -19,8 +19,6 @@ function getEnvFile(): string {
   return path.resolve(getConfigDir(), '.env');
 }
 
-const CONFIG_FILE = getConfigFile();
-
 const DEFAULT_CONFIG: Config = {
   api: {
     provider: '',
@@ -34,7 +32,6 @@ const DEFAULT_CONFIG: Config = {
     topP: 0.7,
     topK: 50,
     frequencyPenalty: 0,
-    thinkingInterval: 3000,
     language: 'zh',
     // 单轮工具调用步数上限（安全护栏，防止失控循环；非限制正常工作量）。
     // 研究/写报告等多步任务可能需要十几到二十几次往返，默认给足余量。
@@ -112,14 +109,36 @@ const DEFAULT_CONFIG: Config = {
 };
 
 let config: Config | null = null;
-/** 配置写入互斥锁：序列化并发写入，避免读-改-写竞态导致数据丢失。 */
-const configWriteLock: Promise<unknown> = Promise.resolve();
 /** config.json 被加载时的 mtime（ms），用于运行时感知磁盘变更并自动刷新缓存。 */
 let configMtimeMs: number = 0;
 /** 自动刷新的最小间隔（ms）：避免高频调用时每次都 stat 文件。 */
 const CONFIG_REFRESH_INTERVAL_MS = 5000;
 /** 上次检查 mtime 的时间戳（ms），用于限流 stat 调用。 */
 let lastMtimeCheck = 0;
+
+/**
+ * 与 electron/shared/config-writer.js 的 buildEnvLines 写入转义对称。
+ * 写入端做的是：\ -> \\ 、" -> \" 、换行 -> \n（反斜杠 + 字母 n 两个字符）。
+ *
+ * 必须单趟扫描、按 `\X` 转义对整体消费，不能用多次 replace 串联：
+ * 多趟做法会把字面量的「反斜杠 + n」（写入端编码为 \\n）误还原成真换行。
+ * 单趟从左到右消费时，\\n 先吃掉 \\ 得到 \，剩下的 n 原样保留，结果正确。
+ * 未知转义（如 \z）按去掉反斜杠处理，与常见 dotenv 实现一致。
+ */
+function unescapeEnvValue(v: string): string {
+  return v.replace(/\\(.)/g, (_m, ch: string) => {
+    switch (ch) {
+      case 'n':
+        return '\n';
+      case 't':
+        return '\t';
+      case 'r':
+        return '\r';
+      default:
+        return ch;
+    }
+  });
+}
 
 function loadEnvFile(): void {
   const envFile = getEnvFile();
@@ -161,6 +180,8 @@ function loadEnvFile(): void {
           const last = value[value.length - 1];
           if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
             value = value.slice(1, -1);
+            // S3: 与写入端 buildEnvLines 的转义对称，反转义 \n \t \r \" \\
+            value = unescapeEnvValue(value);
           }
         }
         if (process.env[key] === undefined) process.env[key] = value;
@@ -191,13 +212,6 @@ function loadEnvConfig(): Partial<Config> {
   }
   if (Object.keys(apiConfig).length > 0) {
     envConfig.api = apiConfig as Config['api'];
-  }
-
-  if (process.env.COGITO_THINKING_INTERVAL) {
-    const interval = parseInt(process.env.COGITO_THINKING_INTERVAL, 10);
-    if (!isNaN(interval) && interval >= 1000) {
-      envConfig.chat = { ...envConfig.chat, thinkingInterval: interval } as Config['chat'];
-    }
   }
 
   const emailConfig: Partial<Config['email']> = {};
@@ -477,7 +491,7 @@ function loadConfig(): Config {
       const data = readFileSync(configFile, 'utf-8');
       const loaded = JSON.parse(data);
       config = deepMerge(
-        DEFAULT_CONFIG as unknown as Record<string, unknown>,
+        structuredClone(DEFAULT_CONFIG) as unknown as Record<string, unknown>,
         loaded,
       ) as unknown as Config;
       const envConfig = loadEnvConfig();
@@ -488,7 +502,7 @@ function loadConfig(): Config {
       configMtimeMs = statSync(configFile).mtimeMs;
       console.log('[配置] 已加载配置文件');
     } else {
-      config = { ...DEFAULT_CONFIG };
+      config = structuredClone(DEFAULT_CONFIG);
       const envConfig = loadEnvConfig();
       config = deepMerge(
         config as unknown as Record<string, unknown>,
@@ -499,7 +513,7 @@ function loadConfig(): Config {
     // config.json 解析失败时不能只回退到 DEFAULT_CONFIG——否则 .env 中的
     // API 密钥等关键配置不会被加载，程序在用户已配置的情况下仍报"未配置"。
     console.warn(`[配置] 加载失败，回退到默认配置 + 环境变量: ${(e as Error).message}`);
-    config = { ...DEFAULT_CONFIG };
+    config = structuredClone(DEFAULT_CONFIG);
     try {
       const envConfig = loadEnvConfig();
       config = deepMerge(
@@ -536,7 +550,7 @@ function readConfigFresh(): Config {
       const data = readFileSync(configFile, 'utf-8');
       const loaded = JSON.parse(data);
       let fresh = deepMerge(
-        DEFAULT_CONFIG as unknown as Record<string, unknown>,
+        structuredClone(DEFAULT_CONFIG) as unknown as Record<string, unknown>,
         loaded,
       ) as unknown as Config;
       const envConfig = loadEnvConfig();
@@ -554,7 +568,7 @@ function readConfigFresh(): Config {
   // 本函数的上层会丢失 API key 等关键配置，导致"未配置"错误。
   const envConfig = loadEnvConfig();
   return deepMerge(
-    { ...DEFAULT_CONFIG } as unknown as Record<string, unknown>,
+    structuredClone(DEFAULT_CONFIG) as unknown as Record<string, unknown>,
     envConfig,
   ) as unknown as Config;
 }
@@ -611,6 +625,14 @@ function setToolPermission(name: string, level: 'allow' | 'deny' | 'ask'): boole
   return true;
 }
 
+/**
+ * S8 说明：本函数全程同步（writeFileAtomic 为同步 API），在 Node 单线程模型下
+ * 「读-改-写」不会被其他 saveConfig 交错，因此**不需要** Promise 互斥锁。
+ * 早期版本把写入丢进 promise 链串行化，反而带来两个真实问题：
+ *   1) 返回值恒为 true，调用方（setup / IPC）无法感知写盘失败；
+ *   2) 落盘被推迟到微任务，紧随其后的同步读会读到旧内容。
+ * 真正需要防的是**跨进程**并发写，那由 writeFileAtomic 的临时文件 + rename 保证原子性。
+ */
 function saveConfig(cfg: Config): boolean {
   try {
     const sanitized = JSON.parse(JSON.stringify(cfg)) as Record<string, unknown>;
@@ -635,6 +657,10 @@ function saveConfig(cfg: Config): boolean {
     if (sanitized.vision && typeof sanitized.vision === 'object') {
       delete (sanitized.vision as Record<string, unknown>).apiKey;
     }
+    // S1: imageGen.apiKey 同样脱敏，避免图像生成密钥明文落盘（与其余密钥处理一致）
+    if (sanitized.imageGen && typeof sanitized.imageGen === 'object') {
+      delete (sanitized.imageGen as Record<string, unknown>).apiKey;
+    }
     writeFileAtomic(getConfigFile(), JSON.stringify(sanitized, null, 2));
     return true;
   } catch {
@@ -650,7 +676,6 @@ export {
   loadEnvConfig,
   isConfigured,
   deepMerge,
-  CONFIG_FILE,
   DEFAULT_CONFIG,
   getMcpConfig,
   setMcpConfig,

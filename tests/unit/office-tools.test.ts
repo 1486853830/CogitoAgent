@@ -2,6 +2,14 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createPpt, createWord, createExcel, readExcel } from '../../src/agent/tools/office.ts';
 
+/** 断言产物真的落在磁盘上且非空——替身库现在会写出真实文件 */
+async function expectNonEmptyFile(filePath: string): Promise<string> {
+  const stat = await fs.stat(filePath);
+  expect(stat.isFile()).toBe(true);
+  expect(stat.size).toBeGreaterThan(0);
+  return fs.readFile(filePath, 'utf8');
+}
+
 describe('office tools', () => {
   const testDir = path.join(process.cwd(), 'test-output');
 
@@ -31,6 +39,14 @@ describe('office tools', () => {
       expect(result.success).toBe(true);
       expect(result.path).toBe(outputPath);
       expect(result.slideCount).toBe(2);
+
+      // 验证真实产物：文件存在、非空，且内容与入参一致
+      const written = JSON.parse(await expectNonEmptyFile(outputPath));
+      expect(written.slideCount).toBe(2);
+      expect(written.title).toBe('Test Presentation');
+      expect(written.author).toBe('Test Author');
+      expect(JSON.stringify(written.slides)).toContain('Content of slide 1');
+      expect(JSON.stringify(written.slides)).toContain('Point B');
     });
 
     it('should create PPT with string arguments', async () => {
@@ -74,6 +90,13 @@ describe('office tools', () => {
       expect(result.success).toBe(true);
       expect(result.path).toBe(outputPath);
       expect(result.paragraphCount).toBe(4);
+
+      // 验证真实产物：.docx 确实被写出且元数据正确
+      const written = JSON.parse(await expectNonEmptyFile(outputPath));
+      expect(written.title).toBe('Test Document');
+      expect(written.creator).toBe('Test Author');
+      // heading + text + 2 个 list item + table = 至少 4 个 children
+      expect(written.childCount).toBeGreaterThanOrEqual(4);
     });
 
     it('should return error when outputPath is missing', async () => {
@@ -111,6 +134,34 @@ describe('office tools', () => {
       expect(result.success).toBe(true);
       expect(result.path).toBe(outputPath);
       expect(result.sheetCount).toBe(2);
+
+      await expectNonEmptyFile(outputPath);
+    });
+
+    it('should round-trip through readExcel（真实磁盘往返）', async () => {
+      const outputPath = path.join(testDir, 'roundtrip.xlsx');
+      const created = await createExcel({
+        outputPath,
+        sheets: [
+          {
+            name: 'Data',
+            data: [
+              ['col1', 'col2'],
+              ['v1', 'v2'],
+            ],
+          },
+        ],
+      });
+      expect(created.success).toBe(true);
+      await expectNonEmptyFile(outputPath);
+
+      const read = await readExcel(outputPath);
+      expect(read.success).toBe(true);
+      expect(read.sheetNames).toEqual(['Data']);
+      expect((read.data as Record<string, unknown[][]>).Data).toEqual([
+        ['col1', 'col2'],
+        ['v1', 'v2'],
+      ]);
     });
 
     it('should return error when outputPath is missing', async () => {

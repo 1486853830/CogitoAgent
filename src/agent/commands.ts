@@ -318,7 +318,6 @@ function printStatus(): void {
   println(`  模型: ${cfg.api.model || 'N/A'}`, 'white');
   println(`  API: ${cfg.api.baseURL || 'N/A'}`, 'white');
   println(`  工作区: ${tools.getBasePath()}`, 'white');
-  println(`  思考间隔: ${cfg.chat?.thinkingInterval || 3000}ms`, 'white');
   println(`  调试模式: ${process.env.DEBUG === 'true' ? '开启' : '关闭'}`, 'white');
   println(`  工具注册数量: ${toolNames.length}`, 'white');
 
@@ -460,7 +459,6 @@ function printConfig(): void {
   println(`  模型: ${cfg.api.model || 'N/A'}`, 'white');
   println(`  API Base: ${cfg.api.baseURL || 'N/A'}`, 'white');
   println(`  API Key: ${cfg.api.apiKey ? '***' + cfg.api.apiKey.slice(-4) : '未设置'}`, 'white');
-  println(`  思考间隔: ${cfg.chat?.thinkingInterval || 3000}ms`, 'white');
   println(`  数据库: ${cfg.database?.path || '未设置'}`, 'white');
   println(`  邮件: ${cfg.email?.smtpHost || '未配置'}`, 'white');
   println(`  调试模式: ${process.env.DEBUG === 'true' ? '开启' : '关闭'}`, 'white');

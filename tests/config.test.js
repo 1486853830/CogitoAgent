@@ -53,12 +53,6 @@ describe('config.js', () => {
       expect(DEFAULT_CONFIG).toHaveProperty('chat');
       expect(DEFAULT_CONFIG).toHaveProperty('workspace');
       expect(DEFAULT_CONFIG.api).toHaveProperty('apiKey');
-      expect(DEFAULT_CONFIG.chat).toHaveProperty('thinkingInterval');
-    });
-
-    test('thinkingInterval 应该是合理的值', () => {
-      expect(DEFAULT_CONFIG.chat.thinkingInterval).toBeGreaterThanOrEqual(1000);
-      expect(DEFAULT_CONFIG.chat.thinkingInterval).toBeLessThanOrEqual(10000);
     });
 
     test('应该包含所有模型的配置', () => {

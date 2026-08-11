@@ -18,6 +18,8 @@ files:
 extraResources:
   - from: src/
     to: src
+  - from: electron/shared/
+    to: electron/shared
   - from: plugins/
     to: plugins
   - from: workflows/

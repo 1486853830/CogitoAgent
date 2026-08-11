@@ -62,9 +62,15 @@ export function getModelPricing(modelName?: string): Pricing {
 
 /**
  * 估算一次调用的成本（美元）。
+ * @param modelName 可选。指定本次调用实际使用的模型（子模型 / 路由后的模型）；
+ *                  省略时回退到当前活跃模型。
  */
-export function estimateCost(inputTokens: number, outputTokens: number): number {
-  const pricing = getModelPricing();
+export function estimateCost(
+  inputTokens: number,
+  outputTokens: number,
+  modelName?: string,
+): number {
+  const pricing = getModelPricing(modelName);
   const input = Number(inputTokens) || 0;
   const output = Number(outputTokens) || 0;
   return (

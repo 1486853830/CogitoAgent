@@ -25,6 +25,9 @@ import type {
 
 const PLUGINS_DIR = path.resolve(process.cwd(), 'plugins');
 
+/** 每次加载自增，用于给插件导入 URL 追加缓存破坏参数（S32 热重载无效） */
+let pluginLoadSeq = 0;
+
 function getSkillsDir(): string {
   return process.env.COGITO_SKILLS_DIR || path.resolve(process.cwd(), 'skills');
 }
@@ -139,10 +142,17 @@ class PluginManager {
     // 动态导入插件（带超时保护：插件 index.js 中的顶层 await 或无限循环
     // 不应永久阻塞 Agent 启动流程）
     const PLUGIN_IMPORT_TIMEOUT_MS = 15000;
-    const pluginUrl = pathToFileURL(indexPath).href;
+    // S32: 追加缓存破坏参数，使热重载（reloadPlugins）能真正重新求值模块代码，
+    // 否则 ESM 按 URL 缓存，卸载后重新 import 仍返回旧模块。
+    const pluginUrl = `${pathToFileURL(indexPath).href}?seq=${++pluginLoadSeq}`;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    // import 表达式单独持有引用：S4 修正——ESM 模块一经求值无法取消，
+    // 超时 reject 后 import 仍可能在后台 resolve/reject，需显式接住避免未处理异常
+    // （最差情况：恶意/挂起插件占用进程；完全隔离需改为 Worker/子进程，列入后续重构）。
+    const importPromise = import(pluginUrl);
+    importPromise.catch(() => {});
     const plugin = (await Promise.race([
-      import(pluginUrl),
+      importPromise,
       new Promise<never>((_, reject) => {
         timeoutId = setTimeout(
           () => reject(new Error(`插件加载超时 (${PLUGIN_IMPORT_TIMEOUT_MS / 1000}s): ${name}`)),
@@ -222,9 +232,20 @@ class PluginManager {
     });
 
     // 添加到全局注册表（R5.1：schema / 参数文档 / 注解 / 富错误配置随注册附带）
+    // S31: argCount 优先用声明的 param 列表 / schema 属性数，避免 fn.length 对
+    // 带默认参数函数低估（native tool calling 下 LLM 看不到可选参数）。
+    const schemaProps = (toolDef.schema as Record<string, unknown> | undefined)?.properties;
+    const schemaPropCount =
+      schemaProps && typeof schemaProps === 'object'
+        ? Object.keys(schemaProps as Record<string, unknown>).length
+        : 0;
+    const declaredParamCount = Array.isArray(toolDef.param) ? toolDef.param.length : 0;
+    // 末位仍保留 `|| 1`：既无声明也无 schema、且 fn.length 为 0（rest 参数写法）时，
+    // 至少暴露一个参数位，避免 LLM 认为该工具不接受任何入参。
+    const argCount = declaredParamCount || schemaPropCount || fn.length || 1;
     TOOL_REGISTRY[name] = {
       fn,
-      argCount: fn.length || 1,
+      argCount,
       category,
       isCustom: true,
       plugin: pluginName,

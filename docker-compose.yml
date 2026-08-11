@@ -12,7 +12,6 @@ services:
       - '9528:9528'
     environment:
       - NODE_ENV=production
-      - COGITO_THINKING_INTERVAL=3000
       # API 配置（通过环境变量或配置文件设置）
       - COGITO_API_KEY=${COGITO_API_KEY}
       - COGITO_API_BASE_URL=${COGITO_API_BASE_URL:-https://api.openai.com/v1}

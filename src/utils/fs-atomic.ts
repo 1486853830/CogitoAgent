@@ -47,15 +47,19 @@ export function writeFileAtomic(filePath: string, content: string): void {
         /* 关闭失败不掩盖原始错误 */
       }
     }
-    // rename 失败（如跨文件系统 EXDEV），回退到读+写+删除临时文件
+    // rename 失败（如跨文件系统 EXDEV），回退到读+写+删除临时文件。
+    // S9: 仅在临时文件完整时回退，避免把写了一半的坏数据覆盖到目标；
+    // 若临时文件已损坏（字节数不符）则清理后直接抛出原始错误。
     if (existsSync(tmpPath)) {
       try {
         const data = readFileSync(tmpPath);
-        writeFileSync(filePath, data, 'utf-8');
-        unlinkSync(tmpPath);
-        return;
+        if (data.length === Buffer.byteLength(content)) {
+          writeFileSync(filePath, data, 'utf-8');
+          unlinkSync(tmpPath);
+          return;
+        }
       } catch {
-        // 回退也失败，清理临时文件并抛出原始错误
+        // 回退读取失败，落到下方清理 + 抛出原始错误
       }
     }
     try {

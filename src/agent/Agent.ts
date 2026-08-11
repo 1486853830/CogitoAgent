@@ -45,11 +45,13 @@ import {
   resetContentTag,
   printToolBlock,
   exit,
+  onCleanup,
 } from '../io/terminal.ts';
 import { setReplyCallback, deliverReply, setCurrentReplyKey, getCurrentReplyKey } from './reply.ts';
 import { loadConfig } from '../config.ts';
 import {
   startWsServer,
+  stopWsServer,
   broadcast,
   onMessage,
   onStatsRequest,
@@ -59,7 +61,7 @@ import {
 import { laneQueue, AGENT_LANE_KEY } from './lane.ts';
 import { channelManager } from './channels/index.ts';
 import { startHeartbeat, getHeartbeatStatus } from './heartbeat.ts';
-import { startWebhookServer } from '../io/webhook.ts';
+import { startWebhookServer, stopWebhookServer } from '../io/webhook.ts';
 import {
   recordToolCall,
   recordMessage,
@@ -956,11 +958,8 @@ function recordAndBroadcastUsage(
     } else if (!usage.output) {
       usage.output = estimateTokens(fullResponse);
     }
-    const pricing = getModelPricing();
-    cost =
-      (usage.input / 1_000_000) * pricing.inputPerMillion +
-      (usage.output / 1_000_000) * pricing.outputPerMillion;
-    recordTokenUsage(usage.input, usage.output);
+    // 成本只算一次：recordTokenUsage 内部用同一价格表估算并返回，避免两处重复实现漂移
+    cost = recordTokenUsage(usage.input, usage.output);
     println(
       `[Token] 输入:${usage.input} 输出:${usage.output} 总计:${usage.input + usage.output}` +
         (cost > 0 ? ` 花费:约${cost.toFixed(6)}` : ''),
@@ -1234,6 +1233,21 @@ async function start(): Promise<void> {
   println('\n  准备就绪，等待您的指令...', 'green');
   state.current = STATE.AWAITING_INPUT;
   broadcast('agent-state', { state: 'idle' });
+
+  // S7: 注册优雅退出清理——关闭 WS / Webhook 服务并清理其 token 文件，
+  // 否则进程退出/卸载插件时端口、http.Server 句柄与凭据文件均不释放。
+  onCleanup(async () => {
+    try {
+      await stopWsServer();
+    } catch (e: unknown) {
+      console.error('[Agent] 关闭 WS 服务失败:', (e as Error)?.message || String(e));
+    }
+    try {
+      await stopWebhookServer();
+    } catch (e: unknown) {
+      console.error('[Agent] 关闭 Webhook 服务失败:', (e as Error)?.message || String(e));
+    }
+  });
 }
 
 export {

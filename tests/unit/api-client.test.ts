@@ -14,7 +14,6 @@ const mockLoadConfig = jest.fn(() => ({
     topP: 0.7,
     topK: 50,
     frequencyPenalty: 1,
-    thinkingInterval: 3000,
   },
 }));
 
@@ -342,7 +341,6 @@ describe('api/client.ts', () => {
           topP: 0.7,
           topK: 50,
           frequencyPenalty: 0,
-          thinkingInterval: 3000,
         },
       });
       fetchMock.mockResolvedValueOnce(makeResponse({ chunks: [encode(sseLine('[DONE]'))] }));
@@ -367,7 +365,6 @@ describe('api/client.ts', () => {
           topP: 0.7,
           topK: 80,
           frequencyPenalty: 0,
-          thinkingInterval: 3000,
         },
       });
       fetchMock.mockResolvedValueOnce(makeResponse({ chunks: [encode(sseLine('[DONE]'))] }));

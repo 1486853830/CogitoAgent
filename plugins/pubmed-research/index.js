@@ -15,29 +15,57 @@ const API_KEY = process.env.NCBI_API_KEY;
 
 /**
  * 执行 Entrez API 查询
+ * S21: 跟随 3xx 重定向（NCBI 偶尔 303），并对响应体积设上限，避免超大响应耗尽内存。
  */
-async function entrezFetch(url) {
+async function entrezFetch(url, redirects = 0) {
   const https = await import('https');
+  // 显式从 node:url 取 URL，插件运行环境的 lint/globals 不保证有全局 URL
+  const { URL } = await import('url');
   // 若存在 API key 且 URL 尚未携带，则自动拼接
   const finalUrl = API_KEY && !url.includes('api_key=') ? `${url}&api_key=${API_KEY}` : url;
+  const MAX_REDIRECTS = 5;
+  const MAX_BYTES = 20 * 1024 * 1024; // 20MB 上限
   return new Promise((resolve, reject) => {
-    https
-      .get(finalUrl, { timeout: 15000 }, (res) => {
-        // 检测 HTTP 错误状态码（4xx/5xx），避免把错误响应体当成功数据
-        if (res.statusCode && res.statusCode >= 400) {
-          reject(new Error('HTTP ' + res.statusCode + ': ' + res.statusMessage));
+    const req = https.get(finalUrl, { timeout: 15000 }, (res) => {
+      const { statusCode, headers } = res;
+      // 跟随 3xx 重定向
+      if (
+        statusCode &&
+        statusCode >= 300 &&
+        statusCode < 400 &&
+        headers.location &&
+        redirects < MAX_REDIRECTS
+      ) {
+        res.resume(); // 消费当前响应体，避免套接字泄漏
+        const nextUrl = new URL(headers.location, finalUrl).toString();
+        resolve(entrezFetch(nextUrl, redirects + 1));
+        return;
+      }
+      // 检测 HTTP 错误状态码（4xx/5xx），避免把错误响应体当成功数据
+      if (statusCode && statusCode >= 400) {
+        res.resume();
+        reject(new Error('HTTP ' + statusCode + ': ' + res.statusMessage));
+        return;
+      }
+      let data = '';
+      let size = 0;
+      res.on('data', (chunk) => {
+        size += chunk.length;
+        if (size > MAX_BYTES) {
+          res.destroy();
+          reject(new Error('响应体过大，已中止'));
           return;
         }
-        let data = '';
-        res.on('data', (chunk) => (data += chunk));
-        res.on('end', () => resolve(data));
-        res.on('error', reject);
-      })
-      .on('error', reject)
-      .on('timeout', function () {
-        this.destroy();
-        reject(new Error('请求超时'));
+        data += chunk;
       });
+      res.on('end', () => resolve(data));
+      res.on('error', reject);
+    });
+    req.on('error', reject);
+    req.on('timeout', function () {
+      this.destroy();
+      reject(new Error('请求超时'));
+    });
   });
 }
 
@@ -48,10 +76,20 @@ async function entrezFetch(url) {
  * @returns {string} - 剥离标签后的纯文本
  */
 function stripXmlTags(str) {
+  // S20: 必须先解码实体再剥离标签。原实现先剥离标签后解码，导致
+  // &lt;script&gt; 先被当成标签剥掉、再解码成 <script> 残留（XSS 隐患）。
+  // 先解码（&amp; 必须最先，避免 &amp;lt; 二次解码错误），任何被实体编码的
+  // 标签在解码后会重新进入状态机被剥离，确保输出不含可解析的标签。
+  let decoded = str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
   let out = '';
   let inTag = false;
-  for (let i = 0; i < str.length; i++) {
-    const ch = str[i];
+  for (let i = 0; i < decoded.length; i++) {
+    const ch = decoded[i];
     if (ch === '<') {
       inTag = true;
       continue;
@@ -64,13 +102,6 @@ function stripXmlTags(str) {
       out += ch;
     }
   }
-  // 解码 XML 实体（&amp; 必须最后替换，避免 &amp;lt; 被二次解码成 <）
-  out = out
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&');
   return out.trim();
 }
 
@@ -355,6 +386,7 @@ TOOLS.push({
 
       let citation = '';
 
+      // S36: 按格式生成对应样式（此前 ama/mla 走同一兜底分支，未真正区分格式）
       if (fmt === 'nlm') {
         const authStr =
           authors.length > 6 ? authors.slice(0, 6).join(', ') + ', et al.' : authors.join(', ');
@@ -363,8 +395,16 @@ TOOLS.push({
         const authStr =
           authors.length > 7 ? authors.slice(0, 7).join(', ') + '...' : authors.join(', ');
         citation = `${authStr}. (${a.year}). ${a.title}. ${a.journal}.`;
+      } else if (fmt === 'ama') {
+        const authStr =
+          authors.length > 6 ? authors.slice(0, 6).join(', ') + ', et al.' : authors.join(', ');
+        citation = `${authStr}. ${a.title}. ${a.journal}. ${a.year}.`;
+      } else if (fmt === 'mla') {
+        const authStr =
+          authors.length > 3 ? authors.slice(0, 3).join(', ') + ', et al.' : authors.join(', ');
+        citation = `${authStr}. "${a.title}." ${a.journal}, ${a.year}.`;
       } else {
-        citation = `${a.authors}. ${a.title}. ${a.journal}. ${a.year}. PMID: ${a.pmid}.`;
+        citation = `${a.authors}. ${a.title}. ${a.journal}. ${a.year}.`;
       }
 
       return {

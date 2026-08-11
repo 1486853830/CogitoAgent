@@ -81,6 +81,24 @@ export async function runPython(script, inputData, timeout = 30000) {
       },
       (error, stdout, stderr) => {
         if (error) {
+          // S5: execFile 的 timeout 选项触发时，回调的 error.code === 'ETIMEDOUT'
+          // （此时 SIGTERM 已发出）。Node 的 ChildProcess 不会 emit 'timeout'
+          // 事件，原 child.on('timeout') 监听是死代码。这里在超时回调内升级
+          // SIGKILL / taskkill /F，确保 C 扩展死循环等进程被强制终止，不留僵尸。
+          const isTimeout = error.code === 'ETIMEDOUT' || error.killed;
+          if (isTimeout && child.pid && !killed) {
+            killed = true;
+            const capturedPid = child.pid;
+            try {
+              if (process.platform === 'win32') {
+                execFile('taskkill', ['/f', '/t', '/pid', String(capturedPid)]);
+              } else {
+                process.kill(capturedPid, 'SIGKILL');
+              }
+            } catch {
+              // 进程可能已结束
+            }
+          }
           // 错误信息保留 stderr，便于排查（C5）
           const detail = stderr ? stderr.trim().replace(/\r\n/g, '\n') : error.message;
           reject(new Error(`Failed to run Python: ${detail}`));
@@ -90,26 +108,6 @@ export async function runPython(script, inputData, timeout = 30000) {
         }
       },
     );
-    // 超时后先 SIGTERM，再强制 SIGKILL（taskkill /F），防止 C 扩展僵尸进程
-    child.on('timeout', () => {
-      if (killed) return;
-      killed = true;
-      // 立即捕获 child.pid：SIGTERM 1000ms 后操作系统可能已回收 PID，
-      // 届时 child.pid 为 undefined，String(undefined) → "undefined" 导致
-      // taskkill 命令失败。
-      const capturedPid = child.pid;
-      setTimeout(() => {
-        try {
-          if (process.platform === 'win32') {
-            execFile('taskkill', ['/f', '/t', '/pid', String(capturedPid)]);
-          } else {
-            execFile('kill', ['-9', String(capturedPid)]);
-          }
-        } catch {
-          // 进程可能已结束
-        }
-      }, 1000);
-    });
     if (child.stdin) {
       // 避免 EPIPE 等流错误导致进程崩溃
       child.stdin.on('error', () => {});
@@ -129,11 +127,16 @@ export function validateOutputPath(p, allowedExt) {
   if (path.isAbsolute(p)) {
     const cwd = process.cwd();
     const normalized = path.resolve(p);
-    // Windows 大小写兼容：process.cwd() 返回大写盘符（C:\），
-    // 但 path.resolve 保留下层传入的大小写（c:\），导致 startsWith 误判
+    // S18: 用「完整目录前缀 + 路径分隔符」判定，避免前缀匹配绕过
+    // （如 cwd=C:\proj\work 时 C:\proj\workspace-secrets 会因 startsWith 误通过）。
     const cwdUpper = cwd.toUpperCase();
     const normUpper = normalized.toUpperCase();
-    if (!normUpper.startsWith(cwdUpper)) {
+    const sep = path.sep.toUpperCase();
+    const inside =
+      normUpper === cwdUpper ||
+      normUpper.startsWith(cwdUpper + sep) ||
+      (cwdUpper.endsWith(sep) && normUpper.startsWith(cwdUpper));
+    if (!inside) {
       throw new Error('输出路径必须为相对路径或工作区内的绝对路径，且不能包含 ..');
     }
   } else if (p.includes('..')) {
@@ -157,7 +160,12 @@ export function validateInputPath(p) {
     const normalized = path.resolve(p);
     const cwdUpper = cwd.toUpperCase();
     const normUpper = normalized.toUpperCase();
-    if (!normUpper.startsWith(cwdUpper)) {
+    const sep = path.sep.toUpperCase();
+    const inside =
+      normUpper === cwdUpper ||
+      normUpper.startsWith(cwdUpper + sep) ||
+      (cwdUpper.endsWith(sep) && normUpper.startsWith(cwdUpper));
+    if (!inside) {
       throw new Error('输入路径必须为相对路径或工作区内的绝对路径，且不能包含 ..');
     }
   } else if (p.includes('..')) {
@@ -174,4 +182,13 @@ export async function checkPython() {
     if (await probe(cmd)) return true;
   }
   return false;
+}
+
+/**
+ * S33: 重置 Python 探测缓存。环境补装/切换 Python 后调用，
+ * 使下次 detectPython 重新真实探测候选命令，而非沿用首次缓存的结果。
+ */
+export function resetPythonDetection() {
+  pythonCmd = null;
+  _detectPromise = null;
 }

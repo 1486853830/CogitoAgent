@@ -48,7 +48,6 @@ function setTestLanguage(lang: string) {
       topP: 0.7,
       topK: 50,
       frequencyPenalty: 1,
-      thinkingInterval: 3000,
       language: lang,
     },
     search: { enabled: true, baseURL: '', recencyFilter: '', siteFilter: '' },

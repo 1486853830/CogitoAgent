@@ -179,7 +179,6 @@ The development environment uses `config.json`, which is overridden by environme
     "model": "gpt-4o"
   },
   "chat": {
-    "thinkingInterval": 3000,
     "maxHistoryLength": 100
   },
   "workspace": "./workspace",

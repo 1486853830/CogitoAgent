@@ -20,7 +20,10 @@ function openWelcomePage(): void {
   let args: string[];
   if (isWindows) {
     cmd = 'cmd';
-    args = ['/c', 'start', '', url];
+    // S13: 必须用引号包裹 URL。cmd 会重新解析 /c 后的整行，若路径含 & 等
+    // 特殊字符（如 C:\Users\foo&calc\bar）会被当作命令分隔符造成注入。
+    // execFile 不额外加引号（URL 无空格），故此处显式加引号让 start 整体接收。
+    args = ['/c', 'start', '""', `"${url}"`];
   } else if (isMac) {
     cmd = 'open';
     args = [url];

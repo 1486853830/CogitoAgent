@@ -245,40 +245,14 @@ function question(rl: readline.Interface, text: string): Promise<string> {
 
 /**
  * 检查环境变量是否已配置
+ * S14: 与 isConfigured() 使用同一套 AND 判定（四项齐全），否则 .env 仅配
+ * COGITO_API_KEY 时会被误判为"已配置"、runSetup 直接返回，但主流程 isConfigured()
+ * 仍为 false，下次启动又进向导，形成反复引导的怪圈。
  */
 function checkEnvConfig(): boolean {
   const envConfig = loadEnvConfig();
-  const hasApiConfig = !!(
-    envConfig.api &&
-    (envConfig.api.apiKey || envConfig.api.baseURL || envConfig.api.model)
-  );
-  return hasApiConfig;
-}
-
-/**
- * 配置思考间隔
- */
-async function configureThinkingInterval(rl: readline.Interface): Promise<number> {
-  printStepTitle(5, '思考间隔配置（可选）');
-  println('');
-  printTip('AI 自动思考的时间间隔，单位毫秒，最小值 1000');
-  println(COLORS.dim + '  按回车使用默认值: 3000' + COLORS.reset);
-  println('');
-
-  const answer = await question(rl, COLORS.yellow + '  请输入思考间隔: ' + COLORS.reset);
-  const trimmed = answer.trim();
-
-  if (!trimmed) {
-    return 3000;
-  }
-
-  const interval = parseInt(trimmed, 10);
-  if (!isNaN(interval) && interval >= 1000) {
-    return interval;
-  }
-
-  printWarning('无效值，使用默认值 3000');
-  return 3000;
+  const a = envConfig.api;
+  return !!(a && a.apiKey && a.baseURL && a.model && a.provider);
 }
 
 /**
@@ -591,11 +565,7 @@ async function runSetup(): Promise<Record<string, unknown> | null> {
   printInfo(`工作区: ${normalizedWorkspace}`);
   println('');
 
-  // 5. 思考间隔配置（可选）
-  const thinkingInterval = await configureThinkingInterval(rl);
-  println('');
-
-  // 6. 启动模式配置（可选）
+  // 5. 启动模式配置（可选）
   const mode = await configureMode(rl);
   println('');
 
@@ -639,12 +609,8 @@ async function runSetup(): Promise<Record<string, unknown> | null> {
       siteFilter: '',
     },
     workspace: normalizedWorkspace,
-    // thinkingInterval 对齐 Config.chat.thinkingInterval：
-    // 此前放在顶层，与 Config 类型 schema 不一致，直接消费该返回对象的代码
-    // 会从 cfg.chat.thinkingInterval 取不到用户设定的值。
     chat: {
       ...DEFAULT_CONFIG.chat,
-      thinkingInterval,
     },
     mode,
     email: emailConfig

@@ -121,13 +121,15 @@ function startWebhookServer(opts: WebhookOptions): Promise<http.Server> {
 
     server = http.createServer(async (req, res) => {
       try {
-        if (!isAuthorized(req, token)) {
-          sendJSON(res, 401, { ok: false, error: '未授权' });
+        // S24: 健康检查端点放行鉴权，供容器/负载均衡的 HEALTHCHECK 无 token 探测，
+        // 否则未携带 token 的探针会被 401 拒绝，导致实例被误判不健康。
+        if (req.url === '/health') {
+          sendJSON(res, 200, { status: 'ok' });
           return;
         }
 
-        if (req.url === '/health') {
-          sendJSON(res, 200, { status: 'ok' });
+        if (!isAuthorized(req, token)) {
+          sendJSON(res, 401, { ok: false, error: '未授权' });
           return;
         }
 
@@ -205,6 +207,13 @@ async function stopWebhookServer(): Promise<void> {
       }
     });
     server = null;
+  }
+  // S7: 退出时清理 token 文件，避免遗留明文凭据文件
+  try {
+    const tokenPath = getWebhookTokenPath();
+    if (fs.existsSync(tokenPath)) fs.unlinkSync(tokenPath);
+  } catch {
+    // 忽略清理失败
   }
 }
 

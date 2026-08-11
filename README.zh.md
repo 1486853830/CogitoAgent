@@ -39,7 +39,7 @@
 | ------------------- | -------------------------------------------------------------------------------------------------- |
 | **TypeScript 核心** | 全量 TypeScript 重构，类型安全，编译时错误检测                                                     |
 | **隐私优先**        | 用户工作文件保留在本地，仅通过 API 将必要上下文发送至你指定的模型服务商                            |
-| **持续思考**        | 每 3 秒自动触发一次思考循环（可配置）                                                              |
+| **持续思考**        | 事件驱动，随用户消息与工具结果持续推进思考循环（无固定轮询间隔）                                   |
 | **工具执行**        | 28 工具模块，200+ 工具，覆盖文件操作、代码执行、Git、数据库、OCR、Office 文档、生物信息等          |
 | **安全沙箱**        | JavaScript 代码执行使用 `isolated-vm` 进行进程级隔离                                               |
 | **多会话管理**      | 多个独立的对话会话，持久化存储，自动压缩                                                           |
@@ -305,20 +305,20 @@ flowchart TB
     class LLM api;
 ```
 
-| 组件                  | 职责                                                        |
-| --------------------- | ----------------------------------------------------------- |
-| **Agent.ts**          | 思考循环 —— 每 3 秒自动触发                                 |
-| **state.ts**          | 状态机 —— THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION |
-| **registry.ts**       | 工具注册表 —— 集中管理所有工具模块                          |
-| **session.ts**        | 会话管理 —— 多会话切换、上下文压缩                          |
-| **commands.ts**       | 命令处理 —— /help, /status, /persona, /sessions 等          |
-| **sandbox.ts**        | 代码沙箱 —— isolated-vm 进程级隔离                          |
-| **stats.ts**          | 统计 —— 工具使用追踪和指标                                  |
-| **tracing.ts**        | 追踪 —— 工具执行和 LLM 调用的轻量级可观测性                 |
-| **retry.ts**          | 重试与熔断 —— 可靠的网络请求                                |
-| **plugin.ts**         | 插件系统 —— 动态加载自定义工具插件                          |
-| **ws-server.ts**      | WebSocket —— 桌面模式通信（端口 9527）                      |
-| **wechat-manager.ts** | 微信通道 —— iLink 协议集成、消息路由、会话同步              |
+| 组件                  | 职责                                                             |
+| --------------------- | ---------------------------------------------------------------- |
+| **Agent.ts**          | 思考循环 —— 事件驱动，随消息/工具结果即时推进（无固定 3 秒轮询） |
+| **state.ts**          | 状态机 —— THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION      |
+| **registry.ts**       | 工具注册表 —— 集中管理所有工具模块                               |
+| **session.ts**        | 会话管理 —— 多会话切换、上下文压缩                               |
+| **commands.ts**       | 命令处理 —— /help, /status, /persona, /sessions 等               |
+| **sandbox.ts**        | 代码沙箱 —— isolated-vm 进程级隔离                               |
+| **stats.ts**          | 统计 —— 工具使用追踪和指标                                       |
+| **tracing.ts**        | 追踪 —— 工具执行和 LLM 调用的轻量级可观测性                      |
+| **retry.ts**          | 重试与熔断 —— 可靠的网络请求                                     |
+| **plugin.ts**         | 插件系统 —— 动态加载自定义工具插件                               |
+| **ws-server.ts**      | WebSocket —— 桌面模式通信（端口 9527）                           |
+| **wechat-manager.ts** | 微信通道 —— iLink 协议集成、消息路由、会话同步                   |
 
 > 完整架构详情：思考循环图、工具调用流程、状态机、消息流、WebSocket → [introduction/architecture.md](introduction/architecture.md)
 

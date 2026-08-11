@@ -1104,7 +1104,7 @@
           <div class="feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
             <div class="feature-title">Continuous Thinking<span class="zh">持续思考</span></div>
-            <div class="feature-desc"><span class="en">Auto-triggers analysis every 3 seconds</span><span class="zh">每3秒自动触发分析</span></div>
+            <div class="feature-desc"><span class="en">Event-driven, thinks continuously as events arrive</span><span class="zh">事件驱动，随事件持续思考</span></div>
           </div>
           <div class="feature-card">
             <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
@@ -1429,8 +1429,8 @@
         <h2 class="section-title"><span class="en">Architecture</span><span class="zh">架构设计</span></h2>
       </div>
       <p class="section-text bilingual">
-        <span class="en">The Agent core runs a continuous thinking loop. After startup, it automatically triggers one thinking cycle every 3 seconds (configurable via <code>thinkingInterval</code>): build context → call API → parse output → execute tools → repeat.</span>
-        <span class="zh">Agent 核心运行着一个持续思考循环。启动后每3秒自动触发一轮思考（可通过 <code>thinkingInterval</code> 配置）：构建上下文 → 调用 API → 解析输出 → 执行工具 → 循环。</span>
+        <span class="en">The Agent core runs an event-driven thinking loop: on each user message or tool result it builds context → calls the API → parses output → executes tools → and immediately continues. No fixed polling interval — turns advance as fast as the model and tools allow.</span>
+        <span class="zh">Agent 核心运行事件驱动的思考循环：每收到一条用户消息或工具结果，便构建上下文 → 调用 API → 解析输出 → 执行工具 → 并立即推进下一轮。无固定轮询间隔，循环速度取决于模型与工具的实际耗时。</span>
       </p>
       <div class="arch-grid">
         <div class="arch-item">
@@ -1658,8 +1658,8 @@
             <div style="color: var(--accent-primary); font-size: 1.2rem;">↻</div>
           </div>
           <p class="section-text bilingual" style="font-size: 0.85rem; text-align: center; margin-top: 16px;">
-            <span class="en">Auto-repeats every 3 seconds until response is ready (configurable via <code>thinkingInterval</code>)</span>
-            <span class="zh">每3秒自动重复，直到响应准备就绪（可通过 <code>thinkingInterval</code> 配置）</span>
+            <span class="en">Continues until the response is ready; turns advance immediately as tool results arrive</span>
+            <span class="zh">持续运行直到响应就绪；工具结果返回后立即推进下一轮</span>
           </p>
         </div>
       </div>

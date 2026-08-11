@@ -10,7 +10,15 @@
  * 文件超过 maxBytes 时自动轮转：app.log -> app.log.1 -> app.log.2 ...
  */
 
-import { appendFileSync, statSync, renameSync, existsSync, mkdirSync, writeFileSync } from 'fs';
+import {
+  appendFileSync,
+  statSync,
+  renameSync,
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  unlinkSync,
+} from 'fs';
 import path from 'path';
 
 const LOG_LEVELS: Record<string, number> = {
@@ -24,8 +32,9 @@ const envLogLevel = process.env.LOG_LEVEL;
 let currentLevel: number =
   process.env.DEBUG === 'true'
     ? LOG_LEVELS.DEBUG
-    : envLogLevel
-      ? LOG_LEVELS[envLogLevel.toUpperCase()] || LOG_LEVELS.INFO
+    : envLogLevel !== undefined && envLogLevel !== ''
+      ? // 用 ?? 而非 ||：LOG_LEVELS.DEBUG === 0 是 falsy，否则设 DEBUG 会回落到 INFO（S6）
+        (LOG_LEVELS[envLogLevel.toUpperCase()] ?? LOG_LEVELS.INFO)
       : LOG_LEVELS.INFO;
 
 // 日志前缀
@@ -56,19 +65,24 @@ function rotateIfNeeded(): void {
     const stats = statSync(LOG_FILE);
     if (stats.size < LOG_MAX_BYTES) return;
 
-    // 从最旧的开始重命名：app.log.(N-1) -> app.log.N（删除最旧的）
-    for (let i = LOG_MAX_FILES - 1; i > 0; i--) {
+    // 从最旧的开始重命名：app.log.(N) -> app.log.(N+1)，超出 LOG_MAX_FILES 则删除最旧文件。
+    for (let i = LOG_MAX_FILES; i >= 1; i--) {
       const src = `${LOG_FILE}.${i}`;
-      const dst = `${LOG_FILE}.${i + 1}`;
-      if (existsSync(src)) {
-        if (i + 1 > LOG_MAX_FILES) {
-          // 超出保留数量，覆盖即删除：直接重命名到 dst（若 dst 存在会被覆盖）
-        }
+      if (!existsSync(src)) continue;
+      const dstIndex = i + 1;
+      if (dstIndex > LOG_MAX_FILES) {
+        // 超出保留数量，删除最旧文件而非重命名（避免无限增长）
         try {
-          renameSync(src, dst);
+          unlinkSync(src);
         } catch {
-          // 忽略单个文件轮转失败
+          // 忽略单个文件删除失败
         }
+        continue;
+      }
+      try {
+        renameSync(src, `${LOG_FILE}.${dstIndex}`);
+      } catch {
+        // 忽略单个文件轮转失败
       }
     }
     // 主文件 -> app.log.1

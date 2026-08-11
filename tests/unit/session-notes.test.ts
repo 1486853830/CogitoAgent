@@ -28,18 +28,45 @@ const {
   getPartitionStats,
   updateSystemPrompt,
   setConversationHistory,
+  flushSessionWrites,
 } = await import('../../src/agent/session.ts');
 
+/**
+ * session.ts 的 add* 系列是 fire-and-forget 异步写入（saveSessionAsync）。
+ * flushSessionWrites() 只保证写队列 settle，Windows 上底层文件句柄可能稍后才释放，
+ * 此时 rmSync 会抛 EPERM。测试清理必须「先 flush，再带退避重试删除」，
+ * 否则在全量串行运行（机器更繁忙）时会随机失败——单跑却能通过，极具迷惑性。
+ */
+async function flushAndRemove(target: string, attempts = 8): Promise<void> {
+  try {
+    await flushSessionWrites?.();
+  } catch {
+    /* 忽略 flush 异常，继续清理 */
+  }
+  for (let i = 0; i < attempts; i++) {
+    try {
+      fs.rmSync(target, { recursive: true, force: true });
+      return;
+    } catch (e) {
+      if (i === attempts - 1) {
+        throw new Error(`无法删除测试临时目录 ${target}: ${(e as Error).message}`, { cause: e });
+      }
+      // 退避等待，给操作系统释放文件句柄的时间
+      await new Promise((resolve) => setTimeout(resolve, 50 * (i + 1)));
+    }
+  }
+}
+
 describe('session.ts notes / markers / partitioning (R3)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     const dataDir = path.join(TMP_DIR, 'data');
-    fs.rmSync(dataDir, { recursive: true, force: true });
+    await flushAndRemove(dataDir);
     fs.mkdirSync(dataDir, { recursive: true });
     initializeSession();
   });
 
-  afterAll(() => {
-    fs.rmSync(TMP_DIR, { recursive: true, force: true });
+  afterAll(async () => {
+    await flushAndRemove(TMP_DIR);
   });
 
   describe('session notes (R3.6)', () => {

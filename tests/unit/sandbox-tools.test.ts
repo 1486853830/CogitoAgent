@@ -61,6 +61,16 @@ const {
   createJavaScriptSandbox,
 }: any = await import('../../src/agent/tools/sandbox.ts');
 
+// 跳过必须是"可见"的：静默 skip 会让 CI 上永远绿灯却什么都没测。
+// 设置 COGITO_TEST_REQUIRE_PYTHON=1 可强制要求 python 存在（CI 推荐开启）。
+if (!pythonAvailable) {
+  const msg = '[WARN] 未检测到可用的 python，依赖 python 的沙箱用例将被跳过（跳过 ≠ 通过）';
+  if (process.env.COGITO_TEST_REQUIRE_PYTHON === '1') {
+    throw new Error(msg.replace('[WARN]', '[FATAL]') + '；已开启 COGITO_TEST_REQUIRE_PYTHON=1');
+  }
+  console.warn(msg);
+}
+
 const pyIt = pythonAvailable ? it : it.skip;
 
 describe('sandbox tools', () => {

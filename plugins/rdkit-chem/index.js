@@ -193,10 +193,13 @@ TOOLS.push({
   name: 'molSimilarity',
   description: '计算两个分子之间的 Tanimoto 相似度',
   category: 'chemistry',
-  fn: async (smiles1, smiles2) => {
+  fn: async (smiles1, smiles2, radius = 2) => {
     if (!smiles1 || !smiles2) {
       return { success: false, error: '请输入两个 SMILES 字符串' };
     }
+    // S35: radius 此前被忽略（硬编码 2）；校验后传入，控制 Morgan 指纹半径
+    const parsedRadius = parseInt(radius, 10);
+    const safeRadius = Number.isFinite(parsedRadius) && parsedRadius > 0 ? parsedRadius : 2;
     try {
       const script = `
 import json, sys
@@ -205,19 +208,22 @@ from rdkit.Chem import AllChem
 from rdkit.DataStructs import TanimotoSimilarity
 
 data = json.load(sys.stdin)
+radius = int(data.get("radius", 2))
+if radius <= 0:
+    radius = 2
 mol1 = Chem.MolFromSmiles(data["smiles1"])
 mol2 = Chem.MolFromSmiles(data["smiles2"])
 if mol1 is None or mol2 is None:
     print("ERROR:Invalid SMILES")
 else:
-    fp1 = AllChem.GetMorganFingerprintAsBitVect(mol1, 2, nBits=2048)
-    fp2 = AllChem.GetMorganFingerprintAsBitVect(mol2, 2, nBits=2048)
+    fp1 = AllChem.GetMorganFingerprintAsBitVect(mol1, radius, nBits=2048)
+    fp2 = AllChem.GetMorganFingerprintAsBitVect(mol2, radius, nBits=2048)
     sim = TanimotoSimilarity(fp1, fp2)
-    print(f"Tanimoto 相似度: {sim:.4f}")
+    print(f"Tanimoto 相似度 (radius={radius}): {sim:.4f}")
     desc = '非常相似 (>=0.85)' if sim >= 0.85 else '相似 (>=0.7)' if sim >= 0.7 else '中等相似 (>=0.5)' if sim >= 0.5 else '不相似 (<0.5)'
     print(f"描述: {desc}")
 `;
-      const result = await runPython(script, { smiles1, smiles2 });
+      const result = await runPython(script, { smiles1, smiles2, radius: safeRadius });
       if (result.startsWith('ERROR:')) {
         return { success: false, error: result.replace('ERROR:', '').trim() };
       }

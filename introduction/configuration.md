@@ -32,8 +32,7 @@ The configuration file is located at `config.json` in the user data directory, i
     "temperature": 0.7,
     "topP": 0.7,
     "topK": 50,
-    "frequencyPenalty": 1,
-    "thinkingInterval": 3000
+    "frequencyPenalty": 1
   },
   "search": {
     "enabled": true,
@@ -159,13 +158,6 @@ COGITO_API_PROVIDER=openai
 
 # 模型名称（可选）
 COGITO_MODEL=gpt-4o
-
-# ============================================
-# 思考间隔配置（可选）
-# ============================================
-
-# 自动思考间隔时间（毫秒），最小值 1000
-COGITO_THINKING_INTERVAL=3000
 
 # ============================================
 # 启动模式配置（可选）
@@ -349,13 +341,12 @@ Supports multiple AI providers; the `COGITO_`-prefixed versions are recommended;
 
 ### 4.3 Thinking & Execution Config / 思考与执行配置
 
-| 环境变量                   | 对应配置路径            | 必需 | 默认值   | 说明                              |
-| -------------------------- | ----------------------- | ---- | -------- | --------------------------------- |
-| `COGITO_THINKING_INTERVAL` | `chat.thinkingInterval` | 否   | `3000`   | 自动思考间隔（毫秒），最小值 1000 |
-| `COGITO_CODE_TIMEOUT`      | `code.maxExecutionTime` | 否   | `30000`  | 代码执行超时时间（毫秒）          |
-| `COGITO_CODE_MAX_OUTPUT`   | `code.maxOutputSize`    | 否   | `100000` | 代码输出最大大小（字符数）        |
-| `COGITO_CONFIRM_DANGEROUS` | -                       | 否   | `true`   | 是否启用危险操作二次确认          |
-| `COGITO_SANDBOX_MODE`      | -                       | 否   | `true`   | 是否启用代码沙盒隔离执行          |
+| 环境变量                   | 对应配置路径            | 必需 | 默认值   | 说明                       |
+| -------------------------- | ----------------------- | ---- | -------- | -------------------------- |
+| `COGITO_CODE_TIMEOUT`      | `code.maxExecutionTime` | 否   | `30000`  | 代码执行超时时间（毫秒）   |
+| `COGITO_CODE_MAX_OUTPUT`   | `code.maxOutputSize`    | 否   | `100000` | 代码输出最大大小（字符数） |
+| `COGITO_CONFIRM_DANGEROUS` | -                       | 否   | `true`   | 是否启用危险操作二次确认   |
+| `COGITO_SANDBOX_MODE`      | -                       | 否   | `true`   | 是否启用代码沙盒隔离执行   |
 
 ### 4.4 Database Config / 数据库配置
 
@@ -558,40 +549,6 @@ The JSON structure of each archive file:
 | 会话文件 | 不自动删除    | 可通过 `/delete` 命令手动删除 |
 | 最少会话 | 至少保留 1 个 | 不允许删除最后一个会话        |
 
-### 5.4 Thinking Interval Optimization / 思考间隔优化
-
-**Code config / 代码配置：**
-
-```json
-{
-  "chat": {
-    "thinkingInterval": 3000
-  }
-}
-```
-
-**Environment variable / 环境变量：**
-
-```bash
-COGITO_THINKING_INTERVAL=3000
-```
-
-**Notes / 注意事项：**
-
-- Environment variables take priority over the config file. / 环境变量优先级高于配置文件
-- Environment variable values must be `>= 1000` (1 second); values below 1000 are ignored and fall back to the config file or default value. / 环境变量值必须 `>= 1000`（1 秒），小于 1000 的值将被忽略，改用配置文件或默认值
-- Values in the config file are not lower-bounded, but it is recommended not to go below 1000. / 配置文件中的值无下限校验，但建议不要低于 1000
-
-**Recommended values / 推荐值参考：**
-
-| 使用场景                | 推荐间隔    | 说明                                   |
-| ----------------------- | ----------- | -------------------------------------- |
-| 高性能 API（如 gpt-4o） | 1000-2000ms | 响应快，可缩短间隔提升交互感           |
-| 普通 API                | 2000-4000ms | 默认 3000ms，平衡响应速度和 Token 消耗 |
-| 慢速/高延迟 API         | 4000-6000ms | 减少不必要的轮询，降低 Token 消耗      |
-| 长时间自主探索          | 3000-5000ms | Agent 自主探索时，较长的间隔更合理     |
-| 调试/开发               | 1000ms      | 快速迭代，实时反馈                     |
-
 ## 3. Reasoning & Speculative Execution (R2.7 / R2.8 / R2.9) / 推理与推测执行（R2.7 / R2.8 / R2.9）
 
 ### 3.1 Reasoning Depth Knobs (R2.9) / 推理深度旋钮（R2.9）
@@ -617,6 +574,3 @@ The `chat` config adds the following fields, all passed through the request body
 - `draftModel`: draft model name (lightweight/cheap); defaults to reusing the main model. / `draftModel`：草稿模型名（轻量/廉价），缺省复用主模型。
 - `auto: true`: auto mode. `PatternStore` (`data/speculation-patterns.json`) mines "context signature → predicted tool" patterns from execution traces; once both the hit rate (`confidenceThreshold`, default 0.8) and sample count (`minSamples`, default 5) meet thresholds, speculative execution is enabled automatically. / `auto: true`：自动模式。由 `PatternStore`（`data/speculation-patterns.json`）从执行轨迹挖掘「上下文签名 → 预测工具」模式，命中率（`confidenceThreshold`，默认 0.8）与样本数（`minSamples`，默认 5）双达标后自动启用推测执行。
 - `confidenceThreshold` / `minSamples`: thresholds for auto-enabling. / `confidenceThreshold` / `minSamples`：自动启用的门槛。
-
-> Note: `thinkingInterval` is a legacy field. Since R2.1/R2.2 the main loop has been event-driven and no longer advances on a fixed 3-second poll, so this value no longer drives the auto-thinking cadence.
-> 注意：`thinkingInterval` 为历史字段。自 R2.1/R2.2 起主循环已改为事件驱动，不再以固定 3 秒轮询推进，该值不再驱动自动思考节奏。

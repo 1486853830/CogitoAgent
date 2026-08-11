@@ -123,7 +123,9 @@ except Exception as e:
     print("提示: BLAST 需要网络连接，请确保能访问 NCBI 服务器。")
     sys.exit(1)
 `;
-      const result = await runPython(script, { sequence, program: prog, database: db }, 60000);
+      // S19: NCBI BLAST 常需数分钟，原 60s 偏短；配合 python-runner 的超时
+      // 强制终止（S5），可安全放宽到 120s，避免正常网络等待被误杀。
+      const result = await runPython(script, { sequence, program: prog, database: db }, 120000);
       return { success: true, data: result.trim() };
     } catch (error) {
       return { success: false, error: `BLAST 搜索失败: ${error.message}` };
@@ -180,8 +182,11 @@ needs_molecule = out_fmt in ("genbank", "embl") and in_fmt in ("fasta", "fastq")
 
 if needs_molecule:
     records = list(SeqIO.parse(in_path, in_fmt))
+    # S34: 不要硬编码 DNA——根据序列是否含尿嘧啶(U)推断 RNA/DNA，
+    # 否则 RNA 序列被标为 DNA 会导致 Biopython 后续解析/校验异常。
     for rec in records:
-        rec.annotations["molecule_type"] = "DNA"
+        seq_upper = str(rec.seq).upper()
+        rec.annotations["molecule_type"] = "RNA" if "U" in seq_upper else "DNA"
     count = SeqIO.write(records, out_path, out_fmt)
 else:
     count = SeqIO.convert(in_path, in_fmt, out_path, out_fmt)

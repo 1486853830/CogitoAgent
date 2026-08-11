@@ -1,6 +1,7 @@
 /* ============================================================
  *  Widget: ECG Trace — 思考流心电图
- *  横向滚动的折线,每 3 秒 think cycle 触发波峰
+ *  横向滚动的折线,波峰完全由真实 thought-trace 事件驱动
+ *  Agent 空闲时保持平直滚动(不合成假心跳)
  *  工具调用失败时变红色尖刺
  *  依赖 WS 推送的 thought-trace 事件
  * ============================================================ */
@@ -11,7 +12,8 @@ window.WidgetRegistry?.register('ecg', (container) => {
     ctx: null,
     data: [], // 采样点 {t: ms, v: number}
     maxPoints: 240, // 大约 60 秒(250ms 一个点)
-    intervalId: null,
+    intervalId: null, // 衰减 + 重绘循环
+    unsubTrace: null, // thought-trace 取消订阅函数
     lastBeat: 0,
     width: 0,
     height: 0,
@@ -158,7 +160,7 @@ window.WidgetRegistry?.register('ecg', (container) => {
         <div class="widget-head">
           <span class="widget-head-mark">▸</span>
           <span class="widget-head-label">THINK ECG</span>
-          <span class="widget-head-meta">${window.I18n ? window.I18n.t('widget.heartbeat3s') : '3s 心跳'}</span>
+          <span class="widget-head-meta">${window.I18n ? window.I18n.t('widget.realtime') : '实时'}</span>
         </div>
         <div class="ecg-wrap">
           <canvas class="ecg-canvas"></canvas>
@@ -180,9 +182,9 @@ window.WidgetRegistry?.register('ecg', (container) => {
       document.addEventListener('cogito:langchange', state.langHandler);
       state.resizeHandler = resize;
       window.addEventListener('resize', state.resizeHandler);
-      // 监听 thought-trace 事件
+      // 监听 thought-trace 事件——波峰的唯一真实来源
       if (window.electronAPI?.on) {
-        window.electronAPI.on('thought-trace', (data) => {
+        const unsub = window.electronAPI.on('thought-trace', (data) => {
           const action = data?.action || data?.type;
           const step = data?.step || {};
           if (action === 'add') {
@@ -193,15 +195,11 @@ window.WidgetRegistry?.register('ecg', (container) => {
             beat('fail');
           }
         });
+        // preload 的 on() 返回取消订阅函数，销毁时必须调用，否则重复挂载会累积监听器
+        if (typeof unsub === 'function') state.unsubTrace = unsub;
       }
-      // 心跳: 每 3 秒推一个 think beat,模拟 think cycle
-      // 页面隐藏时不模拟心跳，避免无意义的 CPU 消耗
+      // 衰减 + 重绘循环（Agent 空闲时曲线保持平直滚动，不再合成假心跳）
       state.intervalId = setInterval(() => {
-        if (document.hidden) return;
-        beat('think');
-      }, 3000);
-      // 衰减 + 重绘循环
-      state.intervalId2 = setInterval(() => {
         if (document.hidden) return;
         decay();
         draw();
@@ -214,14 +212,20 @@ window.WidgetRegistry?.register('ecg', (container) => {
     },
     destroy() {
       if (state.intervalId) clearInterval(state.intervalId);
-      if (state.intervalId2) clearInterval(state.intervalId2);
+      if (state.unsubTrace) {
+        try {
+          state.unsubTrace();
+        } catch (e) {
+          console.warn('[widget-ecg] 取消 thought-trace 订阅失败:', e);
+        }
+      }
       if (state.langHandler) document.removeEventListener('cogito:langchange', state.langHandler);
       if (state.resizeHandler) window.removeEventListener('resize', state.resizeHandler);
       state.data = [];
       state.langHandler = null;
       state.resizeHandler = null;
       state.intervalId = null;
-      state.intervalId2 = null;
+      state.unsubTrace = null;
     },
   };
 });

@@ -6,7 +6,7 @@ const mockPrintTag = jest.fn((text: string) => `[${text}]`);
 const mockLoadConfig = jest.fn(() => ({
   persona: 'default',
   api: { model: 'gpt-4', baseURL: 'https://api.example.com', apiKey: 'sk-1234567890' },
-  chat: { thinkingInterval: 3000 },
+  chat: {},
   workspace: './',
   database: { path: './data' },
   email: { smtpHost: 'smtp.example.com' },

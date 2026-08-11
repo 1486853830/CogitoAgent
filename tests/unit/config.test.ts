@@ -23,7 +23,6 @@ describe('config.ts', () => {
     'COGITO_API_BASE_URL',
     'COGITO_API_PROVIDER',
     'COGITO_MODEL',
-    'COGITO_THINKING_INTERVAL',
     'COGITO_EMAIL_HOST',
     'COGITO_EMAIL_PORT',
     'COGITO_EMAIL_USER',
@@ -90,7 +89,6 @@ describe('config.ts', () => {
       expect(DEFAULT_CONFIG.api.model).toBe('');
       expect(DEFAULT_CONFIG.chat.maxTokens).toBe(131072);
       expect(DEFAULT_CONFIG.chat.temperature).toBe(0.7);
-      expect(DEFAULT_CONFIG.chat.thinkingInterval).toBe(3000);
       expect(DEFAULT_CONFIG.search.enabled).toBe(true);
       expect(DEFAULT_CONFIG.workspace).toBe(path.join(os.homedir(), 'cogito-workspace'));
     });
@@ -191,22 +189,6 @@ describe('config.ts', () => {
       expect(result.api?.baseURL).toBe('https://test.com');
       expect(result.api?.provider).toBe('openai');
       expect(result.api?.model).toBe('gpt-4');
-    });
-
-    it('should load chat config from environment', () => {
-      process.env.COGITO_THINKING_INTERVAL = '5000';
-
-      const result = loadEnvConfig();
-
-      expect(result.chat?.thinkingInterval).toBe(5000);
-    });
-
-    it('should ignore invalid thinking interval', () => {
-      process.env.COGITO_THINKING_INTERVAL = '500';
-
-      const result = loadEnvConfig();
-
-      expect(result.chat).toBeUndefined();
     });
 
     it('should load email config from environment', () => {

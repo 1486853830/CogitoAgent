@@ -158,6 +158,10 @@ const advanceHandlers: AdvanceInteractionHandlers = {
     });
     const maxTokens = typeof params.maxTokens === 'number' ? params.maxTokens : undefined;
     const temperature = typeof params.temperature === 'number' ? params.temperature : undefined;
+    // 外部 MCP server 借用本地模型生成内容属于安全敏感行为，必须留痕到具体 server
+    console.log(
+      `[MCP Sampling] ${serverName} 请求生成（${normalized.length} 条消息，maxTokens=${maxTokens ?? '默认'}）`,
+    );
     const text = await chatText(normalized, { maxTokens, temperature });
     return { model: '', role: 'assistant', content: { type: 'text', text } };
   },

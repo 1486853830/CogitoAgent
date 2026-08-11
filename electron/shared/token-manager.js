@@ -23,9 +23,17 @@ const TokenManager = {
     this.detailEl = options.detailEl || document.getElementById('tokenDetail');
     this.panelEl = options.panelEl || document.getElementById('tokenPanel');
 
-    // 监听 WS 推送的 token 用量
+    // 监听 WS 推送的 token 用量（重复 init 时先退订旧监听器，避免累积）
     if (window.electronAPI?.onTokenUsage) {
-      window.electronAPI.onTokenUsage((data) => this.update(data));
+      if (typeof this._unsubTokenUsage === 'function') {
+        try {
+          this._unsubTokenUsage();
+        } catch {
+          /* 忽略取消失败 */
+        }
+      }
+      const unsub = window.electronAPI.onTokenUsage((data) => this.update(data));
+      this._unsubTokenUsage = typeof unsub === 'function' ? unsub : null;
     }
 
     // 启动时主动拉取一次
@@ -36,16 +44,18 @@ const TokenManager = {
     console.log('[TokenManager] 初始化完成');
   },
 
+  // E2: 保存 on() 返回的取消订阅函数（preload 未暴露 off），用于重复 init 时去重
+  _unsub: null,
+  _unsubTokenUsage: null,
+
   async _requestInitial() {
     try {
       if (window.electronAPI?.sendStatsRequest) {
         window.electronAPI.sendStatsRequest({ type: 'tokens' });
       }
-      // 防止重复注册：页面热重载或多次调用 init() 时，先移除旧监听器，
-      // 避免 N 次重载后每个 stats-response 被 N 个 handler 重复处理。
-      if (window.electronAPI?.off) {
-        window.electronAPI.off('stats-response', this._statsHandler);
-      }
+      // 防止重复注册：页面热重载或多次调用 init() 时，先取消旧监听器（preload
+      // 的 on 返回取消订阅函数，并未暴露 off），避免 N 次重载后每个
+      // stats-response 被 N 个 handler 重复处理。
       this._statsHandler =
         this._statsHandler ||
         ((msg) => {
@@ -54,8 +64,15 @@ const TokenManager = {
             this.update(payload);
           }
         });
+      if (typeof this._unsub === 'function') {
+        try {
+          this._unsub();
+        } catch {
+          /* 忽略取消失败 */
+        }
+      }
       if (window.electronAPI?.on) {
-        window.electronAPI.on('stats-response', this._statsHandler);
+        this._unsub = window.electronAPI.on('stats-response', this._statsHandler);
       }
     } catch (e) {
       console.warn('[TokenManager] 初始拉取失败:', e);

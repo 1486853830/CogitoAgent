@@ -40,6 +40,16 @@ function getTokenFilePath(): string {
   return path.join(dataDir, '.ws-token');
 }
 
+/** S12: hello-ok 状态快照需防 handler 抛错——否则异常冒泡到 connection 回调会崩溃进程 */
+function safeSnapshot(): Record<string, unknown> {
+  try {
+    return statusSnapshotHandler ? statusSnapshotHandler() : { state: 'unknown' };
+  } catch (e: unknown) {
+    console.error('[WS] 状态快照获取失败:', (e as Error)?.message || String(e));
+    return { state: 'unknown' };
+  }
+}
+
 function writeTokenFile(): void {
   try {
     const tokenPath = getTokenFilePath();
@@ -195,7 +205,7 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
         // 让客户端立即知道 Agent 的整体运行状态（对齐 OpenClaw 的 hello-ok 协议）。
         sendToClient(ws, {
           type: 'hello-ok',
-          presence: statusSnapshotHandler ? statusSnapshotHandler() : { state: 'unknown' },
+          presence: safeSnapshot(),
           uptime: getServerUptimeMs(),
           rateLimit: { maxMessagesPerMinute: 60, windowMs: 60000 },
           serverTime: new Date().toISOString(),
@@ -212,7 +222,8 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
           console.error('[WS] 连接错误:', err.message);
         });
 
-        // 心跳检测：每 30 秒 ping 一次，若 10 秒内未收到 pong 则断开
+        // 心跳检测：每 30 秒 ping 一次；S16 修正：发出 ping 后启动独立 10s
+        // pong 等待计时器，若 10 秒内未收到 pong 则判定超时断开（与注释意图一致）。
         const alive = ws as AliveSocket;
         alive.__isAlive = true;
         ws.on('pong', () => {
@@ -230,6 +241,20 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
           alive.__isAlive = false;
           if (typeof (ws as AliveSocket & { ping?: () => void }).ping === 'function') {
             ws.ping();
+            // 10s 内未收到 pong 则判定超时断开连接
+            const pongGuard = setTimeout(() => {
+              if (alive.__isAlive === false) {
+                console.log('[WS] 心跳 pong 超时（10s），断开连接');
+                clearInterval(heartbeatInterval);
+                if (typeof alive.terminate === 'function') {
+                  alive.terminate();
+                }
+              }
+            }, 10000);
+            const looseGuard = pongGuard as unknown as { unref?: () => void };
+            if (typeof looseGuard.unref === 'function') {
+              looseGuard.unref();
+            }
           }
         }, 30000);
         // 心跳定时器不应阻止进程退出（服务停止后残留的连接不应挂住进程）
@@ -253,10 +278,19 @@ function startWsServer(port = 9527): Promise<WebSocketServer> {
             }
 
             const msg = JSON.parse(raw.toString());
-            if (msg.type === 'stats-request' && statsHandler) {
-              handlePayloadRequest(ws, msg, 'stats-response', statsHandler(msg.payload));
-            } else if (msg.type === 'tools-request' && toolsHandler) {
-              handlePayloadRequest(ws, msg, 'tools-response', toolsHandler());
+            if (msg.type === 'stats-request') {
+              if (statsHandler) {
+                handlePayloadRequest(ws, msg, 'stats-response', statsHandler(msg.payload));
+              } else {
+                // S11: handler 未注册时也要回包，否则带 requestId 的请求会永久挂起
+                sendRequestError(ws, msg, 'stats-response', '未支持');
+              }
+            } else if (msg.type === 'tools-request') {
+              if (toolsHandler) {
+                handlePayloadRequest(ws, msg, 'tools-response', toolsHandler());
+              } else {
+                sendRequestError(ws, msg, 'tools-response', '未支持');
+              }
             } else if (messageHandler) {
               // messageHandler 可能是 async，其返回的 Promise rejection 不会被
               // 上面的 try-catch 捕获，需显式接住，否则成为 unhandledRejection。
@@ -312,6 +346,24 @@ function sendToClient(ws: WebSocket, payload: Record<string, unknown>): void {
   try {
     if (ws.readyState === 1) {
       ws.send(JSON.stringify(payload));
+    }
+  } catch {
+    // 忽略发送错误
+  }
+}
+
+/** S11: 请求类消息在 handler 未注册时回包错误，避免请求方永久挂起 */
+function sendRequestError(
+  ws: WebSocket,
+  msg: { type?: string; requestId?: unknown },
+  responseType: string,
+  errorMessage: string,
+): void {
+  try {
+    if (ws.readyState === 1) {
+      ws.send(
+        JSON.stringify({ type: responseType, requestId: msg.requestId, error: errorMessage }),
+      );
     }
   } catch {
     // 忽略发送错误
@@ -414,6 +466,13 @@ async function stopWsServer(): Promise<void> {
       }
     });
     wss = null;
+  }
+  // S7: 退出时清理 token 文件，避免遗留明文凭据文件
+  try {
+    const tokenPath = getTokenFilePath();
+    if (fs.existsSync(tokenPath)) fs.unlinkSync(tokenPath);
+  } catch {
+    // 忽略清理失败
   }
 }
 

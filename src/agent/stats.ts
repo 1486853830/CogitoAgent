@@ -314,7 +314,7 @@ function recordMessage(): void {
   saveStats();
 }
 
-function recordTokenUsage(inputTokens: number, outputTokens: number): number {
+function recordTokenUsage(inputTokens: number, outputTokens: number, modelName?: string): number {
   const input = Number(inputTokens) || 0;
   const output = Number(outputTokens) || 0;
   const total = input + output;
@@ -323,8 +323,8 @@ function recordTokenUsage(inputTokens: number, outputTokens: number): number {
   sessionStats.totalOutputTokens += output;
   sessionStats.totalTokens += total;
 
-  // 成本估算：基于当前模型价格表 / 环境变量覆盖
-  const cost = estimateCost(input, output);
+  // 成本估算：优先按本次实际使用的模型计价，否则回退到当前活跃模型
+  const cost = estimateCost(input, output, modelName);
   sessionStats.totalCost += cost;
 
   checkAndResetDay();

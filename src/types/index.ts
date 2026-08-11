@@ -11,7 +11,6 @@ export interface ChatConfig {
   topP: number;
   topK: number;
   frequencyPenalty: number;
-  thinkingInterval: number;
   language?: string;
   /** 结构化输出（response_format.json_schema），原生工具协议下可用。 */
   structuredOutput?: {

@@ -54,7 +54,8 @@ function pad(str: string, len: number): string {
   return str + ' '.repeat(len - str.length);
 }
 
-const startTime = Date.now();
+/** logo 区宽度：以最宽的一行为准，保证信息列始终对齐 */
+const LOGO_WIDTH = LOGO.reduce((max, line) => Math.max(max, line.length), 0);
 
 /**
  * 打印 Neofetch 风格的启动横幅
@@ -76,7 +77,8 @@ function printBanner(info: BannerInfo = {}): void {
   const cpuCores = cpus.length;
   const totalMem = os.totalmem();
   const memGb = (totalMem / 1024 / 1024 / 1024).toFixed(1);
-  const uptime = fmtDuration(Date.now() - startTime);
+  // 进程真实运行时长（process.uptime() 单位为秒），而非本模块被加载的时长
+  const uptime = fmtDuration(process.uptime() * 1000);
 
   const kv = (k: string, v: string): string =>
     `${C.phosphor}${C.bold}${pad(k, 10)}${C.reset}${C.silverDim}:${C.reset} ${C.silver}${v}${C.reset}`;
@@ -106,7 +108,11 @@ function printBanner(info: BannerInfo = {}): void {
   lines.push('');
 
   for (let i = 0; i < maxLines; i++) {
-    const logo = i < maxLogoLines ? `${C.phosphor}${LOGO[i]}${C.reset}` : '';
+    // logo 行用完后仍需占位，否则后续 info 行会左对齐到行首，与上方错位
+    const logo =
+      i < maxLogoLines
+        ? `${C.phosphor}${pad(LOGO[i], LOGO_WIDTH)}${C.reset}`
+        : ' '.repeat(LOGO_WIDTH);
     const info = i < maxInfoLines ? `   ${infoLines[i] || ''}` : '';
     lines.push(logo + info);
   }

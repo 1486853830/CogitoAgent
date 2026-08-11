@@ -28,6 +28,19 @@ const STREAM_IDLE_TIMEOUT_MS = 120000; // 流中两次数据间最长间隔 120 
 const MAX_SSE_BUFFER_BYTES = 8 * 1024 * 1024; // 8MB
 
 /**
+ * 把错误响应体压成一行短摘要附加到错误信息里。
+ * 之前这段 body 被读取后直接丢弃，导致 4xx/5xx 只剩状态码、无法定位原因
+ * （比如 key 无效、模型不存在、参数非法都只显示 "API 400: Bad Request"）。
+ */
+function briefBody(text: string, max = 300): string {
+  const s = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!s) return '';
+  return ` — ${s.length > max ? s.slice(0, max) + '…' : s}`;
+}
+
+/**
  * 可重置的超时控制器：用于流式请求的空闲超时。
  */
 function createResettableTimeout(controller: AbortController) {
@@ -187,7 +200,7 @@ async function* streamChat(
       if (!response.ok) {
         const text = await response.text().catch(() => '');
         const err = new Error(
-          `API ${response.status}: ${response.statusText || '请求失败'}`,
+          `API ${response.status}: ${response.statusText || '请求失败'}${briefBody(text)}`,
         ) as Error & {
           status?: number;
           retryAfter?: string | null;
@@ -213,17 +226,25 @@ async function* streamChat(
       while (true) {
         const { done, value } = await reader.read();
 
-        if (done) break;
-        // 收到数据即重置空闲计时，长回答不会被绝对超时截断
-        timeout.arm(STREAM_IDLE_TIMEOUT_MS);
+        if (done) {
+          // flush 解码器：补出末尾不完整多字节序列，并让最后一行（可能无换行）参与解析
+          buffer += decoder.decode();
+        } else {
+          // 收到数据即重置空闲计时，长回答不会被绝对超时截断
+          timeout.arm(STREAM_IDLE_TIMEOUT_MS);
+          buffer += decoder.decode(value, { stream: true });
+        }
 
-        buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        if (buffer.length > MAX_SSE_BUFFER_BYTES) {
-          throw new Error(
-            `SSE 单行超过 ${MAX_SSE_BUFFER_BYTES} 字节上限，疑似服务端返回异常，已中断`,
-          );
+        if (done) {
+          buffer = '';
+        } else {
+          buffer = lines.pop() || '';
+          if (buffer.length > MAX_SSE_BUFFER_BYTES) {
+            throw new Error(
+              `SSE 单行超过 ${MAX_SSE_BUFFER_BYTES} 字节上限，疑似服务端返回异常，已中断`,
+            );
+          }
         }
 
         for (const line of lines) {
@@ -268,6 +289,8 @@ async function* streamChat(
             // 跳过单个 SSE 事件的解析错误
           }
         }
+
+        if (done) break;
       }
 
       // 流提前中断检测：服务端在未给出 finish_reason 的情况下关闭连接，
@@ -383,7 +406,7 @@ async function chatText(
       if (!response.ok) {
         const text = await response.text().catch(() => '');
         const err = new Error(
-          `API ${response.status}: ${response.statusText || '请求失败'}`,
+          `API ${response.status}: ${response.statusText || '请求失败'}${briefBody(text)}`,
         ) as Error & {
           status?: number;
           retryAfter?: string | null;
@@ -551,7 +574,7 @@ async function* streamChatNative(
       if (!response.ok) {
         const text = await response.text().catch(() => '');
         const err = new Error(
-          `API ${response.status}: ${response.statusText || '请求失败'}`,
+          `API ${response.status}: ${response.statusText || '请求失败'}${briefBody(text)}`,
         ) as Error & {
           status?: number;
           retryAfter?: string | null;
@@ -571,16 +594,25 @@ async function* streamChatNative(
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
-        timeout.arm(STREAM_IDLE_TIMEOUT_MS);
 
-        buffer += decoder.decode(value, { stream: true });
+        if (done) {
+          // flush 解码器：补出末尾不完整多字节序列，并让最后一行（可能无换行）参与解析
+          buffer += decoder.decode();
+        } else {
+          timeout.arm(STREAM_IDLE_TIMEOUT_MS);
+          buffer += decoder.decode(value, { stream: true });
+        }
+
         const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        if (buffer.length > MAX_SSE_BUFFER_BYTES) {
-          throw new Error(
-            `SSE 单行超过 ${MAX_SSE_BUFFER_BYTES} 字节上限，疑似服务端返回异常，已中断`,
-          );
+        if (done) {
+          buffer = '';
+        } else {
+          buffer = lines.pop() || '';
+          if (buffer.length > MAX_SSE_BUFFER_BYTES) {
+            throw new Error(
+              `SSE 单行超过 ${MAX_SSE_BUFFER_BYTES} 字节上限，疑似服务端返回异常，已中断`,
+            );
+          }
         }
 
         for (const line of lines) {
@@ -636,7 +668,20 @@ async function* streamChatNative(
                   arguments: '',
                 };
                 if (toolCall.id) existing.id = toolCall.id;
-                if (toolCall.function?.name) existing.name += toolCall.function.name;
+                const namePart = toolCall.function?.name;
+                if (namePart) {
+                  if (!existing.name) {
+                    existing.name = namePart;
+                  } else if (existing.name === namePart) {
+                    // 不规范供应商每个 chunk 都重发完整 name，直接忽略避免重复拼接
+                  } else if (namePart.startsWith(existing.name)) {
+                    // 累积式重发（每次给出更长的前缀）：整体替换
+                    existing.name = namePart;
+                  } else {
+                    // 标准分片：逐段拼接
+                    existing.name += namePart;
+                  }
+                }
                 if (toolCall.function?.arguments) existing.arguments += toolCall.function.arguments;
                 accumulatedToolCalls.set(index, existing);
               }
@@ -650,6 +695,8 @@ async function* streamChatNative(
             // 跳过单个 SSE 事件的解析错误
           }
         }
+
+        if (done) break;
       }
 
       // 流提前中断检测：服务端未给 finish_reason 就断流意味着回复被截断。

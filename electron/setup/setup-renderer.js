@@ -45,7 +45,6 @@ const workspaceInput = document.getElementById('workspace');
 const browseBtn = document.getElementById('browseBtn');
 
 // 高级配置元素
-const thinkingIntervalInput = document.getElementById('thinkingInterval');
 const modeSelect = document.getElementById('mode');
 
 // 邮件配置元素
@@ -140,7 +139,6 @@ function fillConfig(cfg) {
   if (cfg.workspace) workspaceInput.value = cfg.workspace;
 
   // Step 5: 高级配置
-  if (cfg.thinkingInterval) thinkingIntervalInput.value = cfg.thinkingInterval;
   if (cfg.mode) modeSelect.value = cfg.mode;
 
   // 邮件
@@ -358,10 +356,6 @@ function submitConfig() {
       model: modelInput.value.trim(),
     },
     workspace: workspaceInput.value.trim() || defaultWorkspace,
-    thinkingInterval: (() => {
-      const val = parseInt(thinkingIntervalInput.value.trim(), 10);
-      return Number.isNaN(val) ? 3000 : val;
-    })(),
     mode: modeSelect.value,
     email: {
       smtpHost: emailHostInput.value.trim(),

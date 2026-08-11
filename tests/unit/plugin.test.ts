@@ -21,6 +21,26 @@ const {
   registerTool,
 } = await import('../../src/agent/plugin.ts');
 
+/**
+ * 只有这些错误才代表"当前运行环境不支持从 file:// 动态 import"，可以跳过用例。
+ * 其余任何错误都必须让用例失败，避免把真实缺陷当成平台限制吞掉。
+ */
+const PLATFORM_IMPORT_ERROR_KEYS = [
+  'ERR_UNSUPPORTED_ESM_URL_SCHEME',
+  'ERR_UNKNOWN_FILE_EXTENSION',
+  'ERR_MODULE_NOT_FOUND',
+  'Cannot find module',
+];
+
+function errMessage(err: unknown): string {
+  return String((err as { message?: unknown })?.message ?? err);
+}
+
+function isUnsupportedImportEnv(err: unknown): boolean {
+  const msg = errMessage(err);
+  return PLATFORM_IMPORT_ERROR_KEYS.some((key) => msg.includes(key));
+}
+
 describe('plugin.ts', () => {
   let tempDir: string;
 
@@ -294,27 +314,33 @@ describe('plugin.ts', () => {
         );
 
         const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+        let loadError: unknown = null;
         try {
           await pm.loadPlugin('valid', pluginDir);
-          expect(pm.hasTool('validTestTool')).toBe(true);
-          expect(pm.listPlugins()).toHaveLength(1);
-          expect(pm.listPlugins()[0].toolCount).toBe(1);
-          expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('valid'));
-        } catch (e: any) {
-          // Dynamic import with file:// URL may fail on some platforms (e.g. restricted environments).
-          // Only skip if the error is clearly a platform/load issue, otherwise fail the test.
-          const msg = String(e?.message || e);
-          if (msg.includes('Cannot find module') || msg.includes('ERR_MODULE_NOT_FOUND')) {
-            console.warn(
-              '[SKIP] loadPlugin test: dynamic import not supported in this environment',
-            );
-          } else if (msg.includes('file://') || msg.includes('ERR_')) {
-            console.warn('[SKIP] loadPlugin test: platform limitation —', msg.slice(0, 100));
-          } else {
-            throw e;
-          }
+        } catch (e) {
+          loadError = e;
         }
+        // 先快照日志再 mockRestore——mockRestore 会清空调用记录，
+        // 之后再断言 toHaveBeenCalledWith 永远是 0 次。
+        const logMessages = logSpy.mock.calls.map((c) => String(c[0]));
         logSpy.mockRestore();
+
+        // 第一步：只在确认运行环境不支持动态 import 时才跳过
+        if (loadError !== null && isUnsupportedImportEnv(loadError)) {
+          console.warn(
+            '[SKIP] loadPlugin 用例：当前环境不支持动态 import —',
+            errMessage(loadError),
+          );
+          return;
+        }
+        // 第二步：任何其他错误都是真实失败，直接抛出
+        if (loadError !== null) throw loadError;
+
+        // 第三步：行为断言
+        expect(pm.hasTool('validTestTool')).toBe(true);
+        expect(pm.listPlugins()).toHaveLength(1);
+        expect(pm.listPlugins()[0].toolCount).toBe(1);
+        expect(logMessages.some((m) => m.includes('valid'))).toBe(true);
       });
 
       it('should throw when plugin exports invalid tool defs', async () => {
@@ -326,20 +352,22 @@ describe('plugin.ts', () => {
           'module.exports = [{ description: "no name or fn" }];\n',
         );
 
+        let thrown: unknown = null;
         try {
           await pm.loadPlugin('bad-tool', pluginDir);
-          throw new Error('Should have thrown');
-        } catch (e: any) {
-          if (
-            String(e?.message || e).includes('file:') ||
-            String(e?.message || e).includes('URL') ||
-            String(e?.message || e).includes('ERR_')
-          ) {
-            console.warn('Skipping bad-tool test: dynamic import issue on this platform');
-          } else {
-            expect(String(e?.message || e)).toContain('name');
-          }
+        } catch (e) {
+          thrown = e;
         }
+
+        // 只有"环境不支持动态 import"才允许跳过
+        if (thrown !== null && isUnsupportedImportEnv(thrown)) {
+          console.warn('[SKIP] bad-tool 用例：当前环境不支持动态 import —', errMessage(thrown));
+          return;
+        }
+
+        // 没抛错 = 校验逻辑失效，必须失败（原实现会静默通过）
+        expect(thrown).not.toBeNull();
+        expect(errMessage(thrown)).toContain('name');
       });
     });
   });

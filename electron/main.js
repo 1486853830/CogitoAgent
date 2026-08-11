@@ -20,7 +20,7 @@ const __dirname = path.dirname(__filename);
 // 全局未捕获 Promise 拒绝处理器：防止异步操作中意外遗漏 .catch() 导致错误被静默吞没。
 // 主进程中的 unhandledRejection 不会像渲染进程那样显示错误对话框，缺少此处理器会使
 // 问题极难定位。记录完整错误以便故障排查，但不终止进程（与 uncaughtException 不同）。
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason, _promise) => {
   console.error('[主进程] 未捕获的 Promise 拒绝:', reason);
   // 输出堆栈以便定位
   if (reason instanceof Error && reason.stack) {
@@ -195,7 +195,6 @@ function saveConfig(config) {
         topP: 0.7,
         topK: 50,
         frequencyPenalty: 0,
-        thinkingInterval: config.thinkingInterval || 3000,
         language: config.chat?.language || 'zh',
       },
       search: {
@@ -475,21 +474,27 @@ function startAgentProcess() {
   const env = {
     ...process.env,
     ...fileEnv,
-    // 显式删除而非设为 undefined：child_process.spawn 要求 env 值必须为字符串，
-    // undefined 会被隐式转为 "undefined" 干扰子进程的运行时检测。
     COGITO_USER_DATA_DIR: USER_DATA_DIR,
     ELECTRON_MODE: 'true',
     COGITO_SRC_PATH: srcPath,
   };
-  delete env.ELECTRON_RUN_AS_NODE;
+  if (isPackaged) {
+    // 打包模式下 process.execPath 是 Electron 可执行文件（CogitoAgent.exe），
+    // 必须设置 ELECTRON_RUN_AS_NODE=1 才能以纯 Node.js 模式运行 tsx 执行 Agent 脚本；
+    // 否则 CogitoAgent.exe 会作为新 Electron 实例启动，读取 package.json 的 main
+    // 再次进入 main.js → startAgentProcess，导致进程无限繁殖。
+    env.ELECTRON_RUN_AS_NODE = '1';
+  } else {
+    // dev 模式经 npx 调用系统 Node，无需此变量；显式删除避免字符串 "undefined" 干扰。
+    delete env.ELECTRON_RUN_AS_NODE;
+  }
 
   let tsxPath;
   if (isPackaged) {
-    try {
-      tsxPath = require.resolve('tsx');
-    } catch {
-      tsxPath = path.join(workingDir, 'node_modules', 'tsx', 'dist', 'bin.js');
-    }
+    // tsx v4 的 bin 入口为 dist/cli.mjs（见 tsx/package.json "bin" 字段）。
+    // 旧代码 require.resolve('tsx') 解析到的是 loader.mjs（exports["."]）而非 CLI，
+    // fallback 的 dist/bin.js 在 v4 中不存在，两者均导致子进程无法启动。
+    tsxPath = path.join(workingDir, 'node_modules', 'tsx', 'dist', 'cli.mjs');
     agentProcess = spawn(process.execPath, [tsxPath, path.join(srcPath, 'index.ts')], {
       cwd: workingDir,
       env,
@@ -1052,8 +1057,6 @@ app.whenReady().then(async () => {
         model: env['COGITO_MODEL'] || configJson.api?.model || '',
       },
       workspace: env['COGITO_WORKSPACE'] || configJson.workspace || '',
-      thinkingInterval:
-        env['COGITO_THINKING_INTERVAL'] || configJson.chat?.thinkingInterval || '3000',
       language: configJson.chat?.language || 'zh',
       mode: env['COGITO_MODE'] || 'dashboard',
       email: {
@@ -1121,10 +1124,10 @@ app.whenReady().then(async () => {
     launchMainApp();
   });
 
-  // 获取默认工作区路径
-  ipcMain.handle('get-default-workspace', () => {
-    return os.homedir();
-  });
+  // E4: 已移除 'get-default-workspace' handler。
+  // 它未在 preload.cjs 的 contextBridge 白名单中暴露，渲染进程无法 invoke，
+  // 主进程内部也无法自调用 ipcMain.handle —— 属于完全不可达的死通道。
+  // 如需恢复，必须同时在 preload.cjs 暴露对应方法。
 
   // 获取可用的 personas 列表
   ipcMain.handle('get-personas', () => {

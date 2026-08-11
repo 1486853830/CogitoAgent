@@ -119,7 +119,11 @@ function init(onUserInput: (input: string) => void): void {
 
   rl.on('line', (input: string) => {
     if (userInputCallback) {
-      userInputCallback(input.trim());
+      // S15: userInputCallback 可能为 async，若其 reject 会成为 unhandledRejection
+      // 导致进程崩溃；用 Promise.resolve 接住，转为错误日志。
+      Promise.resolve(userInputCallback(input.trim())).catch((err: unknown) => {
+        console.error('[Terminal] 输入处理失败:', (err as Error)?.message || String(err));
+      });
     }
   });
 

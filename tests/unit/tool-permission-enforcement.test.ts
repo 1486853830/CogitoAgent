@@ -27,6 +27,8 @@ let registerTool: (name: string, fn: (...a: unknown[]) => unknown, o?: object) =
 let setToolPermission: (name: string, level: 'allow' | 'deny' | 'ask') => void;
 let reloadConfig: () => unknown;
 let stateModule: typeof import('../../src/agent/state.ts');
+/** stats 的落盘是 100ms 防抖 + 异步队列，清理前必须先 flush，否则残留文件会被写回。 */
+let flushStats: () => Promise<void>;
 
 /** 记录被调用次数，用来断言「拒绝时工具函数根本没跑」。 */
 let callCount = 0;
@@ -40,7 +42,9 @@ beforeAll(async () => {
   const agentMod = await import('../../src/agent/Agent.ts');
   const pluginMod = await import('../../src/agent/plugin.ts');
   const configMod = await import('../../src/config.ts');
+  const statsMod = await import('../../src/agent/stats.ts');
   stateModule = await import('../../src/agent/state.ts');
+  flushStats = statsMod.flushStats as typeof flushStats;
 
   executeTool = agentMod.executeTool as typeof executeTool;
   registerTool = pluginMod.registerTool as typeof registerTool;
@@ -67,7 +71,14 @@ beforeAll(async () => {
   );
 });
 
-afterAll(() => {
+afterAll(async () => {
+  // 先把待写入的统计落盘（清掉 100ms 防抖定时器），否则 rmSync 之后
+  // 定时器仍会 mkdir + writeFile，在仓库里留下 data/stats.json 残留产物。
+  try {
+    await flushStats?.();
+  } catch {
+    /* flush 失败不影响清理 */
+  }
   rmSync(testConfigDir, { recursive: true, force: true });
   envKeys.forEach((key) => delete process.env[key]);
 });
