@@ -530,9 +530,9 @@ function startAgentProcess() {
 
     agentProcess.stderr.on('data', (data) => {
       const text = data.toString();
-      if (process.env.NODE_ENV === 'development') {
-        process.stderr.write(text.substring(0, 500));
-      }
+      // 始终输出 stderr 到主进程控制台，便于排查 Agent 启动阶段崩溃。
+      // 生产环境日志级别仅为 console.error，不影响正常 UI。
+      console.error('[Agent:stderr]', text.substring(0, 1000));
     });
 
     agentProcess.on('error', (err) => {

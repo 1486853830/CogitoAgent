@@ -7,12 +7,26 @@ import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import { streamChatNative, isAbortError } from '../api/client.ts';
 import type { NativeStreamReturn, NativeStreamChunk } from '../api/client.ts';
-import { TOOL_REGISTRY, isDangerousOperation, getEnabledToolNames } from './registry.ts';
 import { broadcast } from '../io/ws-server.ts';
 import { buildOpenAITools, objectArgsToPositional } from './tool-schema.ts';
 import { safeParseJSON } from '../utils/llm-validator.ts';
 import { isValidPersonaName } from './persona.ts';
 import { getToolPermission } from './plugin.ts';
+import type { ToolRegistryEntry } from '../types/index.ts';
+
+// 延迟导入 registry.ts，断开 orchestrator → registry → tools/index → cluster → orchestrator
+// 的循环依赖链。ESM 下循环模块可能返回未初始化的导出对象，导致 tools.spawnAgent 等为 undefined。
+let _TOOL_REGISTRY: Record<string, ToolRegistryEntry> | null = null;
+let _isDangerousOperation: ((name: string) => boolean) | null = null;
+let _getEnabledToolNames: (() => string[]) | null = null;
+
+async function _ensureRegistry(): Promise<void> {
+  if (_TOOL_REGISTRY) return;
+  const mod = await import('./registry.ts');
+  _TOOL_REGISTRY = mod.TOOL_REGISTRY;
+  _isDangerousOperation = mod.isDangerousOperation;
+  _getEnabledToolNames = mod.getEnabledToolNames;
+}
 
 // ============================================
 // SubAgent 类 - 子智能体实例
@@ -671,6 +685,7 @@ class AgentOrchestrator {
     agent: SubAgent,
     messages: Array<Record<string, unknown>>,
   ): Promise<string> {
+    await _ensureRegistry();
     let fullResponse = '';
     // 连续两轮调用「相同方法签名」的工具说明模型在截断的工具输出下无法取得进展，
     // 继续循环只会重复执行同一动作，直接终止避免死循环。
@@ -687,7 +702,7 @@ class AgentOrchestrator {
     // 可以再 spawn 子智能体并 parallelExecute，形成指数级 LLM 调用；
     // 也能调 stopAllAgents 把整个集群清空。集群编排必须只由主 Agent 发起。
     const tools = buildOpenAITools(
-      getEnabledToolNames().filter((name) => TOOL_REGISTRY[name]?.category !== 'cluster'),
+      _getEnabledToolNames!().filter((name) => _TOOL_REGISTRY![name]?.category !== 'cluster'),
       { strict: false },
     );
 
@@ -791,7 +806,7 @@ class AgentOrchestrator {
         }
 
         agent.toolCalls++;
-        const registry = TOOL_REGISTRY[tc.name];
+        const registry = _TOOL_REGISTRY![tc.name];
 
         if (!registry) {
           messages.push({
@@ -802,7 +817,7 @@ class AgentOrchestrator {
           continue;
         }
 
-        if (isDangerousOperation(tc.name)) {
+        if (_isDangerousOperation!(tc.name)) {
           messages.push({
             role: 'tool',
             tool_call_id: tc.id,
@@ -950,6 +965,7 @@ class AgentOrchestrator {
    * 构建子智能体的系统提示词
    */
   async _buildSystemPrompt(agent: SubAgent): Promise<string> {
+    await _ensureRegistry();
     // 读取 persona 文件（名称先做安全校验，避免路径穿越读取任意目录）
     let personaContent: string;
     if (!isValidPersonaName(agent.persona)) {
@@ -964,7 +980,7 @@ class AgentOrchestrator {
     }
 
     // 获取所有工具名
-    const toolNames = Object.keys(TOOL_REGISTRY);
+    const toolNames = Object.keys(_TOOL_REGISTRY!);
 
     return `${personaContent}
 
