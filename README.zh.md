@@ -1,39 +1,107 @@
+<div align="center">
+
+<img src="introduction/logo.png" width="96" alt="CogitoAgent logo">
+
 # CogitoAgent
 
 > **持续思考 · 自主行动 · 隐私优先**
+>
+> _本地优先的自主智能体 —— 你的工作区、你的数据、你的规则。_
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Electron](https://img.shields.io/badge/Electron-42.x-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![Node](https://img.shields.io/badge/Node-%E2%89%A520-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+
+</div>
 
 我思故我在 —— CogitoAgent 不仅仅是一个工具，它是您在本地环境中的自主思考伙伴。
 
-**CogitoAgent** 是一款云端驱动，本地执行的智能体框架，集成了文件管理、知识挖掘、系统操作、代码执行和网络连接能力。它直接运行在用户配置的工作目录内，通过调用用户指定的大模型 API 驱动思考与决策，**用户的工作文件保留在本地**，在保障文件资产安全的同时提供持续运行的智能助手服务。
-
-![CogitoAgent dashboard](introduction/electron-dashboard.png)
+**CogitoAgent** 是一款云端驱动、本地执行的智能体框架，集成了文件管理、知识挖掘、系统操作、代码执行和网络连接能力。它直接运行在用户配置的工作目录内，通过调用用户指定的大模型 API 驱动思考与决策，**用户的工作文件保留在本地**，在保障文件资产安全的同时提供持续运行的智能助手服务。
 
 与传统聊天机器人不同，CogitoAgent 具备**持续思考**、**自主探索**和**工具执行**的能力，能够在后台主动发现和整理您的本地文件资产，并通过可扩展的工具集提供更多能力。
 
-<p align="center">
-  <a href="https://github.com/SnowLeopard-io/CogitoAgent"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github" alt="GitHub"></a>
-  <a href="https://gitee.com/cnt-code/cogito-agent"><img src="https://img.shields.io/badge/Gitee-China-c71d23?style=flat-square&logo=gitee" alt="Gitee"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square" alt="Version"></a>
-  <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript" alt="TypeScript"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Node-%3E%3D24-339933?style=flat-square&logo=node.js" alt="Node"></a>
-  <a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Status-Stable-success?style=flat-square" alt="Status"></a>
-  <a href="#"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square" alt="PRs Welcome"></a>
-  <a href="https://github.com/SnowLeopard-io/CogitoAgent/actions"><img src="https://img.shields.io/github/actions/workflow/status/SnowLeopard-io/CogitoAgent/.github/workflows/ci-cd.yml?style=flat-square&label=CI" alt="CI"></a>
-  <a href="https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22"><img src="https://img.shields.io/badge/Good%20First%20Issue-help%20wanted-green?style=flat-square" alt="Good First Issue"></a>
-</p>
+![CogitoAgent dashboard](introduction/electron-dashboard.png)
 
 <p align="center">
   <a href="README.md">English</a> · <a href="README.zh.md">中文</a> ·
   <a href="ROADMAP.md">路线图</a> ·
   <a href="CHANGELOG.md">更新日志</a> ·
   <a href="CONTRIBUTING.md">贡献指南</a> ·
+  <a href="SECURITY.md">安全策略</a> ·
   <a href="CODE_OF_CONDUCT.md">行为准则</a>
 </p>
 
 ---
 
-## 核心功能
+## 📋 目录
+
+- [为什么选择 CogitoAgent？](#-为什么选择-cogitoagent)
+- [核心功能](#-核心功能)
+- [使用场景](#-使用场景)
+- [快速开始](#-快速开始)
+- [工具系统](#-工具系统)
+- [架构设计](#-架构设计)
+- [安全体系](#-安全体系)
+- [配置说明](#-配置说明)
+- [命令参考](#-命令参考)
+- [Docker 部署](#-docker-部署)
+- [项目结构](#-项目结构)
+- [测试与质量](#-测试与质量)
+- [路线图](#-路线图)
+- [社区与支持](#-社区与支持)
+- [贡献指南](#-贡献指南)
+- [许可证](#-许可证)
+
+---
+
+## 💡 为什么选择 CogitoAgent？
+
+云端 AI 助手会把你的文件、代码和对话发送到第三方服务器。**CogitoAgent 走的是另一条路**：它是一个直接运行在你本地工作区的自主智能体，由你选择的 LLM API 驱动——而你的数据永远不会离开你的机器。
+
+- **持续思考** — 即使你不在，也会主动对你的工作区进行反思与行动
+- **自主探索** — 主动发现、整理和处理你的本地文件资产
+- **执行 200+ 工具** — 从文件操作、代码执行到网络研究、数据库、OCR 和多智能体编排
+- **隐私安全** — 只有对话上下文会发送给你指定的 LLM API，你的文件永不离开工作区
+
+---
+
+## ✨ 核心功能
+
+| 功能                    | 描述                                                              |
+| ----------------------- | ----------------------------------------------------------------- |
+| **本地优先隐私**        | 工作文件保留在本地，仅将必要上下文发送给你配置的 LLM API          |
+| **持续思考**            | 自动思考周期（默认 3 秒，可配置），让智能体持续推进任务           |
+| **200+ 工具 / 28 模块** | 文件、代码执行、Git、数据库、OCR、Office、图像生成、生物信息等    |
+| **TypeScript 核心**     | 全量类型安全、严格模式、编译期错误检测                            |
+| **安全沙箱**            | JavaScript 使用 `isolated-vm` 进程级隔离；Python 使用净化环境执行 |
+| **多会话管理**          | 独立对话上下文，持久化存储，自动上下文压缩                        |
+| **智能体集群**          | 子智能体创建、任务委派、并行执行、小组讨论与投票                  |
+| **Electron 桌面**       | 透明悬浮窗、全屏仪表盘、专属监控面板                              |
+| **插件系统**            | 运行时动态加载自定义工具插件（15s 导入超时 + 权限门禁）           |
+| **思维链可视化**        | 实时展示推理、工具调用与结果，全程可观测                          |
+| **微信集成**            | 扫码登录、消息收发、专属会话、工具气泡展示                        |
+| **图像生成**            | 通过可配置图像模型（如 `qwen-image-2.0-pro`）文生图 / 图生图      |
+| **可观测性**            | 分类工具使用统计、Token/成本追踪、轻量事件追踪                    |
+
+> **隐私说明**：CogitoAgent 永不将你的文件上传到任何云。仅对话上下文会发送给你指定的 LLM API。你的工作区始终属于你。
+
+---
+
+## 🎯 使用场景
+
+| 场景                   | CogitoAgent 的助力                                             |
+| ---------------------- | -------------------------------------------------------------- |
+| **个人知识管理**       | 持续扫描工作区、整理文件、基于本地数据回答问题                 |
+| **自动化研究与写作**   | 联网搜索、浏览网页、直接在工作区撰写文档                       |
+| **代码与 DevOps 助手** | 执行代码（JS/Python）、管理 Git 仓库、执行 SQL、自动化例行任务 |
+| **办公文档处理**       | 生成 PPT / Word / Excel；扫描件 OCR；图像视觉分析              |
+| **数据分析流水线**     | 读取 CSV/JSON、查询 SQLite、生成结构化报告                     |
+| **多智能体协作**       | 将子任务委派给专业人设子智能体（批判者、程序员、分析师……）     |
+| **无头服务器部署**     | 以纯 CLI / WebSocket 服务在 Docker 中常驻运行                  |
+
+---
+
+## 🚀 快速开始
 
 | 功能                | 描述                                                                                               |
 | ------------------- | -------------------------------------------------------------------------------------------------- |

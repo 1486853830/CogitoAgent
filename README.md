@@ -1,21 +1,16 @@
 <div align="center">
 
-# 🧠 CogitoAgent
+<img src="introduction/logo.png" width="96" alt="CogitoAgent logo">
+
+# CogitoAgent
 
 > **Think Continuously · Act Autonomously · Stay Private**
 >
-> _Your AI agent that lives in your computer — not in the cloud._
+> _A local-first autonomous AI agent — your workspace, your data, your rules._
 
-[![Gitee](https://img.shields.io/badge/Gitee-China-c71d23?style=flat-square&logo=gitee)](https://gitee.com/cnt-code/cogito-agent)
-[![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github)](https://github.com/SnowLeopard-io/CogitoAgent)
-[![Version](https://img.shields.io/badge/Version-2.3.2-764ba2?style=flat-square)](<>)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript)](<>)
-[![Node](https://img.shields.io/badge/Node-%3E%3D24-339933?style=flat-square&logo=node.js)](<>)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](<>)
-[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square)](<>)
-[![CI](https://img.shields.io/github/actions/workflow/status/SnowLeopard-io/CogitoAgent/.github/workflows/ci-cd.yml?style=flat-square&label=CI)](https://github.com/SnowLeopard-io/CogitoAgent/actions)
-[![Good First Issue](https://img.shields.io/badge/Good%20First%20Issue-help%20wanted-green?style=flat-square)](https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22)
-[![Roadmap](https://img.shields.io/badge/Roadmap-路线图-ff6b6b?style=flat-square)](ROADMAP.md)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Electron](https://img.shields.io/badge/Electron-42.x-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![Node](https://img.shields.io/badge/Node-%E2%89%A520-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
 
 </div>
 
@@ -24,36 +19,81 @@
   <a href="ROADMAP.md">Roadmap</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="SECURITY.md">Security</a> ·
   <a href="CODE_OF_CONDUCT.md">Code of Conduct</a>
 </p>
 
-Cogito, ergo sum — **CogitoAgent is not just a tool; it is your autonomous AI agent that lives in your computer.**
+---
 
-Unlike cloud-dependent agents that upload your files to third-party servers, CogitoAgent runs directly in your local workspace. Powered by the LLM API of your choice, it **thinks continuously**, **explores autonomously**, and **executes 200+ tools** — all while keeping your data private and secure.
+## 📋 Table of Contents
+
+- [Why CogitoAgent?](#-why-cogitoagent)
+- [Core Features](#-core-features)
+- [Use Cases](#-use-cases)
+- [Quick Start](#-quick-start)
+- [Tool System](#-tool-system)
+- [Architecture](#-architecture)
+- [Security](#-security)
+- [Configuration](#-configuration)
+- [Command Reference](#-command-reference)
+- [Docker Deployment](#-docker-deployment)
+- [Project Structure](#-project-structure)
+- [Testing & Quality](#-testing--quality)
+- [Roadmap](#-roadmap)
+- [Community & Support](#-community--support)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+---
+
+## 💡 Why CogitoAgent?
+
+Cloud-based AI assistants send your files, code, and conversations to third-party servers. **CogitoAgent takes a different approach**: it is an autonomous agent that runs directly in your local workspace, driven by the LLM API of your choice — while your data never leaves your machine.
+
+Cogito, ergo sum — _I think, therefore I am._ CogitoAgent isn't a chat window; it's a **continuously thinking agent** that:
+
+- **Thinks continuously** — automatically reflects and acts on your workspace even while you're away
+- **Explores autonomously** — discovers, organizes, and processes your local assets proactively
+- **Executes 200+ tools** — from file operations and code execution to web research, databases, OCR, and multi-agent orchestration
+- **Stays private** — only the conversation context is sent to the LLM API you specify. Your files never leave your workspace.
 
 ![CogitoAgent dashboard](introduction/electron-dashboard.png)
 
 ---
 
-## Core Features
+## ✨ Core Features
 
-| Feature                         | Description                                                                                                                                      |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **TypeScript Core**             | Full TypeScript migration with type safety and compile-time error detection                                                                      |
-| **Privacy First**               | Workspace files stay local; only conversation context is sent to the LLM API you specify                                                         |
-| **Continuous Thinking**         | Automatically triggers a thinking cycle every 3 seconds (configurable)                                                                           |
-| **Tool Execution**              | 28 tool modules with 200+ tools for file operations, code execution, Git, databases, OCR, Office documents, bioinformatics, and more             |
-| **Security Sandbox**            | JavaScript code execution uses `isolated-vm` for process-level isolation                                                                         |
-| **Multi-Session Management**    | Multiple independent conversation sessions with persistent storage and auto-compression                                                          |
-| **Desktop Mode**                | Electron desktop window communicating via WebSocket with the terminal Agent                                                                      |
-| **Plugin System**               | Dynamically load custom tool plugins                                                                                                             |
-| **Thought Chain Visualization** | Real-time visualization of thinking process and tool execution                                                                                   |
-| **Agent Cluster**               | Sub-agent creation, task delegation, and multi-agent collaboration                                                                               |
-| **Monitor Panel**               | Dedicated window for real-time cluster topology, thought chain, and tool stats                                                                   |
-| **WeChat Integration**          | QR code login, message sending/receiving, dedicated session, tool bubble display                                                                 |
-| **Image Generation**            | Text-to-image / image-to-image via a configurable image model (e.g. `qwen-image-2.0-pro`); results saved to `generated-images/` in the workspace |
+| Feature                         | Description                                                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Local-First Privacy**         | Workspace files stay on your machine; only the minimal conversation context goes to the LLM API you configure |
+| **Continuous Thinking**         | Automatic thinking cycle (3s default, configurable) keeps the agent actively working on your tasks            |
+| **200+ Tools / 28 Modules**     | File ops, code execution, Git, databases, OCR, Office documents, image generation, bioinformatics and more    |
+| **TypeScript Core**             | Full type safety, strict mode, and compile-time error detection across the entire codebase                    |
+| **Security Sandbox**            | `isolated-vm` process-level isolation for JavaScript; sanitized environment for Python subprocesses           |
+| **Multi-Session Management**    | Independent conversation contexts with persistent storage and automatic context compression                   |
+| **Agent Cluster**               | Spawn sub-agents, delegate tasks, parallel execution, panel discussion & voting — multi-agent collaboration   |
+| **Electron Desktop**            | Transparent overlay window, full-screen dashboard, and a dedicated monitor panel for live telemetry           |
+| **Plugin System**               | Dynamically load custom tool plugins at runtime with a 15s import timeout and permission gates                |
+| **Thought-Chain Visualization** | Real-time stream of reasoning, tool calls, and results — full observability of every step                     |
+| **WeChat Integration**          | QR-code login, message send/receive, dedicated session and tool-bubble display                                |
+| **Image Generation**            | Text-to-image / image-to-image via configurable image models (e.g. `qwen-image-2.0-pro`)                      |
+| **Observability**               | Per-category tool usage statistics, token/cost tracking, and lightweight event tracing                        |
 
 > **Privacy note**: CogitoAgent never uploads your files to any cloud. Only conversation context is sent to the LLM API you specify. Your workspace stays yours.
+
+---
+
+## 🎯 Use Cases
+
+| Scenario                          | How CogitoAgent Helps                                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Personal Knowledge Management** | Continuously scans your workspace, organizes files, and answers questions from your local data              |
+| **Automated Research & Drafting** | Searches the web, browses pages, and drafts documents directly into your workspace                          |
+| **Code & DevOps Assistance**      | Executes code (JS/Python), manages Git repositories, runs SQL, and automates routine tasks                  |
+| **Office Document Processing**    | Creates PowerPoint, Word, and Excel files; OCR for scanned images; vision analysis                          |
+| **Data Analysis Pipeline**        | Reads CSVs/JSONs, queries SQLite, and produces structured reports                                           |
+| **Multi-Agent Collaboration**     | Delegates subtasks to specialized persona sub-agents (Critic, Programmer, Analyst…) with cluster monitoring |
+| **Headless Server Deployment**    | Runs as a pure CLI/WebSocket service in Docker for always-on agent operations                               |
 
 ---
 
@@ -61,14 +101,21 @@ Unlike cloud-dependent agents that upload your files to third-party servers, Cog
 
 ### Requirements
 
-- **Node.js** 24 or higher
-- **npm** or **yarn** package manager
-- **Python** 3.x (optional, for Python code execution)
+| Dependency  | Version | Notes                                       |
+| ----------- | ------- | ------------------------------------------- |
+| **Node.js** | ≥ 20    | LTS recommended                             |
+| **npm**     | ≥ 10    | or yarn/pnpm                                |
+| **Python**  | 3.x     | _Optional_ — only for Python code execution |
 
-> **Note for users in China**: If `npm install` fails to download the Electron binary:
+> **Users in China**: if `npm install` fails downloading the Electron binary:
 >
 > ```bash
+> # Windows (PowerShell)
 > $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
+> npm install
+>
+> # macOS / Linux
+> export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
 > npm install
 > ```
 
@@ -81,37 +128,32 @@ npm install
 npm start
 ```
 
-If you're in China, use the Gitee mirror for faster download:
-
-```bash
-git clone https://gitee.com/cnt-code/cogito-agent.git
-cd cogito-agent
-npm install
-npm start
-```
+> China mirror: `git clone https://gitee.com/cnt-code/cogito-agent.git`
 
 ### First-Time Setup
 
-1. **API Base URL** — Supports OpenAI-compatible third-party APIs
-2. **API Key** — Your API key
-3. **Model Name** — e.g., gpt-4o, claude-3-sonnet, etc.
-4. **Workspace Path** — The directory the AI can access
-5. **Persona Selection** — Choose a preset AI persona
+The setup wizard will guide you through:
+
+1. **API Base URL** — any OpenAI-compatible endpoint
+2. **API Key** — your LLM provider key
+3. **Model Name** — e.g. `gpt-4o`, `claude-3-sonnet`, `deepseek-chat`
+4. **Workspace Path** — the directory the agent is allowed to access
+5. **Persona** — choose an agent personality preset
 
 ### Usage Modes
 
-| Command                      | Mode           | Description                                                          |
-| ---------------------------- | -------------- | -------------------------------------------------------------------- |
-| `npm start`                  | Setup Wizard   | First-time configuration or modifying settings                       |
-| `npm run electron:desktop`   | Desktop Mode   | Electron overlay window + terminal Agent via WebSocket               |
-| `npm run electron:dashboard` | Dashboard Mode | Full-window dashboard with session management and tool visualization |
-| `npm run cli`                | CLI Mode       | Terminal-only, no Electron (for server/headless environments)        |
+| Command                      | Mode         | Description                                                |
+| ---------------------------- | ------------ | ---------------------------------------------------------- |
+| `npm start`                  | Setup Wizard | First-time configuration or re-configuration               |
+| `npm run electron:desktop`   | Desktop      | Transparent overlay window + terminal agent over WebSocket |
+| `npm run electron:dashboard` | Dashboard    | Full-window dashboard with sessions, tools & live charts   |
+| `npm run cli`                | CLI          | Terminal-only agent (headless / server environments)       |
 
 ---
 
-## Tool System
+## 🛠 Tool System
 
-All tools are managed by `registry.ts` (with JSON Schema from `tool-schema.ts`) and invoked by the model via **native function calling** (streaming `tool_calls`), not text markers.
+All tools are managed by a central registry (`registry.ts`) with JSON Schema (`tool-schema.ts`) and invoked via **native function calling** — streaming `tool_calls`, not fragile text markers.
 
 ```mermaid
 %%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10", "secondaryColor": "#161b28", "tertiaryColor": "#1c2230"}}}%%
@@ -162,45 +204,42 @@ flowchart LR
     class PLUGIN,DANGER extension;
 ```
 
-| Category           | File           | Main Functions                                                                                                                                                                                                                                                                                    |
-| ------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| File Operations    | `file.ts`      | `ls`, `read`, `create`, `copy`, `mkdir`, `write`, `append`, `move`, `rename`, `delete`                                                                                                                                                                                                            |
-| Path Utilities     | `path.ts`      | `getBasePath`, `joinPath`, `resolvePath`, `normalizePath`, `getExtension`, `getFileName`, `getParentDir`                                                                                                                                                                                          |
-| Web Tools          | `web.ts`       | `search`, `browse`, `fetchPage`                                                                                                                                                                                                                                                                   |
-| Browser Automation | `browser.ts`   | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile`                                                                                                   |
-| System Operations  | `system.ts`    | `listApps`, `openApp`, `closeApp`                                                                                                                                                                                                                                                                 |
-| Code Execution     | `code.ts`      | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode`                                                                                                                                                                                                                          |
-| Security Sandbox   | `sandbox.ts`   | `createJavaScriptSandbox`, `runJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox`                                                                                                                                                                                                       |
-| Git                | `git.ts`       | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
-| Task Management    | `task.ts`      | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks`                                                                                                                                                                        |
-| Memory System      | `memory.ts`    | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory`                                                                                                                                                 |
-| Data Processing    | `data.ts`      | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`, `filterData`, `groupData`, `aggregateData`                                                                                                                                      |
-| Database           | `db.ts`        | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB`                                                                                                                                               |
-| Email              | `email.ts`     | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig`                                                                                                                                                                                |
-| System Monitoring  | `monitor.ts`   | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem`                                                                                                                                            |
-| Scheduled Tasks    | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler`                                                                                                                                     |
-| Image Recognition  | `ocr.ts`       | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
-| Vision Analysis    | `vision.ts`    | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
-| Office Documents   | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
-| Image Generation   | `image-gen.ts` | `generateImage`                                                                                                                                                                                                                                                                                   |
-| Cluster            | `cluster.ts`   | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting`                                                                                                                                                        |
-| WeChat             | `wechat.ts`    | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode`                                                                                                                                                                                  |
+| Category           | Module         | Highlights                                                                                         |
+| ------------------ | -------------- | -------------------------------------------------------------------------------------------------- |
+| File Operations    | `file.ts`      | `ls`, `read`, `write`, `create`, `copy`, `move`, `rename`, `delete`                                |
+| Path Utilities     | `path.ts`      | `getBasePath`, `resolvePath`, `normalizePath`, `joinPath`, `getExtension`                          |
+| Web Tools          | `web.ts`       | `search`, `browse`, `fetchPage`                                                                    |
+| Browser Automation | `browser.ts`   | `initBrowser`, `clickElement`, `fillField`, `takeScreenshot`, `downloadFile`                       |
+| System Operations  | `system.ts`    | `listApps`, `openApp`, `closeApp`                                                                  |
+| Code Execution     | `code.ts`      | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode`                           |
+| Security Sandbox   | `sandbox.ts`   | `createJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox`                                |
+| Git                | `git.ts`       | 20+ commands: `init`, `clone`, `add`, `commit`, `push`, `pull`, `branch`, `merge`, `diff`, `stash` |
+| Task Management    | `task.ts`      | `createTask`, `splitTask`, `getTaskStats`, `clearTasks`                                            |
+| Memory System      | `memory.ts`    | `addMemory`, `searchMemory`, `getRelatedMemories`, `clearMemory`                                   |
+| Data Processing    | `data.ts`      | `readCSV`, `writeCSV`, `queryData`, `analyzeData`, `sortData`, `filterData`, `groupData`           |
+| Database           | `db.ts`        | `executeSQL`, `query`, `insert`, `update`, `createTable`, `executeTransaction`                     |
+| Email              | `email.ts`     | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`                                 |
+| System Monitoring  | `monitor.ts`   | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getProcesses`, `monitorSystem`                      |
+| Scheduled Tasks    | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `startScheduler`, `stopScheduler`                           |
+| Image Recognition  | `ocr.ts`       | `ocr`, `ocrBatch`                                                                                  |
+| Vision Analysis    | `vision.ts`    | `vision`, `visionFromUrl`                                                                          |
+| Office Documents   | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`                                              |
+| Image Generation   | `image-gen.ts` | `generateImage`                                                                                    |
+| Agent Cluster      | `cluster.ts`   | `spawnAgent`, `delegateTask`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting`           |
+| WeChat             | `wechat.ts`    | `loginWechat`, `sendWechatMessage`, `sendWechatImage`, `generateWechatQRCode`                      |
 
-> **Image Generation** (`generateImage`): text-to-image / image-to-image. For `qwen-image-2.0-pro` the suggested output sizes are `2048*2048`, `2368*1728`, `2688*1536`, `1728*2368`, `2536*2688` (model & sizes are suggested values — see `introduction/tools.md`).
-
-> Detailed tool documentation: registration mechanism, usage examples, best practices → [introduction/tools.md](introduction/tools.md) (Chinese)
+> 📚 Detailed tool documentation (registration, usage, best practices): [introduction/tools.md](introduction/tools.md)
 
 <p align="center">
   <img src="introduction/file.png" width="280" alt="Image Vision Analysis">
   <img src="introduction/web.png" width="280" alt="Web Search & Browser Automation">
-  <!-- <img src="introduction/wechat.png" width="280" alt="WeChat Integration"> -->
   <br>
   <em>Image Vision · Web Search · Browser Automation</em>
 </p>
 
 ---
 
-## Architecture
+## 🏗 Architecture
 
 ```mermaid
 %%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10", "secondaryColor": "#161b28", "tertiaryColor": "#1c2230"}}}%%
@@ -246,7 +285,7 @@ flowchart TB
     end
 
     subgraph TOOLS["Tool Layer (registry.ts)"]
-        REG["TOOL_REGISTRY<br/>160+ tools, 28 categories"]
+        REG["TOOL_REGISTRY<br/>200+ tools, 28 categories"]
         STATS["stats.ts<br/>Usage Tracking"]
         TRACE["tracing.ts<br/>Observability"]
     end
@@ -318,250 +357,179 @@ flowchart TB
     class LLM api;
 ```
 
-| Component               | Responsibility                                                             |
-| ----------------------- | -------------------------------------------------------------------------- |
-| **Agent.ts**            | Thinking loop — automatically triggers every 3 seconds                     |
-| **state.ts**            | State machine — THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION          |
-| **registry.ts**         | Tool registry — centralized management of all tool modules                 |
-| **session.ts**          | Session management — multi-session switching, context compression          |
-| **commands.ts**         | Command handling — /help, /status, /persona, /sessions, etc.               |
-| **sandbox.ts**          | Code sandbox — isolated-vm process-level isolation                         |
-| **stats.ts**            | Statistics — tool usage tracking and metrics                               |
-| **tracing.ts**          | Tracing — lightweight observability for tool executions and LLM calls      |
-| **cluster-commands.ts** | Cluster commands — spawn, delegate, stop sub-agents                        |
-| **plugin.ts**           | Plugin system — dynamic loading of custom tool plugins                     |
-| **ws-server.ts**        | WebSocket — desktop mode communication (port 9527)                         |
-| **wechat-manager.ts**   | WeChat Channel — iLink protocol integration, message routing, session sync |
+| Component               | Responsibility                                                        |
+| ----------------------- | --------------------------------------------------------------------- |
+| **Agent.ts**            | Thinking loop — automatically triggers every 3 seconds                |
+| **state.ts**            | State machine — THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION     |
+| **registry.ts**         | Tool registry — centralized management of all tool modules            |
+| **session.ts**          | Session management — multi-session switching, context compression     |
+| **commands.ts**         | Command handling — `/help`, `/status`, `/persona`, `/sessions`, etc.  |
+| **sandbox.ts**          | Code sandbox — `isolated-vm` process-level isolation                  |
+| **stats.ts**            | Statistics — tool usage tracking and metrics                          |
+| **tracing.ts**          | Tracing — lightweight observability for tool executions and LLM calls |
+| **cluster-commands.ts** | Cluster commands — spawn, delegate, stop sub-agents                   |
+| **plugin.ts**           | Plugin system — dynamic loading of custom tool plugins                |
+| **ws-server.ts**        | WebSocket — desktop mode communication (port 9527)                    |
+| **wechat-manager.ts**   | WeChat channel — iLink protocol, message routing, session sync        |
 
-> Complete architecture details: think cycle diagrams, tool call flow, state machine, message flow, WebSocket → [introduction/architecture.md](introduction/architecture.md) (Chinese)
-
----
-
-## Command Reference
-
-| Command                                 | Description                          |
-| --------------------------------------- | ------------------------------------ |
-| `/sessions`                             | List all sessions                    |
-| `/new`                                  | Create a new session                 |
-| `/switch <id>`                          | Switch to a session                  |
-| `/delete <id>`                          | Delete a session                     |
-| `/rename <name>`                        | Rename current session               |
-| `/help`                                 | Display help                         |
-| `/status`                               | Display current status               |
-| `/config`                               | Display configuration                |
-| `/persona <name>`                       | Switch persona                       |
-| `/personas`                             | List all available personas          |
-| `/tools`                                | List all available tools             |
-| `/clear`                                | Clear conversation history           |
-| `/debug`                                | Toggle debug mode                    |
-| `/wechat/status`                        | Show WeChat channel status           |
-| `/wechat/login`                         | Login to WeChat via QR code          |
-| `/wechat/logout`                        | Logout from WeChat                   |
-| `/spawn <persona> <name> <instruction>` | Create a sub-agent                   |
-| `/agents`                               | List all sub-agents                  |
-| `/delegate <agentId> <task>`            | Delegate task to sub-agent           |
-| `/stop-agent <agentId>`                 | Stop a sub-agent                     |
-| `/stop-all-agents`                      | Stop all sub-agents                  |
-| `ENTER`                                 | Interrupt thinking, enter input mode |
-| `exit`                                  | Exit the program                     |
+> 📚 Complete architecture details (think cycle, tool call flow, state machine, WebSocket): [introduction/architecture.md](introduction/architecture.md)
 
 ---
 
-## Configuration
+## 🔒 Security
 
-Configuration via `config.json` and environment variables (`.env`), with env vars taking priority. Key variables:
+Security is a first-class concern in CogitoAgent:
 
-- `COGITO_API_KEY` — your LLM API key (also the fallback for OCR / Vision / Image Generation when their own keys are blank)
-- `COGITO_IMAGEGEN_API_KEY` — image generation API key (optional; falls back to the main API key)
-- `COGITO_IMAGEGEN_MODEL` — image model name, default `qwen-image-2.0-pro` (suggested value; see `introduction/tools.md`)
-- `COGITO_VISION_API_KEY` / `COGITO_OCR_API_KEY` — optional per-feature keys
+| Layer                    | Protection                                                                                                                                                                                               |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Code Execution**       | JavaScript runs in `isolated-vm` (separate V8 heap — prototype-pollution escapes are structurally impossible); Python runs in a sanitized environment (`PYTHONNOUSERSITE`, cleaned `PATH`, hard timeout) |
+| **Dangerous Operations** | `DANGEROUS_OPERATIONS` gate requires explicit user confirmation before destructive actions                                                                                                               |
+| **Tool Permissions**     | Per-tool allow/deny/ask policy, with untrusted plugins downgraded to a restricted default                                                                                                                |
+| **Workspace Boundary**   | All file tools resolve paths with realpath checks — path traversal outside the workspace is rejected                                                                                                     |
+| **Electron Hardening**   | `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`, strict CSP header, sender-validated IPC                                                                                             |
+| **SQL Injection**        | Parameterized queries and input sanitization across the database module                                                                                                                                  |
+| **Secrets Handling**     | Credentials stored encrypted; never logged; masked when echoed back to the UI                                                                                                                            |
+| **Supply Chain**         | Plugin loading runs under a 15s import timeout with error logging; dynamic imports are cache-busted                                                                                                      |
+| **Dependency Audit**     | `npm audit` + CodeQL scanning enforced in CI                                                                                                                                                             |
 
-> Full configuration reference: environment variables list, advanced options (compression, truncation, archiving), image generation → [introduction/configuration.md](introduction/configuration.md) (Chinese)
+> 📚 Report a vulnerability: [SECURITY.md](SECURITY.md)
 
 ---
 
-## Project Structure
+## ⚙️ Configuration
+
+Configuration lives in `config.json` and environment variables (`.env`) — env vars take priority. Key variables:
+
+| Variable                                            | Description                                                                          |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `COGITO_API_KEY`                                    | LLM API key (fallback for OCR / Vision / Image Generation when their keys are blank) |
+| `COGITO_API_BASE_URL`                               | OpenAI-compatible endpoint URL                                                       |
+| `COGITO_MODEL`                                      | Default model name (e.g. `gpt-4o`)                                                   |
+| `COGITO_IMAGEGEN_API_KEY` / `COGITO_IMAGEGEN_MODEL` | Image generation credentials & model (default `qwen-image-2.0-pro`)                  |
+| `COGITO_VISION_API_KEY` / `COGITO_OCR_API_KEY`      | Optional per-feature keys                                                            |
+| `COGITO_USER_DATA_DIR`                              | Runtime data directory (defaults to CWD)                                             |
+| `COGITO_WS_TOKEN`                                   | WebSocket access token for remote clients                                            |
+| `COGITO_SANDBOX_MODE`                               | Set to `false` to disable the isolated sandbox (not recommended)                     |
+
+> 📚 Full configuration reference (advanced options, compression, truncation): [introduction/configuration.md](introduction/configuration.md)
+
+---
+
+## ⌨️ Command Reference
+
+| Command                                               | Description                               |
+| ----------------------------------------------------- | ----------------------------------------- |
+| `/sessions` / `/new`                                  | List sessions / create a new session      |
+| `/switch <id>` / `/delete <id>` / `/rename <name>`    | Session management                        |
+| `/help` / `/status` / `/config`                       | Display help / status / configuration     |
+| `/persona <name>` / `/personas`                       | Switch / list personas                    |
+| `/tools` / `/clear` / `/debug`                        | List tools / clear history / toggle debug |
+| `/wechat/status` / `/wechat/login` / `/wechat/logout` | WeChat channel control                    |
+| `/spawn <persona> <name> <instruction>`               | Create a sub-agent                        |
+| `/agents` / `/delegate <agentId> <task>`              | List / delegate to sub-agents             |
+| `/stop-agent <agentId>` / `/stop-all-agents`          | Stop sub-agents                           |
+| `ENTER` / `exit`                                      | Interrupt thinking / exit the program     |
+
+---
+
+## 🐳 Docker Deployment
+
+For headless / server environments, run the agent as a containerized WebSocket service:
+
+```bash
+cp .env.example .env    # set COGITO_API_KEY and COGITO_WS_TOKEN
+docker-compose up -d
+```
+
+The image runs as a **non-root user**, exposes health checks on `:9528`, and persists runtime data to a named volume.
+
+> 📚 Deployment & development guide: [introduction/deployment.md](introduction/deployment.md)
+
+---
+
+## 📁 Project Structure
 
 ```
 cogito-agent/
-├── src/                              # Source code (TypeScript)
+├── src/                              # TypeScript source
 │   ├── agent/                        # Core agent module
 │   │   ├── Agent.ts / state.ts / registry.ts
 │   │   ├── commands.ts / session.ts / stats.ts
 │   │   ├── plugin.ts / thought-trace.ts / retry.ts
+│   │   ├── orchestrator.ts           # Sub-agent cluster orchestration
 │   │   ├── wechat-manager.ts         # WeChat channel management
-│   │   └── tools/                    # 28+ tool modules
-│   ├── api/                          # API layer (client, models, webSearch)
-│   ├── io/                           # Terminal, Logger, WebSocket
+│   │   └── tools/                    # 28 tool modules (200+ tools)
+│   ├── api/                          # LLM API layer (OpenAI-compatible)
+│   ├── io/                           # Terminal, WebSocket, Webhook
 │   ├── config.ts                     # Configuration management
-│   ├── types/                        # TypeScript type definitions
+│   ├── types/                        # Type definitions
 │   └── index.ts                      # Application entry
-├── electron/                         # Desktop mode (JS)
-│   ├── main.js / preload.cjs / agent-bridge.js
-│   ├── desktop/ / dashboard/ / monitor/ / setup/
-│   ├── shared/                       # Shared utilities
-│   └── assets/
-├── personas/                         # Persona folders — `cogito` is the built-in default; the rest are selectable presets (18 modern + 10 ancient)
-├── tests/                            # Test files
-├── data/                             # Runtime data (auto-created)
-├── tsconfig.json                     # TypeScript config
-└── introduction/                     # Detailed documentation
-    ├── tools.md                      # Tool system details
-    ├── architecture.md               # Architecture details
-    ├── configuration.md              # Configuration guide
-    ├── systems.md                    # Core systems details
-    ├── extensions.md                 # Extensions details
-    ├── agent-cluster.md              # Agent Cluster & Monitor Panel
-    └── deployment.md                 # Deployment & development
+├── electron/                         # Desktop shell (main / preload / windows)
+├── plugins/                          # Extensible tool plugins
+├── personas/                         # 28 persona presets (selectable roles)
+├── tests/                            # Jest unit & integration tests
+├── workflows/                        # Scientific workflow definitions
+├── introduction/                     # In-depth documentation
+├── Dockerfile / docker-compose.yml   # Container deployment
+├── electron-builder.yml              # Desktop packaging config
+└── tsconfig.json                     # TypeScript config
 ```
 
 ---
 
-## Core Systems
+## ✅ Testing & Quality
 
-> See [introduction/systems.md](introduction/systems.md) (Chinese) for details
-
-```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10", "secondaryColor": "#161b28", "tertiaryColor": "#1c2230"}}}%%
-flowchart TD
-    subgraph ORCHESTRATION["Orchestration"]
-        AGENT["Agent.ts<br/>Think Cycle 3s"]
-        STATE["state.ts<br/>THINKING / AWAIT / CONFIRM"]
-        SESSION["session.ts<br/>Multi-Session + Persist"]
-        CMDS["commands.ts<br/>/help /status /sessions"]
-    end
-
-    subgraph COGNITION["Cognition"]
-        MEMORY["memory.ts<br/>SQLite Storage + Semantic Search"]
-        PERSONA["system-prompt.ts<br/>28 Personas + Custom"]
-        THOUGHT["thought-trace.ts<br/>Real-Time Chain Visualization"]
-    end
-
-    subgraph EXECUTION["Execution"]
-        REGISTRY["registry.ts<br/>160+ Tools, 28 Categories"]
-        SANDBOX["sandbox.ts<br/>isolated-vm + Python Subprocess"]
-        TASK["task.ts<br/>CRUD + Decomposition + Stats"]
-        CLUSTER["orchestrator.ts<br/>Sub-Agent Spawn + Delegate"]
-    end
-
-    subgraph OBSERVABILITY["Observability"]
-        STATS["stats.ts<br/>Per-Category Usage + Metrics"]
-        TRACING["tracing.ts<br/>Event Logging + Duration"]
-    end
-
-    subgraph SECURITY["Security"]
-        DANGER["DANGEROUS_OPERATIONS<br/>User Confirmation Required"]
-        RETRY["retry.ts<br/>Circuit Breaker + Backoff"]
-    end
-
-    subgraph INTEGRATION["Integration"]
-        PLUGIN["plugin.ts<br/>Dynamic Tool Loading"]
-        WECHAT["wechat-manager.ts<br/>iLink QR Login + Routing"]
-    end
-
-    AGENT --> STATE
-    AGENT --> SESSION
-    AGENT --> CMDS
-    AGENT --> MEMORY
-    AGENT --> PERSONA
-    AGENT --> THOUGHT
-    AGENT --> REGISTRY
-    REGISTRY --> SANDBOX
-    REGISTRY --> TASK
-    REGISTRY --> CLUSTER
-    AGENT --> STATS
-    AGENT --> TRACING
-    AGENT --> DANGER
-    AGENT --> RETRY
-    AGENT --> PLUGIN
-    AGENT --> WECHAT
-
-    classDef orchestration fill:#161b28,stroke:#fbbf24,color:#fbbf24,font-weight:bold;
-    classDef cognition fill:#161b28,stroke:#a78bfa,color:#a78bfa;
-    classDef execution fill:#161b28,stroke:#38bdf8,color:#38bdf8;
-    classDef obs fill:#161b28,stroke:#94a3b8,color:#94a3b8;
-    classDef security fill:#161b28,stroke:#f87171,color:#f87171;
-    classDef integration fill:#161b28,stroke:#5eead4,color:#5eead4;
-
-    class AGENT,STATE,SESSION,CMDS orchestration;
-    class MEMORY,PERSONA,THOUGHT cognition;
-    class REGISTRY,SANDBOX,TASK,CLUSTER execution;
-    class STATS,TRACING obs;
-    class DANGER,RETRY security;
-    class PLUGIN,WECHAT integration;
-```
-
-- **Memory System** — JSON-based long-term storage with tag-based semantic retrieval
-- **Task Management** — Task creation, decomposition, and status tracking
-- **Code Sandbox** — `isolated-vm` process-level isolation for JS and Python
-- **Personas** — 28 preset roles (18 modern + 10 ancient/regional) with custom and hot-switch support
-- **Session Management** — Independent contexts with auto-compression
-- **Statistics** — Tool usage tracking and performance metrics
-- **Thought Chain Visualization** — Real-time thinking process display
-- **Agent Cluster** — Sub-agent creation, task delegation, and cluster monitoring, see [introduction/agent-cluster.md](introduction/agent-cluster.md)
-
-<p align="center">
-  <img src="introduction/AgentCluster.png" width="600" alt="Agent Cluster">
-  <br>
-  <em>Agent Cluster Monitoring Panel</em>
-</p>
-
-<p align="center">
-  <img src="introduction/monitor.png" width="600" alt="Monitor Panel">
-  <br>
-  <em>Monitor Panel — Thought Chain, Tool Statistics & Agent Cluster</em>
-</p>
-
-## Extensions
-
-> See [introduction/extensions.md](introduction/extensions.md) (Chinese) for details
-
-- **Plugin System** — Dynamic loading of custom tool plugins
-- **Tracing** — Lightweight observability for tool executions and LLM calls
-- **Circuit Breaker & Retry** — Reliable network requests
-- **Multi-Model** — OpenAI, Moark, Anthropic, Google support
-- **Web Search** — Built-in internet search capability
-
-## Docker
-
-> See [introduction/deployment.md](introduction/deployment.md) (Chinese) for details
+- **850+ tests** across 49 suites (Jest, ESM mode)
+- **Strict TypeScript** — `tsc --noEmit` enforced in CI
+- **ESLint + Prettier** — unified code style
+- **GitHub Actions CI/CD** — lint → typecheck → test → build → release
+- **CodeQL** — automated security scanning
+- **Dependabot** — automated dependency updates
 
 ```bash
-docker-compose up -d
+npm test              # run the full test suite
+npm run typecheck     # TypeScript strict type checking
+npm run lint          # ESLint
+npm run format        # Prettier
 ```
 
 ---
 
-## Changelog
+## 🗺 Roadmap
 
-See [CHANGELOG.md](CHANGELOG.md) for a full version history.
+See [ROADMAP.md](ROADMAP.md) for the full roadmap, including:
+
+- Enhanced multi-modal capabilities
+- More persona roles & collaboration patterns
+- Advanced RAG & knowledge graph memory
+- Additional LLM provider integrations
+- Mobile/remote access via WebSocket
 
 ---
 
-## Community
+## 💬 Community & Support
 
-Join the CogitoAgent community:
-
-- [GitHub Issues](https://github.com/SnowLeopard-io/CogitoAgent/issues) — Report bugs and request features
-- [GitHub Discussions](https://github.com/SnowLeopard-io/CogitoAgent/discussions) — Ask questions and share ideas
+- [GitHub Issues](https://github.com/SnowLeopard-io/CogitoAgent/issues) — Report bugs & request features
+- [GitHub Discussions](https://github.com/SnowLeopard-io/CogitoAgent/discussions) — Ask questions & share ideas
 - [Gitee](https://gitee.com/cnt-code/cogito-agent) — Chinese mirror repository
+- [SECURITY.md](SECURITY.md) — Security disclosure policy
 
 We welcome all contributions, feedback, and ideas!
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
-We welcome contributions from the community! Whether you want to fix a bug, add a new feature, or improve documentation, your help is appreciated.
+We welcome contributions from the community! Whether you want to fix a bug, add a feature, or improve documentation, your help is appreciated.
 
 <a href="https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22"><img src="https://img.shields.io/badge/Good%20First%20Issue-help%20wanted-green?style=flat-square" alt="Good First Issue"></a>
 <a href="https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22"><img src="https://img.shields.io/badge/Help%20Wanted-contribute-blue?style=flat-square" alt="Help Wanted"></a>
 
 ### Getting Started
 
-1. Read our [Contributing Guide](CONTRIBUTING.md) for detailed instructions
-2. Check out [good first issues](https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) to get started
-3. Follow our [Code of Conduct](CODE_OF_CONDUCT.md)
+1. Read the [Contributing Guide](CONTRIBUTING.md)
+2. Browse [good first issues](https://github.com/SnowLeopard-io/CogitoAgent/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22)
+3. Follow the [Code of Conduct](CODE_OF_CONDUCT.md)
 4. Report security issues via [SECURITY.md](SECURITY.md)
 
 ### Ways to Contribute
@@ -575,10 +543,14 @@ We welcome contributions from the community! Whether you want to fix a bug, add 
 
 ---
 
-## License
+## 📄 License
 
-Apache 2.0
+[Apache License 2.0](LICENSE)
+
+Copyright © 2026 CogitoAgent Team
 
 ---
 
-Built with CogitoAgent Team
+<div align="center">
+  <sub>Built with ❤️ by the CogitoAgent team · <em>Think Continuously, Act Autonomously, Stay Private</em></sub>
+</div>

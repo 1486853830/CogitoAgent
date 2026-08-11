@@ -42,6 +42,29 @@ let currentMode = 'desktop'; // 当前模式: desktop / dashboard
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const USER_DATA_DIR = app.getPath('userData');
+
+// 应用图标路径：开发模式指向源码 assets，打包模式指向 extraResources。
+// 注意：打包后 electron/ 在 asar 内，但 extraResources 把 electron/shared 外置，
+// 图标需从 resourcesPath 读取（buildResources 不进入安装包）。
+function getAppIconPath() {
+  const candidates = [];
+  if (app.isPackaged) {
+    candidates.push(path.join(process.resourcesPath, 'electron', 'assets', 'icon.ico'));
+    candidates.push(path.join(process.resourcesPath, 'assets', 'icon.ico'));
+  } else {
+    candidates.push(path.join(PROJECT_ROOT, 'electron', 'assets', 'icon.ico'));
+    candidates.push(path.join(PROJECT_ROOT, 'favicon.ico'));
+  }
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) return p;
+    } catch {
+      // 继续尝试下一个
+    }
+  }
+  return null;
+}
+const APP_ICON = getAppIconPath();
 const CONFIG_FILE = path.join(USER_DATA_DIR, 'config.json');
 setUserDataDir(USER_DATA_DIR);
 
@@ -630,6 +653,7 @@ function createSetupWindow(isReconfigure = false) {
     height: 680,
     x: Math.floor((width - 520) / 2),
     y: Math.floor((height - 680) / 2),
+    icon: APP_ICON,
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -674,6 +698,7 @@ function createMainWindow() {
     height: 600,
     x: width - 640,
     y: height - 620,
+    icon: APP_ICON,
     transparent: true,
     frame: false,
     alwaysOnTop: false,
@@ -756,6 +781,7 @@ function createDashboardWindow() {
     height: winHeight,
     x: Math.floor((width - winWidth) / 2),
     y: Math.floor((height - winHeight) / 2),
+    icon: APP_ICON,
     minWidth: 800,
     minHeight: 600,
     frame: false,
@@ -839,6 +865,7 @@ function createMonitorWindow() {
     height: winHeight,
     x: Math.floor((width - winWidth) / 2),
     y: Math.floor((height - winHeight) / 2),
+    icon: APP_ICON,
     minWidth: 640,
     minHeight: 360,
     frame: false,
