@@ -6,6 +6,9 @@
  * 安全设计：XML 标签清理使用状态机而非正则，避免不完整的清理风险。
  */
 
+import https from 'https';
+import { URL } from 'url';
+
 const TOOLS = [];
 
 const ENTREZ_BASE = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils';
@@ -18,9 +21,6 @@ const API_KEY = process.env.NCBI_API_KEY;
  * S21: 跟随 3xx 重定向（NCBI 偶尔 303），并对响应体积设上限，避免超大响应耗尽内存。
  */
 async function entrezFetch(url, redirects = 0) {
-  const https = await import('https');
-  // 显式从 node:url 取 URL，插件运行环境的 lint/globals 不保证有全局 URL
-  const { URL } = await import('url');
   // 若存在 API key 且 URL 尚未携带，则自动拼接
   const finalUrl = API_KEY && !url.includes('api_key=') ? `${url}&api_key=${API_KEY}` : url;
   const MAX_REDIRECTS = 5;
@@ -72,20 +72,31 @@ async function entrezFetch(url, redirects = 0) {
 /**
  * 使用状态机安全剥离 XML 标签
  * 不使用正则，避免 CodeQL "Incomplete multi-character sanitization" 警报
+ * 增强实体解码：覆盖常见 HTML 命名实体和十进制/十六进制数字字符引用
  * @param {string} str - 包含 XML 标签的字符串
  * @returns {string} - 剥离标签后的纯文本
  */
 function stripXmlTags(str) {
+  if (!str) return '';
   // S20: 必须先解码实体再剥离标签。原实现先剥离标签后解码，导致
   // &lt;script&gt; 先被当成标签剥掉、再解码成 <script> 残留（XSS 隐患）。
   // 先解码（&amp; 必须最先，避免 &amp;lt; 二次解码错误），任何被实体编码的
   // 标签在解码后会重新进入状态机被剥离，确保输出不含可解析的标签。
   let decoded = str
     .replace(/&amp;/g, '&')
+    .replace(/&#38;/g, '&')
     .replace(/&lt;/g, '<')
+    .replace(/&#60;/g, '<')
     .replace(/&gt;/g, '>')
+    .replace(/&#62;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+    .replace(/&#34;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#160;/g, ' ')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(parseInt(code, 10)))
+    .replace(/&#[xX]([0-9a-fA-F]+);/g, (_, code) => String.fromCodePoint(parseInt(code, 16)));
   let out = '';
   let inTag = false;
   for (let i = 0; i < decoded.length; i++) {

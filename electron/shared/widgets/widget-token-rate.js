@@ -132,7 +132,7 @@ window.WidgetRegistry?.register('tokenRate', (container) => {
         });
       }
       if (window.electronAPI?.on) {
-        window.electronAPI.on('stats-response', (data) => {
+        state.unsubStats = window.electronAPI.on('stats-response', (data) => {
           const s = data?.data || data?.session || data;
           applyStatsResponse(s);
         });
@@ -153,6 +153,10 @@ window.WidgetRegistry?.register('tokenRate', (container) => {
       state.samples = [];
       state.langHandler = null;
       state.intervalId = null;
+      if (typeof state.unsubStats === 'function') {
+        state.unsubStats();
+        state.unsubStats = null;
+      }
     },
   };
 });

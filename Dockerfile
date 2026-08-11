@@ -4,7 +4,12 @@
 FROM node:24-alpine
 
 # 安装 Python（用于 Python 代码执行）+ native 模块（isolated-vm）编译工具链
-RUN apk add --no-cache python3 py3-pip wget g++ make
+# 使用虚拟构建依赖：编译完成后删除，减小镜像体积并减少攻击面
+RUN apk add --no-cache python3 py3-pip wget \
+  && apk add --no-cache --virtual .build-deps g++ make
+
+# 创建非 root 用户（安全加固：不以 root 运行应用）
+RUN addgroup -S nodejs && adduser -S nodejs -G nodejs
 
 # 设置工作目录
 WORKDIR /app
@@ -16,13 +21,14 @@ COPY package*.json ./
 # 使 isolated-vm 完成 node-gyp 编译——否则代码执行沙箱在容器内不可用）
 ENV HUSKY=0
 RUN npm ci --production --ignore-scripts \
-  && npm rebuild isolated-vm
+  && npm rebuild isolated-vm \
+  && apk del .build-deps
 
 # 复制源代码
 COPY . .
 
-# 创建数据目录
-RUN mkdir -p /app/data
+# 创建数据目录并设置所有权
+RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
 
 # 暴露端口：9527 = WebSocket，9528 = 健康检查 HTTP
 EXPOSE 9527 9528
@@ -48,4 +54,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 
 # 启动命令：容器为无头环境，运行 CLI 模式（Electron 桌面界面在容器中不可用）
 # CLI_MODE=true 使 agent 跳过配置向导直接启动 WS 服务
+USER nodejs
 CMD ["npx", "tsx", "src/index.ts"]

@@ -39,9 +39,7 @@ export default [
       "no-useless-escape": "warn",
       "no-async-promise-executor": "warn",
       "no-loss-of-precision": "warn",
-      "preserve-caught-error": "warn",
-      "no-control-regex": "warn",
-      "no-unassigned-vars": "warn"
+      "no-control-regex": "warn"
     }
   },
   {

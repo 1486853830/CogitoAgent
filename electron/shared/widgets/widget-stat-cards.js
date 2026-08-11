@@ -68,7 +68,7 @@ window.WidgetRegistry?.register('statCards', (container, opts = {}) => {
       }
       // 监听 stats-response
       if (window.electronAPI?.on) {
-        window.electronAPI.on('stats-response', (data) => {
+        state.unsubStats = window.electronAPI.on('stats-response', (data) => {
           const s = data?.data || data?.session || data;
           if (s && s.totalTokens !== undefined) {
             state.data = { ...state.data, ...s };
@@ -95,6 +95,10 @@ window.WidgetRegistry?.register('statCards', (container, opts = {}) => {
       if (state.langHandler) document.removeEventListener('cogito:langchange', state.langHandler);
       state.data = {};
       state.langHandler = null;
+      if (typeof state.unsubStats === 'function') {
+        state.unsubStats();
+        state.unsubStats = null;
+      }
     },
   };
 });

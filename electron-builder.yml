@@ -60,3 +60,7 @@ compression: maximum
 publish:
   provider: generic
   url: ''
+
+# 注意：生产分发建议启用代码签名（code signing），以消除 Windows SmartScreen /
+# macOS Gatekeeper 警告。可通过 win.certificateFile / mac.identity 等字段配置。
+# 详见 https://www.electron.build/code-signing

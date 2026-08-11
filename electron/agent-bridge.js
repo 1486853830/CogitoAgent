@@ -101,12 +101,27 @@ function connect() {
             // 过滤非法 session.id，防止路径穿越（攻击者可构造 session.id 读写任意文件）
             const safeMeta = sanitizeMeta(msg.meta);
             const tempFile = metaPath + '.tmp';
-            fs.writeFileSync(tempFile, JSON.stringify(safeMeta, null, 2), 'utf-8');
+            const content = JSON.stringify(safeMeta, null, 2);
+            let fd;
             try {
+              fd = fs.openSync(tempFile, 'w');
+              fs.writeSync(fd, content, 0, 'utf-8');
+              fs.fsyncSync(fd);
+              fs.closeSync(fd);
+              fd = undefined;
               fs.renameSync(tempFile, metaPath);
-            } catch {
-              fs.copyFileSync(tempFile, metaPath);
-              fs.unlinkSync(tempFile);
+            } catch (e) {
+              if (fd !== undefined) {
+                try {
+                  fs.closeSync(fd);
+                } catch {}
+              }
+              // fallback: copy + unlink
+              try {
+                fs.copyFileSync(tempFile, metaPath);
+                fs.unlinkSync(tempFile);
+              } catch {}
+              throw e;
             }
             console.log('[AgentBridge] 会话元数据已更新');
             connectedWindows.forEach((win) => {
@@ -262,65 +277,80 @@ function ensureUserMessageHandler() {
     return `${Date.now()}-${requestSeq}`;
   }
 
+  // 统计数据与工具面板请求：使用单一消息处理器 + pending Map 管理，
+  // 避免每次请求都注册新的 WS message 监听器导致累积泄漏。
+  const pendingStatsRequests = new Map();
+  const pendingToolsRequests = new Map();
+
+  // 全局单一的 message 监听器，按 requestId 路由到对应调用方
+  let globalStatsToolsHandler = null;
+  function ensureGlobalStatsToolsHandler() {
+    if (globalStatsToolsHandler) return;
+    globalStatsToolsHandler = (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString());
+        if (
+          msg.type === 'stats-response' &&
+          msg.requestId &&
+          pendingStatsRequests.has(msg.requestId)
+        ) {
+          const entry = pendingStatsRequests.get(msg.requestId);
+          clearTimeout(entry.timer);
+          if (entry.sender && !entry.sender.isDestroyed()) {
+            entry.sender.send('stats-response', msg);
+          }
+          pendingStatsRequests.delete(msg.requestId);
+        } else if (
+          msg.type === 'tools-response' &&
+          msg.requestId &&
+          pendingToolsRequests.has(msg.requestId)
+        ) {
+          const entry = pendingToolsRequests.get(msg.requestId);
+          clearTimeout(entry.timer);
+          if (entry.sender && !entry.sender.isDestroyed()) {
+            entry.sender.send('tools-response', msg);
+          }
+          pendingToolsRequests.delete(msg.requestId);
+        }
+      } catch {
+        // 消息解析失败时忽略
+      }
+    };
+  }
+
   // 统计数据请求
   ipcMain.on('stats-request', (event, payload) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
+      ensureGlobalStatsToolsHandler();
+      if (!ws.listeners('message').includes(globalStatsToolsHandler)) {
+        ws.on('message', globalStatsToolsHandler);
+      }
       const requestId = nextRequestId();
-      const handler = (raw) => {
-        try {
-          const msg = JSON.parse(raw.toString());
-          // 必须匹配 requestId：多窗口并发请求时，若不校验会让第一个到达的
-          // stats-response 错误地回复给所有等待中的 handler，造成串扰。
-          if (msg.type === 'stats-response' && msg.requestId === requestId) {
-            if (event.sender && !event.sender.isDestroyed()) {
-              event.sender.send('stats-response', msg);
-            }
-            ws.removeListener('message', handler);
-          }
-        } catch {
-          // 消息解析失败时忽略，等待下一条
-        }
-      };
-      ws.on('message', handler);
-      ws.send(JSON.stringify({ type: 'stats-request', payload, requestId }));
-
-      // 超时清理：捕获当前 ws 引用为局部变量，防止 30 秒内 WebSocket
-      // 断线重连导致模块级 ws 被替换为新的连接实例，使 removeListener
-      // 作用在错误的对象上（或 ws 已被置 null 导致 TypeError）。
-      const currentWs = ws;
-      setTimeout(() => {
-        currentWs.removeListener('message', handler);
+      const timer = setTimeout(() => {
+        pendingStatsRequests.delete(requestId);
       }, 30000);
+      pendingStatsRequests.set(requestId, { sender: event.sender, timer });
+      ws.send(JSON.stringify({ type: 'stats-request', payload, requestId }));
     } else {
       if (event.sender && !event.sender.isDestroyed()) {
         event.sender.send('stats-response', { error: 'Agent 未连接' });
       }
     }
   });
+
   // 技能与工具面板数据请求
   ipcMain.on('tools-request', (event) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
+      ensureGlobalStatsToolsHandler();
+      if (!ws.listeners('message').includes(globalStatsToolsHandler)) {
+        ws.on('message', globalStatsToolsHandler);
+      }
       const requestId = nextRequestId();
-      const handler = (raw) => {
-        try {
-          const msg = JSON.parse(raw.toString());
-          if (msg.type === 'tools-response' && msg.requestId === requestId) {
-            if (event.sender && !event.sender.isDestroyed()) {
-              event.sender.send('tools-response', msg);
-            }
-            ws.removeListener('message', handler);
-          }
-        } catch {
-          // 消息解析失败时忽略，等待下一条
-        }
-      };
-      ws.on('message', handler);
-      ws.send(JSON.stringify({ type: 'tools-request', requestId }));
-
-      const currentWs2 = ws;
-      setTimeout(() => {
-        currentWs2.removeListener('message', handler);
+      const timer = setTimeout(() => {
+        pendingToolsRequests.delete(requestId);
       }, 30000);
+      pendingToolsRequests.set(requestId, { sender: event.sender, timer });
+      ws.send(JSON.stringify({ type: 'tools-request', requestId }));
     } else {
       if (event.sender && !event.sender.isDestroyed()) {
         event.sender.send('tools-response', { error: 'Agent 未连接' });

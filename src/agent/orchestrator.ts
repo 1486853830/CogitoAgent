@@ -848,6 +848,9 @@ class AgentOrchestrator {
           // 传入 AbortSignal：若主智能体对子智能体发起了 stopAgent，
           // 长时间运行的工具（如 executeCode）可响应中断而非把剩余
           // 工具逐个跑完（副作用照做）。
+          // 与主 Agent 路径一致（Agent.ts:executeTool）：将 signal 作为额外尾参传给
+          // 工具函数，让支持中断的工具（如 runPython/executeCode）在 /stop 时真正
+          // 终止底层进程，而不只是被 Promise.race 忽略结果。
           const abortSignal = agent.abortController?.signal;
           if (abortSignal?.aborted) {
             messages.push({
@@ -857,9 +860,12 @@ class AgentOrchestrator {
             });
             continue;
           }
-          const toolFn = registry.fn(
-            ...(Array.isArray(processedArgs) ? processedArgs : [processedArgs]),
-          );
+          const toolFn = abortSignal
+            ? registry.fn(
+                ...(Array.isArray(processedArgs) ? processedArgs : [processedArgs]),
+                abortSignal,
+              )
+            : registry.fn(...(Array.isArray(processedArgs) ? processedArgs : [processedArgs]));
           const resultValue: unknown = abortSignal
             ? await Promise.race([
                 toolFn,

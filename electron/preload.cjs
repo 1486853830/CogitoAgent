@@ -76,7 +76,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
     // 未识别的 channel：不注册监听器，返回空操作清理函数。
     // 调用方不能依赖此方法监听未在白名单内的 channel。
-    console.warn(`[preload] 未识别的 IPC channel: "${channel}"，监听未注册`);
+    console.warn(`[preload] Unknown/unlisted IPC channel - listener NOT registered. Channel: "${channel}"`);
     return () => {};
   },
 

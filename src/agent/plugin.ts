@@ -150,7 +150,14 @@ class PluginManager {
     // 超时 reject 后 import 仍可能在后台 resolve/reject，需显式接住避免未处理异常
     // （最差情况：恶意/挂起插件占用进程；完全隔离需改为 Worker/子进程，列入后续重构）。
     const importPromise = import(pluginUrl);
-    importPromise.catch(() => {});
+    // 超时 reject 后 import 仍可能在后台 resolve/reject；显式接住错误并输出原始原因，
+    // 避免"插件加载超时"掩盖真实的导入失败（如模块语法错误）。
+    importPromise.catch((err: unknown) => {
+      console.error(
+        `[Plugin] import() 失败 (${name}):`,
+        err instanceof Error ? err.message : String(err),
+      );
+    });
     const plugin = (await Promise.race([
       importPromise,
       new Promise<never>((_, reject) => {
@@ -596,13 +603,12 @@ function getToolPermission(
   }
 
   // R5.4 插件安全：不可信插件默认受限运行。
-  // 无全局规则时，不可信插件的工具落到受限默认（ask），可信插件回退到其声明的默认。
   if (pluginName && !isPluginTrusted(pluginName)) {
-    // 全局规则优先；无全局规则时不可信插件工具默认受限。
-    if (globalLevel) return globalLevel;
+    // 全局 deny 始终生效；全局 allow 对不可信插件降级为受限级别，
+    // 防止全局配置意外放行未经验证的第三方插件。
+    if (globalLevel === 'deny') return 'deny';
     const untrustedDefault = getUntrustedPluginPermission();
-    // 插件自身声明的默认权限仅对「受信任」插件生效；不可信插件以其受限级别为准。
-    return resolveToolPermission(globalLevel, undefined, untrustedDefault);
+    return resolveToolPermission(null, undefined, untrustedDefault);
   }
   return resolveToolPermission(globalLevel, pluginDefault);
 }

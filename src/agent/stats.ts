@@ -91,6 +91,11 @@ function initStats(): void {
     'vision',
     'cluster',
     'wechat',
+    'image',
+    'chemistry',
+    'bioinformatics',
+    'literature',
+    'mcp',
   ];
   for (const cat of categories) {
     toolStats[cat] = {
@@ -107,24 +112,76 @@ async function loadStats(): Promise<void> {
   try {
     const data = await fs.readFile(STATS_FILE, 'utf-8');
     const parsed = JSON.parse(data);
-    toolStats = parsed.toolStats || {};
+    const loadedTools: Record<string, ToolCategoryStats> = parsed.toolStats || {};
+
+    // 增量合并：将历史 toolStats 累加到当前（initStats 创建的零值框架上），
+    // 而非替换。这避免了 initStats→loadStats 窗口期内记录的运行时数据被覆盖丢失。
+    for (const [cat, catStats] of Object.entries(loadedTools)) {
+      if (!toolStats[cat]) {
+        toolStats[cat] = {
+          callCount: 0,
+          successCount: 0,
+          failCount: 0,
+          totalTime: 0,
+          tools: {},
+        };
+      }
+      toolStats[cat].callCount += catStats.callCount || 0;
+      toolStats[cat].successCount += catStats.successCount || 0;
+      toolStats[cat].failCount += catStats.failCount || 0;
+      toolStats[cat].totalTime += catStats.totalTime || 0;
+      for (const [toolName, t] of Object.entries(catStats.tools || {})) {
+        if (!toolStats[cat].tools[toolName]) {
+          toolStats[cat].tools[toolName] = {
+            callCount: 0,
+            successCount: 0,
+            failCount: 0,
+            totalTime: 0,
+          };
+        }
+        toolStats[cat].tools[toolName].callCount += t.callCount || 0;
+        toolStats[cat].tools[toolName].successCount += t.successCount || 0;
+        toolStats[cat].tools[toolName].failCount += t.failCount || 0;
+        toolStats[cat].tools[toolName].totalTime += t.totalTime || 0;
+      }
+    }
+
     const loaded = parsed.sessionStats || {};
-    sessionStats = { ...sessionStats, ...loaded };
-    const tokenFields = [
-      'totalInputTokens',
-      'totalOutputTokens',
-      'totalTokens',
-      'todayInputTokens',
-      'todayOutputTokens',
-      'todayTokens',
-      'totalCost',
-      'todayCost',
-    ];
-    for (const k of tokenFields) {
-      if (typeof sessionStats[k] !== 'number') sessionStats[k] = 0;
+    // 累加历史总计到当前 sessionStats（initStats 已将当前置零，所以是纯追加）
+    sessionStats.totalSessions += loaded.totalSessions || 0;
+    sessionStats.totalMessages += loaded.totalMessages || 0;
+    sessionStats.totalToolCalls += loaded.totalToolCalls || 0;
+    sessionStats.totalThinkingTime += loaded.totalThinkingTime || 0;
+    sessionStats.totalInputTokens += loaded.totalInputTokens || 0;
+    sessionStats.totalOutputTokens += loaded.totalOutputTokens || 0;
+    sessionStats.totalTokens += loaded.totalTokens || 0;
+    sessionStats.totalCost += loaded.totalCost || 0;
+
+    // today 计数器：若 initStats 后尚未累积新数据，从历史回填
+    const backfillIfZero = (field: keyof typeof sessionStats) => {
+      const val = sessionStats[field];
+      if (typeof val !== 'number' || val === 0) {
+        (sessionStats as Record<string, unknown>)[field] =
+          Number((loaded as Record<string, unknown>)[field]) || 0;
+      }
+    };
+    backfillIfZero('todaySessions');
+    backfillIfZero('todayMessages');
+    backfillIfZero('todayToolCalls');
+    backfillIfZero('todayInputTokens');
+    backfillIfZero('todayOutputTokens');
+    backfillIfZero('todayTokens');
+    backfillIfZero('todayCost');
+
+    // dailyHistory：合并加载（当前键优先）
+    if (loaded.dailyHistory) {
+      sessionStats.dailyHistory = {
+        ...loaded.dailyHistory,
+        ...(sessionStats.dailyHistory || {}),
+      };
     }
   } catch {
-    initStats();
+    // 文件不存在或已损坏；initStats 已创建零值框架，无操作
   }
 }
 
@@ -437,12 +494,10 @@ function resetStats(): void {
 }
 
 initStats();
-// 启动时异步加载历史统计。因为历史数据只在记录时被增量叠加，
-// 即便加载还没完成就开始记录，也只会少加一段历史，不会产生错误计数。
-// 使用 .catch 兜底，避免未处理的 rejection 影响进程退出。
-loadStats().catch(() => {
-  console.error('[Stats] 加载历史统计数据失败');
-});
+// 异步加载历史统计，错误已在 loadStats 内部静默处理。
+// 使用增量合并模式：initStats 先创建零值框架，loadStats 在其上累加历史数据，
+// 因此两阶段之间记录的运行时数据不会被覆盖丢失。
+loadStats().catch(() => {});
 
 export {
   recordToolCall,

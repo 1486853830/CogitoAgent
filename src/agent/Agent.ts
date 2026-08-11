@@ -30,7 +30,7 @@ import {
   updateSystemPrompt,
   listSessions,
 } from './session.ts';
-import { reloadConfig } from '../config.ts';
+import { reloadConfig, loadConfig } from '../config.ts';
 import {
   init,
   showPrompt,
@@ -48,7 +48,6 @@ import {
   onCleanup,
 } from '../io/terminal.ts';
 import { setReplyCallback, deliverReply, setCurrentReplyKey, getCurrentReplyKey } from './reply.ts';
-import { loadConfig } from '../config.ts';
 import {
   startWsServer,
   stopWsServer,
@@ -1042,7 +1041,11 @@ function scheduleNextCycle(retry = 0): void {
       if (retry < MAX_RESCHEDULE_RETRIES) {
         scheduleNextCycle(retry + 1);
       } else {
-        console.warn('[Agent] 上一思考周期长时间未退出，放弃本次调度');
+        const warnMsg = '[Agent] 上一思考周期长时间未退出（超25s），当前消息可能丢失，请重试';
+        console.error(warnMsg);
+        // 通知回复通道（如 WebSocket / Webhook / 微信），避免发送方完全不知情
+        deliverReply(warnMsg);
+        broadcast('agent-reply', { type: 'error', data: warnMsg });
         state.current = STATE.AWAITING_INPUT;
         broadcast('agent-state', { state: 'idle' });
         showPrompt();
@@ -1089,8 +1092,11 @@ async function start(): Promise<void> {
     console.log(`[Agent] 活动人设: ${startupPersona ? startupPersona : '默认(Cogito)'}`);
   }
 
-  // 自动加载科学插件
-  (async () => {
+  // 自动加载科学插件（异步启动，内部自行处理错误）。
+  // 插件加载不与消息处理竞态——后续的 WS 启动和首次消息处理之间有足够余量；
+  // 仅在极端启动场景（DISABLE_WS 模式下首条消息先于插件加载到达）才可能缺少工具。
+  // 若需严格保证，可将 loadPlugins 提升到 initializeSession 之前 await。
+  const pluginLoadPromise: Promise<void> = (async () => {
     try {
       const result = await loadPlugins();
       if (result.loaded > 0) {
@@ -1105,6 +1111,10 @@ async function start(): Promise<void> {
       console.error(`[Agent] 插件加载异常: ${(e as Error).message}`);
     }
   })();
+  // 将插件加载 Promise 挂载到模块作用域，供消息入口在快速启动路径下等待
+  void pluginLoadPromise.then(() => {
+    console.log('[Agent] 插件加载流程已完成');
+  });
 
   if (process.env.DISABLE_WS !== 'true') {
     try {

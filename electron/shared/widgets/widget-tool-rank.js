@@ -106,7 +106,7 @@ window.WidgetRegistry?.register('toolRank', (container, opts = {}) => {
         window.electronAPI.sendStatsRequest({ type: 'topTools', limit: state.limit });
       }
       if (window.electronAPI?.on) {
-        window.electronAPI.on('stats-response', (data) => {
+        state.unsubStats = window.electronAPI.on('stats-response', (data) => {
           const tools = data?.data || data?.topTools;
           if (Array.isArray(tools)) {
             state.data = tools;
@@ -134,6 +134,10 @@ window.WidgetRegistry?.register('toolRank', (container, opts = {}) => {
       state.data = [];
       state.langHandler = null;
       state.intervalId = null;
+      if (typeof state.unsubStats === 'function') {
+        state.unsubStats();
+        state.unsubStats = null;
+      }
     },
   };
 });

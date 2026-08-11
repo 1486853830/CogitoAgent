@@ -569,23 +569,23 @@ async function runSetup(): Promise<Record<string, unknown> | null> {
   const mode = await configureMode(rl);
   println('');
 
-  // 7. 邮件配置（可选）
+  // 6. 邮件配置（可选）
   const emailConfig = await configureEmail(rl);
   println('');
 
-  // 8. OCR 配置（可选）
+  // 7. OCR 配置（可选）
   const ocrConfig = await configureOCR(rl);
   println('');
 
-  // 9. 视觉分析配置（可选）
+  // 8. 视觉分析配置（可选）
   const visionConfig = await configureVision(rl);
   println('');
 
-  // 10. 代码执行配置（可选）
+  // 9. 代码执行配置（可选）
   const codeConfig = await configureCode(rl);
   println('');
 
-  // 11. 安全配置（可选）
+  // 10. 安全配置（可选）
   const securityConfig = await configureSecurity(rl);
 
   rl.close();

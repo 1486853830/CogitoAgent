@@ -8,18 +8,18 @@ services:
     container_name: cogito-agent
     restart: unless-stopped
     ports:
-      - '9527:9527'
-      - '9528:9528'
+      - '127.0.0.1:9527:9527'
+      - '127.0.0.1:9528:9528'
     environment:
       - NODE_ENV=production
       # API 配置（通过环境变量或配置文件设置）
-      - COGITO_API_KEY=${COGITO_API_KEY}
+      - COGITO_API_KEY=${COGITO_API_KEY:?COGITO_API_KEY is required}
       - COGITO_API_BASE_URL=${COGITO_API_BASE_URL:-https://api.openai.com/v1}
       - COGITO_MODEL=${COGITO_MODEL:-gpt-4o}
       - COGITO_WORKSPACE=/app/workspace
       # WS 访问令牌：容器绑定 0.0.0.0，访问控制完全依赖此 token。
       # 必须在 .env 中设置一个强随机值，否则每次重启 token 随机变化，客户端无法接入。
-      - COGITO_WS_TOKEN=${COGITO_WS_TOKEN}
+      - COGITO_WS_TOKEN=${COGITO_WS_TOKEN:?COGITO_WS_TOKEN is required}
     volumes:
       # 持久化配置（若本地无 config.json，先创建空文件再映射，避免 Docker 挂载目录覆盖）
       - ./config.json:/app/config.json:ro

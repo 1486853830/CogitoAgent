@@ -17,6 +17,9 @@ docker-compose.yml
 .github/
 .gitee/
 
+# 构建产物
+dist/
+
 # 测试
 tests/
 coverage/
@@ -50,3 +53,6 @@ temp/
 .env
 .env.*
 !.env.example
+
+# macOS
+.DS_Store

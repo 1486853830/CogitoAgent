@@ -180,10 +180,10 @@ function loadEnvFile(): void {
           const last = value[value.length - 1];
           if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
             value = value.slice(1, -1);
-            // S3: 与写入端 buildEnvLines 的转义对称，反转义 \n \t \r \" \\
-            value = unescapeEnvValue(value);
           }
         }
+        // 统一反转义：无论是否引号包裹，\n \t \r \\ 都应被解析
+        value = unescapeEnvValue(value);
         if (process.env[key] === undefined) process.env[key] = value;
       }
     } catch (e) {

@@ -119,18 +119,22 @@ async function sendTemplateEmail(
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
 
+  // 对纯文本字段做基础净化：移除控制字符，防止注入到邮件正文
+  const safeText = (v: unknown): string =>
+    String(v ?? '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+
   const templates: Record<string, { text: string; html: string }> = {
     welcome: {
-      text: `欢迎使用 CogitoAgent！\n\n您好，感谢您的注册。\n\n用户名: ${data.username}\n邮箱: ${data.email}\n\n祝您使用愉快！`,
+      text: `欢迎使用 CogitoAgent！\n\n您好，感谢您的注册。\n\n用户名: ${safeText(data.username)}\n邮箱: ${safeText(data.email)}\n\n祝您使用愉快！`,
       html: `<h1>欢迎使用 CogitoAgent！</h1><p>您好，感谢您的注册。</p><p>用户名: ${escapeHtml(data.username)}</p><p>邮箱: ${escapeHtml(data.email)}</p><p>祝您使用愉快！</p>`,
     },
     notification: {
-      text: `通知\n\n${data.message}\n\n时间: ${data.time || new Date().toLocaleString()}`,
-      html: `<h2>通知</h2><p>${escapeHtml(data.message)}</p><p>时间: ${escapeHtml(data.time) || new Date().toLocaleString()}</p>`,
+      text: `通知\n\n${safeText(data.message)}\n\n时间: ${data.time ? safeText(data.time) : new Date().toLocaleString()}`,
+      html: `<h2>通知</h2><p>${escapeHtml(data.message)}</p><p>时间: ${escapeHtml(data.time ? data.time : new Date().toLocaleString())}</p>`,
     },
     error: {
-      text: `错误通知\n\n错误信息: ${data.error}\n\n堆栈: ${data.stack || 'N/A'}\n\n时间: ${new Date().toLocaleString()}`,
-      html: `<h2>错误通知</h2><p>错误信息: ${escapeHtml(data.error)}</p><p>堆栈: ${escapeHtml(data.stack) || 'N/A'}</p><p>时间: ${new Date().toLocaleString()}</p>`,
+      text: `错误通知\n\n错误信息: ${safeText(data.error)}\n\n堆栈: ${data.stack ? safeText(data.stack) : 'N/A'}\n\n时间: ${new Date().toLocaleString()}`,
+      html: `<h2>错误通知</h2><p>错误信息: ${escapeHtml(data.error)}</p><p>堆栈: ${data.stack ? escapeHtml(data.stack) : 'N/A'}</p><p>时间: ${new Date().toLocaleString()}</p>`,
     },
   };
 

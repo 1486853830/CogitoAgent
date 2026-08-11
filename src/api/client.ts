@@ -443,7 +443,9 @@ async function chatText(
       clearTimeout(timeoutId);
     }
   }
-  return '';
+  // 死码清理：while(true) 总是通过 return 或 throw 退出，
+  // 此处的 return '' 不可达，改为显式断言。
+  throw new Error('chatText: unreachable — all retries exhausted without return');
 }
 
 // =============================================================

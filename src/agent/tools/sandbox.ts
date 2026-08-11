@@ -494,136 +494,122 @@ function fmtDirectValue(a: unknown): string {
  * @param signal - 可选 AbortSignal，传给 execFile，中断时直接 kill 子进程。
  */
 async function runPythonSandbox(code: string, signal?: AbortSignal): Promise<SandboxResult> {
-  // eslint-disable-next-line no-async-promise-executor -- executor 内已用 try/catch 完整兜底，且需统一管理超时与 resolve 时机
-  return new Promise(async (resolve) => {
-    let tmpPath: string | null = null;
-    let timedOut = false;
-    const { maxExecutionTime, maxOutputSize } = getCodeLimits();
+  let tmpPath: string | null = null;
+  let timedOut = false;
+  const { maxExecutionTime, maxOutputSize } = getCodeLimits();
 
-    const timeoutId = setTimeout(async () => {
+  // 与 runPython (code.ts) 统一的 Promise 构造模式：同步 executor + 内部 async IIFE，
+  // 避免 async executor 反模式导致的 Promise 悬挂风险。
+  return new Promise<SandboxResult>((resolve) => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    timeoutId = setTimeout(() => {
       timedOut = true;
-      await cleanupTmpFile(tmpPath);
-      resolve({
-        success: false,
-        error: `执行超时（超过${maxExecutionTime / 1000}秒）`,
-      });
+      cleanupTmpFile(tmpPath)
+        .catch(() => {})
+        .finally(() => {
+          resolve({
+            success: false,
+            error: `执行超时（超过${maxExecutionTime / 1000}秒）`,
+          });
+        });
     }, maxExecutionTime);
 
-    try {
-      tmpPath = generateSecureTmpPath('py');
-      // writeSecureTmpFile 在发生路径碰撞(EEXIST)时会回退到新路径并以 string 返回，
-      // 必须据此更新 tmpPath，否则后续 execFile 仍指向旧路径，可能执行他人代码或空文件。
-      const writeResult = await writeSecureTmpFile(tmpPath, code);
-      if (typeof writeResult === 'string') {
-        tmpPath = writeResult;
-      }
-
-      // 科学模式：允许使用已安装的 Python 科学库
-      const cfg = loadConfig();
-      const scientificMode = cfg.code?.scientificMode === true;
-
-      const secureEnv: Record<string, string | undefined> = {
-        HOME: process.env.HOME || process.env.USERPROFILE || '',
-        TMPDIR: os.tmpdir(),
-        TEMP: os.tmpdir(),
-        PYTHONUTF8: '1',
-        PYTHONIOENCODING: 'utf-8',
-        PYTHONUNBUFFERED: '1',
-        PYTHONDONTWRITEBYTECODE: '1',
-        PYTHONHASHSEED: '0',
-        PATH: process.env.PATH || '',
-      };
-
-      if (scientificMode) {
-        // 科学模式：保留完整 PATH 和 PYTHONPATH，允许加载科学库
-        if (process.env.PYTHONPATH) {
-          secureEnv.PYTHONPATH = process.env.PYTHONPATH;
+    void (async () => {
+      try {
+        tmpPath = generateSecureTmpPath('py');
+        const writeResult = await writeSecureTmpFile(tmpPath, code);
+        if (typeof writeResult === 'string') {
+          tmpPath = writeResult;
         }
-        if (process.env.PYTHONHOME) {
-          secureEnv.PYTHONHOME = process.env.PYTHONHOME;
+
+        const cfg = loadConfig();
+        const scientificMode = cfg.code?.scientificMode === true;
+
+        const secureEnv: Record<string, string | undefined> = {
+          HOME: process.env.HOME || process.env.USERPROFILE || '',
+          TMPDIR: os.tmpdir(),
+          TEMP: os.tmpdir(),
+          PYTHONUTF8: '1',
+          PYTHONIOENCODING: 'utf-8',
+          PYTHONUNBUFFERED: '1',
+          PYTHONDONTWRITEBYTECODE: '1',
+          PYTHONHASHSEED: '0',
+          PATH: process.env.PATH || '',
+        };
+
+        if (scientificMode) {
+          if (process.env.PYTHONPATH) secureEnv.PYTHONPATH = process.env.PYTHONPATH;
+          if (process.env.PYTHONHOME) secureEnv.PYTHONHOME = process.env.PYTHONHOME;
+          console.log('[提示] 科学模式已启用 - 允许加载 Python 科学库');
+        } else {
+          secureEnv.PYTHONNOUSERSITE = '1';
+          delete secureEnv.PYTHONPATH;
+          delete secureEnv.PYTHONHOME;
+          delete secureEnv.PYTHONSTARTUP;
+          delete secureEnv.PYTHONRC;
+          delete secureEnv.VIRTUAL_ENV;
+          secureEnv.PATH =
+            process.env.PATH?.split(path.delimiter).slice(0, 3).join(path.delimiter) || '';
         }
-        console.log('[提示] 科学模式已启用 - 允许加载 Python 科学库');
-      } else {
-        // 安全模式：阻止加载用户级 site-packages
-        secureEnv.PYTHONNOUSERSITE = '1';
-        delete secureEnv.PYTHONPATH;
-        delete secureEnv.PYTHONHOME;
-        delete secureEnv.PYTHONSTARTUP;
-        delete secureEnv.PYTHONRC;
-        delete secureEnv.VIRTUAL_ENV;
 
-        // 限制 PATH 范围
-        secureEnv.PATH =
-          process.env.PATH?.split(path.delimiter).slice(0, 3).join(path.delimiter) || '';
-      }
+        const pythonExec = findPythonExecutable();
 
-      const pythonExec = findPythonExecutable();
+        execFile(
+          pythonExec,
+          [tmpPath],
+          {
+            timeout: maxExecutionTime,
+            encoding: 'utf8',
+            cwd: os.tmpdir(),
+            env: secureEnv,
+            maxBuffer: maxOutputSize * 2,
+            signal,
+          },
+          (error: Error | null, stdout: string, stderr: string) => {
+            if (timedOut) return;
 
-      execFile(
-        pythonExec,
-        [tmpPath],
-        {
-          timeout: maxExecutionTime,
-          encoding: 'utf8',
-          cwd: os.tmpdir(),
-          env: secureEnv,
-          maxBuffer: maxOutputSize * 2,
-          signal,
-        },
-        async (error: Error | null, stdout: string, stderr: string) => {
-          if (timedOut) return;
+            if (timeoutId !== null) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
+            }
 
-          clearTimeout(timeoutId);
-          try {
-            await cleanupTmpFile(tmpPath);
+            cleanupTmpFile(tmpPath)
+              .catch(() => {})
+              .finally(() => {
+                if (error) {
+                  resolve({
+                    success: false,
+                    error: `执行失败: ${error.message}\n${stderr || ''}`,
+                  });
+                  return;
+                }
 
-            if (error) {
-              resolve({
-                success: false,
-                error: `执行失败: ${error.message}\n${stderr || ''}`,
+                stdout = stdout.replace(/\r\n/g, '\n');
+                if (stderr) stderr = stderr.replace(/\r\n/g, '\n');
+
+                let result = stdout || '执行完成，无输出';
+                if (stderr) result += '\n[警告]: ' + stderr;
+                if (result.length > maxOutputSize) {
+                  result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
+                }
+
+                resolve({ success: true, data: result });
               });
-              return;
-            }
-
-            // Windows 下 Python 文本模式输出为 CRLF，统一归一化为 \n，避免前端换行识别异常
-            stdout = stdout.replace(/\r\n/g, '\n');
-            if (stderr) {
-              stderr = stderr.replace(/\r\n/g, '\n');
-            }
-
-            let result = stdout || '执行完成，无输出';
-            if (stderr) {
-              result += '\n[警告]: ' + stderr;
-            }
-
-            if (result.length > maxOutputSize) {
-              result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
-            }
-
-            resolve({
-              success: true,
-              data: result,
-            });
-          } catch (cbError: unknown) {
-            console.error(
-              '[sandbox] execFile 回调异常:',
-              cbError instanceof Error ? cbError.message : String(cbError),
-            );
-            resolve({
-              success: false,
-              error: `执行异常: ${cbError instanceof Error ? cbError.message : String(cbError)}`,
-            });
-          }
-        },
-      );
-    } catch (error: unknown) {
-      clearTimeout(timeoutId);
-      await cleanupTmpFile(tmpPath);
-      resolve({
-        success: false,
-        error: `执行失败: ${error instanceof Error ? error.message : String(error)}`,
-      });
-    }
+          },
+        );
+      } catch (error: unknown) {
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        cleanupTmpFile(tmpPath).catch(() => {});
+        resolve({
+          success: false,
+          error: `执行失败: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
+    })();
   });
 }
 

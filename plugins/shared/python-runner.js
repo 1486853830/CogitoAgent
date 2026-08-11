@@ -89,15 +89,17 @@ export async function runPython(script, inputData, timeout = 30000) {
           if (isTimeout && child.pid && !killed) {
             killed = true;
             const capturedPid = child.pid;
-            try {
-              if (process.platform === 'win32') {
-                execFile('taskkill', ['/f', '/t', '/pid', String(capturedPid)]);
-              } else {
-                process.kill(capturedPid, 'SIGKILL');
+            setTimeout(() => {
+              try {
+                if (process.platform === 'win32') {
+                  execFile('taskkill', ['/f', '/t', '/pid', String(capturedPid)]);
+                } else {
+                  process.kill(capturedPid, 'SIGKILL');
+                }
+              } catch {
+                // 进程可能已结束
               }
-            } catch {
-              // 进程可能已结束
-            }
+            }, 2000);
           }
           // 错误信息保留 stderr，便于排查（C5）
           const detail = stderr ? stderr.trim().replace(/\r\n/g, '\n') : error.message;
@@ -128,7 +130,7 @@ export function validateOutputPath(p, allowedExt) {
     const cwd = process.cwd();
     const normalized = path.resolve(p);
     // S18: 用「完整目录前缀 + 路径分隔符」判定，避免前缀匹配绕过
-    // （如 cwd=C:\proj\work 时 C:\proj\workspace-secrets 会因 startsWith 误通过）。
+    // （如 cwd=C:/proj/work 时 C:/proj/workspace-secrets 会因 startsWith 误通过）。
     const cwdUpper = cwd.toUpperCase();
     const normUpper = normalized.toUpperCase();
     const sep = path.sep.toUpperCase();

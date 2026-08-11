@@ -9,10 +9,14 @@ import { join } from 'path';
 const testDataDir = mkdtempSync(join(tmpdir(), 'cogito-jest-data-'));
 process.env.COGITO_USER_DATA_DIR = testDataDir;
 
-process.on('exit', () => {
+function cleanupTestData() {
   try {
     rmSync(testDataDir, { recursive: true, force: true });
   } catch {
     // 忽略清理失败
   }
-});
+}
+
+process.on('exit', cleanupTestData);
+process.on('SIGTERM', cleanupTestData);
+process.on('SIGINT', cleanupTestData);

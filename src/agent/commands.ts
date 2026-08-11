@@ -253,14 +253,20 @@ function handleCommand(input: string): boolean {
     return true;
   }
 
-  // 微信命令
+  // 微信命令（异步操作在后台执行）
   if (trimmed === '/wechat/login') {
-    manualLoginWechat().catch((e: Error) => console.error('[微信] login 异常:', e.message));
+    println('正在请求微信登录...', 'yellow');
+    manualLoginWechat()
+      .then(() => println('微信登录请求已发出，请在手机上确认', 'green'))
+      .catch((e: Error) => console.error('[微信] login 异常:', e.message));
     return true;
   }
 
   if (trimmed === '/wechat/logout') {
-    manualLogoutWechat().catch((e: Error) => console.error('[微信] logout 异常:', e.message));
+    println('正在退出微信...', 'yellow');
+    manualLogoutWechat()
+      .then(() => println('微信已退出', 'green'))
+      .catch((e: Error) => console.error('[微信] logout 异常:', e.message));
     return true;
   }
 

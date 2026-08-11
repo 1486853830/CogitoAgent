@@ -1,4 +1,12 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'fs';
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  unlinkSync,
+  readdirSync,
+  statSync,
+} from 'fs';
 import { promises as fsp } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -453,11 +461,18 @@ function recoverSessionsFromDisk(meta: SessionMeta): void {
                 !(m.role === 'user' && m.content.startsWith('[系统返回的工具执行结果]')),
             ).length
           : 0;
+        // 使用文件的修改时间而非当前时间，使恢复的会话保留原始时间戳
+        let fileMtime: string;
+        try {
+          fileMtime = statSync(path.join(SESSIONS_DIR, file)).mtime.toISOString();
+        } catch {
+          fileMtime = new Date().toISOString();
+        }
         recovered.push({
           id: sessionId,
           name: `会话 ${recovered.length + 1}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: fileMtime,
+          updatedAt: fileMtime,
         });
         console.log(`[会话] 已恢复会话: ${sessionId} (${messageCount} 条消息)`);
       } catch {

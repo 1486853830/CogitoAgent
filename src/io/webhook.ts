@@ -61,18 +61,18 @@ export function getWebhookToken(): string {
 }
 
 function readBody(req: http.IncomingMessage): Promise<string> {
-  return new Promise((resolve) => {
+  const MAX_BODY_BYTES = 256 * 1024;
+  return new Promise((resolve, reject) => {
     let data = '';
     req.on('data', (chunk: Buffer) => {
       data += chunk.toString('utf-8');
-      if (data.length > 256 * 1024) {
-        // 超过 256KB 直接截断，防止恶意大请求撑爆内存
+      if (data.length > MAX_BODY_BYTES) {
         req.destroy();
-        resolve('');
+        reject(Object.assign(new Error('请求体过大'), { code: 'PAYLOAD_TOO_LARGE' }));
       }
     });
     req.on('end', () => resolve(data));
-    req.on('error', () => resolve(''));
+    req.on('error', () => reject(new Error('请求读取失败')));
   });
 }
 
@@ -134,7 +134,18 @@ function startWebhookServer(opts: WebhookOptions): Promise<http.Server> {
         }
 
         if (req.method === 'POST' && req.url === '/webhook/trigger') {
-          const raw = await readBody(req);
+          let raw: string;
+          try {
+            raw = await readBody(req);
+          } catch (e: unknown) {
+            const err = e as Error & { code?: string };
+            if (err.code === 'PAYLOAD_TOO_LARGE') {
+              sendJSON(res, 413, { ok: false, error: '请求体过大（超过 256KB）' });
+            } else {
+              sendJSON(res, 400, { ok: false, error: '读取请求体失败' });
+            }
+            return;
+          }
           let parsed: Record<string, unknown>;
           try {
             parsed = JSON.parse(raw);

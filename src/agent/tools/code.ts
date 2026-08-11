@@ -89,165 +89,141 @@ ${code}
 }
 
 async function runPython(code: string, signal?: AbortSignal): Promise<CodeExecResult> {
-  // eslint-disable-next-line no-async-promise-executor -- executor 内已用 try/catch 完整兜底，且需统一管理超时与 resolve 时机
-  return new Promise(async (resolve) => {
-    let tmpPath: string | null = null;
-    let timedOut = false;
-    const { maxExecutionTime, maxOutputSize } = getCodeLimits();
+  let tmpPath: string | null = null;
+  let timedOut = false;
+  const { maxExecutionTime, maxOutputSize } = getCodeLimits();
 
-    const timeoutId = setTimeout(async () => {
+  // Promise 构造器不再使用 async executor（反模式）：executor 内异常或未捕获
+  // rejection 会导致 Promise 永久悬挂。改用同步 executor + 内部 async IIFE，
+  // 并且 execFile 回调中的异步清理操作通过 .catch().finally() 确保 resolve 必达。
+  return new Promise<CodeExecResult>((resolve) => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    timeoutId = setTimeout(() => {
       timedOut = true;
-      await cleanupTmpFile(tmpPath);
-      resolve({
-        success: false,
-        error: `执行超时（超过${maxExecutionTime / 1000}秒）`,
-      });
+      cleanupTmpFile(tmpPath)
+        .catch(() => {})
+        .finally(() => {
+          resolve({
+            success: false,
+            error: `执行超时（超过${maxExecutionTime / 1000}秒）`,
+          });
+        });
     }, maxExecutionTime);
 
-    try {
-      let processedCode = code;
-      const isGuiCode = hasGuiBlockingCall(code);
+    void (async () => {
+      try {
+        let processedCode = code;
+        const isGuiCode = hasGuiBlockingCall(code);
 
-      if (isGuiCode) {
-        processedCode = injectGuiTimeout(code);
-        console.log('[提示] 检测到 GUI 程序，已注入超时退出机制');
-      }
-
-      tmpPath = generateSecureTmpPath('py');
-      // writeSecureTmpFile 在发生路径碰撞(EEXIST)时会回退到新路径并以 string 返回，
-      // 必须据此更新 tmpPath，否则后续 execFile 仍指向旧路径，可能执行他人代码或空文件。
-      const writeResult = await writeSecureTmpFile(tmpPath, processedCode);
-      if (typeof writeResult === 'string') {
-        tmpPath = writeResult;
-      }
-
-      // 科学模式：允许使用已安装的 Python 科学库
-      const cfg = loadConfig();
-      const scientificMode = cfg.code?.scientificMode === true;
-
-      const secureEnv: Record<string, string | undefined> = {
-        HOME: process.env.HOME || process.env.USERPROFILE || '',
-        TMPDIR: os.tmpdir(),
-        TEMP: os.tmpdir(),
-        PYTHONUTF8: '1',
-        PYTHONIOENCODING: 'utf-8',
-        PYTHONUNBUFFERED: '1',
-        PYTHONDONTWRITEBYTECODE: '1',
-        PYTHONHASHSEED: '0',
-        PATH: process.env.PATH || '',
-      };
-
-      if (scientificMode) {
-        // 科学模式：保留 PYTHONPATH 和用户 site-packages，允许加载科学库
-        if (process.env.PYTHONPATH) {
-          secureEnv.PYTHONPATH = process.env.PYTHONPATH;
+        if (isGuiCode) {
+          processedCode = injectGuiTimeout(code);
+          console.log('[提示] 检测到 GUI 程序，已注入超时退出机制');
         }
-        if (process.env.PYTHONHOME) {
-          secureEnv.PYTHONHOME = process.env.PYTHONHOME;
+
+        tmpPath = generateSecureTmpPath('py');
+        // writeSecureTmpFile 在发生路径碰撞(EEXIST)时会回退到新路径并以 string 返回，
+        // 必须据此更新 tmpPath，否则后续 execFile 仍指向旧路径，可能执行他人代码或空文件。
+        const writeResult = await writeSecureTmpFile(tmpPath, processedCode);
+        if (typeof writeResult === 'string') {
+          tmpPath = writeResult;
         }
-        console.log('[提示] 科学模式已启用 - 允许加载 Python 科学库');
-      } else {
-        // 安全模式：阻止加载用户级 site-packages
-        secureEnv.PYTHONNOUSERSITE = '1';
-        delete secureEnv.PYTHONPATH;
-        delete secureEnv.PYTHONHOME;
-        delete secureEnv.PYTHONSTARTUP;
-        delete secureEnv.PYTHONRC;
-        delete secureEnv.VIRTUAL_ENV;
-      }
 
-      const pythonExec = findPythonExecutable();
+        const cfg = loadConfig();
+        const scientificMode = cfg.code?.scientificMode === true;
 
-      // signal 传递到 execFile：/stop 中断时由 Node 直接 kill 子进程，
-      // 避免"工具看似被中断、Python 进程仍在后台运行"的资源泄漏。
-      execFile(
-        pythonExec,
-        [tmpPath],
-        {
-          timeout: maxExecutionTime,
-          encoding: 'utf8',
-          env: secureEnv,
-          signal,
-          // ⚠️ 安全警告：Python 执行无操作系统级沙盒隔离（不同于 runJavaScript 的 isolated-vm）。
-          // Python 脚本以当前用户完整权限运行，可读写任意文件、访问网络、执行系统命令。
-          // 此前传入的 gid/uid 取自当前进程自身=零隔离，反而误导维护者以为有权限降级。
-          //
-          // 多层缓解措施（有限，非银弹）：
-          // 1. 环境变量清理（移除 PYTHONPATH/PYTHONHOME/VIRTUAL_ENV，设置 PYTHONNOUSERSITE）
-          // 2. CODE_TIMEOUT 硬超时（配置 code.maxExecutionTime，默认 30s）
-          // 3. AbortSignal 传递（/stop 时由 Node kill 子进程）
-          // 4. 临时文件基于 crypto.randomUUID()，避免可预测文件名竞态
-          //
-          // 真正隔离需容器/cgroups/seccomp 或独立低权限用户，待架构层面解决。
-          // 当前安全模式下的环境净化上限由 sandbox.ts:getSecurePythonEnv() 定义。
-        },
-        async (error, stdout, stderr) => {
-          if (timedOut) return;
+        const secureEnv: Record<string, string | undefined> = {
+          HOME: process.env.HOME || process.env.USERPROFILE || '',
+          TMPDIR: os.tmpdir(),
+          TEMP: os.tmpdir(),
+          PYTHONUTF8: '1',
+          PYTHONIOENCODING: 'utf-8',
+          PYTHONUNBUFFERED: '1',
+          PYTHONDONTWRITEBYTECODE: '1',
+          PYTHONHASHSEED: '0',
+          PATH: process.env.PATH || '',
+        };
 
-          clearTimeout(timeoutId);
+        if (scientificMode) {
+          if (process.env.PYTHONPATH) secureEnv.PYTHONPATH = process.env.PYTHONPATH;
+          if (process.env.PYTHONHOME) secureEnv.PYTHONHOME = process.env.PYTHONHOME;
+          console.log('[提示] 科学模式已启用 - 允许加载 Python 科学库');
+        } else {
+          secureEnv.PYTHONNOUSERSITE = '1';
+          delete secureEnv.PYTHONPATH;
+          delete secureEnv.PYTHONHOME;
+          delete secureEnv.PYTHONSTARTUP;
+          delete secureEnv.PYTHONRC;
+          delete secureEnv.VIRTUAL_ENV;
+        }
 
-          // 回调为 async：若 cleanupTmpFile 等异步操作抛异常，错误不会被
-          // Promise 链捕获（execFile 回调返回 Promise 但无人 await），形成
-          // unhandledRejection。外层 try/catch 统一兜底。
-          try {
-            await cleanupTmpFile(tmpPath);
+        const pythonExec = findPythonExecutable();
 
-            if (error) {
-              resolve({
-                success: false,
-                error: `执行失败: ${error.message}\n${stderr || ''}`,
+        // signal 传递到 execFile：/stop 中断时由 Node 直接 kill 子进程，
+        // 避免"工具看似被中断、Python 进程仍在后台运行"的资源泄漏。
+        execFile(
+          pythonExec,
+          [tmpPath],
+          {
+            timeout: maxExecutionTime,
+            encoding: 'utf8',
+            env: secureEnv,
+            signal,
+          },
+          (error, stdout, stderr) => {
+            if (timedOut) return;
+
+            if (timeoutId !== null) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
+            }
+
+            // 使用 .catch().finally() 确保 resolve 一定被调用（避免 Promise 悬挂）
+            cleanupTmpFile(tmpPath)
+              .catch(() => {})
+              .finally(() => {
+                if (error) {
+                  resolve({
+                    success: false,
+                    error: `执行失败: ${error.message}\n${stderr || ''}`,
+                  });
+                  return;
+                }
+
+                stdout = stdout.replace(/\r\n/g, '\n');
+                if (stderr) stderr = stderr.replace(/\r\n/g, '\n');
+
+                let result = stdout || '执行完成，无输出';
+
+                if (isGuiCode) {
+                  result =
+                    '🖼️ [GUI 程序已执行]\n' +
+                    '提示：窗口将在 10 秒后自动关闭\n' +
+                    '如果窗口未显示，可能是因为当前环境不支持图形界面\n\n' +
+                    (stdout ? '[程序输出]:\n' + stdout : '');
+                }
+
+                if (stderr) result += '\n[错误输出]: ' + stderr;
+                if (result.length > maxOutputSize) {
+                  result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
+                }
+
+                resolve({ success: true, data: result });
               });
-              return;
-            }
-
-            // Windows 下 Python 文本模式输出为 CRLF，统一归一化为 \n，避免前端换行识别异常
-            stdout = stdout.replace(/\r\n/g, '\n');
-            if (stderr) {
-              stderr = stderr.replace(/\r\n/g, '\n');
-            }
-
-            let result = stdout || '执行完成，无输出';
-
-            if (isGuiCode) {
-              result =
-                '🖼️ [GUI 程序已执行]\n' +
-                '提示：窗口将在 10 秒后自动关闭\n' +
-                '如果窗口未显示，可能是因为当前环境不支持图形界面\n\n' +
-                (stdout ? '[程序输出]:\n' + stdout : '');
-            }
-
-            if (stderr) {
-              result += '\n[错误输出]: ' + stderr;
-            }
-
-            if (result.length > maxOutputSize) {
-              result = result.slice(0, maxOutputSize) + '\n\n[输出内容过长，已截断]';
-            }
-
-            resolve({
-              success: true,
-              data: result,
-            });
-          } catch (cbError: unknown) {
-            console.error(
-              '[code] execFile 回调异常:',
-              cbError instanceof Error ? cbError.message : String(cbError),
-            );
-            resolve({
-              success: false,
-              error: `执行异常: ${cbError instanceof Error ? cbError.message : String(cbError)}`,
-            });
-          }
-        },
-      );
-    } catch (e: unknown) {
-      clearTimeout(timeoutId);
-      await cleanupTmpFile(tmpPath);
-      resolve({
-        success: false,
-        error: `执行失败: ${e instanceof Error ? e.message : String(e)}`,
-      });
-    }
+          },
+        );
+      } catch (e: unknown) {
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        cleanupTmpFile(tmpPath).catch(() => {});
+        resolve({
+          success: false,
+          error: `执行失败: ${e instanceof Error ? e.message : String(e)}`,
+        });
+      }
+    })();
   });
 }
 

@@ -128,7 +128,7 @@ window.WidgetRegistry?.register('heatmap', (container, opts = {}) => {
         window.electronAPI.sendStatsRequest({ type: 'dailyHistory', limit: 365 });
       }
       if (window.electronAPI?.on) {
-        window.electronAPI.on('stats-response', (data) => {
+        state.unsubStats = window.electronAPI.on('stats-response', (data) => {
           const hist = data?.data || data?.dailyHistory;
           if (Array.isArray(hist)) {
             state.data = hist;
@@ -168,6 +168,10 @@ window.WidgetRegistry?.register('heatmap', (container, opts = {}) => {
       state.data = [];
       state.langHandler = null;
       state.intervalId = null;
+      if (typeof state.unsubStats === 'function') {
+        state.unsubStats();
+        state.unsubStats = null;
+      }
     },
   };
 });

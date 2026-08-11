@@ -517,7 +517,9 @@ function startAgentProcess() {
 
     agentProcess.stdout.on('data', (data) => {
       const text = data.toString();
-      process.stdout.write(text);
+      if (process.env.NODE_ENV === 'development') {
+        process.stdout.write(text.substring(0, 500));
+      }
 
       if (!resolved && text.includes('WebSocket 服务已启动')) {
         resolved = true;
@@ -527,7 +529,10 @@ function startAgentProcess() {
     });
 
     agentProcess.stderr.on('data', (data) => {
-      process.stderr.write(data.toString());
+      const text = data.toString();
+      if (process.env.NODE_ENV === 'development') {
+        process.stderr.write(text.substring(0, 500));
+      }
     });
 
     agentProcess.on('error', (err) => {
@@ -696,17 +701,29 @@ function createMainWindow() {
 
   // 拦截链接导航：所有外部链接在系统浏览器中打开
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      event.preventDefault();
+      return;
+    }
+    if (['http:', 'https:'].includes(parsed.protocol)) {
       event.preventDefault();
       shell.openExternal(url);
     } else {
-      // 拦截 file:///data:/about: 等非 http 协议
       event.preventDefault();
     }
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return { action: 'deny' };
+    }
+    if (['http:', 'https:'].includes(parsed.protocol)) {
       shell.openExternal(url);
     }
     return { action: 'deny' };
@@ -762,7 +779,14 @@ function createDashboardWindow() {
 
   // 拦截链接导航：所有外部链接在系统浏览器中打开，不在 Electron 内加载
   dashboardWindow.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      event.preventDefault();
+      return;
+    }
+    if (['http:', 'https:'].includes(parsed.protocol)) {
       event.preventDefault();
       shell.openExternal(url);
     }
@@ -770,7 +794,13 @@ function createDashboardWindow() {
 
   // 拦截新窗口打开（如 target="_blank"）
   dashboardWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return { action: 'deny' };
+    }
+    if (['http:', 'https:'].includes(parsed.protocol)) {
       shell.openExternal(url);
     }
     return { action: 'deny' };
@@ -833,7 +863,14 @@ function createMonitorWindow() {
 
   // 拦截链接导航：所有外部链接在系统浏览器中打开，不在 Electron 内加载
   monitorWindow.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      event.preventDefault();
+      return;
+    }
+    if (['http:', 'https:'].includes(parsed.protocol)) {
       event.preventDefault();
       shell.openExternal(url);
     }
@@ -841,7 +878,13 @@ function createMonitorWindow() {
 
   // 拦截新窗口打开（如 target="_blank"）
   monitorWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return { action: 'deny' };
+    }
+    if (['http:', 'https:'].includes(parsed.protocol)) {
       shell.openExternal(url);
     }
     return { action: 'deny' };
@@ -910,7 +953,9 @@ app.whenReady().then(async () => {
     win?.close();
   });
 
-  ipcMain.on('window-move', (_event, { x, y }) => {
+  ipcMain.on('window-move', (event, { x, y }) => {
+    const senderWin = BrowserWindow.fromWebContents(event.sender);
+    if (senderWin !== mainWindow) return;
     if (mainWindow) {
       const [currentX, currentY] = mainWindow.getPosition();
       mainWindow.setPosition(currentX + x, currentY + y);
@@ -922,7 +967,12 @@ app.whenReady().then(async () => {
     return currentMode;
   });
 
-  ipcMain.on('switch-to-desktop', () => {
+  ipcMain.on('switch-to-desktop', (event) => {
+    const senderWin = BrowserWindow.fromWebContents(event.sender);
+    if (senderWin !== dashboardWindow && senderWin !== mainWindow && senderWin !== monitorWindow) {
+      console.warn('[main] unauthorized switch-to-desktop from sender:', event.sender.id);
+      return;
+    }
     if (dashboardWindow) {
       dashboardWindow.close();
       dashboardWindow = null;
@@ -932,7 +982,12 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.on('switch-to-dashboard', () => {
+  ipcMain.on('switch-to-dashboard', (event) => {
+    const senderWin = BrowserWindow.fromWebContents(event.sender);
+    if (senderWin !== dashboardWindow && senderWin !== mainWindow && senderWin !== monitorWindow) {
+      console.warn('[main] unauthorized switch-to-dashboard from sender:', event.sender.id);
+      return;
+    }
     if (mainWindow) {
       mainWindow.close();
       mainWindow = null;
@@ -1050,10 +1105,19 @@ app.whenReady().then(async () => {
       /* ignore */
     }
 
+    // 安全注意：load-config 返回明文凭据仅用于设置向导表单回填。
+    // 非开发模式下对长敏感值进行掩码处理，仅展示后 4 位。
+    const isDev = process.env.NODE_ENV === 'development';
+    const mask = (val) => {
+      if (isDev) return val;
+      if (typeof val === 'string' && val.length > 8) return '***' + val.slice(-4);
+      return val;
+    };
+
     return {
       api: {
         baseURL: env['COGITO_API_BASE_URL'] || configJson.api?.baseURL || '',
-        apiKey: env['COGITO_API_KEY'] || '',
+        apiKey: mask(env['COGITO_API_KEY'] || ''),
         model: env['COGITO_MODEL'] || configJson.api?.model || '',
       },
       workspace: env['COGITO_WORKSPACE'] || configJson.workspace || '',
