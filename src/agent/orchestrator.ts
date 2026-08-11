@@ -8,17 +8,25 @@ import path from 'path';
 import { streamChatNative, isAbortError } from '../api/client.ts';
 import type { NativeStreamReturn, NativeStreamChunk } from '../api/client.ts';
 import { broadcast } from '../io/ws-server.ts';
-import { buildOpenAITools, objectArgsToPositional } from './tool-schema.ts';
 import { safeParseJSON } from '../utils/llm-validator.ts';
 import { isValidPersonaName } from './persona.ts';
-import { getToolPermission } from './plugin.ts';
 import type { ToolRegistryEntry } from '../types/index.ts';
+import type { OpenAITool } from './tool-schema.ts';
 
-// 延迟导入 registry.ts，断开 orchestrator → registry → tools/index → cluster → orchestrator
-// 的循环依赖链。ESM 下循环模块可能返回未初始化的导出对象，导致 tools.spawnAgent 等为 undefined。
+// 延迟导入 registry.ts / plugin.ts / tool-schema.ts，断开循环依赖链：
+//   registry → tools/index → cluster → orchestrator ─→ registry（已断）
+//                                              ├─→ plugin → registry（已断）
+//                                              └─→ tool-schema → registry（本条也须断）
+// ESM/tsx 下循环模块可能返回未初始化的导出对象，导致 tools.spawnAgent 等为 undefined。
 let _TOOL_REGISTRY: Record<string, ToolRegistryEntry> | null = null;
 let _isDangerousOperation: ((name: string) => boolean) | null = null;
 let _getEnabledToolNames: (() => string[]) | null = null;
+let _getToolPermission: ((name: string) => 'allow' | 'deny' | 'ask' | undefined) | null = null;
+let _buildOpenAITools:
+  ((names: string[], options?: { strict?: boolean; annotate?: boolean }) => OpenAITool[]) | null =
+  null;
+let _objectArgsToPositional: ((name: string, args: Record<string, unknown>) => unknown[]) | null =
+  null;
 
 async function _ensureRegistry(): Promise<void> {
   if (_TOOL_REGISTRY) return;
@@ -26,6 +34,19 @@ async function _ensureRegistry(): Promise<void> {
   _TOOL_REGISTRY = mod.TOOL_REGISTRY;
   _isDangerousOperation = mod.isDangerousOperation;
   _getEnabledToolNames = mod.getEnabledToolNames;
+}
+
+async function _ensurePlugin(): Promise<void> {
+  if (_getToolPermission) return;
+  const mod = await import('./plugin.ts');
+  _getToolPermission = mod.getToolPermission;
+}
+
+async function _ensureToolSchema(): Promise<void> {
+  if (_buildOpenAITools) return;
+  const mod = await import('./tool-schema.ts');
+  _buildOpenAITools = mod.buildOpenAITools;
+  _objectArgsToPositional = mod.objectArgsToPositional;
 }
 
 // ============================================
@@ -686,6 +707,8 @@ class AgentOrchestrator {
     messages: Array<Record<string, unknown>>,
   ): Promise<string> {
     await _ensureRegistry();
+    await _ensurePlugin();
+    await _ensureToolSchema();
     let fullResponse = '';
     // 连续两轮调用「相同方法签名」的工具说明模型在截断的工具输出下无法取得进展，
     // 继续循环只会重复执行同一动作，直接终止避免死循环。
@@ -701,7 +724,7 @@ class AgentOrchestrator {
     // DANGEROUS_OPERATIONS、权限又默认 allow，两道门都会放行，子智能体因此
     // 可以再 spawn 子智能体并 parallelExecute，形成指数级 LLM 调用；
     // 也能调 stopAllAgents 把整个集群清空。集群编排必须只由主 Agent 发起。
-    const tools = buildOpenAITools(
+    const tools = _buildOpenAITools!(
       _getEnabledToolNames!().filter((name) => _TOOL_REGISTRY![name]?.category !== 'cluster'),
       { strict: false },
     );
@@ -841,7 +864,7 @@ class AgentOrchestrator {
         // R5.2 权限门禁：子智能体直接调 registry.fn，绕过了主 Agent 的 executeTool，
         // 因此必须在此独立校验，否则 deny 规则对子智能体形同虚设。
         // 子智能体无交互通道，无法发起授权询问，故 ask 与 deny 一并拒绝。
-        const permission = getToolPermission(tc.name);
+        const permission = _getToolPermission!(tc.name);
         if (permission !== 'allow') {
           messages.push({
             role: 'tool',
@@ -859,7 +882,7 @@ class AgentOrchestrator {
           const args = parsed.success && parsed.data ? parsed.data : {};
           // 与主 Agent 原生路径一致：先做 JSON Schema 顺序换算为位置参数，
           // 再交给工具执行，避免依赖 JSON 解析的工具收到字符串而非对象。
-          const processedArgs = objectArgsToPositional(tc.name, args);
+          const processedArgs = _objectArgsToPositional!(tc.name, args);
           // 传入 AbortSignal：若主智能体对子智能体发起了 stopAgent，
           // 长时间运行的工具（如 executeCode）可响应中断而非把剩余
           // 工具逐个跑完（副作用照做）。

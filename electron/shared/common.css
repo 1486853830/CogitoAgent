@@ -666,7 +666,8 @@
   letter-spacing: 0.04em;
 }
 
-.token-panel.token-flash {
+.token-panel.token-flash,
+.telemetry-panel.token-flash {
   animation: token-flash-anim 0.8s ease;
 }
 

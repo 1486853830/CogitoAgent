@@ -812,19 +812,15 @@ body::after {
   text-transform: uppercase;
 }
 
-/* Token 用量面板样式已移至 shared/common.css */
-/* 贴底：内容不足时把 token 面板 + 关于推到底部，内容多时随整体滚动 */
-.token-panel {
-  margin-top: auto;
-}
-
+/* Token 用量面板已移至欢迎页右侧（与 MODULES / TELEMETRY 卡片统一风格） */
+/* 贴底：内容不足时把「关于/配置」推到底部，内容多时随整体滚动 */
 .user-profile {
+  margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px 10px;
   border-top: 1px solid var(--line);
-  margin-top: 2px;
 }
 
 .about-link {

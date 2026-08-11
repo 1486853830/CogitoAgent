@@ -8,9 +8,7 @@ files:
   - src/**/*
   - plugins/**/*
   - workflows/**/*
-  - introduction/**/*
   - personas/**/*
-  - index.html
   - package.json
   - .env.example
 # Agent 子进程以 process.resourcesPath 为 cwd 运行（src/index.ts、插件、人设、
@@ -26,12 +24,8 @@ extraResources:
     to: plugins
   - from: workflows/
     to: workflows
-  - from: introduction/
-    to: introduction
   - from: personas/
     to: personas
-  - from: index.html
-    to: index.html
   - from: node_modules/
     to: node_modules
     filter:

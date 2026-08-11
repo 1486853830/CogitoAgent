@@ -114,13 +114,17 @@ function connect() {
               if (fd !== undefined) {
                 try {
                   fs.closeSync(fd);
-                } catch {}
+                } catch {
+                  /* 关闭 fd 失败时忽略，交给系统回收 */
+                }
               }
               // fallback: copy + unlink
               try {
                 fs.copyFileSync(tempFile, metaPath);
                 fs.unlinkSync(tempFile);
-              } catch {}
+              } catch {
+                /* 兜底失败时由外层 throw 原始错误 */
+              }
               throw e;
             }
             console.log('[AgentBridge] 会话元数据已更新');

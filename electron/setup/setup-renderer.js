@@ -424,7 +424,7 @@ function handleConfigResult(data) {
   if (data.success) {
     // 显示完成页面
     setupForm.style.display = 'none';
-    setupComplete.style.display = 'block';
+    setupComplete.style.display = 'flex';
 
     if (isReconfigureMode) {
       // 重新配置模式：保存后自动关闭窗口，刷新现有界面

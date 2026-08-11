@@ -121,6 +121,7 @@ async function sendTemplateEmail(
 
   // 对纯文本字段做基础净化：移除控制字符，防止注入到邮件正文
   const safeText = (v: unknown): string =>
+    // eslint-disable-next-line no-control-regex -- 有意匹配 C0 控制字符并剔除
     String(v ?? '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 
   const templates: Record<string, { text: string; html: string }> = {
