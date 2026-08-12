@@ -54,6 +54,12 @@ const emailUserInput = document.getElementById('emailUser');
 const emailPasswordInput = document.getElementById('emailPassword');
 const emailFromInput = document.getElementById('emailFrom');
 
+// 联网搜索配置元素
+const searchEnabledInput = document.getElementById('searchEnabled');
+const searchBaseURLInput = document.getElementById('searchBaseURL');
+const searchRecencyInput = document.getElementById('searchRecency');
+const searchSiteInput = document.getElementById('searchSite');
+
 // OCR 配置元素
 const ocrApiKeyInput = document.getElementById('ocrApiKey');
 const ocrBaseURLInput = document.getElementById('ocrBaseURL');
@@ -150,6 +156,14 @@ function fillConfig(cfg) {
     if (cfg.email.user) emailUserInput.value = cfg.email.user;
     if (cfg.email.password) emailPasswordInput.value = cfg.email.password;
     if (cfg.email.from) emailFromInput.value = cfg.email.from;
+  }
+
+  // 联网搜索
+  if (cfg.search) {
+    if (searchEnabledInput) searchEnabledInput.checked = cfg.search.enabled !== false;
+    if (cfg.search.baseURL) searchBaseURLInput.value = cfg.search.baseURL;
+    if (cfg.search.recencyFilter) searchRecencyInput.value = cfg.search.recencyFilter;
+    if (cfg.search.siteFilter) searchSiteInput.value = cfg.search.siteFilter;
   }
 
   // OCR
@@ -345,15 +359,39 @@ function validateCurrentStep() {
 }
 
 /**
+ * 根据 API Base URL 推导服务商名称。
+ * 此前 submitConfig 硬编码 provider:'custom'，导致 webSearch 的 moark
+ * 自动推导分支（webSearch.ts 中 provider.includes('moark')）永远不命中，
+ * 报"未配置搜索服务地址"。此处按域名推导，未知服务商回退 custom。
+ * @param {string} baseURL
+ * @returns {string}
+ */
+function deriveProvider(baseURL) {
+  const url = (baseURL || '').toLowerCase();
+  if (url.includes('moark.com')) return 'moark';
+  if (url.includes('openai.com')) return 'openai';
+  if (url.includes('deepseek.com')) return 'deepseek';
+  if (url.includes('anthropic.com')) return 'anthropic';
+  if (url.includes('generativelanguage.google')) return 'google';
+  return 'custom';
+}
+
+/**
  * 提交配置
  */
 function submitConfig() {
   const config = {
     api: {
-      provider: 'custom',
+      provider: deriveProvider(baseURLInput.value.trim()),
       baseURL: baseURLInput.value.trim(),
       apiKey: apiKeyInput.value.trim(),
       model: modelInput.value.trim(),
+    },
+    search: {
+      enabled: searchEnabledInput.checked,
+      baseURL: searchBaseURLInput.value.trim(),
+      recencyFilter: searchRecencyInput.value.trim(),
+      siteFilter: searchSiteInput.value.trim(),
     },
     workspace: workspaceInput.value.trim() || defaultWorkspace,
     mode: modeSelect.value,

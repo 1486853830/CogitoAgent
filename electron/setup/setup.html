@@ -148,6 +148,37 @@
           </div>
         </div>
 
+        <!-- Web Search Config Section -->
+        <div class="config-section">
+          <div class="section-header">
+            <span class="section-mark">›</span>
+            <span class="section-label" data-i18n="setup.searchSection">联网搜索</span>
+            <span class="section-tag">SEARCH</span>
+            <span class="section-toggle">+</span>
+          </div>
+          <div class="section-content" id="searchSection">
+            <div class="input-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="searchEnabled" checked>
+                <span data-i18n="setup.searchEnabledLabel">启用联网搜索</span>
+              </label>
+              <span class="hint" data-i18n="setup.searchEnabledHint">关闭后搜索工具将直接返回"未启用"</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="searchBaseURL" placeholder="https://api.moark.com/v1/web-search-v2" data-i18n-placeholder="setup.searchBaseURLPh">
+              <span class="hint" data-i18n="setup.searchBaseURLHint">moark 供应商可留空自动推导；其他供应商需填写搜索端点</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="searchRecency" placeholder="week / month">
+              <span class="hint" data-i18n="setup.searchRecencyHint">搜索时效过滤（如 week / month），留空为不过滤</span>
+            </div>
+            <div class="input-group">
+              <input type="text" id="searchSite" placeholder="example.com">
+              <span class="hint" data-i18n="setup.searchSiteHint">搜索站点过滤，留空为不限制</span>
+            </div>
+          </div>
+        </div>
+
         <!-- OCR Config Section -->
         <div class="config-section">
           <div class="section-header">

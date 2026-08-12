@@ -236,8 +236,10 @@ function saveConfig(config) {
       },
       search: {
         ...(existing.search && typeof existing.search === 'object' ? existing.search : {}),
-        enabled: true,
-        baseURL: existing.search?.baseURL || '',
+        enabled: config.search?.enabled !== false,
+        baseURL: config.search?.baseURL ?? existing.search?.baseURL ?? '',
+        recencyFilter: config.search?.recencyFilter ?? existing.search?.recencyFilter ?? '',
+        siteFilter: config.search?.siteFilter ?? existing.search?.siteFilter ?? '',
       },
       workspace:
         config.workspace || existing.workspace || path.join(os.homedir(), 'cogito-workspace'),
