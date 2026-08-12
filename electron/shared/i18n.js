@@ -2279,14 +2279,24 @@
       document.head.appendChild(styleEl);
     }
 
+    const isDesktop = !!document.querySelector('.character');
     const hasTitleBar = !!(
       document.querySelector('.title-bar') || document.querySelector('.drag-bar')
     );
-    const top = hasTitleBar ? '48px' : '12px';
+    // 桌宠模式：宠物椭圆固定在右下角，且窗口已改为自适应高度（收起面板时很矮），
+    // 若切换器仍放右上角会与宠物椭圆顶部重叠。改放左上角，避开右下宠物与右侧面板。
+    // 自适应窗口下会话面板顶部始终贴近窗口上沿（约 16px），故切换器上移到 2px，
+    // 让其整颗胶囊都落在面板之上，避免下半部分被面板盖住导致点不动。
+    // 其余窗口（dashboard/monitor/setup）无 .character，仍按原右上角逻辑。
+    const top = isDesktop ? '2px' : hasTitleBar ? '48px' : '12px';
 
     const host = document.createElement('div');
     host.id = 'cogito-lang-switcher';
     host.style.top = top;
+    if (isDesktop) {
+      host.style.left = '14px';
+      host.style.right = 'auto';
+    }
 
     const trigger = document.createElement('button');
     trigger.type = 'button';
@@ -2307,6 +2317,12 @@
 
     const menu = document.createElement('div');
     menu.className = 'cogito-ls-menu';
+    // 桌宠模式：菜单改从左侧锚定向右下展开，避免越出窗口左缘
+    if (isDesktop) {
+      menu.style.left = '0';
+      menu.style.right = 'auto';
+      menu.style.transformOrigin = 'top left';
+    }
     const items = [];
     SUPPORTED.forEach((code) => {
       const meta = LANGUAGE_NAMES[code];

@@ -40,10 +40,10 @@ flowchart TB
         Main["main.js<br/>窗口管理"]
         Preload["preload.cjs<br/>IPC 桥接"]
         Bridge["agent-bridge.js<br/>Agent 通信桥"]
-        WSServer["ws-server.ts<br/>WebSocket 服务<br/>端口: 9527"]
     end
 
     subgraph Subprocess["Agent 子进程"]
+        WSServer["ws-server.ts<br/>WebSocket 服务<br/>端口: 9527"]
         Agent["Agent.ts<br/>思考循环"]
         State["state.ts<br/>状态管理"]
         Registry["registry.ts<br/>工具注册"]
@@ -222,29 +222,17 @@ sequenceDiagram
 
 ## 6. 状态机 / State Machine
 
-The state machine below defines the Agent lifecycle: it starts in IDLE, transitions into THINKING on input, may pause for AWAITING_CONFIRMATION on high-risk operations, and returns to AWAITING_INPUT when the final response is emitted.
+The state machine below defines the Agent lifecycle: it starts in THINKING, may pause for AWAITING_CONFIRMATION on high-risk operations, and returns to AWAITING_INPUT when the final response is emitted (state.ts 仅定义三个状态，无 IDLE 状态).
 
-下图所示的状态机定义了 Agent 的生命周期：初始为 IDLE，收到输入后进入 THINKING，遇到高风险操作可暂停于 AWAITING_CONFIRMATION，输出最终响应后回到 AWAITING_INPUT。
+下图所示的状态机定义了 Agent 的生命周期：初始为 THINKING，遇到高风险操作可暂停于 AWAITING_CONFIRMATION，输出最终响应后回到 AWAITING_INPUT（`state.ts` 仅定义三个状态，无 IDLE 状态）。
 
 ```mermaid
 stateDiagram-v2
-    [*] --> IDLE: 初始化完成
-
-    state IDLE {
-        [*] --> AWAITING_INPUT
-    }
+    [*] --> THINKING: 启动（初始化完成）
 
     AWAITING_INPUT --> THINKING: 用户输入 / 系统事件
 
-    state THINKING {
-        [*] --> BUILDING_PROMPT: 构建提示
-        BUILDING_PROMPT --> CALLING_LLM: 调用 LLM
-        CALLING_LLM --> PARSING_RESPONSE: 解析响应
-        PARSING_RESPONSE --> EXECUTING_TOOL: 检测到工具调用
-        PARSING_RESPONSE --> FINALIZING: 检测到最终答案
-        EXECUTING_TOOL --> BUILDING_PROMPT: 工具结果返回
-        FINALIZING --> [*]
-    }
+    THINKING --> THINKING: 工具结果返回，继续思考
 
     THINKING --> AWAITING_INPUT: 输出最终响应
     THINKING --> AWAITING_CONFIRMATION: 需要用户确认
@@ -263,9 +251,8 @@ The table below explains each state in the lifecycle.
 
 | 状态                    | 说明                                               |
 | ----------------------- | -------------------------------------------------- |
-| `IDLE`                  | 初始空闲状态，等待输入                             |
-| `AWAITING_INPUT`        | 等待用户输入消息或系统事件触发                     |
 | `THINKING`              | Agent 正在思考循环中——构建提示、调用 LLM、执行工具 |
+| `AWAITING_INPUT`        | 等待用户输入消息或系统事件触发                     |
 | `AWAITING_CONFIRMATION` | 等待用户确认高风险操作（如文件删除、命令执行等）   |
 
 ---
@@ -634,7 +621,7 @@ Each session holds an independent conversation context and supports automatic co
   createdAt: '2026-07-05T10:00:00.000Z',
   updatedAt: '2026-07-05T10:30:00.000Z',
   messages: [...],
-  config: { model: 'gpt-4o', persona: 'developer' },
+  config: { model: 'gpt-4o', persona: 'cogito' },
   metadata: { }
 }
 ```
@@ -654,22 +641,26 @@ When the session history exceeds the configured maximum length, compression is t
 
 ---
 
-## 10. 工具分类按需加载 / On-Demand Tool Loading by Category
+## 10. 工具分类 / Tool Categories
 
-The tool registry supports loading tools on demand by category, reducing startup time and memory usage.
+The tool registry (`registry.ts`) manages all tool modules centrally. `TOOL_CATEGORIES` maps each category key to a display name; every registered tool carries a `category` field used for statistics, permission gates (R5.2) and the `tools.enabledCategories` config.
 
-工具注册表支持按分类按需加载，减少启动时间和内存占用：
+工具注册表（`registry.ts`）集中管理所有工具模块。`TOOL_CATEGORIES` 将分类键映射为显示名称；每个注册工具都带有 `category` 字段，用于统计、权限门禁（R5.2）与 `tools.enabledCategories` 配置。
 
 ```javascript
+// 实际定义（见 src/agent/registry.ts）
 const TOOL_CATEGORIES = {
-  file: ['file.ts', 'path.ts'],
-  web: ['web.ts', 'browser.ts'],
-  code: ['code.ts', 'sandbox.ts'],
-  git: ['git.ts'],
-  database: ['db.ts', 'data.ts'],
-  // ...
+  file: '文件操作',
+  web: '网络工具',
+  browser: '浏览器自动化',
+  code: '代码执行',
+  git: 'Git版本控制',
+  db: '数据库',
+  // ... 共 19 个内置分类 + 3 个科学插件分类 + 动态 mcp 分类
 };
 ```
+
+> 注意：模型可见的工具总数（128 内置 + 插件 + MCP 动态）会随插件加载与 MCP server 接入而变化；工具完整清单请用 `/tools` 命令或 [introduction/tools.md](tools.md) 查询。
 
 ---
 

@@ -54,7 +54,7 @@ Cogito, ergo sum — _I think, therefore I am._ CogitoAgent isn't a chat window;
 
 - **Thinks continuously** — automatically reflects and acts on your workspace even while you're away
 - **Explores autonomously** — discovers, organizes, and processes your local assets proactively
-- **Executes 200+ tools** — from file operations and code execution to web research, databases, OCR, and multi-agent orchestration
+- **Executes 120+ built-in tools** — from file operations and code execution to web research, databases, OCR, and multi-agent orchestration, plus scientific plugins (chemistry / bioinformatics / literature)
 - **Stays private** — only the conversation context is sent to the LLM API you specify. Your files never leave your workspace.
 
 ![CogitoAgent dashboard](introduction/electron-dashboard.png)
@@ -66,8 +66,8 @@ Cogito, ergo sum — _I think, therefore I am._ CogitoAgent isn't a chat window;
 | Feature                         | Description                                                                                                   |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | **Local-First Privacy**         | Workspace files stay on your machine; only the minimal conversation context goes to the LLM API you configure |
-| **Continuous Thinking**         | Automatic thinking cycle (3s default, configurable) keeps the agent actively working on your tasks            |
-| **200+ Tools / 28 Modules**     | File ops, code execution, Git, databases, OCR, Office documents, image generation, bioinformatics and more    |
+| **Continuous Thinking**         | Event-driven thinking loop — progresses immediately on user messages and tool results, no polling interval    |
+| **120+ Tools / 23 Categories**  | File ops, code execution, Git, databases, OCR, Office documents, image generation, bioinformatics and more    |
 | **TypeScript Core**             | Full type safety, strict mode, and compile-time error detection across the entire codebase                    |
 | **Security Sandbox**            | `isolated-vm` process-level isolation for JavaScript; sanitized environment for Python subprocesses           |
 | **Multi-Session Management**    | Independent conversation contexts with persistent storage and automatic context compression                   |
@@ -142,12 +142,12 @@ The setup wizard will guide you through:
 
 ### Usage Modes
 
-| Command                      | Mode         | Description                                                |
-| ---------------------------- | ------------ | ---------------------------------------------------------- |
-| `npm start`                  | Setup Wizard | First-time configuration or re-configuration               |
-| `npm run electron:desktop`   | Desktop      | Transparent overlay window + terminal agent over WebSocket |
-| `npm run electron:dashboard` | Dashboard    | Full-window dashboard with sessions, tools & live charts   |
-| `npm run cli`                | CLI          | Terminal-only agent (headless / server environments)       |
+| Command                      | Mode                | Description                                                                        |
+| ---------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
+| `npm start`                  | Desktop (Dashboard) | Launch Electron in dashboard mode (opens the setup wizard when not yet configured) |
+| `npm run electron:desktop`   | Desktop             | Transparent overlay window + terminal agent over WebSocket                         |
+| `npm run electron:dashboard` | Dashboard           | Full-window dashboard with sessions, tools & live charts                           |
+| `npm run cli`                | CLI                 | Terminal-only agent (headless / server environments)                               |
 
 ---
 
@@ -161,6 +161,7 @@ flowchart LR
     subgraph INVOCATION["Invocation Layer"]
         LLM["LLM Response<br/>tool_calls (JSON)"]
         SCHEMA["tool-schema.ts<br/>buildOpenAITools()"]
+        PARSER["tool-schema.ts<br/>validateToolArgs()"]
         EXECUTOR["Agent.ts<br/>executeNativeToolCallsServer()"]
     end
 
@@ -170,7 +171,7 @@ flowchart LR
         TRACE["tracing.ts<br/>tool_exec event"]
     end
 
-    subgraph MODULES["28 Tool Modules"]
+    subgraph MODULES["Tool Modules (23 Categories)"]
         direction LR
         CORE1["file<br/>web<br/>code<br/>system<br/>browser"]
         CORE2["git<br/>data<br/>db<br/>path"]
@@ -206,8 +207,8 @@ flowchart LR
 
 | Category           | Module         | Highlights                                                                                         |
 | ------------------ | -------------- | -------------------------------------------------------------------------------------------------- |
-| File Operations    | `file.ts`      | `ls`, `read`, `write`, `create`, `copy`, `move`, `rename`, `delete`                                |
-| Path Utilities     | `path.ts`      | `getBasePath`, `resolvePath`, `normalizePath`, `joinPath`, `getExtension`                          |
+| File Operations    | `file.ts`      | `ls`, `read`, `copy`, `mkdir`, `create`                                                            |
+| Path Utilities     | `path.ts`      | `getBasePath`, `resolveInWorkspace`, `realPathClosest` (internal)                                  |
 | Web Tools          | `web.ts`       | `search`, `browse`, `fetchPage`                                                                    |
 | Browser Automation | `browser.ts`   | `initBrowser`, `clickElement`, `fillField`, `takeScreenshot`, `downloadFile`                       |
 | System Operations  | `system.ts`    | `listApps`, `openApp`, `closeApp`                                                                  |
@@ -223,7 +224,7 @@ flowchart LR
 | Scheduled Tasks    | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `startScheduler`, `stopScheduler`                           |
 | Image Recognition  | `ocr.ts`       | `ocr`, `ocrBatch`                                                                                  |
 | Vision Analysis    | `vision.ts`    | `vision`, `visionFromUrl`                                                                          |
-| Office Documents   | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`                                              |
+| Office Documents   | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`, `readWord`, `readPpt`                       |
 | Image Generation   | `image-gen.ts` | `generateImage`                                                                                    |
 | Agent Cluster      | `cluster.ts`   | `spawnAgent`, `delegateTask`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting`           |
 | WeChat             | `wechat.ts`    | `loginWechat`, `sendWechatMessage`, `sendWechatImage`, `generateWechatQRCode`                      |
@@ -266,7 +267,7 @@ flowchart TB
 
     subgraph CORE["Think Cycle (Agent.ts)"]
         direction LR
-        THINK["thinkCycle()<br/>3s interval"]
+        THINK["thinkCycle()<br/>Event-driven"]
         STREAM["streamChat()<br/>SSE to LLM"]
         EXEC["executeTool()<br/>Registry Lookup"]
         CYCLE["scheduleNextCycle()<br/>Loop Control"]
@@ -285,14 +286,14 @@ flowchart TB
     end
 
     subgraph TOOLS["Tool Layer (registry.ts)"]
-        REG["TOOL_REGISTRY<br/>200+ tools, 28 categories"]
+        REG["TOOL_REGISTRY<br/>120+ tools, 23 categories"]
         STATS["stats.ts<br/>Usage Tracking"]
         TRACE["tracing.ts<br/>Observability"]
     end
 
     subgraph EXT["Extensions"]
         PLUGIN["plugin.ts<br/>Dynamic Load"]
-        RETRY["retry.ts<br/>Circuit Breaker"]
+        RETRY["api/client.ts<br/>Retry & Backoff"]
         CLUSTER["orchestrator.ts<br/>Sub-Agent Cluster"]
         WECHAT["wechat-manager.ts<br/>iLink Protocol"]
     end
@@ -357,20 +358,20 @@ flowchart TB
     class LLM api;
 ```
 
-| Component               | Responsibility                                                        |
-| ----------------------- | --------------------------------------------------------------------- |
-| **Agent.ts**            | Thinking loop — automatically triggers every 3 seconds                |
-| **state.ts**            | State machine — THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION     |
-| **registry.ts**         | Tool registry — centralized management of all tool modules            |
-| **session.ts**          | Session management — multi-session switching, context compression     |
-| **commands.ts**         | Command handling — `/help`, `/status`, `/persona`, `/sessions`, etc.  |
-| **sandbox.ts**          | Code sandbox — `isolated-vm` process-level isolation                  |
-| **stats.ts**            | Statistics — tool usage tracking and metrics                          |
-| **tracing.ts**          | Tracing — lightweight observability for tool executions and LLM calls |
-| **cluster-commands.ts** | Cluster commands — spawn, delegate, stop sub-agents                   |
-| **plugin.ts**           | Plugin system — dynamic loading of custom tool plugins                |
-| **ws-server.ts**        | WebSocket — desktop mode communication (port 9527)                    |
-| **wechat-manager.ts**   | WeChat channel — iLink protocol, message routing, session sync        |
+| Component               | Responsibility                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| **Agent.ts**            | Thinking loop — event-driven, progresses immediately on messages and tool results |
+| **state.ts**            | State machine — THINKING / AWAITING_INPUT / AWAITING_CONFIRMATION                 |
+| **registry.ts**         | Tool registry — centralized management of all tool modules                        |
+| **session.ts**          | Session management — multi-session switching, context compression                 |
+| **commands.ts**         | Command handling — `/help`, `/status`, `/persona`, `/sessions`, etc.              |
+| **sandbox.ts**          | Code sandbox — `isolated-vm` process-level isolation                              |
+| **stats.ts**            | Statistics — tool usage tracking and metrics                                      |
+| **tracing.ts**          | Tracing — lightweight observability for tool executions and LLM calls             |
+| **cluster-commands.ts** | Cluster commands — spawn, delegate, stop sub-agents                               |
+| **plugin.ts**           | Plugin system — dynamic loading of custom tool plugins                            |
+| **ws-server.ts**        | WebSocket — desktop mode communication (port 9527)                                |
+| **wechat-manager.ts**   | WeChat channel — iLink protocol, message routing, session sync                    |
 
 > 📚 Complete architecture details (think cycle, tool call flow, state machine, WebSocket): [introduction/architecture.md](introduction/architecture.md)
 
@@ -455,10 +456,10 @@ cogito-agent/
 │   ├── agent/                        # Core agent module
 │   │   ├── Agent.ts / state.ts / registry.ts
 │   │   ├── commands.ts / session.ts / stats.ts
-│   │   ├── plugin.ts / thought-trace.ts / retry.ts
+│   │   ├── plugin.ts / thought-trace.ts
 │   │   ├── orchestrator.ts           # Sub-agent cluster orchestration
 │   │   ├── wechat-manager.ts         # WeChat channel management
-│   │   └── tools/                    # 28 tool modules (200+ tools)
+│   │   └── tools/                    # 21 tool modules (120+ tools, 23 categories)
 │   ├── api/                          # LLM API layer (OpenAI-compatible)
 │   ├── io/                           # Terminal, WebSocket, Webhook
 │   ├── config.ts                     # Configuration management
@@ -466,7 +467,7 @@ cogito-agent/
 │   └── index.ts                      # Application entry
 ├── electron/                         # Desktop shell (main / preload / windows)
 ├── plugins/                          # Extensible tool plugins
-├── personas/                         # 28 persona presets (selectable roles)
+├── personas/                         # 29 persona presets (incl. built-in Cogito default)
 ├── tests/                            # Jest unit & integration tests
 ├── workflows/                        # Scientific workflow definitions
 ├── introduction/                     # In-depth documentation
@@ -479,7 +480,7 @@ cogito-agent/
 
 ## ✅ Testing & Quality
 
-- **850+ tests** across 49 suites (Jest, ESM mode)
+- **870+ tests** across 49 suites (Jest, ESM mode)
 - **Strict TypeScript** — `tsc --noEmit` enforced in CI
 - **ESLint + Prettier** — unified code style
 - **GitHub Actions CI/CD** — lint → typecheck → test → build → release

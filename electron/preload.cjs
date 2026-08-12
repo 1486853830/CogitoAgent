@@ -47,6 +47,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 窗口移动（用于拖拽视频）
   moveWindow: (x, y) => ipcRenderer.send('window-move', { x, y }),
 
+  // 桌宠模式鼠标穿透开关（true=空白区点击穿透到下层应用，false=窗口正常捕获鼠标）
+  setIgnoreMouseEvents: (ignore) => ipcRenderer.send('set-ignore-mouse-events', ignore),
+
+  // 桌宠模式自适应窗口尺寸：渲染进程测量可见内容后请求缩放（右下角锚定）
+  setWindowSize: (width, height) => ipcRenderer.send('set-window-size', { width, height }),
+
   // 监听 agent 的回复
   onReply: (callback) => {
     const listener = (_event, data) => callback(data);

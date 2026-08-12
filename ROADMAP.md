@@ -30,12 +30,12 @@
 
 ### New Tools / 新工具
 
-| Item / 项目                | Status / 状态 | Description / 说明                                                                 |
-| -------------------------- | ------------- | ---------------------------------------------------------------------------------- |
-| YAML processing tools      | 📅            | Read, write, validate YAML files / 读写和验证 YAML 文件                            |
-| Image generation tools     | 💡            | Generate images via supported APIs / 通过支持的 API 生成图片                       |
-| PDF generation tools       | 💡            | Create PDF reports from templates / 从模板创建 PDF 报告                            |
-| Time zone / calendar tools | 📅            | Date calculation, timezone conversion, calendar ops / 日期计算、时区转换、日历操作 |
+| Item / 项目                | Status / 状态 | Description / 说明                                                                                                                   |
+| -------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| YAML processing tools      | 📅            | Read, write, validate YAML files / 读写和验证 YAML 文件                                                                              |
+| Image generation tools     | ✅            | Generate images via OpenAI-compatible APIs (implemented in v2.3.2, `generateImage`) / 通过 OpenAI 兼容 API 生成图片（v2.3.2 已实现） |
+| PDF generation tools       | 💡            | Create PDF reports from templates / 从模板创建 PDF 报告                                                                              |
+| Time zone / calendar tools | 📅            | Date calculation, timezone conversion, calendar ops / 日期计算、时区转换、日历操作                                                   |
 
 ### Community & Docs / 社区与文档
 
@@ -52,21 +52,21 @@
 
 ### Agent Capabilities / 智能体能力
 
-| Item / 项目                            | Status / 状态 | Description / 说明                                                                                         |
-| -------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------- |
-| Long-term memory (vector DB)           | 💡            | Persistent memory with semantic search via local vector DB / 通过本地向量数据库实现持久化记忆和语义搜索    |
-| Multi-agent collaboration improvements | 💡            | Better sub-agent coordination, shared context, result aggregation / 改进子智能体协作、共享上下文和结果聚合 |
-| Scheduled autonomous tasks             | 💡            | Agent runs scheduled tasks without user intervention / Agent 无需用户干预即可执行定时任务                  |
-| ReAct reasoning enhancements           | 💡            | Improved step-by-step reasoning with self-verification / 改进的逐步推理和自我验证能力                      |
+| Item / 项目                            | Status / 状态 | Description / 说明                                                                                                                                     |
+| -------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Long-term memory (vector DB)           | 💡            | Persistent memory with semantic search via local vector DB / 通过本地向量数据库实现持久化记忆和语义搜索                                                |
+| Multi-agent collaboration improvements | 💡            | Better sub-agent coordination, shared context, result aggregation / 改进子智能体协作、共享上下文和结果聚合                                             |
+| Scheduled autonomous tasks             | ✅            | Agent runs scheduled tasks without user intervention (implemented via `scheduler.ts`) / Agent 无需用户干预即可执行定时任务（已由 `scheduler.ts` 实现） |
+| ReAct reasoning enhancements           | 💡            | Improved step-by-step reasoning with self-verification / 改进的逐步推理和自我验证能力                                                                  |
 
 ### Platform & Integration / 平台与集成
 
-| Item / 项目                     | Status / 状态 | Description / 说明                                                                            |
-| ------------------------------- | ------------- | --------------------------------------------------------------------------------------------- |
-| VS Code extension               | 💡            | CogitoAgent as VS Code extension for inline AI assistance / 作为 VS Code 扩展提供内联 AI 辅助 |
-| Slack / Discord bot integration | 💡            | Agent accessible via team chat platforms / 通过团队聊天平台访问 Agent                         |
-| MCP Client mode                 | 💡            | Connect to external MCP servers as a client / 作为客户端连接外部 MCP 服务器                   |
-| Docker Compose production-ready | 📅            | Optimized Docker deployment with health checks / 优化的 Docker 部署，包含健康检查             |
+| Item / 项目                     | Status / 状态 | Description / 说明                                                                                                   |
+| ------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| VS Code extension               | 💡            | CogitoAgent as VS Code extension for inline AI assistance / 作为 VS Code 扩展提供内联 AI 辅助                        |
+| Slack / Discord bot integration | 💡            | Agent accessible via team chat platforms / 通过团队聊天平台访问 Agent                                                |
+| MCP Client mode                 | ✅            | Connect to external MCP servers as a client (implemented in v2.3.2) / 作为客户端连接外部 MCP 服务器（v2.3.2 已实现） |
+| Docker Compose production-ready | ✅            | Optimized Docker deployment with health checks / 优化的 Docker 部署，包含健康检查                                    |
 
 ### Tool Ecosystem / 工具生态
 

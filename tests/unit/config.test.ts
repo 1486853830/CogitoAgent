@@ -66,7 +66,13 @@ describe('config.ts', () => {
     envKeys.forEach((key) => {
       delete process.env[key];
     });
-    rmSync(testConfigDir, { recursive: true, force: true });
+    // 清理临时目录：部分环境（如安全删除钩子）可能拦截 recursive rmSync，
+    // 失败时降级为忽略，避免整个套件被环境问题拖垮。
+    try {
+      rmSync(testConfigDir, { recursive: true, force: true });
+    } catch {
+      /* 环境限制导致无法删除时忽略 */
+    }
     mkdirSync(testConfigDir, { recursive: true });
     // 确保无残留 config.json（safe-delete shim 可能阻止 rmSync）
     try {
@@ -78,7 +84,11 @@ describe('config.ts', () => {
   });
 
   afterEach(() => {
-    rmSync(testConfigDir, { recursive: true, force: true });
+    try {
+      rmSync(testConfigDir, { recursive: true, force: true });
+    } catch {
+      /* 环境限制导致无法删除时忽略 */
+    }
   });
 
   describe('DEFAULT_CONFIG', () => {

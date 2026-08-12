@@ -38,14 +38,17 @@ The following environment variables configure the runtime. Required variables mu
 
 以下环境变量用于配置运行时。必填变量必须提供。
 
-| Variable / 变量名     | Description / 说明  | Default / 默认值 | Required / 是否必填 |
-| --------------------- | ------------------- | ---------------- | ------------------- |
-| `NODE_ENV`            | Runtime environment | `production`     | No / 否             |
-| `COGITO_API_BASE_URL` | LLM API base URL    | —                | Yes / 是            |
-| `COGITO_API_KEY`      | LLM API key         | —                | Yes / 是            |
-| `COGITO_MODEL`        | Default model name  | `gpt-4o`         | No / 否             |
-| `COGITO_WORKSPACE`    | Workspace path      | `./workspace`    | No / 否             |
-| `COGITO_LOG_LEVEL`    | Log level           | `info`           | No / 否             |
+| Variable / 变量名     | Description / 说明     | Default / 默认值 | Required / 是否必填                   |
+| --------------------- | ---------------------- | ---------------- | ------------------------------------- |
+| `NODE_ENV`            | Runtime environment    | `production`     | No / 否                               |
+| `COGITO_API_BASE_URL` | LLM API base URL       | —                | Yes / 是                              |
+| `COGITO_API_KEY`      | LLM API key            | —                | Yes / 是                              |
+| `COGITO_MODEL`        | Default model name     | `gpt-4o`         | No / 否                               |
+| `COGITO_WS_TOKEN`     | WebSocket access token | —                | **Yes / 是**（Docker 场景必需，见下） |
+| `COGITO_WORKSPACE`    | Workspace path         | `./workspace`    | No / 否                               |
+| `LOG_LEVEL`           | Log level              | `info`           | No / 否                               |
+
+> 注意：`COGITO_WS_TOKEN` 在 Docker 部署中为**必填**——容器绑定 `0.0.0.0`，访问控制完全依赖该令牌；未设置时 docker-compose 会直接报错退出。日志级别变量名为 `LOG_LEVEL`（不是 `COGITO_LOG_LEVEL`）。
 
 ### Docker Compose Configuration / Docker Compose 配置
 
@@ -57,22 +60,39 @@ Below is a sample `docker-compose.yml` configuration for the agent service.
 version: '3.8'
 
 services:
-  agent:
-    image: cogito-agent:latest
+  cogito-agent:
     build:
       context: .
       dockerfile: Dockerfile
-    volumes:
-      - ./data:/app/data
-      - ./workspace:/app/workspace
+    container_name: cogito-agent
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:9527:9527' # WebSocket
+      - '127.0.0.1:9528:9528' # 健康检查 HTTP
     environment:
       - NODE_ENV=production
-      - COGITO_API_BASE_URL=${COGITO_API_BASE_URL}
-      - COGITO_API_KEY=${COGITO_API_KEY}
+      - COGITO_API_KEY=${COGITO_API_KEY:?COGITO_API_KEY is required}
+      - COGITO_API_BASE_URL=${COGITO_API_BASE_URL:-https://api.openai.com/v1}
       - COGITO_MODEL=${COGITO_MODEL:-gpt-4o}
       - COGITO_WORKSPACE=/app/workspace
-    restart: unless-stopped
+      - COGITO_WS_TOKEN=${COGITO_WS_TOKEN:?COGITO_WS_TOKEN is required}
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - cogito-data:/app/data
+      - ${COGITO_WORKSPACE:-./workspace}:/app/workspace
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:9528/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  cogito-data:
+    driver: local
 ```
+
+> 以上即仓库根目录 `docker-compose.yml` 的实际内容。启动前需在 `.env` 中设置 `COGITO_API_KEY` 与 `COGITO_WS_TOKEN`（可先 `cp .env.example .env`）。
 
 ### Manual Build / 手动构建
 
@@ -209,13 +229,16 @@ The following modules are covered by tests.
 
 以下模块均有对应的测试覆盖。
 
-| Module / 模块      | Test File / 测试文件   | Description / 说明                                        |
-| ------------------ | ---------------------- | --------------------------------------------------------- |
-| Agent Engine       | `Agent.test.js`        | Thinking loop, state transitions, tool calls              |
-| Tool Registry      | `registry.test.ts`     | Tool registration, parameter validation, category loading |
-| Session Management | `session.test.ts`      | Multi-session, context compression, persistence           |
-| Command Handling   | `commands.test.ts`     | Command parsing, execution, result handling               |
-| WebSocket          | `io-ws-server.test.ts` | Connection management, message routing, heartbeat         |
+| Module / 模块      | Test File / 测试文件                                | Description / 说明                                    |
+| ------------------ | --------------------------------------------------- | ----------------------------------------------------- |
+| Agent Engine       | `Agent.test.js`                                     | Thinking loop, state transitions, tool calls          |
+| Config Management  | `config.test.ts`                                    | Env/file merging, MCP config, tool permissions (R5.2) |
+| Command Handling   | `commands.test.ts`                                  | Command parsing, execution, result handling           |
+| WebSocket          | `io-ws-server.test.ts`                              | Connection management, message routing, heartbeat     |
+| Browser Tools      | `browser-tools.test.ts`                             | Browser automation tool invocation                    |
+| Memory / Task / DB | `memory-tools.test.ts` / `cluster-tools.test.ts` 等 | 各工具模块测试                                        |
+
+> 完整测试文件见 `tests/` 目录（unit + e2e，共 49 个测试文件 / 870+ 用例）。
 
 ### Testing Conventions / 测试规范
 

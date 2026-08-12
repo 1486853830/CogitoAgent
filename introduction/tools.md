@@ -16,29 +16,32 @@ The table below lists every tool category, its source file, and the functions it
 
 下表列出了所有工具分类、对应的源文件以及提供的函数。
 
-| 分类         | 文件           | 主要功能                                                                                                                                                                                                                                                                                          |
-| ------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 文件操作     | `file.ts`      | `ls`, `read`, `create`, `copy`, `mkdir`, `delete`, `move`, `append`, `write`, `rename`                                                                                                                                                                                                            |
-| 路径工具     | `path.ts`      | `getBasePath`, `joinPath`, `resolvePath`, `normalizePath`, `getExtension`, `getFileName`, `getParentDir`                                                                                                                                                                                          |
-| 网络工具     | `web.ts`       | `search`, `browse`, `fetchPage`, `searchOnEngine`                                                                                                                                                                                                                                                 |
-| 浏览器自动化 | `browser.ts`   | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile`                                                                                                   |
-| 系统操作     | `system.ts`    | `listApps`, `openApp`, `closeApp`, `getOSInfo`, `getUserName`, `getHomeDir`                                                                                                                                                                                                                       |
-| 代码执行     | `code.ts`      | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode`                                                                                                                                                                                                                          |
-| 安全沙箱     | `sandbox.ts`   | `createJavaScriptSandbox`, `runJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox`                                                                                                                                                                                                       |
-| Git          | `git.ts`       | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
-| 任务管理     | `task.ts`      | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks`                                                                                                                                                                        |
-| 记忆系统     | `memory.ts`    | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory`                                                                                                                                                 |
-| 数据处理     | `data.ts`      | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`, `filterData`, `groupData`, `aggregateData`                                                                                                                                      |
-| 数据库       | `db.ts`        | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB`                                                                                                                                               |
-| 邮件         | `email.ts`     | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig`                                                                                                                                                                                |
-| 系统监控     | `monitor.ts`   | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem`                                                                                                                                            |
-| 定时任务     | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler`                                                                                                                                     |
-| 图像识别     | `ocr.ts`       | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
-| 视觉分析     | `vision.ts`    | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
-| Office 文档  | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
-| 集群管理     | `cluster.ts`   | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting`                                                                                                                                                        |
-| 微信消息     | `wechat.ts`    | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode`                                                                                                                                                                                  |
-| 图像生成     | `image-gen.ts` | `generateImage`                                                                                                                                                                                                                                                                                   |
+| 分类         | 文件                      | 主要功能                                                                                                                                                                                                                                                                                          |
+| ------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 文件操作     | `file.ts`                 | `ls`, `read`, `create`, `copy`, `mkdir`                                                                                                                                                                                                                                                           |
+| 路径工具     | `path.ts`                 | `getBasePath`, `resolveInWorkspace`, `realPathClosest`（内部模块，不直接对模型注册）                                                                                                                                                                                                              |
+| 网络工具     | `web.ts`                  | `search`, `browse`, `fetchPage`                                                                                                                                                                                                                                                                   |
+| 浏览器自动化 | `browser.ts`              | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile`                                                                                                   |
+| 系统操作     | `system.ts`               | `listApps`, `openApp`, `closeApp`                                                                                                                                                                                                                                                                 |
+| 代码执行     | `code.ts`                 | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode`                                                                                                                                                                                                                          |
+| 安全沙箱     | `sandbox.ts`              | `createJavaScriptSandbox`, `runJavaScriptSandbox`, `runPythonSandbox`, `executeCodeSandbox`（内部模块，由 code.ts 调用，不直接对模型注册）                                                                                                                                                        |
+| Git          | `git.ts`                  | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
+| 任务管理     | `task.ts`                 | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks`                                                                                                                                                                        |
+| 记忆系统     | `memory.ts`               | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory`                                                                                                                                                 |
+| 数据处理     | `data.ts`                 | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`                                                                                                                                                                                  |
+| 数据库       | `db.ts`                   | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB`                                                                                                                                               |
+| 邮件         | `email.ts`                | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig`                                                                                                                                                                                |
+| 系统监控     | `monitor.ts`              | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem`                                                                                                                                            |
+| 定时任务     | `scheduler.ts`            | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler`                                                                                                                                     |
+| 图像识别     | `ocr.ts`                  | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
+| 视觉分析     | `vision.ts`               | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
+| Office 文档  | `office.ts`               | `createPpt`, `createWord`, `createExcel`, `readExcel`, `readWord`, `readPpt`                                                                                                                                                                                                                      |
+| 集群管理     | `cluster.ts`              | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `getAgent`, `getAgentTranscript`, `panelDiscussion`, `pipeline`, `voting`                                                                                                                      |
+| 微信消息     | `wechat.ts`               | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode`                                                                                                                                                                                  |
+| 图像生成     | `image-gen.ts`            | `generateImage`                                                                                                                                                                                                                                                                                   |
+| 化学信息学   | `plugins/rdkit-chem`      | `molInfo`, `molDraw`, `molFingerprint`, `molSubstruct`, `molSimilarity`（插件动态加载）                                                                                                                                                                                                           |
+| 生物信息学   | `plugins/biopython-bio`   | `bioAlign`, `bioBlast`, `bioConvert`, `bioFetchGenbank`, `bioPdbInfo`, `bioFastaStats`, `bioMsa`（插件动态加载）                                                                                                                                                                                  |
+| 文献检索     | `plugins/pubmed-research` | `pubmedSearch`, `pubmedFetch`, `pubmedAdvanced`, `pubmedCite`（插件动态加载）                                                                                                                                                                                                                     |
 
 ### Tool Registration / 工具注册机制
 
@@ -47,15 +50,18 @@ Tool functions are registered into a unified registry together with the followin
 工具函数统一注册到注册表，包含以下元数据：
 
 ```javascript
+// 实际注册结构（见 src/agent/registry.ts）
 {
-  name: '函数名',
-  description: '函数描述',
-  parameters: { /* JSON Schema */ },
-  category: '分类',
-  dangerLevel: 'none | low | medium | high',
-  fn: async (args) => { /* 实现 */ }
+  fn: async (...args) => { /* 实现 */ },   // 工具实现
+  argCount: 1,                              // 期望参数个数
+  category: 'file',                         // 分类（见上表）
+  customArgs: false,                        // 可选：参数直接透传（如 create）
+  parseJson: [false, true],                 // 可选：按位置指定哪些参数需解析为 JSON
+  jsonParams: ['content', 'tags'],          // 可选：命名参数模式下的 JSON 字段
 }
 ```
+
+> 危险操作（gitPush / executeCode / dropTable 等）通过独立的 `DANGEROUS_OPERATIONS` 门禁（`Agent.ts`）在工具执行前要求用户显式确认，而非注册表中的字段。
 
 ### Tool Call Examples / 工具调用示例
 
@@ -191,9 +197,8 @@ closeBrowser();
 
 ### Browser Configuration / 浏览器配置
 
-Browser behaviour is controlled by the following configuration block.
-
-浏览器行为由以下配置块控制。
+> 注意：浏览器实例当前为**硬编码有头模式**（`headless: false`，`--start-maximized`，视口 1920×1080），
+> 不读取配置文件中的浏览器配置块。以下配置块仅为历史文档，实际不生效：
 
 ```json
 {
@@ -507,8 +512,8 @@ The database connection is configured as follows.
   禁止执行 DROP DATABASE 等危险操作。
 - A failed transaction is rolled back automatically.
   事务失败自动回滚。
-- Query results return at most 1000 rows.
-  查询结果最多返回 1000 行。
+- Query results return at most 500 rows (`MAX_QUERY_ROWS = 500`).
+  查询结果最多返回 500 行（`MAX_QUERY_ROWS = 500`）。
 
 ---
 
@@ -797,6 +802,8 @@ Each tool accepts either an options object or positional arguments.
 | `createWord`  | 创建 Word 文档    | `options` 或 `outputPath, title, content`  |
 | `createExcel` | 创建 Excel 表格   | `options` 或 `outputPath, sheetName, data` |
 | `readExcel`   | 读取 Excel 文件   | `filePath`                                 |
+| `readWord`    | 读取 Word 文档    | `filePath`                                 |
+| `readPpt`     | 读取 PPT 演示文稿 | `filePath`                                 |
 
 ### Usage Examples / 使用示例
 

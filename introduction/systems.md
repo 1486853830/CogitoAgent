@@ -27,9 +27,9 @@ The table below lists the core memory operations and their function signatures.
 
 ### 数据结构 / Data Structure
 
-A memory entry is stored as a JSON object at the file path `~/.cogito-agent/data/memories.json`:
+A memory entry is stored as a JSON object at `<数据目录>/data/memory.json` (the data directory defaults to the process working directory, or `COGITO_USER_DATA_DIR` when set):
 
-记忆条目在底层以 JSON 对象存储，文件路径为 `~/.cogito-agent/data/memories.json`：
+记忆条目在底层以 JSON 对象存储，文件路径为 `<数据目录>/data/memory.json`（数据目录默认为进程工作目录，设置 `COGITO_USER_DATA_DIR` 时使用该值）：
 
 ```json
 {
@@ -79,9 +79,9 @@ The task system supports task creation, tracking, completion, and decomposition,
 
 ### 数据结构 / Data Structure
 
-Task data is stored in the JSON file `~/.cogito-agent/data/tasks.json`:
+Task data is stored in the JSON file `<数据目录>/data/tasks.json`:
 
-任务数据存储在 JSON 文件 `~/.cogito-agent/data/tasks.json` 中：
+任务数据存储在 JSON 文件 `<数据目录>/data/tasks.json` 中：
 
 ```json
 {

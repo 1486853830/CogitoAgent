@@ -23,6 +23,25 @@ import { chatText } from '../api/client.ts';
 // 避免微信回复带上用户在其他对话中选中的个性人设。判断依据是消息内容前缀。
 const WECHAT_MSG_PREFIX = '[微信消息';
 
+// 默认会话名前缀随界面语言本地化，避免左侧会话列表出现硬编码中文"会话 N"。
+// 取值跟随 config.chat.language（语言切换时主进程已 reloadConfig 刷新）。
+const SESSION_NAME_PREFIX: Record<string, string> = {
+  zh: '会话',
+  en: 'Session',
+  es: 'Sesión',
+  hu: 'Beszélgetés',
+  ru: 'Сессия',
+};
+
+function sessionNamePrefix(): string {
+  const lang = (loadConfig().chat?.language || 'zh').split('-')[0];
+  return SESSION_NAME_PREFIX[lang] || 'Session';
+}
+
+function defaultSessionName(index: number): string {
+  return `${sessionNamePrefix()} ${index}`;
+}
+
 function isWechatConversation(messages: Message[]): boolean {
   for (const m of messages) {
     if (m.role === 'user' && typeof m.content === 'string') {
@@ -304,7 +323,7 @@ function createNewSession(name?: string | null, persona?: string | null) {
   const id = generateId();
   const session: SessionInfo = {
     id,
-    name: name || `会话 ${meta.sessions.length + 1}`,
+    name: name || defaultSessionName(meta.sessions.length + 1),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     persona: persona || undefined,
@@ -496,7 +515,7 @@ function recoverSessionsFromDisk(meta: SessionMeta): void {
         }
         recovered.push({
           id: sessionId,
-          name: `会话 ${recovered.length + 1}`,
+          name: defaultSessionName(recovered.length + 1),
           createdAt: fileMtime,
           updatedAt: fileMtime,
         });

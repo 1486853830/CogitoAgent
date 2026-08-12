@@ -58,9 +58,9 @@
 
 云端 AI 助手会把你的文件、代码和对话发送到第三方服务器。**CogitoAgent 走的是另一条路**：它是一个直接运行在你本地工作区的自主智能体，由你选择的 LLM API 驱动——而你的数据永远不会离开你的机器。
 
-- **持续思考** — 即使你不在，也会主动对你的工作区进行反思与行动
+- **持续思考** — 即使你不在，也会主动对你的工作区进行反思与行动（事件驱动，消息/工具结果即时推进）
 - **自主探索** — 主动发现、整理和处理你的本地文件资产
-- **执行 200+ 工具** — 从文件操作、代码执行到网络研究、数据库、OCR 和多智能体编排
+- **执行 120+ 内置工具** — 从文件操作、代码执行到网络研究、数据库、OCR、多智能体编排，另有化学 / 生物 / 文献科学插件（16+ 工具）
 - **隐私安全** — 只有对话上下文会发送给你指定的 LLM API，你的文件永不离开工作区
 
 ---
@@ -70,8 +70,8 @@
 | 功能                    | 描述                                                              |
 | ----------------------- | ----------------------------------------------------------------- |
 | **本地优先隐私**        | 工作文件保留在本地，仅将必要上下文发送给你配置的 LLM API          |
-| **持续思考**            | 自动思考周期（默认 3 秒，可配置），让智能体持续推进任务           |
-| **200+ 工具 / 28 模块** | 文件、代码执行、Git、数据库、OCR、Office、图像生成、生物信息等    |
+| **持续思考**            | 事件驱动思考循环：用户消息与工具结果即时推进，无需轮询等待        |
+| **120+ 工具 / 23 分类** | 文件、代码执行、Git、数据库、OCR、Office、图像生成、生物信息等    |
 | **TypeScript 核心**     | 全量类型安全、严格模式、编译期错误检测                            |
 | **安全沙箱**            | JavaScript 使用 `isolated-vm` 进程级隔离；Python 使用净化环境执行 |
 | **多会话管理**          | 独立对话上下文，持久化存储，自动上下文压缩                        |
@@ -103,29 +103,9 @@
 
 ## 🚀 快速开始
 
-| 功能                | 描述                                                                                               |
-| ------------------- | -------------------------------------------------------------------------------------------------- |
-| **TypeScript 核心** | 全量 TypeScript 重构，类型安全，编译时错误检测                                                     |
-| **隐私优先**        | 用户工作文件保留在本地，仅通过 API 将必要上下文发送至你指定的模型服务商                            |
-| **持续思考**        | 事件驱动，随用户消息与工具结果持续推进思考循环（无固定轮询间隔）                                   |
-| **工具执行**        | 28 工具模块，200+ 工具，覆盖文件操作、代码执行、Git、数据库、OCR、Office 文档、生物信息等          |
-| **安全沙箱**        | JavaScript 代码执行使用 `isolated-vm` 进行进程级隔离                                               |
-| **多会话管理**      | 多个独立的对话会话，持久化存储，自动压缩                                                           |
-| **桌面模式**        | Electron 桌面窗口，通过 WebSocket 与终端 Agent 通信                                                |
-| **插件系统**        | 动态加载自定义工具插件                                                                             |
-| **思维链可视化**    | 实时可视化思考过程和工具执行                                                                       |
-| **智能体集群**      | 支持子智能体创建与任务委派，多智能体协作                                                           |
-| **监控面板**        | 独立窗口实时展示集群拓扑、思维链和工具统计                                                         |
-| **微信集成**        | 扫码登录、消息收发、专属会话、工具气泡展示                                                         |
-| **图像生成**        | 通过可配置图像模型（如 `qwen-image-2.0-pro`）文生图 / 图生图，结果保存到工作区 `generated-images/` |
-
----
-
-## 🚀 快速开始
-
 ### 环境要求
 
-- **Node.js** 24 或更高版本
+- **Node.js** 20 或更高版本（推荐 22+ / 24 LTS）
 - **npm** 或 **yarn** 包管理器
 - **Python** 3.x（可选，用于 Python 代码执行）
 
@@ -155,12 +135,12 @@ npm start
 
 ### 使用模式
 
-| 命令                         | 模式       | 描述                                             |
-| ---------------------------- | ---------- | ------------------------------------------------ |
-| `npm start`                  | 设置向导   | 首次配置或修改设置                               |
-| `npm run electron:desktop`   | 桌面模式   | Electron 悬浮窗口 + 终端 Agent（WebSocket 通信） |
-| `npm run electron:dashboard` | 仪表盘模式 | 全屏仪表盘，包含会话管理和工具可视化             |
-| `npm run cli`                | CLI 模式   | 纯终端模式，无 Electron（适用于服务器/无头环境） |
+| 命令                         | 模式       | 描述                                                       |
+| ---------------------------- | ---------- | ---------------------------------------------------------- |
+| `npm start`                  | 桌面模式   | 以 Dashboard 模式启动 Electron（未配置时自动进入设置向导） |
+| `npm run electron:desktop`   | 桌面模式   | Electron 悬浮窗口 + 终端 Agent（WebSocket 通信）           |
+| `npm run electron:dashboard` | 仪表盘模式 | 全屏仪表盘，包含会话管理和工具可视化                       |
+| `npm run cli`                | CLI 模式   | 纯终端模式，无 Electron（适用于服务器/无头环境）           |
 
 ---
 
@@ -174,7 +154,8 @@ flowchart LR
     subgraph INVOCATION["调用层"]
         LLM["LLM 响应<br/>tool_calls (增量)"]
         SCHEMA["tool-schema.ts<br/>buildOpenAITools()"]
-        EXECUTOR["Agent.ts<br/>executeToolCallsServer()"]
+        PARSER["tool-schema.ts<br/>validateToolArgs()"]
+        EXECUTOR["Agent.ts<br/>executeNativeToolCallsServer()"]
     end
 
     subgraph REGISTRY["注册表"]
@@ -183,7 +164,7 @@ flowchart LR
         TRACE["tracing.ts<br/>tool_exec 事件"]
     end
 
-    subgraph MODULES["28 个工具模块"]
+    subgraph MODULES["工具模块（23 分类）"]
         direction LR
         CORE1["file<br/>web<br/>code<br/>system<br/>browser"]
         CORE2["git<br/>data<br/>db<br/>path"]
@@ -219,8 +200,8 @@ flowchart LR
 
 | 分类         | 文件           | 主要函数                                                                                                                                                                                                                                                                                          |
 | ------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 文件操作     | `file.ts`      | `ls`, `read`, `create`, `copy`, `mkdir`, `write`, `append`, `move`, `rename`, `delete`                                                                                                                                                                                                            |
-| 路径工具     | `path.ts`      | `getBasePath`, `joinPath`, `resolvePath`, `normalizePath`, `getExtension`, `getFileName`, `getParentDir`                                                                                                                                                                                          |
+| 文件操作     | `file.ts`      | `ls`, `read`, `create`, `copy`, `mkdir`                                                                                                                                                                                                                                                           |
+| 路径工具     | `path.ts`      | `getBasePath`, `resolveInWorkspace`, `realPathClosest`（内部模块）                                                                                                                                                                                                                                |
 | 网络工具     | `web.ts`       | `search`, `browse`, `fetchPage`                                                                                                                                                                                                                                                                   |
 | 浏览器自动化 | `browser.ts`   | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile`                                                                                                   |
 | 系统操作     | `system.ts`    | `listApps`, `openApp`, `closeApp`                                                                                                                                                                                                                                                                 |
@@ -236,7 +217,7 @@ flowchart LR
 | 定时任务     | `scheduler.ts` | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler`                                                                                                                                     |
 | 图像识别     | `ocr.ts`       | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
 | 视觉分析     | `vision.ts`    | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
-| Office 文档  | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
+| Office 文档  | `office.ts`    | `createPpt`, `createWord`, `createExcel`, `readExcel`, `readWord`, `readPpt`                                                                                                                                                                                                                      |
 | 图像生成     | `image-gen.ts` | `generateImage`                                                                                                                                                                                                                                                                                   |
 | 集群管理     | `cluster.ts`   | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `panelDiscussion`, `pipeline`, `voting`                                                                                                                                                        |
 | 微信消息     | `wechat.ts`    | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode`                                                                                                                                                                                  |
@@ -255,7 +236,7 @@ flowchart LR
 
 ---
 
-## 架构
+## 架构设计
 
 ```mermaid
 %%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10", "secondaryColor": "#161b28", "tertiaryColor": "#1c2230"}}}%%
@@ -282,7 +263,7 @@ flowchart TB
 
     subgraph CORE["思考循环 (Agent.ts)"]
         direction LR
-        THINK["thinkCycle()<br/>3s 间隔"]
+        THINK["thinkCycle()<br/>事件驱动"]
         STREAM["streamChat()<br/>SSE 流式"]
         EXEC["executeTool()<br/>注册表查询"]
         CYCLE["scheduleNextCycle()<br/>循环控制"]
@@ -301,14 +282,14 @@ flowchart TB
     end
 
     subgraph TOOLS["工具层 (registry.ts)"]
-        REG["TOOL_REGISTRY<br/>160+ 工具, 28 分类"]
+        REG["TOOL_REGISTRY<br/>120+ 工具, 23 分类"]
         STATS["stats.ts<br/>使用统计"]
         TRACE["tracing.ts<br/>可观测性"]
     end
 
     subgraph EXT["扩展"]
         PLUGIN["plugin.ts<br/>动态加载"]
-        RETRY["retry.ts<br/>熔断器"]
+        RETRY["api/client.ts<br/>重试与退避"]
         CLUSTER["orchestrator.ts<br/>子智能体集群"]
         WECHAT["wechat-manager.ts<br/>iLink 协议"]
     end
@@ -383,12 +364,32 @@ flowchart TB
 | **sandbox.ts**        | 代码沙箱 —— isolated-vm 进程级隔离                               |
 | **stats.ts**          | 统计 —— 工具使用追踪和指标                                       |
 | **tracing.ts**        | 追踪 —— 工具执行和 LLM 调用的轻量级可观测性                      |
-| **retry.ts**          | 重试与熔断 —— 可靠的网络请求                                     |
+| **client.ts**         | LLM 客户端 —— OpenAI 兼容调用、重试与退避                        |
 | **plugin.ts**         | 插件系统 —— 动态加载自定义工具插件                               |
 | **ws-server.ts**      | WebSocket —— 桌面模式通信（端口 9527）                           |
 | **wechat-manager.ts** | 微信通道 —— iLink 协议集成、消息路由、会话同步                   |
 
 > 完整架构详情：思考循环图、工具调用流程、状态机、消息流、WebSocket → [introduction/architecture.md](introduction/architecture.md)
+
+---
+
+## 安全体系
+
+安全是 CogitoAgent 的一等公民：
+
+| 防护层            | 保护措施                                                                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **代码执行**      | JavaScript 运行于 `isolated-vm`（独立 V8 堆，结构上杜绝原型链污染逃逸）；Python 运行于净化环境（`PYTHONNOUSERSITE`、清理 `PATH`、硬超时） |
+| **危险操作门禁**  | `DANGEROUS_OPERATIONS` 门禁——gitPush / executeCode / dropTable 等破坏性操作需用户显式确认                                                 |
+| **工具权限**      | 逐工具 allow / deny / ask 策略（R5.2），未受信插件自动降级为受限默认权限                                                                  |
+| **工作区边界**    | 所有文件工具经 realpath 校验——工作区外的路径穿越一律拒绝                                                                                  |
+| **Electron 加固** | `contextIsolation: true`、`sandbox: true`、`nodeIntegration: false`、严格 CSP 头、IPC 发送方校验                                          |
+| **SQL 注入防护**  | 数据库模块统一参数化查询与输入净化                                                                                                        |
+| **凭据安全**      | 凭据加密存储、绝不写入日志、回显 UI 时打码                                                                                                |
+| **供应链安全**    | 插件加载带 15s 导入超时与错误日志；动态 import 缓存失效                                                                                   |
+| **依赖审计**      | CI 强制 `npm audit` + CodeQL 扫描                                                                                                         |
+
+> 报告漏洞：[SECURITY.md](SECURITY.md)
 
 ---
 
@@ -422,7 +423,7 @@ flowchart TB
 
 ---
 
-## 配置
+## 配置说明
 
 通过 `config.json` 和环境变量（`.env`）进行配置，环境变量优先级更高。关键变量：
 
@@ -443,9 +444,9 @@ cogito-agent/
 │   ├── agent/                        # 核心 agent 模块
 │   │   ├── Agent.ts / state.ts / registry.ts
 │   │   ├── commands.ts / session.ts / stats.ts
-│   │   ├── plugin.ts / thought-trace.ts / retry.ts
+│   │   ├── plugin.ts / thought-trace.ts
 │   │   ├── wechat-manager.ts         # 微信通道管理
-│   │   └── tools/                    # 28+ 工具模块
+│   │   └── tools/                    # 21 个工具模块（23 分类，120+ 工具）
 │   ├── api/                          # API 层（client, models, webSearch）
 │   ├── io/                           # Terminal, Logger, WebSocket
 │   ├── config.ts                     # 配置管理
@@ -456,7 +457,7 @@ cogito-agent/
 │   ├── desktop/ / dashboard/ / monitor/ / setup/
 │   ├── shared/                       # 共享工具
 │   └── assets/
-├── personas/                         # 角色文件夹 —— `cogito` 为内置默认人设，其余为可切换预设（18 现代 + 10 古代）
+├── personas/                         # 角色文件夹 —— `cogito` 为内置默认人设，其余 28 个为可切换预设
 ├── tests/                            # 测试文件
 ├── data/                             # 运行时数据（自动创建）
 ├── tsconfig.json                     # TypeScript 配置
@@ -480,20 +481,20 @@ cogito-agent/
 %%{init: {"theme": "dark", "themeVariables": {"bgColor": "#0b0e14", "primaryColor": "#5eead4", "primaryTextColor": "#5eead4", "primaryBorderColor": "#5eead4", "lineColor": "#1e293b", "textColor": "#94a3b8", "fontFamily": "JetBrains Mono, monospace", "fontSize": "10", "secondaryColor": "#161b28", "tertiaryColor": "#1c2230"}}}%%
 flowchart TD
     subgraph ORCHESTRATION["编排层"]
-        AGENT["Agent.ts<br/>思考循环 3s"]
+        AGENT["Agent.ts<br/>事件驱动思考循环"]
         STATE["state.ts<br/>THINKING / AWAIT / CONFIRM"]
         SESSION["session.ts<br/>多会话 + 持久化"]
         CMDS["commands.ts<br/>/help /status /sessions"]
     end
 
     subgraph COGNITION["认知层"]
-        MEMORY["memory.ts<br/>SQLite 存储 + 语义搜索"]
-        PERSONA["system-prompt.ts<br/>28 角色 + 自定义"]
+        MEMORY["memory.ts<br/>JSON 存储 + 标签语义检索"]
+        PERSONA["system-prompt.ts<br/>29 角色 + 自定义"]
         THOUGHT["thought-trace.ts<br/>实时思维链可视化"]
     end
 
     subgraph EXECUTION["执行层"]
-        REGISTRY["registry.ts<br/>160+ 工具, 28 分类"]
+        REGISTRY["registry.ts<br/>120+ 工具, 23 分类"]
         SANDBOX["sandbox.ts<br/>isolated-vm + Python 子进程"]
         TASK["task.ts<br/>CRUD + 分解 + 统计"]
         CLUSTER["orchestrator.ts<br/>子智能体创建 + 委派"]
@@ -506,7 +507,7 @@ flowchart TD
 
     subgraph SECURITY["安全层"]
         DANGER["DANGEROUS_OPERATIONS<br/>用户确认"]
-        RETRY["retry.ts<br/>熔断器 + 退避重试"]
+        RETRY["api/client.ts<br/>重试 + 退避"]
     end
 
     subgraph INTEGRATION["集成层"]
@@ -549,7 +550,7 @@ flowchart TD
 - **记忆系统** —— 基于 JSON 的长期存储和标签语义检索
 - **任务管理** —— 任务创建、分解和状态追踪
 - **代码沙箱** —— `isolated-vm` 进程级隔离，支持 JS 和 Python
-- **角色系统** —— 28 个预设角色（18 现代 + 10 古风/地域），支持自定义和热切换
+- **角色系统** —— 29 个预设角色（含内置 Cogito 默认人设 + 28 个可切换预设），支持自定义和热切换
 - **会话管理** —— 独立上下文，自动压缩
 - **统计模块** —— 工具使用追踪和性能指标
 - **思维链可视化** —— 实时思考过程展示
@@ -573,16 +574,37 @@ flowchart TD
 
 - **插件系统** —— 动态加载自定义工具插件
 - **追踪系统** —— 工具执行和 LLM 调用的轻量级可观测性
-- **熔断与重试** —— 可靠的网络请求
+- **重试与退避** —— LLM 客户端内置可靠的重试与退避策略
 - **多模型支持** —— OpenAI、Moark、Anthropic、Google
 - **网络搜索** —— 内置互联网搜索能力
 
-## Docker
+## Docker 部署
 
 > 详见 [introduction/deployment.md](introduction/deployment.md)
 
 ```bash
+cp .env.example .env    # 设置 COGITO_API_KEY 和 COGITO_WS_TOKEN
 docker-compose up -d
+```
+
+容器以**非 root 用户**运行，健康检查暴露在 `:9528`，运行时数据持久化到命名卷。
+
+---
+
+## 测试与质量
+
+- **870+ 测试用例**，覆盖 49 个测试套件（Jest，ESM 模式）
+- **严格 TypeScript** — `tsc --noEmit` 在 CI 中强制执行
+- **ESLint + Prettier** — 统一代码风格
+- **GitHub Actions CI/CD** — lint → typecheck → test → build → release
+- **CodeQL** — 自动化安全扫描
+- **Dependabot** — 自动化依赖更新
+
+```bash
+npm test              # 运行完整测试套件
+npm run typecheck     # TypeScript 严格类型检查
+npm run lint          # ESLint
+npm run format        # Prettier 格式化
 ```
 
 ---
@@ -593,7 +615,19 @@ docker-compose up -d
 
 ---
 
-## 社区交流
+## 路线图
+
+详见 [ROADMAP.md](ROADMAP.md) 完整路线图，包括：
+
+- 工具执行性能优化与常用结果缓存
+- 上下文窗口利用优化与智能压缩
+- Dashboard 中的可视化配置编辑器
+- 插件热重载支持
+- 更多 LLM 服务商集成
+
+---
+
+## 社区与支持
 
 欢迎加入 CogitoAgent 社区：
 
@@ -605,7 +639,7 @@ docker-compose up -d
 
 ---
 
-## 贡献
+## 贡献指南
 
 我们欢迎社区贡献！无论你想修复 bug、添加新功能，还是改进文档，你的帮助都非常宝贵。
 

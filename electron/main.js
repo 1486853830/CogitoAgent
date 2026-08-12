@@ -80,6 +80,20 @@ function isValidSessionId(id) {
   return typeof id === 'string' && /^sess_[A-Za-z0-9_-]+$/.test(id);
 }
 
+// 默认会话名前缀随界面语言本地化（与 src/agent/session.ts 保持一致），
+// 避免左侧会话列表恢复兜底时出现硬编码中文"会话 N"。
+const SESSION_NAME_PREFIX = {
+  zh: '会话',
+  en: 'Session',
+  es: 'Sesión',
+  hu: 'Beszélgetés',
+  ru: 'Сессия',
+};
+function sessionNamePrefix(lang) {
+  const base = typeof lang === 'string' ? lang.split('-')[0] : 'zh';
+  return SESSION_NAME_PREFIX[base] || 'Session';
+}
+
 /**
  * 校验并归一化 persona 目录名，防止 `../../..` 遍历到 personas 之外。
  * persona 名来自渲染进程 IPC（update-current-persona）与 config.json，均不可信。
@@ -712,20 +726,20 @@ function createSetupWindow(isReconfigure = false) {
  * 创建主应用窗口
  */
 function createMainWindow() {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const { width: screenW, height: screenH } = screen.getPrimaryDisplay().workAreaSize;
 
   mainWindow = new BrowserWindow({
-    width: 620,
-    height: 600,
-    x: width - 640,
-    y: height - 620,
+    // 初始尺寸仅用于首帧绘制；创建后由渲染进程按可见内容自动收缩/扩张
+    // （set-window-size IPC，右下角锚定），不再用固定 620x600 的大透明矩形。
+    width: 600,
+    height: 520,
+    x: Math.max(0, screenW - 640),
+    y: Math.max(0, screenH - 560),
     icon: APP_ICON,
     transparent: true,
     frame: false,
     alwaysOnTop: false,
-    resizable: true,
-    minWidth: 500,
-    minHeight: 400,
+    resizable: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -778,6 +792,12 @@ function createMainWindow() {
   mainWindow.loadFile(path.join(__dirname, 'desktop', 'index.html'));
 
   initAgentBridge(mainWindow);
+
+  // 桌宠模式：默认开启鼠标穿透（click-through），使透明空白区域点击落到下层应用，
+  // 避免"一块空白挡住其他软件"的问题。仅当光标位于宠物/面板/确认弹窗上方时，
+  // 由渲染进程通过 'set-ignore-mouse-events' IPC 关闭穿透以恢复交互。
+  // forward:true 保证穿透状态下仍向渲染进程转发 mousemove，悬停检测才能生效。
+  mainWindow.setIgnoreMouseEvents(true, { forward: true });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -1008,6 +1028,38 @@ app.whenReady().then(async () => {
       const [currentX, currentY] = mainWindow.getPosition();
       mainWindow.setPosition(currentX + x, currentY + y);
     }
+  });
+
+  // 桌宠模式鼠标穿透开关：渲染进程根据光标是否位于可交互区（宠物/面板/确认弹窗）
+  // 动态开启/关闭窗口级鼠标忽略。仅作用于发送方窗口——dashboard/monitor/setup 不会
+  // 发送该 IPC，始终保持正常捕获，不受影响。
+  ipcMain.on('set-ignore-mouse-events', (event, ignore) => {
+    if (typeof ignore !== 'boolean') return;
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) return;
+    // ignore=true 时开启穿透（forward 保证仍转发 mousemove 供悬停检测）；
+    // ignore=false 时关闭穿透，恢复窗口对鼠标事件的捕获。
+    win.setIgnoreMouseEvents(ignore, { forward: true });
+  });
+
+  // 桌宠模式自适应窗口尺寸：渲染进程测量可见内容包围盒后请求缩放。
+  // 锚定右下角——缩放时保持右下角不动，宠物不会在屏幕上跳动。
+  // 仅作用于发送方窗口（mainWindow），其他窗口不受影响。
+  ipcMain.on('set-window-size', (event, { width, height }) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win !== mainWindow || win.isDestroyed()) return;
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
+    const [curX, curY] = win.getPosition();
+    const [curW, curH] = win.getSize();
+    // 右下角锚定：新左上角 = 旧左上角 + (旧尺寸 - 新尺寸)
+    const newX = Math.max(0, Math.round(curX + curW - width));
+    const newY = Math.max(0, Math.round(curY + curH - height));
+    win.setBounds({
+      x: newX,
+      y: newY,
+      width: Math.round(width),
+      height: Math.round(height),
+    });
   });
 
   // ===== IPC: 模式切换 =====
@@ -1474,6 +1526,8 @@ app.whenReady().then(async () => {
   ipcMain.handle('get-sessions', () => {
     const sessionsDir = path.join(USER_DATA_DIR, 'data', 'sessions');
     const metaPath = path.join(sessionsDir, 'meta.json');
+    // 读取最新配置（用于恢复兜底的本地化会话名，不能引用未定义变量）
+    const configJson = readConfigJson();
     try {
       let sessions = [];
       let meta = { sessions: [], activeId: null };
@@ -1511,7 +1565,7 @@ app.whenReady().then(async () => {
                 : 0;
               recovered.push({
                 id: sessionId,
-                name: `会话 ${recovered.length + 1}`,
+                name: `${sessionNamePrefix(configJson.chat?.language)} ${recovered.length + 1}`,
                 createdAt: new Date().toISOString(),
                 lastActiveAt: new Date().toISOString(),
                 isActive: sessionId === meta.activeId,

@@ -110,7 +110,9 @@ The configuration file is located at `config.json` in the user data directory, i
       "ocr",
       "vision",
       "image",
-      "office"
+      "office",
+      "cluster",
+      "wechat"
     ]
   },
   "persona": "Assistant"
@@ -279,25 +281,33 @@ The `tools.enabledCategories` field in `config.json` controls which tool categor
 
 ### Full category table / 全部分类表
 
-| 分类键名    | 中文名称                    | 包含工具数 | 包含工具列表                                                                                                                                                                                                                                                                                      |
-| ----------- | --------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `file`      | 文件操作                    | 5          | `ls`, `read`, `copy`, `mkdir`, `create`                                                                                                                                                                                                                                                           |
-| `web`       | 网络工具                    | 3          | `search`, `browse`, `fetchPage`                                                                                                                                                                                                                                                                   |
-| `system`    | 系统操作                    | 3          | `listApps`, `openApp`, `closeApp`                                                                                                                                                                                                                                                                 |
-| `browser`   | 浏览器自动化                | 12         | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile`                                                                                                   |
-| `code`      | 代码执行                    | 5          | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode`                                                                                                                                                                                                                          |
-| `git`       | Git 版本控制                | 21         | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
-| `task`      | 任务管理                    | 9          | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks`                                                                                                                                                                        |
-| `memory`    | 记忆系统                    | 9          | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory`                                                                                                                                                 |
-| `data`      | 数据处理                    | 9          | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`                                                                                                                                                                                  |
-| `db`        | 数据库                      | 11         | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB`                                                                                                                                               |
-| `email`     | 邮件功能                    | 6          | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig`                                                                                                                                                                                |
-| `monitor`   | 系统监控                    | 9          | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem`                                                                                                                                            |
-| `scheduler` | 定时任务                    | 8          | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler`                                                                                                                                     |
-| `ocr`       | 图像文字识别                | 2          | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
-| `vision`    | 视觉分析                    | 2          | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
-| `image`     | 图像生成 / Image Generation | 1          | `generateImage`                                                                                                                                                                                                                                                                                   |
-| `office`    | Office 文档                 | 4          | `createPpt`, `createWord`, `createExcel`, `readExcel`                                                                                                                                                                                                                                             |
+| 分类键名         | 中文名称                    | 包含工具数 | 包含工具列表                                                                                                                                                                                                                                                                                      |
+| ---------------- | --------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `file`           | 文件操作                    | 5          | `ls`, `read`, `copy`, `mkdir`, `create`                                                                                                                                                                                                                                                           |
+| `web`            | 网络工具                    | 3          | `search`, `browse`, `fetchPage`                                                                                                                                                                                                                                                                   |
+| `system`         | 系统操作                    | 3          | `listApps`, `openApp`, `closeApp`                                                                                                                                                                                                                                                                 |
+| `browser`        | 浏览器自动化                | 12         | `initBrowser`, `clickElement`, `fillField`, `selectOption`, `viewChanges`, `getPageContent`, `takeScreenshot`, `closeBrowser`, `searchOnPage`, `findElements`, `searchOnEngine`, `downloadFile`                                                                                                   |
+| `code`           | 代码执行                    | 5          | `executeCode`, `executeFile`, `runJavaScript`, `runPython`, `formatCode`                                                                                                                                                                                                                          |
+| `git`            | Git 版本控制                | 21         | `gitInit`, `gitClone`, `gitAdd`, `gitCommit`, `gitPush`, `gitPull`, `gitStatus`, `gitLog`, `gitBranchCreate`, `gitBranchDelete`, `gitBranchList`, `gitCheckout`, `gitCheckoutNew`, `gitMerge`, `gitDiff`, `gitRemoteAdd`, `gitRemoteList`, `gitConfigUser`, `gitReset`, `gitStash`, `gitStashPop` |
+| `task`           | 任务管理                    | 9          | `createTask`, `getTasks`, `getTask`, `updateTask`, `deleteTask`, `completeTask`, `splitTask`, `getTaskStats`, `clearTasks`                                                                                                                                                                        |
+| `memory`         | 记忆系统                    | 9          | `addMemory`, `searchMemory`, `getAllMemories`, `getMemory`, `updateMemory`, `deleteMemory`, `getMemoryStats`, `getRelatedMemories`, `clearMemory`                                                                                                                                                 |
+| `data`           | 数据处理                    | 9          | `readCSV`, `writeCSV`, `readJSON`, `writeJSON`, `csvToJSON`, `jsonToCSV`, `queryData`, `analyzeData`, `sortData`                                                                                                                                                                                  |
+| `db`             | 数据库                      | 11         | `executeSQL`, `query`, `insert`, `update`, `deleteData`, `createTable`, `dropTable`, `getTables`, `getTableSchema`, `executeTransaction`, `closeDB`                                                                                                                                               |
+| `email`          | 邮件功能                    | 6          | `sendEmail`, `sendTextEmail`, `sendHtmlEmail`, `sendTemplateEmail`, `sendEmailWithAttachments`, `checkEmailConfig`                                                                                                                                                                                |
+| `monitor`        | 系统监控                    | 9          | `getCPUInfo`, `getMemoryInfo`, `getDiskInfo`, `getNetworkInfo`, `getProcesses`, `getSystemInfo`, `getCurrentProcess`, `getSystemLoad`, `monitorSystem`                                                                                                                                            |
+| `scheduler`      | 定时任务                    | 8          | `addScheduleTask`, `getScheduleTasks`, `getScheduleTask`, `updateScheduleTask`, `toggleScheduleTask`, `removeScheduleTask`, `startScheduler`, `stopScheduler`                                                                                                                                     |
+| `ocr`            | 图像文字识别                | 2          | `ocr`, `ocrBatch`                                                                                                                                                                                                                                                                                 |
+| `vision`         | 视觉分析                    | 2          | `vision`, `visionFromUrl`                                                                                                                                                                                                                                                                         |
+| `image`          | 图像生成 / Image Generation | 1          | `generateImage`                                                                                                                                                                                                                                                                                   |
+| `office`         | Office 文档                 | 6          | `createPpt`, `createWord`, `createExcel`, `readExcel`, `readWord`, `readPpt`                                                                                                                                                                                                                      |
+| `cluster`        | 集群管理                    | 11         | `spawnAgent`, `delegateTask`, `getClusterStatus`, `stopAgent`, `stopAllAgents`, `parallelExecute`, `getAgent`, `getAgentTranscript`, `panelDiscussion`, `pipeline`, `voting`                                                                                                                      |
+| `wechat`         | 微信消息                    | 6          | `loginWechat`, `logoutWechat`, `sendWechatMessage`, `sendWechatImage`, `getWechatStatus`, `generateWechatQRCode`                                                                                                                                                                                  |
+| `chemistry`      | 化学信息学（插件）          | 5          | `molInfo`, `molDraw`, `molFingerprint`, `molSubstruct`, `molSimilarity`（由 `plugins/rdkit-chem` 提供）                                                                                                                                                                                           |
+| `bioinformatics` | 生物信息学（插件）          | 7          | `bioAlign`, `bioBlast`, `bioConvert`, `bioFetchGenbank`, `bioPdbInfo`, `bioFastaStats`, `bioMsa`（由 `plugins/biopython-bio` 提供）                                                                                                                                                               |
+| `literature`     | 文献检索（插件）            | 4          | `pubmedSearch`, `pubmedFetch`, `pubmedAdvanced`, `pubmedCite`（由 `plugins/pubmed-research` 提供）                                                                                                                                                                                                |
+| `mcp`            | 外部 MCP 工具               | 动态       | 通过 MCP 服务器动态注册（R4.3），数量随已接入的 MCP server 而定                                                                                                                                                                                                                                   |
+
+> 说明：内置工具共 **128 个 / 19 类**；加 3 个科学插件（chemistry / bioinformatics / literature，16 个工具）与动态 MCP 工具后，总分类数为 **23**。表中未注册为工具的模块内辅助函数（如 `path.ts` 的路径工具）不会出现在模型可调用的工具列表中。
 
 **Config example (enable only some categories) / 配置示例（仅启用部分分类）：**
 
@@ -405,9 +415,13 @@ The vision analysis key falls back to the main API key (`COGITO_API_KEY`) by def
 
 ### 4.9 WebSocket Configuration / WebSocket 配置
 
-| 环境变量     | 必需 | 默认值  | 说明                                                  |
-| ------------ | ---- | ------- | ----------------------------------------------------- |
-| `DISABLE_WS` | 否   | `false` | 设为 `true` 禁用 WebSocket 服务（CLI 模式下自动禁用） |
+| 环境变量                | 必需 | 默认值      | 说明                                                        |
+| ----------------------- | ---- | ----------- | ----------------------------------------------------------- |
+| `DISABLE_WS`            | 否   | `false`     | 设为 `true` 禁用 WebSocket 服务（CLI 模式下自动禁用）       |
+| `COGITO_WS_HOST`        | 否   | `127.0.0.1` | WebSocket 服务监听地址（Docker 部署需设为 `0.0.0.0`）       |
+| `COGITO_WS_HEALTH`      | 否   | `false`     | 是否启用独立健康检查 HTTP 服务（容器健康检查请设为 `true`） |
+| `COGITO_WS_HEALTH_PORT` | 否   | `9528`      | 健康检查 HTTP 服务端口                                      |
+| `COGITO_WS_TOKEN`       | 否   | 随机生成    | WS 访问令牌；Docker/远程场景必须注入固定强随机值            |
 
 The WebSocket service runs on port `9527` by default, for the Electron desktop client to connect. Use `startWsServer(port)` to customize the port.
 
@@ -445,11 +459,14 @@ When conversation history grows beyond a certain point, the system automatically
 
 **Compression triggers / 压缩触发条件：**
 
-| 条件       | 阈值              | 说明                                  |
-| ---------- | ----------------- | ------------------------------------- |
-| 对话轮数   | `>= 150 轮`       | 超过 `COMPRESS_TURNS` 常量（150）     |
-| Token 估算 | `>= 100000 Token` | 超过 `MAX_TOKEN_ESTIMATE` 常量        |
-| 警告阈值   | `>= 80000 Token`  | 达到 `WARN_TOKEN_THRESHOLD`，提前预警 |
+> 阈值按模型上下文窗口**动态推导**（R3.4）：`max = 模型上下文窗口`，`warn = max × 0.8`。
+> 未识别的模型回退默认值（下表）。已识别模型示例：gpt-5/gpt-4.1 → 1M，claude/haiku/opus → 200k，gemini → 1M，gpt-4o → 128k，deepseek → 64k，moonshot/kimi → 128k，moark/qwen/internlm → 100k。
+
+| 条件       | 阈值                          | 说明                                   |
+| ---------- | ----------------------------- | -------------------------------------- |
+| 对话轮数   | `>= 150 轮`                   | 超过 `COMPRESS_TURNS` 常量（150）      |
+| Token 估算 | `>= max`（默认 100000 Token） | 超过模型上下文窗口推导值（默认 100K）  |
+| 警告阈值   | `>= warn`（默认 80000 Token） | 达到 `max × 0.8`（默认 80K），提前预警 |
 
 **Compression strategy / 压缩策略：**
 
@@ -504,9 +521,9 @@ To avoid tool outputs being too large and causing context overflow, the system s
 | `monitorSystem` | 15,000           | 系统监控               |
 | `default`       | 10,000           | 其他未列出的工具默认值 |
 
-Outputs exceeding the limit will be truncated and appended with the notice: `... [输出内容过长，已截断]`.
+Outputs exceeding the limit will be truncated and appended with the notice: `... [输出已截断：原始 N 字符，显示前 M 字符]`.
 
-超出限制的输出将被截断并追加提示信息：`... [输出内容过长，已截断]`。
+超出限制的输出将被截断并追加提示信息：`... [输出已截断：原始 N 字符，显示前 M 字符]`。
 
 ### 5.3 Session Archiving Strategy / 会话归档策略
 
