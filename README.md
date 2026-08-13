@@ -552,6 +552,12 @@ Copyright © 2026 CogitoAgent Team
 
 ---
 
+## 🙏 Acknowledgments
+
+Special thanks to [LIghtJUNction](https://github.com/LIghtJUNction) — an independent developer working at the intersection of AI tooling, automation, and privacy-aware systems. With 125+ open-source repositories spanning agent workflows, developer tools, and observable infrastructure, LIghtJUNction embodies the spirit of "learn in public and return improvements upstream." We are grateful for their support and encouragement of this project.
+
+---
+
 <div align="center">
   <sub>Built with ❤️ by the CogitoAgent team · <em>Think Continuously, Act Autonomously, Stay Private</em></sub>
 </div>

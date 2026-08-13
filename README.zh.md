@@ -670,4 +670,10 @@ Apache 2.0
 
 ---
 
+## 🙏 致谢
+
+特别感谢 [LIghtJUNction](https://github.com/LIghtJUNction) 对本项目的支持。LIghtJUNction 是一位独立开发者，活跃于 AI 工具链、自动化与隐私安全领域，在 GitHub 上开源了 125+ 个仓库，涵盖智能体工作流、开发者工具与可观测基础设施等方向，始终践行"公开学习、回馈上游"的开源精神。衷心感谢他对本项目的鼓励与支持。
+
+---
+
 由 CogitoAgent Team 开发
