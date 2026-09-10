@@ -88,7 +88,7 @@
     "isolated-vm": "^7.0.1",
     "jszip": "^3.10.1",
     "marked": "^18.0.5",
-    "nodemailer": "^9.0.1",
+    "nodemailer": "^9.1.1",
     "playwright": "^1.61.0",
     "pptxgenjs": "^4.0.1",
     "qrcode": "^1.5.4",
